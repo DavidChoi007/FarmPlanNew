@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="600" height="450">
+  <rect width="600" height="450" rx="20" fill="#0f172a"/>
+  <rect x="16" y="16" width="568" height="418" rx="16" fill="#ffffff"/>
+  <rect x="16" y="16" width="568" height="76" rx="16" fill="#047857"/>
+  <text x="40" y="48" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#a7f3d0">(주)누보 · MAT-NUTR-21</text>
+  <text x="40" y="74" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="17" font-weight="900" fill="#ffffff">세부 이미지 ③ — 100평(10a) 표준 시비량 및 살포 방법</text>
+
+  <text x="40" y="125" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#0f172a">엔플러스 프로아미노 K (초겨울 한파·동해 예방 및 초세유지제) 500ml</text>
+
+  <!-- 중앙 시각 그래픽 영역 -->
+  <rect x="40" y="145" width="520" height="140" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+  <g transform="translate(60, 175)">
+          <text x="0" y="26" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#047857">▶ 100평(330㎡) 권장 처방량: 100평당 150ml (물 20L당 25ml / 800배 엽면살포)</text>
+          <text x="0" y="62" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="700" fill="#1e293b">▶ 적용 생육단계: 결구 후기 및 월동 진입 전 (서리 예보 3~5일 전)</text>
+        </g>
+
+  <!-- 하단 3줄 핵심 스펙 -->
+  <g transform="translate(40, 310)">
+    <rect x="0" y="0" width="520" height="100" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="20" y="28" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#0f172a">• 100평(330㎡) 권장 처방량: 100평당 150ml (물 20L당 25ml / 800배 엽면살포)</text>
+    <text x="20" y="56" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#334155">• 적용 생육단계: 결구 후기 및 월동 진입 전 (서리 예보 3~5일 전)</text>
+    <text x="20" y="84" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#047857">• 기상·토양 연동 기준: 기상청 첫서리·한파 주의보 예보 시 선제 살포</text>
+  </g>
+</svg>
