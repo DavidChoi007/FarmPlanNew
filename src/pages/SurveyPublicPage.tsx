@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link, normalizeAppPath } from '../router.tsx';
 import {
   Sprout,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   MapPin,
   User,
   Phone,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface SurveyQuestion {
@@ -132,7 +134,8 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
 ];
 
 export default function SurveyPublicPage() {
-  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const normalizedPath = normalizeAppPath(window.location.pathname);
+  const pathParts = normalizedPath.split('/').filter(Boolean);
   const urlSurveyId = pathParts[1] || 'SURV-HANFARM-2026';
 
   const [surveyMeta, setSurveyMeta] = useState<any>({
@@ -375,16 +378,25 @@ export default function SurveyPublicPage() {
               <div className="text-[11px] text-slate-500">맞춤형 재배일정 &amp; AI 병해충 진단 수요조사</div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs font-extrabold text-emerald-700">
-              응답 진행률 {answeredCount} / {questions.length} 문항
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs font-extrabold text-emerald-700">
+                응답 진행률 {answeredCount} / {questions.length} 문항
+              </div>
+              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-emerald-600 transition-all"
+                  style={{ width: `${Math.round((answeredCount / questions.length) * 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
-              <div
-                className="h-full bg-emerald-600 transition-all"
-                style={{ width: `${Math.round((answeredCount / questions.length) * 100)}%` }}
-              />
-            </div>
+            <Link
+              to="/admin"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 inline-flex items-center gap-1 transition"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              관리자 페이지
+            </Link>
           </div>
         </div>
 

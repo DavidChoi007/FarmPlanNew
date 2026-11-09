@@ -203,7 +203,7 @@ export default function UserIntroPage() {
   // 마이페이지 데이터 상태 (재배지 등록, 재배작물 등록, 작물재배현황 및 진행율, 농자재 구매현황)
   const [myPageTab, setMyPageTab] = useState<
     'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'ORDERS' | 'PROFILE'
-  >('ALL');
+  >('FARMLAND');
   const [myFarmlands, setMyFarmlands] = useState<any[]>([]);
   const [myCropPlans, setMyCropPlans] = useState<any[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
@@ -1812,7 +1812,7 @@ export default function UserIntroPage() {
                   type="button"
                   onClick={() => {
                     setActiveMenu('마이페이지');
-                    setMyPageTab('ALL');
+                    setMyPageTab('FARMLAND');
                   }}
                   className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition cursor-pointer shadow-2xs"
                 >
@@ -5834,7 +5834,7 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [탭 7: 마이페이지 (회원 기본정보 · 재배지 등록 · 재배작물 등록 · 작물재배현황 및 진행율 · 농자재 구매현황)] ==================== */}
+        {/* ==================== [탭 7: 마이페이지 (좌측: 메뉴 영역 / 우측: 선택 메뉴 관련 내용 영역)] ==================== */}
         {activeMenu === '마이페이지' && (
           <div className="space-y-6">
             {/* 마이페이지 전용 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
@@ -5847,247 +5847,393 @@ export default function UserIntroPage() {
                 />
               </div>
             </section>
-            {/* 상단 마이페이지 회원 프로필 요약 & 빠른 작업 배너 */}
-            <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-7 shadow-xs space-y-5">
-              {myPageToast && (
-                <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-4 py-3 text-xs sm:text-sm font-extrabold text-emerald-900 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>{myPageToast}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setMyPageToast('')}
-                    className="text-emerald-700 hover:text-emerald-950 font-bold cursor-pointer"
-                  >
-                    닫기
-                  </button>
-                </div>
-              )}
 
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 pb-5">
-                {loggedInUser.isLoggedIn ? (
-                  <div className="flex items-start sm:items-center gap-4">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-xl sm:text-2xl font-extrabold shadow-sm shrink-0">
-                      {loggedInUser.name.slice(0, 1)}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                          {loggedInUser.signup_type === 'GOOGLE_GMAIL'
-                            ? 'Google Gmail 연동 회원'
-                            : '이메일 정회원'}
-                        </span>
-                        <span className="font-mono text-xs sm:text-sm font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">
-                          ID(이메일): {loggedInUser.email}
-                        </span>
+            {/* 좌측 메뉴 영역 + 우측 관련 내용 영역 2단 레이아웃 */}
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
+              {/* ==================== [좌측 영역: 회원 요약 & 마이페이지 메뉴 사이드바] ==================== */}
+              <aside className="w-full lg:w-[310px] xl:w-[330px] shrink-0 space-y-4 lg:sticky lg:top-24">
+                {/* 1. 회원 프로필 요약 카드 */}
+                <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  {loggedInUser.isLoggedIn ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center text-xl font-extrabold shadow-sm shrink-0">
+                          {loggedInUser.name.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+                            {loggedInUser.signup_type === 'GOOGLE_GMAIL'
+                              ? 'Google Gmail 연동 회원'
+                              : '이메일 정회원'}
+                          </span>
+                          <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate mt-0.5">
+                            {loggedInUser.name} 님의 마이페이지
+                          </h2>
+                          <div className="font-mono text-xs font-bold text-emerald-800 truncate">
+                            {loggedInUser.email}
+                          </div>
+                        </div>
                       </div>
-                      <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900">
-                        {loggedInUser.name} 님의 마이페이지
-                      </h2>
-                      <div className="flex items-center gap-3 flex-wrap text-xs text-slate-600 font-semibold">
-                        <span>성별: {loggedInUser.gender}</span>
-                        <span>·</span>
-                        <span>출생년월일: {loggedInUser.birth_date}</span>
-                        <span>·</span>
-                        <span>나이: {loggedInUser.age}세</span>
-                        <span>·</span>
-                        <span>
-                          도로명주소: {loggedInUser.road_address} {loggedInUser.road_address_detail}
-                        </span>
+                      <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-3 text-xs text-slate-600 space-y-1 font-semibold">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">성별 / 나이</span>
+                          <span className="font-bold text-slate-800">
+                            {loggedInUser.gender} · {loggedInUser.age}세 ({loggedInUser.birth_date})
+                          </span>
+                        </div>
+                        <div className="pt-1 border-t border-slate-200/70 text-[11px] text-slate-600 truncate">
+                          📍 {loggedInUser.road_address} {loggedInUser.road_address_detail}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start sm:items-center gap-4">
-                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
-                      <User className="w-7 h-7" />
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="inline-flex px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-extrabold">
+                            회원 맞춤 서비스
+                          </span>
+                          <h2 className="text-base font-extrabold text-slate-900 mt-0.5">
+                            마이페이지 메뉴
+                          </h2>
+                          <p className="text-[11px] text-slate-500 font-semibold">
+                            로그인 후 내 농지·작물을 통합 관리하세요
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <span className="inline-flex px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold">
-                        로그인 후 회원 맞춤 관리 가능
-                      </span>
-                      <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900">
-                        마이페이지 · 내 재배지 및 작물재배 현황
-                      </h2>
-                      <p className="text-xs text-slate-500 font-semibold">
-                        로그인하시면 회원님의 등록 재배지, 작물별 재배일정 진행율, 농자재 구매내역을 통합 관리할 수 있습니다.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  {loggedInUser.isLoggedIn && (
+                  {/* 계정 관련 빠른 버튼 */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthNoticeMsg(null);
+                        setShowGmailPicker(false);
+                        setAuthModalTab('LOGIN');
+                        setIsAuthModalOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-xs font-extrabold text-emerald-700 cursor-pointer transition"
+                    >
+                      로그인 폼
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthNoticeMsg(null);
+                        setShowRoadSearchBox(false);
+                        setAuthModalTab('SIGNUP');
+                        setIsAuthModalOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-extrabold text-white cursor-pointer transition"
+                    >
+                      회원가입 폼
+                    </button>
                     <button
                       type="button"
                       onClick={() => setMyPageTab('PROFILE')}
-                      className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-extrabold text-slate-700 cursor-pointer"
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer transition"
                     >
                       회원정보 수정
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthNoticeMsg(null);
+                        setFindPwForm((prev) => ({
+                          ...prev,
+                          email: loggedInUser.email,
+                          name: loggedInUser.name,
+                          birth_date: loggedInUser.birth_date,
+                          verified: false,
+                        }));
+                        setAuthModalTab('FIND_PASSWORD');
+                        setIsAuthModalOpen(true);
+                      }}
+                      className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer transition"
+                    >
+                      비밀번호 찾기
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. 좌측 마이페이지 전용 네비게이션 메뉴 */}
+                <nav
+                  aria-label="마이페이지 메뉴"
+                  className="bg-white rounded-3xl border border-slate-200 p-3 shadow-xs space-y-1.5"
+                >
+                  <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 mb-1">
+                    <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+                      마이페이지 메뉴
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      6개 항목
+                    </span>
+                  </div>
+
+                  {[
+                    {
+                      code: 'FARMLAND',
+                      title: '① 내 재배지 등록 · 관리',
+                      desc: '관리자 재배지 DB 검색 · 농지 등록',
+                      badge: `${myFarmlands.length}곳`,
+                      icon: MapPin,
+                    },
+                    {
+                      code: 'CROPS',
+                      title: '② 내 재배작물 등록',
+                      desc: '모종·씨 다품종 복수 작물 등록',
+                      badge: `${cloudBaeCropList.length}건`,
+                      icon: Sprout,
+                    },
+                    {
+                      code: 'PROGRESS',
+                      title: '③ 작물재배현황 및 진행율',
+                      desc: '실시간 생육단계 · 적산온도(PGDD)',
+                      badge: `${
+                        cloudBaeCropList.length > 0
+                          ? Math.round(
+                              cloudBaeCropList.reduce(
+                                (s: number, c: any) => s + Number(c.progress_pct || 0),
+                                0
+                              ) / cloudBaeCropList.length
+                            )
+                          : 0
+                      }%`,
+                      icon: Calendar,
+                    },
+                    {
+                      code: 'ORDERS',
+                      title: '④ 농자재 구매현황',
+                      desc: '생육단계별 원클릭 주문 · 배송 관제',
+                      badge: `${myOrders.length}건`,
+                      icon: ShoppingBag,
+                    },
+                    {
+                      code: 'PROFILE',
+                      title: '⑤ 회원 기본정보 관리',
+                      desc: '이메일 · 이름 · 성별 · 도로명주소',
+                      badge: '내 정보',
+                      icon: User,
+                    },
+                    {
+                      code: 'ALL',
+                      title: '전체 항목 한눈에 보기',
+                      desc: '마이페이지 모든 섹션 통합 조회',
+                      badge: '통합',
+                      icon: Layers,
+                    },
+                  ].map((item) => {
+                    const IconComp = item.icon;
+                    const isSelected = myPageTab === item.code;
+                    return (
+                      <button
+                        key={item.code}
+                        type="button"
+                        onClick={() => setMyPageTab(item.code as any)}
+                        className={`w-full text-left px-3.5 py-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white hover:bg-slate-50 text-slate-800 border-transparent hover:border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                              isSelected
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            }`}
+                          >
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div
+                              className={`text-xs sm:text-sm font-extrabold truncate ${
+                                isSelected ? 'text-white' : 'text-slate-900'
+                              }`}
+                            >
+                              {item.title}
+                            </div>
+                            <div
+                              className={`text-[11px] truncate mt-0.5 ${
+                                isSelected ? 'text-emerald-100 font-medium' : 'text-slate-500 font-medium'
+                              }`}
+                            >
+                              {item.desc}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-lg text-[11px] font-extrabold shrink-0 ${
+                            isSelected
+                              ? 'bg-white text-emerald-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </nav>
+
+                {/* 3. 좌측 하단 내 농장 현황 요약 & 빠른 이동 */}
+                <div className="bg-slate-900 text-white rounded-3xl p-5 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-emerald-400">
+                      내 농장 누적 요약
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-semibold">실시간 연동</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5 text-xs">
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <div className="text-slate-300 text-[11px]">총 등록 재배면적</div>
+                      <div className="text-base font-extrabold text-white mt-0.5">
+                        {myFarmlands
+                          .reduce((s: number, f: any) => s + Number(f.area_pyeong || 0), 0)
+                          .toLocaleString()}
+                        평
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 p-3">
+                      <div className="text-slate-300 text-[11px]">누적 농자재 구매</div>
+                      <div className="text-base font-extrabold text-emerald-300 mt-0.5">
+                        {myOrders
+                          .reduce((s: number, o: any) => s + Number(o.final_total || 0), 0)
+                          .toLocaleString()}
+                        원
+                      </div>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
-                      setAuthNoticeMsg(null);
-                      setFindPwForm((prev) => ({
-                        ...prev,
-                        email: loggedInUser.email,
-                        name: loggedInUser.name,
-                        birth_date: loggedInUser.birth_date,
-                        verified: false,
-                      }));
-                      setAuthModalTab('FIND_PASSWORD');
-                      setIsAuthModalOpen(true);
+                      setActiveMenu('재배일정 확인');
+                      setMobileScheduleStep('list');
                     }}
-                    className="px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 text-xs font-extrabold text-slate-700 cursor-pointer"
+                    className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-between cursor-pointer transition"
                   >
-                    비밀번호 찾기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthNoticeMsg(null);
-                      setShowGmailPicker(false);
-                      setAuthModalTab('LOGIN');
-                      setIsAuthModalOpen(true);
-                    }}
-                    className="px-4 py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-xs font-extrabold text-emerald-700 cursor-pointer"
-                  >
-                    로그인 폼 열기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthNoticeMsg(null);
-                      setShowRoadSearchBox(false);
-                      setAuthModalTab('SIGNUP');
-                      setIsAuthModalOpen(true);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-extrabold text-white cursor-pointer"
-                  >
-                    회원가입 폼 열기
+                    <span>48주 재배일정 확인 바로가기</span>
+                    <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </aside>
 
-              {/* 마이페이지 4대 핵심 현황 KPI 요약 카드 */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMyPageTab('FARMLAND')}
-                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
-                    myPageTab === 'FARMLAND'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                      : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-500">① 등록 재배지 (관리자 DB 연동)</div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-                    {myFarmlands.length}곳
+              {/* ==================== [우측 영역: 선택된 메뉴의 관련 내용] ==================== */}
+              <div className="flex-1 min-w-0 w-full space-y-5">
+                {myPageToast && (
+                  <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-4 py-3 text-xs sm:text-sm font-extrabold text-emerald-900 flex items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{myPageToast}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageToast('')}
+                      className="text-emerald-700 hover:text-emerald-950 font-bold cursor-pointer"
+                    >
+                      닫기
+                    </button>
                   </div>
-                  <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                    총 재배면적{' '}
-                    {myFarmlands
-                      .reduce((s: number, f: any) => s + Number(f.area_pyeong || 0), 0)
-                      .toLocaleString()}
-                    평
-                  </div>
-                </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => setMyPageTab('CROPS')}
-                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
-                    myPageTab === 'CROPS'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                      : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-500">② 내 재배작물 등록 (복수 가능)</div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-                    {cloudBaeCropList.length}건
-                  </div>
-                  <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                    모종·씨 작물 복수 등록 지원
-                  </div>
-                </button>
+                {/* 우측 상단 4대 핵심 현황 KPI 요약 카드 (클릭 시 해당 메뉴 내용으로 즉시 전환) */}
+                <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-xs">
+                  <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('FARMLAND')}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        myPageTab === 'FARMLAND'
+                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-500">① 등록 재배지</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-1">
+                        {myFarmlands.length}곳
+                      </div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                        총{' '}
+                        {myFarmlands
+                          .reduce((s: number, f: any) => s + Number(f.area_pyeong || 0), 0)
+                          .toLocaleString()}
+                        평 경작중
+                      </div>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => setMyPageTab('PROGRESS')}
-                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
-                    myPageTab === 'PROGRESS'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                      : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-500">③ 평균 작물재배 진행율</div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-emerald-700 mt-1">
-                    {cloudBaeCropList.length > 0
-                      ? Math.round(
-                          cloudBaeCropList.reduce(
-                            (s: number, c: any) => s + Number(c.progress_pct || 0),
-                            0
-                          ) / cloudBaeCropList.length
-                        )
-                      : 0}
-                    %
-                  </div>
-                  <div className="text-[11px] text-slate-600 font-semibold mt-0.5">
-                    생육과정 48주 타임라인 연동
-                  </div>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('CROPS')}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        myPageTab === 'CROPS'
+                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-500">② 내 재배작물 등록</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-1">
+                        {cloudBaeCropList.length}건
+                      </div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                        모종·씨 복수 등록 지원
+                      </div>
+                    </button>
 
-                <button
-                  type="button"
-                  onClick={() => setMyPageTab('ORDERS')}
-                  className={`p-4 rounded-2xl border text-left transition cursor-pointer ${
-                    myPageTab === 'ORDERS'
-                      ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                      : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                  }`}
-                >
-                  <div className="text-xs font-bold text-slate-500">④ 농자재 구매현황</div>
-                  <div className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
-                    {myOrders.length}건
-                  </div>
-                  <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                    누적 결제{' '}
-                    {myOrders
-                      .reduce((s: number, o: any) => s + Number(o.final_total || 0), 0)
-                      .toLocaleString()}
-                    원
-                  </div>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('PROGRESS')}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        myPageTab === 'PROGRESS'
+                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-500">③ 평균 재배 진행율</div>
+                      <div className="text-xl font-extrabold text-emerald-700 mt-1">
+                        {cloudBaeCropList.length > 0
+                          ? Math.round(
+                              cloudBaeCropList.reduce(
+                                (s: number, c: any) => s + Number(c.progress_pct || 0),
+                                0
+                              ) / cloudBaeCropList.length
+                            )
+                          : 0}
+                        %
+                      </div>
+                      <div className="text-[11px] text-slate-600 font-semibold mt-0.5">
+                        48주 생육 타임라인 연동
+                      </div>
+                    </button>
 
-              {/* 마이페이지 세부 탭 네비게이션 */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {[
-                  { code: 'ALL', label: '전체 한눈에 보기' },
-                  { code: 'FARMLAND', label: '① 재배지 등록·관리 (관리자 DB 검색)' },
-                  { code: 'CROPS', label: '② 재배작물 등록 (복수 가능)' },
-                  { code: 'PROGRESS', label: '③ 작물재배현황 및 진행율' },
-                  { code: 'ORDERS', label: '④ 농자재 구매현황' },
-                  { code: 'PROFILE', label: '⑤ 회원 기본정보 관리' },
-                ].map((tab) => (
-                  <button
-                    key={tab.code}
-                    type="button"
-                    onClick={() => setMyPageTab(tab.code as any)}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-extrabold border shrink-0 transition cursor-pointer ${
-                      myPageTab === tab.code
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </section>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('ORDERS')}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                        myPageTab === 'ORDERS'
+                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-500">④ 농자재 구매현황</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-1">
+                        {myOrders.length}건
+                      </div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                        누적{' '}
+                        {myOrders
+                          .reduce((s: number, o: any) => s + Number(o.final_total || 0), 0)
+                          .toLocaleString()}
+                        원
+                      </div>
+                    </button>
+                  </div>
+                </section>
 
             {/* ⑤ 회원 기본정보 수정 섹션 */}
             {(myPageTab === 'PROFILE' || myPageTab === 'ALL') && (
@@ -6645,11 +6791,68 @@ export default function UserIntroPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* 등록된 내 재배작물 카드 리스트 */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-700">
+                      등록된 내 재배작물 목록 ({cloudBaeCropList.length}건)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('PROGRESS')}
+                      className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                    >
+                      ③ 작물재배현황 및 진행율 상세 보기 ›
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {cloudBaeCropList.map((crop: any, idx: number) => (
+                      <div
+                        key={crop.crop_plan_id || `crop-reg-${idx}`}
+                        className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col justify-between gap-3 shadow-2xs"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white text-xs font-extrabold">
+                              {crop.crop_title}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold">
+                              {crop.planting_type} · {Number(crop.area_pyeong).toLocaleString()}평
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-slate-700">📍 {crop.region}</div>
+                          <div className="text-xs text-slate-500 font-semibold">
+                            정식/파종: {crop.planting_label} · 수확예정: {crop.expected_harvest_date || '2026-11-15'}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setMyPageTab('PROGRESS')}
+                            className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                          >
+                            생육 진행율 ({crop.progress_pct}%) 확인 ›
+                          </button>
+                          {crop.crop_plan_id && myCropPlans.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCropPlan(crop.crop_plan_id)}
+                              className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                            >
+                              삭제
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </section>
             )}
 
             {/* ③ 작물재배현황 및 진행율 */}
-            {(myPageTab === 'ALL' || myPageTab === 'PROGRESS' || myPageTab === 'CROPS') && (
+            {(myPageTab === 'ALL' || myPageTab === 'PROGRESS') && (
               <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
@@ -6888,6 +7091,8 @@ export default function UserIntroPage() {
                 </div>
               </section>
             )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -7707,7 +7912,7 @@ export default function UserIntroPage() {
           type="button"
           onClick={() => {
             setActiveMenu('마이페이지');
-            setMyPageTab('ALL');
+            setMyPageTab('FARMLAND');
           }}
           className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
             activeMenu === '마이페이지' ? 'text-emerald-600 font-extrabold' : 'text-slate-700'

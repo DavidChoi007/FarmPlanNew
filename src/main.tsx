@@ -101,7 +101,60 @@ if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.i
     if (p === '/api/payment-bank-accounts') return jsonResponse(snap.paymentBankAccounts || { items: [] });
     if (p === '/api/crop-growth-process-plans') return jsonResponse(snap.cropGrowthPlans || { items: [] });
     if (p === '/api/agro-recommendation-module') return jsonResponse(snap.agroRecModule || {});
-    if (p === '/api/surveys') return jsonResponse(snap.surveys || { surveys: [] });
+    if (p === '/api/surveys') {
+      const surveyId = u.searchParams.get('survey_id') || '';
+      const baseSurveys = snap.surveys || { forms: [], responses: [] };
+      const forms: any[] = Array.isArray(baseSurveys.forms) ? baseSurveys.forms : [];
+      const activeSurvey =
+        (surveyId && forms.find((f) => f.survey_id === surveyId)) ||
+        baseSurveys.activeSurvey ||
+        forms[0] ||
+        null;
+      return jsonResponse({
+        ...baseSurveys,
+        activeSurvey,
+      });
+    }
+    if (p === '/api/surveys/public') {
+      const surveyId = u.searchParams.get('survey_id') || 'SURV-HANFARM-2026';
+      const baseSurveys = snap.surveys || { forms: [] };
+      const forms: any[] = Array.isArray(baseSurveys.forms) ? baseSurveys.forms : [];
+      const found =
+        forms.find((f) => f.survey_id === surveyId) ||
+        baseSurveys.activeSurvey ||
+        forms[0] || {
+          survey_id: surveyId,
+          title: '한팜 맞춤형 재배관리 서비스 수요조사',
+          is_active: 1,
+        };
+      return jsonResponse({ ok: true, survey: found });
+    }
+    if (p === '/api/surveys/submit') {
+      return jsonResponse({
+        ok: true,
+        response_id: `RESP-${Date.now().toString().slice(-6)}`,
+      });
+    }
+    if (p === '/api/purchase-intents') {
+      let template = null;
+      let entries = null;
+      try {
+        const rawTpl = localStorage.getItem('hanfarm_purchase_intent_template_v1');
+        if (rawTpl) template = JSON.parse(rawTpl);
+        const rawEntries = localStorage.getItem('hanfarm_purchase_intents_v1');
+        if (rawEntries) entries = JSON.parse(rawEntries);
+      } catch {
+        // ignore
+      }
+      return jsonResponse({ ok: true, template, entries });
+    }
+    if (
+      p === '/api/purchase-intents/template' ||
+      p === '/api/purchase-intents/entry' ||
+      p === '/api/purchase-intents/entry/delete'
+    ) {
+      return jsonResponse({ ok: true });
+    }
     if (p === '/api/climate/dongs') return jsonResponse(snap.climateDongs || { dongs: [] });
     if (p === '/api/climate/daily') return jsonResponse(snap.climateDaily || { items: [] });
     if (p === '/api/climate-future/env-status') return jsonResponse(snap.climateFutureEnv || {});

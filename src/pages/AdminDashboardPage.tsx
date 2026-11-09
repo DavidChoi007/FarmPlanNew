@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from '../router.tsx';
+import { Link, getBasePath } from '../router.tsx';
 import {
   LayoutDashboard,
   Layers,
@@ -22970,7 +22970,7 @@ export default function AdminDashboardPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {(surveyData.forms || []).map((fItem: any, idx: number) => {
-                            const sharePath = `/survey/${fItem.survey_id}`;
+                            const sharePath = `${getBasePath()}/survey/${fItem.survey_id}`;
                             const rCount = fItem.response_count ?? surveyData.totalResponses ?? 0;
                             const isActive = Number(fItem.is_active) === 1;
                             return (
@@ -23138,14 +23138,14 @@ export default function AdminDashboardPage() {
                           배포용 설문 URL
                         </span>
                         <span className="font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate">
-                          {`${window.location.origin}/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
+                          {`${window.location.origin}${getBasePath()}/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
-                            const shareUrl = `${window.location.origin}/survey/${
+                            const shareUrl = `${window.location.origin}${getBasePath()}/survey/${
                               surveyData.activeSurvey?.survey_id || selectedSurveyUnitId
                             }`;
                             navigator.clipboard?.writeText(shareUrl);
@@ -23156,7 +23156,7 @@ export default function AdminDashboardPage() {
                           설문 URL 복사
                         </button>
                         <a
-                          href={`/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
+                          href={`${getBasePath()}/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs inline-flex items-center gap-1.5 transition"
@@ -24032,7 +24032,7 @@ export default function AdminDashboardPage() {
                         <div className="text-slate-500 font-semibold">
                           배포 URL:{' '}
                           <span className="font-mono font-bold text-emerald-800">
-                            {`${window.location.origin}/survey/${
+                            {`${window.location.origin}${getBasePath()}/survey/${
                               surveyData.activeSurvey?.survey_id || 'SURV-HANFARM-2026'
                             }`}
                           </span>
@@ -24846,14 +24846,14 @@ export default function AdminDashboardPage() {
                       배포용 구매·구독의향서 URL
                     </span>
                     <span className="font-mono text-xs sm:text-sm font-extrabold text-emerald-950 truncate">
-                      {`${window.location.origin}/purchase-intent`}
+                      {`${window.location.origin}${getBasePath()}/purchase-intent`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
-                        const shareUrl = `${window.location.origin}/purchase-intent`;
+                        const shareUrl = `${window.location.origin}${getBasePath()}/purchase-intent`;
                         navigator.clipboard?.writeText(shareUrl);
                         showToast(`구매·구독의향서 배포 URL 복사 완료: ${shareUrl}`);
                       }}
@@ -24862,7 +24862,7 @@ export default function AdminDashboardPage() {
                       의향서 URL 복사
                     </button>
                     <a
-                      href="/purchase-intent"
+                      href={`${getBasePath()}/purchase-intent`}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 transition"
