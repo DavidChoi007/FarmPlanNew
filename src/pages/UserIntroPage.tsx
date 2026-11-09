@@ -6256,28 +6256,28 @@ export default function UserIntroPage() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">이메일 계정 (ID)</label>
+                <div className="grid grid-cols-1 gap-3 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">이메일 계정 (ID)</label>
                     <input
                       type="text"
                       value={loggedInUser.email}
                       disabled
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">이름</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">이름</label>
                     <input
                       type="text"
                       value={loggedInUser.name}
                       onChange={(e) => setLoggedInUser({ ...loggedInUser, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">성별</label>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">성별</label>
+                    <div className="flex-1 grid grid-cols-2 gap-2 max-w-xs">
                       {(['남성', '여성'] as const).map((g) => (
                         <button
                           key={g}
@@ -6294,8 +6294,8 @@ export default function UserIntroPage() {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">출생년월일</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">출생년월일</label>
                     <input
                       type="date"
                       value={loggedInUser.birth_date}
@@ -6307,49 +6307,49 @@ export default function UserIntroPage() {
                           age: calcAgeFromBirthDate(bd),
                         });
                       }}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">나이 (만/연 나이)</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">나이 (만/연 나이)</label>
                     <input
                       type="number"
                       value={loggedInUser.age}
                       onChange={(e) =>
                         setLoggedInUser({ ...loggedInUser, age: Number(e.target.value) || 48 })
                       }
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">연락처</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">연락처</label>
                     <input
                       type="text"
                       value={loggedInUser.phone}
                       onChange={(e) => setLoggedInUser({ ...loggedInUser, phone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block font-bold text-slate-700 mb-1">주소 (도로명)</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">주소 (도로명)</label>
                     <input
                       type="text"
                       value={loggedInUser.road_address}
                       onChange={(e) =>
                         setLoggedInUser({ ...loggedInUser, road_address: e.target.value })
                       }
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">상세 주소</label>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">상세 주소</label>
                     <input
                       type="text"
                       value={loggedInUser.road_address_detail}
                       onChange={(e) =>
                         setLoggedInUser({ ...loggedInUser, road_address_detail: e.target.value })
                       }
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
                 </div>
@@ -6578,29 +6578,29 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* 등록된 내 재배지 리스트 (복수) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* 등록된 내 재배지 리스트 (1줄에 1개 항목) */}
+                <div className="grid grid-cols-1 gap-3">
                   {myFarmlands.map((land: any, lIdx: number) => (
                     <div
                       key={land.farmland_id}
-                      className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col justify-between gap-3 shadow-2xs"
+                      className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
                     >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-extrabold">
                             등록 재배지 #{lIdx + 1}
                           </span>
-                          <span className="text-[11px] font-mono text-slate-500">
+                          <span className="font-extrabold text-slate-900 text-sm sm:text-base">
+                            {land.farmland_title}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                             법정동코드 {land.bjd_code}
                           </span>
                         </div>
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {land.farmland_title}
-                        </div>
                         <div className="text-xs font-bold text-emerald-800">
-                          {land.sido} {land.sigungu} {land.eupmyeondong} {land.detail_jibun}
+                          📍 {land.sido} {land.sigungu} {land.eupmyeondong} {land.detail_jibun}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold pt-1">
+                        <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold">
                           <span>면적: {Number(land.area_pyeong || 300).toLocaleString()}평</span>
                           <span>·</span>
                           <span>토양 pH {land.soil_ph || 6.2}</span>
@@ -6608,7 +6608,7 @@ export default function UserIntroPage() {
                           <span>EC {land.soil_ec || 1.1}</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
@@ -6622,14 +6622,14 @@ export default function UserIntroPage() {
                             }));
                             setMyPageTab('CROPS');
                           }}
-                          className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
                         >
                           이 재배지에 작물 추가 ›
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteFarmland(land.farmland_id)}
-                          className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                          className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition"
                         >
                           삭제
                         </button>
@@ -6792,7 +6792,7 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* 등록된 내 재배작물 카드 리스트 */}
+                {/* 등록된 내 재배작물 카드 리스트 (1줄에 1개 항목) */}
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold text-slate-700">
@@ -6806,31 +6806,31 @@ export default function UserIntroPage() {
                       ③ 작물재배현황 및 진행율 상세 보기 ›
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {cloudBaeCropList.map((crop: any, idx: number) => (
                       <div
                         key={crop.crop_plan_id || `crop-reg-${idx}`}
-                        className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col justify-between gap-3 shadow-2xs"
+                        className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
                       >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between gap-2">
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white text-xs font-extrabold">
                               {crop.crop_title}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
                               {crop.planting_type} · {Number(crop.area_pyeong).toLocaleString()}평
                             </span>
+                            <span className="text-xs font-bold text-slate-700">📍 {crop.region}</span>
                           </div>
-                          <div className="text-xs font-bold text-slate-700">📍 {crop.region}</div>
-                          <div className="text-xs text-slate-500 font-semibold">
-                            정식/파종: {crop.planting_label} · 수확예정: {crop.expected_harvest_date || '2026-11-15'}
+                          <div className="text-xs text-slate-600 font-semibold">
+                            정식/파종일: {crop.planting_label} · 수확예정일: {crop.expected_harvest_date || '2026-11-15'} · 현재 단계: {crop.current_stage_name || '04. 생육 관리'}
                           </div>
                         </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setMyPageTab('PROGRESS')}
-                            className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
                           >
                             생육 진행율 ({crop.progress_pct}%) 확인 ›
                           </button>
@@ -6838,7 +6838,7 @@ export default function UserIntroPage() {
                             <button
                               type="button"
                               onClick={() => handleDeleteCropPlan(crop.crop_plan_id)}
-                              className="text-xs font-bold text-rose-600 hover:text-rose-700 cursor-pointer"
+                              className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition"
                             >
                               삭제
                             </button>
@@ -7051,36 +7051,38 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 주문 포함 농자재 아이템 칩 리스트 */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                        {/* 주문 포함 농자재 아이템 리스트 (1줄에 1개 항목) */}
+                        <div className="grid grid-cols-1 gap-2 pt-1">
                           {(ord.orderItems || []).map((item: any, idx: number) => (
                             <div
                               key={`${ord.order_no}-item-${idx}`}
-                              className="rounded-xl border border-slate-200 p-2.5 flex items-center gap-2.5 bg-slate-50/60 text-xs"
+                              className="rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3 bg-slate-50/60 text-xs"
                             >
-                              <img
-                                src={
-                                  item.thumbnail_url ||
-                                  '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                }
-                                alt={item.product_name}
-                                className="w-10 h-10 rounded-lg object-cover border border-slate-200 bg-white shrink-0"
-                              />
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1">
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                                    {item.stageName || '맞춤단계'}
-                                  </span>
-                                  <span className="text-[10px] text-slate-500">
-                                    {item.qty}개
-                                  </span>
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <img
+                                  src={
+                                    item.thumbnail_url ||
+                                    '/api/agro-materials/image/FERT-PRD-01/thumb'
+                                  }
+                                  alt={item.product_name}
+                                  className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+                                      {item.stageName || '맞춤단계'}
+                                    </span>
+                                    <span className="font-extrabold text-slate-900 truncate">
+                                      {item.product_name}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
+                                    주문수량: {item.qty}개
+                                  </div>
                                 </div>
-                                <div className="font-extrabold text-slate-900 truncate mt-0.5">
-                                  {item.product_name}
-                                </div>
-                                <div className="text-[11px] font-bold text-emerald-700">
-                                  {Number(item.subtotal || 0).toLocaleString()}원
-                                </div>
+                              </div>
+                              <div className="text-xs sm:text-sm font-extrabold text-emerald-700 shrink-0">
+                                {Number(item.subtotal || 0).toLocaleString()}원
                               </div>
                             </div>
                           ))}
