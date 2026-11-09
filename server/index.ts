@@ -90,6 +90,26 @@ function initMemberAndMyPageTables() {
       items_json TEXT NOT NULL DEFAULT '[]',
       created_at TEXT DEFAULT (datetime('now', 'localtime'))
     );
+
+    CREATE TABLE IF NOT EXISTS purchase_intent_config (
+      config_id TEXT PRIMARY KEY,
+      template_json TEXT NOT NULL,
+      updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS purchase_intent_entry (
+      intent_id TEXT PRIMARY KEY,
+      applicant_name TEXT NOT NULL,
+      contact TEXT NOT NULL DEFAULT '',
+      main_crops TEXT NOT NULL DEFAULT '',
+      desired_services_json TEXT NOT NULL DEFAULT '[]',
+      monthly_wtp TEXT NOT NULL DEFAULT '월 10,000원',
+      final_intents_json TEXT NOT NULL DEFAULT '[]',
+      written_date TEXT NOT NULL DEFAULT '2026-11-09',
+      agreed_final INTEGER NOT NULL DEFAULT 1,
+      agreed_privacy INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
   `);
 
   // 기본 회원 CloudBae (CloudBae@naver.com / 1234, 이름: 배철민) 시드 등록 및 이름 동기화
@@ -9184,6 +9204,109 @@ const server = http.createServer(async (req, res) => {
 
       const payload = buildMemberMyPagePayload(email);
       sendJson(res, { ok: true, ...payload });
+      return;
+    }
+
+    // 10. 구매의향서 양식(내용) 및 접수 현황 조회·수정·삭제 API
+    if (pathname === '/api/purchase-intents' && req.method === 'GET') {
+      const cfgRow = db
+        .prepare("SELECT template_json FROM purchase_intent_config WHERE config_id = 'DEFAULT'")
+        .get() as { template_json?: string } | undefined;
+      let template = null;
+      if (cfgRow?.template_json) {
+        try {
+          template = JSON.parse(cfgRow.template_json);
+        } catch {
+          template = null;
+        }
+      }
+      const rows = db
+        .prepare('SELECT * FROM purchase_intent_entry ORDER BY intent_id DESC')
+        .all() as Record<string, any>[];
+      const entries = rows.map((r) => ({
+        intent_id: r.intent_id,
+        applicant_name: r.applicant_name,
+        contact: r.contact,
+        main_crops: r.main_crops,
+        desired_services: (() => {
+          try {
+            return JSON.parse(r.desired_services_json || '[]');
+          } catch {
+            return [];
+          }
+        })(),
+        monthly_wtp: r.monthly_wtp,
+        final_intents: (() => {
+          try {
+            return JSON.parse(r.final_intents_json || '[]');
+          } catch {
+            return [];
+          }
+        })(),
+        written_date: r.written_date,
+        agreed_final: Boolean(r.agreed_final),
+        agreed_privacy: Boolean(r.agreed_privacy),
+        created_at: r.created_at,
+      }));
+      sendJson(res, { ok: true, template, entries });
+      return;
+    }
+
+    if (pathname === '/api/purchase-intents/template' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const templateObj = body.template || body;
+      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      db.prepare(`
+        INSERT OR REPLACE INTO purchase_intent_config (config_id, template_json, updated_at)
+        VALUES ('DEFAULT', ?, ?)
+      `).run(JSON.stringify(templateObj), nowStr);
+      sendJson(res, { ok: true, template: templateObj, updatedAt: nowStr });
+      return;
+    }
+
+    if (pathname === '/api/purchase-intents/entry' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const intentId = String(body.intent_id || `LOI-2026-${Date.now().toString().slice(-3)}`).trim();
+      const applicantName = String(body.applicant_name || '').trim();
+      const contact = String(body.contact || '').trim();
+      const mainCrops = String(body.main_crops || '').trim();
+      const desiredServices = Array.isArray(body.desired_services) ? body.desired_services : [];
+      const monthlyWtp = String(body.monthly_wtp || '월 10,000원').trim();
+      const finalIntents = Array.isArray(body.final_intents) ? body.final_intents : [];
+      const writtenDate = String(body.written_date || '2026-11-09').trim();
+      const agreedFinal = body.agreed_final === false ? 0 : 1;
+      const agreedPrivacy = body.agreed_privacy === false ? 0 : 1;
+      const createdAt = String(body.created_at || new Date().toISOString().slice(0, 16).replace('T', ' ')).trim();
+
+      db.prepare(`
+        INSERT OR REPLACE INTO purchase_intent_entry (
+          intent_id, applicant_name, contact, main_crops, desired_services_json,
+          monthly_wtp, final_intents_json, written_date, agreed_final, agreed_privacy, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        intentId,
+        applicantName,
+        contact,
+        mainCrops,
+        JSON.stringify(desiredServices),
+        monthlyWtp,
+        JSON.stringify(finalIntents),
+        writtenDate,
+        agreedFinal,
+        agreedPrivacy,
+        createdAt
+      );
+      sendJson(res, { ok: true, intent_id: intentId });
+      return;
+    }
+
+    if (pathname === '/api/purchase-intents/entry/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const intentId = String(body.intent_id || '').trim();
+      if (intentId) {
+        db.prepare('DELETE FROM purchase_intent_entry WHERE intent_id = ?').run(intentId);
+      }
+      sendJson(res, { ok: true });
       return;
     }
 

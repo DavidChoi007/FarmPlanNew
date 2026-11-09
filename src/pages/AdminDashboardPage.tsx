@@ -3048,8 +3048,60 @@ export default function AdminDashboardPage() {
   };
 
   // ==================== 11. 구매의향서 관리 (한팜 맞춤형 재배관리 플랫폼 구독·구매의향서 폼 및 서명 수집 관리) ====================
+  const DEFAULT_PURCHASE_INTENT_TEMPLATE = {
+    docNumber: '제 HANFARM-2026-LOI 호',
+    docCategory: '한팜 맞춤형 재배관리 플랫폼 표준 구독·구매의향서',
+    docTitle: '한팜 맞춤형 재배관리 플랫폼 구독의향서',
+    introLine1:
+      '한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.',
+    introLine2:
+      '본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.',
+    sec1Title: '1. 구독의향자 정보',
+    labelApplicant: '- 성명(또는 농장명):',
+    labelContact: '- 연락처:',
+    labelCrops: '- 주요 재배작물:',
+    sec2Title: '2. 구독 희망 서비스',
+    serviceOptions: ['맞춤형 재배일정', '맞춤형 재배일정 + AI 병해충 진단'],
+    sec3Title: '3. 월 구독료 지불의향',
+    priceOptions: ['월 5,000원', '월 10,000원', '월 20,000원', '월 30,000원 초과'],
+    sec4Title: '4. 구독의향 확인',
+    sec4Line1:
+      '본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.',
+    sec4Line2: '본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.',
+    confirmTitle: '한팜 구매·구독 의향 확인',
+    confirmBadge: '최종 확인 폼',
+    finalIntentOptions: ['농자재 구매의향', '플랫폼 유료 구독의향'],
+    confirmNotice:
+      '본인은 한팜 서비스가 정식 출시되고 상품·서비스의 품질, 가격 및 이용조건이 적합할 경우 위 선택한 서비스를 이용할 의향이 있습니다. 본 의향 확인은 법적 구속력이 없으며 실제 구매·구독 의무가 발생하지 않습니다.',
+    agreeLabel: '위 내용을 확인하고 본인의 의사로 동의합니다.',
+    footerNote: '※ 개인정보 수집·이용 및 서비스 출시 안내에 대한 동의는 별도로 받습니다.',
+    recipientName: '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중',
+  };
+
+  const [purchaseIntentTemplate, setPurchaseIntentTemplate] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(() => {
+    try {
+      const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
+      if (saved) {
+        return { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...JSON.parse(saved) };
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_PURCHASE_INTENT_TEMPLATE;
+  });
+  const [isEditingIntentTemplate, setIsEditingIntentTemplate] = useState<boolean>(false);
+  const [intentTemplateDraft, setIntentTemplateDraft] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(
+    DEFAULT_PURCHASE_INTENT_TEMPLATE
+  );
+  const [newServiceOptionInput, setNewServiceOptionInput] = useState<string>('');
+  const [newPriceOptionInput, setNewPriceOptionInput] = useState<string>('');
+  const [newFinalIntentOptionInput, setNewFinalIntentOptionInput] = useState<string>('');
+
   const [purchaseIntentSubTab, setPurchaseIntentSubTab] = useState<'form_view' | 'responses' | 'units'>('form_view');
   const [selectedPurchaseIntentDoc, setSelectedPurchaseIntentDoc] = useState<any | null>(null);
+  const [isEditingSelectedIntentDoc, setIsEditingSelectedIntentDoc] = useState<boolean>(false);
+  const [selectedDocEditDraft, setSelectedDocEditDraft] = useState<any | null>(null);
+  const [editingIntentEntryId, setEditingIntentEntryId] = useState<string | null>(null);
   const [isAdminIntentSubmitted, setIsAdminIntentSubmitted] = useState<boolean>(false);
   const [lastAdminIntentSummary, setLastAdminIntentSummary] = useState<{ name: string; text: string } | null>(null);
   const [purchaseIntentForm, setPurchaseIntentForm] = useState({
@@ -3133,6 +3185,141 @@ export default function AdminDashboardPage() {
     },
   ]);
 
+  useEffect(() => {
+    fetch('/api/purchase-intents')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.template) {
+          const merged = { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...res.template };
+          setPurchaseIntentTemplate(merged);
+          setIntentTemplateDraft(merged);
+          try {
+            localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(merged));
+          } catch {
+            // ignore
+          }
+        }
+        if (Array.isArray(res?.entries) && res.entries.length > 0) {
+          setPurchaseIntentEntries(res.entries);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleStartEditIntentTemplate = () => {
+    setIntentTemplateDraft({ ...purchaseIntentTemplate });
+    setIsEditingIntentTemplate(true);
+  };
+
+  const handleSaveIntentTemplate = async () => {
+    const cleaned = {
+      ...intentTemplateDraft,
+      serviceOptions:
+        intentTemplateDraft.serviceOptions.filter((x) => x.trim().length > 0).length > 0
+          ? intentTemplateDraft.serviceOptions.filter((x) => x.trim().length > 0)
+          : DEFAULT_PURCHASE_INTENT_TEMPLATE.serviceOptions,
+      priceOptions:
+        intentTemplateDraft.priceOptions.filter((x) => x.trim().length > 0).length > 0
+          ? intentTemplateDraft.priceOptions.filter((x) => x.trim().length > 0)
+          : DEFAULT_PURCHASE_INTENT_TEMPLATE.priceOptions,
+      finalIntentOptions:
+        intentTemplateDraft.finalIntentOptions.filter((x) => x.trim().length > 0).length > 0
+          ? intentTemplateDraft.finalIntentOptions.filter((x) => x.trim().length > 0)
+          : DEFAULT_PURCHASE_INTENT_TEMPLATE.finalIntentOptions,
+    };
+    setPurchaseIntentTemplate(cleaned);
+    setIntentTemplateDraft(cleaned);
+    setIsEditingIntentTemplate(false);
+    try {
+      localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(cleaned));
+    } catch {
+      // ignore
+    }
+    await fetch('/api/purchase-intents/template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: cleaned }),
+    }).catch(() => {});
+    showToast('구매의향서 양식(문구 및 선택 항목) 수정사항이 저장되었습니다.');
+  };
+
+  const handleResetIntentTemplate = async () => {
+    setPurchaseIntentTemplate(DEFAULT_PURCHASE_INTENT_TEMPLATE);
+    setIntentTemplateDraft(DEFAULT_PURCHASE_INTENT_TEMPLATE);
+    setIsEditingIntentTemplate(false);
+    try {
+      localStorage.setItem(
+        'hanfarm_purchase_intent_template_v1',
+        JSON.stringify(DEFAULT_PURCHASE_INTENT_TEMPLATE)
+      );
+    } catch {
+      // ignore
+    }
+    await fetch('/api/purchase-intents/template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template: DEFAULT_PURCHASE_INTENT_TEMPLATE }),
+    }).catch(() => {});
+    showToast('구매의향서 양식이 기본 표준 문구로 복원되었습니다.');
+  };
+
+  const handleLoadEntryIntoIntentForm = (entry: any) => {
+    const [y = '2026', m = '11', d = '09'] = String(entry.written_date || '2026-11-09').split('-');
+    setEditingIntentEntryId(entry.intent_id);
+    setPurchaseIntentForm({
+      applicantName: entry.applicant_name || '',
+      contact: entry.contact || '',
+      mainCrops: entry.main_crops || '',
+      desiredServices: Array.isArray(entry.desired_services) ? [...entry.desired_services] : [],
+      monthlyWtp: entry.monthly_wtp || '월 10,000원',
+      finalIntents: Array.isArray(entry.final_intents) ? [...entry.final_intents] : [],
+      writtenYear: y,
+      writtenMonth: m,
+      writtenDay: d,
+      agreedFinal: entry.agreed_final !== false,
+      agreedPrivacySeparate: Boolean(entry.agreed_privacy),
+    });
+    setIsAdminIntentSubmitted(false);
+    setIsEditingIntentTemplate(false);
+    setActiveTab('purchase_intent_content');
+    showToast(`[${entry.intent_id}] ${entry.applicant_name} 의향서 내용을 수정 폼으로 불러왔습니다.`);
+  };
+
+  const handleStartEditSelectedDoc = (doc: any) => {
+    setSelectedPurchaseIntentDoc(doc);
+    setSelectedDocEditDraft({
+      ...doc,
+      desired_services: Array.isArray(doc.desired_services) ? [...doc.desired_services] : [],
+      final_intents: Array.isArray(doc.final_intents) ? [...doc.final_intents] : [],
+    });
+    setIsEditingSelectedIntentDoc(true);
+  };
+
+  const handleSaveSelectedDocEdit = async () => {
+    if (!selectedDocEditDraft) return;
+    if (!String(selectedDocEditDraft.applicant_name || '').trim()) {
+      window.alert('성명(또는 농장명)을 입력해 주세요.');
+      return;
+    }
+    const updated = {
+      ...selectedDocEditDraft,
+      applicant_name: String(selectedDocEditDraft.applicant_name).trim(),
+      contact: String(selectedDocEditDraft.contact || '').trim(),
+      main_crops: String(selectedDocEditDraft.main_crops || '').trim(),
+    };
+    setPurchaseIntentEntries((prev) =>
+      prev.map((item) => (item.intent_id === updated.intent_id ? updated : item))
+    );
+    setSelectedPurchaseIntentDoc(updated);
+    setIsEditingSelectedIntentDoc(false);
+    await fetch('/api/purchase-intents/entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    }).catch(() => {});
+    showToast(`[${updated.intent_id}] ${updated.applicant_name} 의향서 내용이 수정되었습니다.`);
+  };
+
   const togglePurchaseDesiredService = (service: string) => {
     setPurchaseIntentForm((prev) => {
       const exists = prev.desiredServices.includes(service);
@@ -3158,27 +3345,28 @@ export default function AdminDashboardPage() {
   };
 
   const buildPurchaseIntentSummaryText = () => {
+    const tpl = purchaseIntentTemplate;
     return [
-      '[한팜 맞춤형 재배관리 플랫폼 구독의향서]',
+      `[${tpl.docTitle}]`,
       '',
-      '한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.',
-      '본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.',
+      tpl.introLine1,
+      tpl.introLine2,
       '',
-      '1. 구독의향자 정보',
-      `- 성명(또는 농장명): ${purchaseIntentForm.applicantName || '(미입력)'}`,
-      `- 연락처: ${purchaseIntentForm.contact || '(미입력)'}`,
-      `- 주요 재배작물: ${purchaseIntentForm.mainCrops || '(미입력)'}`,
+      tpl.sec1Title,
+      `${tpl.labelApplicant} ${purchaseIntentForm.applicantName || '(미입력)'}`,
+      `${tpl.labelContact} ${purchaseIntentForm.contact || '(미입력)'}`,
+      `${tpl.labelCrops} ${purchaseIntentForm.mainCrops || '(미입력)'}`,
       '',
-      '2. 구독 희망 서비스',
+      tpl.sec2Title,
       `- ${purchaseIntentForm.desiredServices.length > 0 ? purchaseIntentForm.desiredServices.join(', ') : '(미선택)'}`,
       '',
-      '3. 월 구독료 지불의향',
+      tpl.sec3Title,
       `- ${purchaseIntentForm.monthlyWtp || '(미선택)'}`,
       '',
-      '4. 한팜 구매·구독 의향 확인',
+      `4. ${tpl.confirmTitle}`,
       `- 의향 확인: ${purchaseIntentForm.finalIntents.length > 0 ? purchaseIntentForm.finalIntents.join(', ') : '(미선택)'}`,
-      '- 본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.',
-      '- 본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.',
+      `- ${tpl.sec4Line1}`,
+      `- ${tpl.sec4Line2}`,
       `- 본인 의사 동의 여부: ${purchaseIntentForm.agreedFinal ? '동의함' : '미동의'}`,
       `- 작성일: ${purchaseIntentForm.writtenYear}년 ${purchaseIntentForm.writtenMonth}월 ${purchaseIntentForm.writtenDay}일`,
       `- 개인정보 수집·이용 및 서비스 출시 안내 별도 동의: ${purchaseIntentForm.agreedPrivacySeparate ? '동의함' : '추후 별도 동의'}`,
@@ -3191,41 +3379,60 @@ export default function AdminDashboardPage() {
     showToast('동의 내용 및 구독의향서 전문이 클립보드에 복사되었습니다.');
   };
 
-  const handleSavePurchaseIntentEntry = (e: React.FormEvent) => {
+  const handleSavePurchaseIntentEntry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!purchaseIntentForm.applicantName.trim()) {
       window.alert('성명(또는 농장명)을 입력해 주세요.');
       return;
     }
     if (!purchaseIntentForm.agreedFinal) {
-      window.alert('최종 확인 폼의 "위 내용을 확인하고 본인의 의사로 동의합니다." 항목에 동의해 주세요.');
+      window.alert(`최종 확인 폼의 "${purchaseIntentTemplate.agreeLabel}" 항목에 동의해 주세요.`);
       return;
     }
-    const nextNo = purchaseIntentEntries.length + 1;
-    const newEntry = {
-      intent_id: `LOI-2026-${String(nextNo).padStart(3, '0')}`,
+    const isUpdating = Boolean(editingIntentEntryId);
+    const targetId =
+      editingIntentEntryId || `LOI-2026-${String(purchaseIntentEntries.length + 1).padStart(3, '0')}`;
+    const existingItem = purchaseIntentEntries.find((x) => x.intent_id === targetId);
+    const savedEntry = {
+      intent_id: targetId,
       applicant_name: purchaseIntentForm.applicantName.trim(),
       contact: purchaseIntentForm.contact.trim() || '010-****-****',
       main_crops: purchaseIntentForm.mainCrops.trim() || '가을배추',
       desired_services:
         purchaseIntentForm.desiredServices.length > 0
           ? purchaseIntentForm.desiredServices
-          : ['맞춤형 재배일정'],
+          : [purchaseIntentTemplate.serviceOptions[0] || '맞춤형 재배일정'],
       monthly_wtp: purchaseIntentForm.monthlyWtp || '월 10,000원',
       final_intents:
         purchaseIntentForm.finalIntents.length > 0
           ? purchaseIntentForm.finalIntents
-          : ['플랫폼 유료 구독의향'],
+          : [purchaseIntentTemplate.finalIntentOptions[0] || '플랫폼 유료 구독의향'],
       written_date: `${purchaseIntentForm.writtenYear}-${String(purchaseIntentForm.writtenMonth).padStart(2, '0')}-${String(purchaseIntentForm.writtenDay).padStart(2, '0')}`,
       agreed_final: purchaseIntentForm.agreedFinal,
       agreed_privacy: purchaseIntentForm.agreedPrivacySeparate,
-      created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      created_at: existingItem?.created_at || new Date().toISOString().slice(0, 16).replace('T', ' '),
     };
     const summaryText = buildPurchaseIntentSummaryText();
-    setPurchaseIntentEntries((prev) => [newEntry, ...prev]);
-    setLastAdminIntentSummary({ name: newEntry.applicant_name, text: summaryText });
-    setIsAdminIntentSubmitted(true);
-    showToast(`[${newEntry.applicant_name}] 님의 한팜 구매·구독의향서가 정상 등록되었습니다.`);
+    if (isUpdating) {
+      setPurchaseIntentEntries((prev) =>
+        prev.map((item) => (item.intent_id === targetId ? savedEntry : item))
+      );
+      if (selectedPurchaseIntentDoc?.intent_id === targetId) {
+        setSelectedPurchaseIntentDoc(savedEntry);
+      }
+      setEditingIntentEntryId(null);
+      showToast(`[${savedEntry.intent_id}] ${savedEntry.applicant_name} 님의 구매·구독의향서 내용이 수정되었습니다.`);
+    } else {
+      setPurchaseIntentEntries((prev) => [savedEntry, ...prev]);
+      setLastAdminIntentSummary({ name: savedEntry.applicant_name, text: summaryText });
+      setIsAdminIntentSubmitted(true);
+      showToast(`[${savedEntry.applicant_name}] 님의 한팜 구매·구독의향서가 정상 등록되었습니다.`);
+    }
+    await fetch('/api/purchase-intents/entry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(savedEntry),
+    }).catch(() => {});
     setPurchaseIntentForm((prev) => ({
       ...prev,
       applicantName: '',
@@ -24595,6 +24802,26 @@ export default function AdminDashboardPage() {
                   <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <button
                       type="button"
+                      onClick={() => {
+                        setActiveTab('purchase_intent_content');
+                        setIsAdminIntentSubmitted(false);
+                        if (isEditingIntentTemplate) {
+                          handleSaveIntentTemplate();
+                        } else {
+                          handleStartEditIntentTemplate();
+                        }
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                        isEditingIntentTemplate
+                          ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                          : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      {isEditingIntentTemplate ? '양식 수정사항 저장' : '구매의향서 내용(양식) 수정'}
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleCopyPurchaseIntentText}
                       className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
                     >
@@ -24681,37 +24908,585 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
 
-              {/* ==================== 서브메뉴 1: 구매의향서 내용 (실제 A4용지 1페이지 공문 형태) ==================== */}
+              {/* ==================== 서브메뉴 1: 구매의향서 내용 (실제 A4용지 1페이지 공문 형태 + 양식/내용 수정 기능) ==================== */}
               {activeTab === 'purchase_intent_content' && (
                 <div className="bg-slate-200/70 rounded-3xl border border-slate-300/80 py-8 sm:py-12 px-3 sm:px-8">
-                  {/* A4 용지 상단 안내 및 인쇄 컨트롤 바 */}
-                  <div className="max-w-[820px] mx-auto mb-4 flex flex-wrap items-center justify-between gap-2 px-1">
-                    <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
-                      <span className="px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-mono">
-                        A4 (210 × 297mm) 표준 공문 양식
-                      </span>
-                      <span>문서 위 밑줄(_____)과 체크박스(□)를 직접 클릭·입력하여 작성할 수 있습니다.</span>
+                  {/* A4 용지 상단 안내 및 수정·인쇄 컨트롤 바 */}
+                  <div className="max-w-[820px] mx-auto mb-4 space-y-3 px-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-xs font-extrabold text-slate-700">
+                        <span className="px-2.5 py-1 rounded-md bg-slate-800 text-white text-[11px] font-mono">
+                          A4 (210 × 297mm) 표준 공문 양식
+                        </span>
+                        <span>
+                          {isEditingIntentTemplate
+                            ? '✏️ 현재 [구매의향서 양식 문구·항목 수정 모드]입니다. 원하는 문구와 선택지를 직접 수정한 뒤 저장하세요.'
+                            : '문서 위 밑줄(_____)과 체크박스(□)를 직접 클릭·입력하거나, 우측 버튼으로 양식 문구를 수정할 수 있습니다.'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isEditingIntentTemplate ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleSaveIntentTemplate}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs transition cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              양식 수정 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleResetIntentTemplate}
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold text-xs transition cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              기본값 복원
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingIntentTemplate(false)}
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs transition cursor-pointer"
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleStartEditIntentTemplate}
+                              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs shadow-2xs transition cursor-pointer inline-flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              양식 문구·항목 수정
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => window.print()}
+                              className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-extrabold text-xs shadow-2xs transition cursor-pointer"
+                            >
+                              🖨️ A4 인쇄 / PDF 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyPurchaseIntentText}
+                              className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-emerald-800 font-extrabold text-xs shadow-2xs transition cursor-pointer"
+                            >
+                              📋 공문 텍스트 복사
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => window.print()}
-                        className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 font-extrabold text-xs shadow-2xs transition cursor-pointer"
-                      >
-                        🖨️ A4 인쇄 / PDF 저장
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleCopyPurchaseIntentText}
-                        className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-emerald-800 font-extrabold text-xs shadow-2xs transition cursor-pointer"
-                      >
-                        📋 공문 텍스트 복사
-                      </button>
-                    </div>
+
+                    {/* 접수된 기존 의향서 불러와 내용 수정하기 바 */}
+                    {!isEditingIntentTemplate && (
+                      <div className="bg-white/95 border border-slate-300 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
+                            접수 건 불러오기 / 수정
+                          </span>
+                          <select
+                            value={editingIntentEntryId || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (!val) {
+                                setEditingIntentEntryId(null);
+                                setPurchaseIntentForm({
+                                  applicantName: '',
+                                  contact: '',
+                                  mainCrops: '',
+                                  desiredServices: [purchaseIntentTemplate.serviceOptions[1] || purchaseIntentTemplate.serviceOptions[0] || '맞춤형 재배일정 + AI 병해충 진단'],
+                                  monthlyWtp: purchaseIntentTemplate.priceOptions[1] || '월 10,000원',
+                                  finalIntents: [...purchaseIntentTemplate.finalIntentOptions],
+                                  writtenYear: '2026',
+                                  writtenMonth: '11',
+                                  writtenDay: '09',
+                                  agreedFinal: true,
+                                  agreedPrivacySeparate: true,
+                                });
+                                return;
+                              }
+                              const found = purchaseIntentEntries.find((x: any) => x.intent_id === val);
+                              if (found) handleLoadEntryIntoIntentForm(found);
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-extrabold text-slate-900 focus:outline-none focus:border-emerald-600"
+                          >
+                            <option value="">+ 신규 구매·구독의향서 작성 모드</option>
+                            {purchaseIntentEntries.map((ent: any) => (
+                              <option key={ent.intent_id} value={ent.intent_id}>
+                                [{ent.intent_id}] {ent.applicant_name} ({ent.main_crops} · {ent.monthly_wtp})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {editingIntentEntryId && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-extrabold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                              ✏️ [{editingIntentEntryId}] 의향서 데이터 수정 중
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingIntentEntryId(null);
+                                setPurchaseIntentForm((prev) => ({
+                                  ...prev,
+                                  applicantName: '',
+                                  contact: '',
+                                  mainCrops: '',
+                                }));
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
+                            >
+                              신규 작성으로 전환
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* 실제 A4 용지 1페이지 문서 컨테이너 또는 제출 완료 화면 */}
-                  {isAdminIntentSubmitted && lastAdminIntentSummary ? (
+                  {/* 실제 A4 용지 1페이지 문서 컨테이너 (양식 수정 모드 vs 일반 작성/수정 모드) */}
+                  {isEditingIntentTemplate ? (
+                    <div className="max-w-[820px] min-h-[1120px] mx-auto bg-white text-slate-900 border-2 border-amber-500 shadow-[0_14px_40px_rgba(15,23,42,0.12)] px-7 sm:px-16 py-10 sm:py-14 flex flex-col justify-between space-y-6">
+                      <div className="space-y-6">
+                        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs font-extrabold text-amber-900">
+                            ✏️ 구매의향서 양식(문구·제목·선택 항목) 편집 모드 — 수정 후 우측 [양식 수정 저장]을 클릭하면 즉시 반영됩니다.
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSaveIntentTemplate}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs cursor-pointer"
+                            >
+                              💾 양식 수정 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingIntentTemplate(false)}
+                              className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
+                            >
+                              닫기
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 공문 상단 문서번호 및 분류 헤더 편집 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs border-b border-slate-300 pb-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">상단 문서번호</label>
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.docNumber}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, docNumber: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/30 font-mono font-bold text-slate-900"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">상단 양식구분</label>
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.docCategory}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, docCategory: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50/30 font-mono font-bold text-slate-900"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 공문 타이틀 편집 */}
+                        <div className="py-2 border-b-2 border-slate-900">
+                          <label className="block text-[11px] font-bold text-slate-500 mb-1 text-center">
+                            공문 대제목
+                          </label>
+                          <input
+                            type="text"
+                            value={intentTemplateDraft.docTitle}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, docTitle: e.target.value })
+                            }
+                            className="w-full text-center text-xl sm:text-2xl font-extrabold text-slate-950 px-3 py-2 rounded-xl border border-amber-300 bg-amber-50/30"
+                          />
+                        </div>
+
+                        {/* 공문 도입부 문구 편집 */}
+                        <div className="space-y-2.5">
+                          <label className="block text-[11px] font-bold text-slate-500">공문 도입부 설명 문구 (1·2단락)</label>
+                          <textarea
+                            rows={2}
+                            value={intentTemplateDraft.introLine1}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, introLine1: e.target.value })
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-amber-300 bg-amber-50/30 text-sm font-medium text-slate-900"
+                          />
+                          <textarea
+                            rows={2}
+                            value={intentTemplateDraft.introLine2}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, introLine2: e.target.value })
+                            }
+                            className="w-full px-3 py-2 rounded-xl border border-amber-300 bg-amber-50/30 text-sm font-semibold text-slate-950"
+                          />
+                        </div>
+
+                        {/* 1. 구독의향자 정보 섹션 편집 */}
+                        <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <input
+                            type="text"
+                            value={intentTemplateDraft.sec1Title}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec1Title: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-extrabold text-base text-slate-950"
+                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.labelApplicant}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, labelApplicant: e.target.value })
+                              }
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                            />
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.labelContact}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, labelContact: e.target.value })
+                              }
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                            />
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.labelCrops}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, labelCrops: e.target.value })
+                              }
+                              className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 2. 구독 희망 서비스 섹션 및 선택지 편집 */}
+                        <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <input
+                            type="text"
+                            value={intentTemplateDraft.sec2Title}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec2Title: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-extrabold text-base text-slate-950"
+                          />
+                          <div className="space-y-2">
+                            {intentTemplateDraft.serviceOptions.map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const next = [...intentTemplateDraft.serviceOptions];
+                                    next[idx] = e.target.value;
+                                    setIntentTemplateDraft({ ...intentTemplateDraft, serviceOptions: next });
+                                  }}
+                                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIntentTemplateDraft({
+                                      ...intentTemplateDraft,
+                                      serviceOptions: intentTemplateDraft.serviceOptions.filter((_, i) => i !== idx),
+                                    })
+                                  }
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            ))}
+                            <div className="flex items-center gap-2 pt-1">
+                              <input
+                                type="text"
+                                value={newServiceOptionInput}
+                                onChange={(e) => setNewServiceOptionInput(e.target.value)}
+                                placeholder="새 구독 희망 서비스 항목 입력"
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white text-xs font-bold"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!newServiceOptionInput.trim()) return;
+                                  setIntentTemplateDraft({
+                                    ...intentTemplateDraft,
+                                    serviceOptions: [...intentTemplateDraft.serviceOptions, newServiceOptionInput.trim()],
+                                  });
+                                  setNewServiceOptionInput('');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
+                              >
+                                + 항목 추가
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3. 월 구독료 지불의향 섹션 및 선택지 편집 */}
+                        <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <input
+                            type="text"
+                            value={intentTemplateDraft.sec3Title}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec3Title: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-extrabold text-base text-slate-950"
+                          />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {intentTemplateDraft.priceOptions.map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const next = [...intentTemplateDraft.priceOptions];
+                                    next[idx] = e.target.value;
+                                    setIntentTemplateDraft({ ...intentTemplateDraft, priceOptions: next });
+                                  }}
+                                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIntentTemplateDraft({
+                                      ...intentTemplateDraft,
+                                      priceOptions: intentTemplateDraft.priceOptions.filter((_, i) => i !== idx),
+                                    })
+                                  }
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <input
+                              type="text"
+                              value={newPriceOptionInput}
+                              onChange={(e) => setNewPriceOptionInput(e.target.value)}
+                              placeholder="새 월 구독료 구간 입력 (예: 월 50,000원)"
+                              className="flex-1 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white text-xs font-bold"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!newPriceOptionInput.trim()) return;
+                                setIntentTemplateDraft({
+                                  ...intentTemplateDraft,
+                                  priceOptions: [...intentTemplateDraft.priceOptions, newPriceOptionInput.trim()],
+                                });
+                                setNewPriceOptionInput('');
+                              }}
+                              className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
+                            >
+                              + 구간 추가
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 4. 구독의향 확인 문구 편집 */}
+                        <div className="space-y-2.5 p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <input
+                            type="text"
+                            value={intentTemplateDraft.sec4Title}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec4Title: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-extrabold text-base text-slate-950"
+                          />
+                          <textarea
+                            rows={2}
+                            value={intentTemplateDraft.sec4Line1}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec4Line1: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-900"
+                          />
+                          <textarea
+                            rows={2}
+                            value={intentTemplateDraft.sec4Line2}
+                            onChange={(e) =>
+                              setIntentTemplateDraft({ ...intentTemplateDraft, sec4Line2: e.target.value })
+                            }
+                            className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-800"
+                          />
+                        </div>
+
+                        {/* 하단 최종 확인 폼 박스 편집 */}
+                        <div className="space-y-3 p-5 rounded-3xl border-2 border-amber-300 bg-amber-50/20">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="sm:col-span-2">
+                              <label className="block text-[11px] font-bold text-slate-500 mb-1">최종 확인 박스 제목</label>
+                              <input
+                                type="text"
+                                value={intentTemplateDraft.confirmTitle}
+                                onChange={(e) =>
+                                  setIntentTemplateDraft({ ...intentTemplateDraft, confirmTitle: e.target.value })
+                                }
+                                className="w-full px-3 py-1.5 rounded-lg border border-amber-300 bg-white font-extrabold text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-500 mb-1">우측 배지 문구</label>
+                              <input
+                                type="text"
+                                value={intentTemplateDraft.confirmBadge}
+                                onChange={(e) =>
+                                  setIntentTemplateDraft({ ...intentTemplateDraft, confirmBadge: e.target.value })
+                                }
+                                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-bold text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-slate-500">최종 의향 확인 선택 항목 (복수 선택)</label>
+                            {intentTemplateDraft.finalIntentOptions.map((opt, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={opt}
+                                  onChange={(e) => {
+                                    const next = [...intentTemplateDraft.finalIntentOptions];
+                                    next[idx] = e.target.value;
+                                    setIntentTemplateDraft({ ...intentTemplateDraft, finalIntentOptions: next });
+                                  }}
+                                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIntentTemplateDraft({
+                                      ...intentTemplateDraft,
+                                      finalIntentOptions: intentTemplateDraft.finalIntentOptions.filter((_, i) => i !== idx),
+                                    })
+                                  }
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            ))}
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={newFinalIntentOptionInput}
+                                onChange={(e) => setNewFinalIntentOptionInput(e.target.value)}
+                                placeholder="새 최종 의향 확인 항목 입력"
+                                className="flex-1 px-3 py-1.5 rounded-lg border border-emerald-300 bg-white text-xs font-bold"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!newFinalIntentOptionInput.trim()) return;
+                                  setIntentTemplateDraft({
+                                    ...intentTemplateDraft,
+                                    finalIntentOptions: [
+                                      ...intentTemplateDraft.finalIntentOptions,
+                                      newFinalIntentOptionInput.trim(),
+                                    ],
+                                  });
+                                  setNewFinalIntentOptionInput('');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
+                              >
+                                + 항목 추가
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">최종 확인 안내 문구</label>
+                            <textarea
+                              rows={2}
+                              value={intentTemplateDraft.confirmNotice}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, confirmNotice: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-800"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">본인 의사 동의 체크 문구</label>
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.agreeLabel}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, agreeLabel: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-extrabold text-slate-950"
+                            />
+                          </div>
+                        </div>
+
+                        {/* 최하단 부기 사항 및 수신처 편집 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-300">
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">하단 부기사항 문구</label>
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.footerNote}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, footerNote: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-500 mb-1">하단 수신처 표기</label>
+                            <input
+                              type="text"
+                              value={intentTemplateDraft.recipientName}
+                              onChange={(e) =>
+                                setIntentTemplateDraft({ ...intentTemplateDraft, recipientName: e.target.value })
+                              }
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-extrabold"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={handleResetIntentTemplate}
+                          className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                        >
+                          기본 양식으로 초기화
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingIntentTemplate(false)}
+                          className="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
+                        >
+                          취소
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSaveIntentTemplate}
+                          className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-xs cursor-pointer"
+                        >
+                          💾 구매의향서 내용(양식) 수정사항 저장
+                        </button>
+                      </div>
+                    </div>
+                  ) : isAdminIntentSubmitted && lastAdminIntentSummary ? (
                     <div className="max-w-[820px] mx-auto bg-white border border-slate-300 shadow-[0_14px_40px_rgba(15,23,42,0.12)] p-10 text-center space-y-4">
                       <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
                         <CheckCircle2 className="w-8 h-8" />
@@ -24736,16 +25511,13 @@ export default function AdminDashboardPage() {
                         >
                           동의 내용 복사
                         </button>
-                        <a
-                          href="https://www.farmplan.co.kr"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            window.location.href = 'https://www.farmplan.co.kr';
-                          }}
+                        <button
+                          type="button"
+                          onClick={() => setIsAdminIntentSubmitted(false)}
                           className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs inline-flex items-center justify-center cursor-pointer"
                         >
-                          완료
-                        </a>
+                          돌아가기
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -24756,35 +25528,33 @@ export default function AdminDashboardPage() {
                     <div className="space-y-7">
                       {/* 공문 상단 문서번호 및 분류 헤더 */}
                       <div className="flex items-center justify-between text-[11px] text-slate-500 border-b border-slate-300 pb-2.5 font-mono">
-                        <span>문서번호: 제 HANFARM-2026-LOI 호</span>
-                        <span>양식구분: 한팜 맞춤형 재배관리 플랫폼 표준 구독·구매의향서</span>
+                        <span>문서번호: {purchaseIntentTemplate.docNumber}</span>
+                        <span>양식구분: {purchaseIntentTemplate.docCategory}</span>
                       </div>
 
                       {/* 공문 타이틀 */}
                       <div className="text-center py-3 border-b-2 border-slate-900">
                         <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-950">
-                          한팜 맞춤형 재배관리 플랫폼 구독의향서
+                          {purchaseIntentTemplate.docTitle}
                         </h1>
                       </div>
 
                       {/* 공문 전문 (도입부) */}
                       <div className="space-y-2.5 text-sm sm:text-[15px] leading-relaxed text-slate-800 font-medium pt-1">
-                        <p>
-                          한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.
-                        </p>
+                        <p>{purchaseIntentTemplate.introLine1}</p>
                         <p className="text-slate-950 font-semibold">
-                          본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.
+                          {purchaseIntentTemplate.introLine2}
                         </p>
                       </div>
 
                       {/* 1. 구독의향자 정보 (공문 밑줄 입력 양식) */}
                       <div className="space-y-3 pt-1">
                         <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
-                          1. 구독의향자 정보
+                          {purchaseIntentTemplate.sec1Title}
                         </h2>
                         <div className="pl-2 sm:pl-4 space-y-2.5 text-sm sm:text-[15px] text-slate-900">
                           <div className="flex flex-wrap items-baseline gap-2">
-                            <span className="font-bold w-40 shrink-0">- 성명(또는 농장명):</span>
+                            <span className="font-bold w-40 shrink-0">{purchaseIntentTemplate.labelApplicant}</span>
                             <input
                               type="text"
                               value={purchaseIntentForm.applicantName}
@@ -24800,7 +25570,7 @@ export default function AdminDashboardPage() {
                           </div>
 
                           <div className="flex flex-wrap items-baseline gap-2">
-                            <span className="font-bold w-40 shrink-0">- 연락처:</span>
+                            <span className="font-bold w-40 shrink-0">{purchaseIntentTemplate.labelContact}</span>
                             <input
                               type="text"
                               value={purchaseIntentForm.contact}
@@ -24816,7 +25586,7 @@ export default function AdminDashboardPage() {
                           </div>
 
                           <div className="flex flex-wrap items-baseline gap-2">
-                            <span className="font-bold w-40 shrink-0">- 주요 재배작물:</span>
+                            <span className="font-bold w-40 shrink-0">{purchaseIntentTemplate.labelCrops}</span>
                             <input
                               type="text"
                               value={purchaseIntentForm.mainCrops}
@@ -24836,10 +25606,10 @@ export default function AdminDashboardPage() {
                       {/* 2. 구독 희망 서비스 */}
                       <div className="space-y-2.5 pt-1">
                         <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
-                          2. 구독 희망 서비스
+                          {purchaseIntentTemplate.sec2Title}
                         </h2>
-                        <div className="pl-2 sm:pl-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-10 text-sm sm:text-[15px]">
-                          {['맞춤형 재배일정', '맞춤형 재배일정 + AI 병해충 진단'].map((svc) => {
+                        <div className="pl-2 sm:pl-4 flex flex-col sm:flex-row sm:items-center flex-wrap gap-3 sm:gap-10 text-sm sm:text-[15px]">
+                          {purchaseIntentTemplate.serviceOptions.map((svc) => {
                             const checked = purchaseIntentForm.desiredServices.includes(svc);
                             return (
                               <button
@@ -24867,10 +25637,10 @@ export default function AdminDashboardPage() {
                       {/* 3. 월 구독료 지불의향 */}
                       <div className="space-y-2.5 pt-1">
                         <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
-                          3. 월 구독료 지불의향
+                          {purchaseIntentTemplate.sec3Title}
                         </h2>
                         <div className="pl-2 sm:pl-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm sm:text-[15px]">
-                          {['월 5,000원', '월 10,000원', '월 20,000원', '월 30,000원 초과'].map(
+                          {purchaseIntentTemplate.priceOptions.map(
                             (price) => {
                               const checked = purchaseIntentForm.monthlyWtp === price;
                               return (
@@ -24905,14 +25675,14 @@ export default function AdminDashboardPage() {
                       {/* 4. 구독의향 확인 */}
                       <div className="space-y-3 pt-1">
                         <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
-                          4. 구독의향 확인
+                          {purchaseIntentTemplate.sec4Title}
                         </h2>
                         <div className="pl-2 sm:pl-4 space-y-2 text-sm sm:text-[15px] text-slate-800 leading-relaxed">
                           <p className="font-semibold text-slate-950">
-                            본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.
+                            {purchaseIntentTemplate.sec4Line1}
                           </p>
                           <p>
-                            본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.
+                            {purchaseIntentTemplate.sec4Line2}
                           </p>
 
                           {/* 작성일: 2026년 _____월 _____일 */}
@@ -24962,10 +25732,10 @@ export default function AdminDashboardPage() {
                       <div className="rounded-3xl border border-slate-300 bg-slate-50/60 p-5 sm:p-6 space-y-4">
                         <div className="flex items-center justify-between gap-2">
                           <h3 className="text-base sm:text-lg font-extrabold text-slate-950 tracking-tight">
-                            한팜 구매·구독 의향 확인
+                            {purchaseIntentTemplate.confirmTitle}
                           </h3>
                           <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold">
-                            최종 확인 폼
+                            {purchaseIntentTemplate.confirmBadge}
                           </span>
                         </div>
 
@@ -24995,7 +25765,7 @@ export default function AdminDashboardPage() {
                               의향 확인 (복수 선택 가능)
                             </div>
                             <div className="flex flex-wrap items-center gap-5 pt-1">
-                              {['농자재 구매의향', '플랫폼 유료 구독의향'].map((intentItem) => {
+                              {purchaseIntentTemplate.finalIntentOptions.map((intentItem) => {
                                 const checked = purchaseIntentForm.finalIntents.includes(intentItem);
                                 return (
                                   <button
@@ -25026,7 +25796,7 @@ export default function AdminDashboardPage() {
                         <hr className="border-slate-200" />
 
                         <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
-                          본인은 한팜 서비스가 정식 출시되고 상품·서비스의 품질, 가격 및 이용조건이 적합할 경우 위 선택한 서비스를 이용할 의향이 있습니다. 본 의향 확인은 법적 구속력이 없으며 실제 구매·구독 의무가 발생하지 않습니다.
+                          {purchaseIntentTemplate.confirmNotice}
                         </p>
 
                         <button
@@ -25051,7 +25821,7 @@ export default function AdminDashboardPage() {
                             )}
                           </span>
                           <span className="text-sm sm:text-[15px] font-extrabold text-slate-950">
-                            위 내용을 확인하고 본인의 의사로 동의합니다.
+                            {purchaseIntentTemplate.agreeLabel}
                           </span>
                         </button>
 
@@ -25065,10 +25835,18 @@ export default function AdminDashboardPage() {
                           </button>
                           <button
                             type="submit"
-                            className="w-full py-2.5 px-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                            className={`w-full py-2.5 px-5 rounded-full text-white font-extrabold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              editingIntentEntryId
+                                ? 'bg-amber-600 hover:bg-amber-500'
+                                : 'bg-emerald-600 hover:bg-emerald-500'
+                            }`}
                           >
                             <Check className="w-4 h-4" />
-                            <span>구매·구독의향서 제출 및 수집현황 저장</span>
+                            <span>
+                              {editingIntentEntryId
+                                ? `[${editingIntentEntryId}] 의향서 내용 수정 저장`
+                                : '구매·구독의향서 제출 및 수집현황 저장'}
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -25077,10 +25855,10 @@ export default function AdminDashboardPage() {
                     {/* 공문 최하단 구분선 및 부기 사항 */}
                     <div className="pt-6 mt-6 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
                       <span className="font-semibold">
-                        ※ 개인정보 수집·이용 및 서비스 출시 안내에 대한 동의는 별도로 받습니다.
+                        {purchaseIntentTemplate.footerNote}
                       </span>
                       <span className="font-extrabold text-slate-800 tracking-wide">
-                        한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중
+                        {purchaseIntentTemplate.recipientName}
                       </span>
                     </div>
                   </form>
@@ -25168,7 +25946,7 @@ export default function AdminDashboardPage() {
                         ① 구독 희망 서비스 선택 비율
                       </h4>
                       <div className="space-y-2.5 text-xs">
-                        {['맞춤형 재배일정', '맞춤형 재배일정 + AI 병해충 진단'].map((svc) => {
+                        {purchaseIntentTemplate.serviceOptions.map((svc) => {
                           const cnt = purchaseIntentEntries.filter((e: any) =>
                             (e.desired_services || []).includes(svc)
                           ).length;
@@ -25201,7 +25979,7 @@ export default function AdminDashboardPage() {
                         ② 월 구독료 지불의향 분포
                       </h4>
                       <div className="space-y-2 text-xs">
-                        {['월 5,000원', '월 10,000원', '월 20,000원', '월 30,000원 초과'].map(
+                        {purchaseIntentTemplate.priceOptions.map(
                           (price) => {
                             const cnt = purchaseIntentEntries.filter(
                               (e: any) => e.monthly_wtp === price
@@ -25236,7 +26014,7 @@ export default function AdminDashboardPage() {
                         ③ 최종 구매·구독 의향 확인 분포
                       </h4>
                       <div className="space-y-2.5 text-xs">
-                        {['농자재 구매의향', '플랫폼 유료 구독의향'].map((fi) => {
+                        {purchaseIntentTemplate.finalIntentOptions.map((fi) => {
                           const cnt = purchaseIntentEntries.filter((e: any) =>
                             (e.final_intents || []).includes(fi)
                           ).length;
@@ -25272,12 +26050,15 @@ export default function AdminDashboardPage() {
                           구매의향서 수집 현황 상세 리스트 ({purchaseIntentEntries.length}건)
                         </h3>
                         <p className="text-xs text-slate-500 mt-0.5">
-                          농가·고객이 제출한 구독 희망 서비스, 월 구독료 지불의향 및 최종 동의 내역입니다.
+                          농가·고객이 제출한 구독 희망 서비스, 월 구독료 지불의향 및 최종 동의 내역입니다. [수정]을 클릭하여 내용을 수정할 수 있습니다.
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('purchase_intent_content')}
+                        onClick={() => {
+                          setEditingIntentEntryId(null);
+                          setActiveTab('purchase_intent_content');
+                        }}
                         className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -25349,15 +26130,33 @@ export default function AdminDashboardPage() {
                                 <div className="inline-flex items-center gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() => setSelectedPurchaseIntentDoc(item)}
+                                    onClick={() => {
+                                      setSelectedPurchaseIntentDoc(item);
+                                      setIsEditingSelectedIntentDoc(false);
+                                    }}
                                     className={`px-3 py-1.5 rounded-lg font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer ${
-                                      selectedPurchaseIntentDoc?.intent_id === item.intent_id
+                                      selectedPurchaseIntentDoc?.intent_id === item.intent_id && !isEditingSelectedIntentDoc
                                         ? 'bg-emerald-600 text-white shadow-xs'
                                         : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
                                     }`}
                                   >
                                     <ClipboardList className="w-3.5 h-3.5" />
                                     <span>문서확인</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditSelectedDoc(item)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>수정</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleLoadEntryIntoIntentForm(item)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                                  >
+                                    양식폼 수정
                                   </button>
                                   <button
                                     type="button"
@@ -25368,6 +26167,11 @@ export default function AdminDashboardPage() {
                                       setPurchaseIntentEntries((prev) =>
                                         prev.filter((x: any) => x.intent_id !== item.intent_id)
                                       );
+                                      fetch('/api/purchase-intents/entry/delete', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ intent_id: item.intent_id }),
+                                      }).catch(() => {});
                                       showToast(`[${item.intent_id}] 의향서 항목이 삭제되었습니다.`);
                                     }}
                                     className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs cursor-pointer"
@@ -25383,33 +26187,33 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
 
-                  {/* ==================== [문서확인] 클릭 시 열리는 A4 용지 공문 서식 모달리스(Modeless) 폼 ==================== */}
+                  {/* ==================== [문서확인 / 수정] 클릭 시 열리는 A4 용지 공문 서식 모달리스(Modeless) 폼 ==================== */}
                   {selectedPurchaseIntentDoc && (() => {
-                    const doc = selectedPurchaseIntentDoc;
+                    const doc = isEditingSelectedIntentDoc && selectedDocEditDraft ? selectedDocEditDraft : selectedPurchaseIntentDoc;
                     const [docYear = '2026', docMonth = '11', docDay = '09'] = String(
                       doc.written_date || '2026-11-09'
                     ).split('-');
                     const copySelectedDocText = () => {
                       const docText = [
-                        `[한팜 맞춤형 재배관리 플랫폼 구독의향서 - ${doc.intent_id}]`,
+                        `[${purchaseIntentTemplate.docTitle} - ${doc.intent_id}]`,
                         '',
-                        '한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.',
-                        '본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.',
+                        purchaseIntentTemplate.introLine1,
+                        purchaseIntentTemplate.introLine2,
                         '',
-                        '1. 구독의향자 정보',
-                        `- 성명(또는 농장명): ${doc.applicant_name}`,
-                        `- 연락처: ${doc.contact}`,
-                        `- 주요 재배작물: ${doc.main_crops}`,
+                        purchaseIntentTemplate.sec1Title,
+                        `${purchaseIntentTemplate.labelApplicant} ${doc.applicant_name}`,
+                        `${purchaseIntentTemplate.labelContact} ${doc.contact}`,
+                        `${purchaseIntentTemplate.labelCrops} ${doc.main_crops}`,
                         '',
-                        '2. 구독 희망 서비스',
+                        purchaseIntentTemplate.sec2Title,
                         `- ${(doc.desired_services || []).join(', ')}`,
                         '',
-                        '3. 월 구독료 지불의향',
+                        purchaseIntentTemplate.sec3Title,
                         `- ${doc.monthly_wtp}`,
                         '',
-                        '4. 한팜 구매·구독 의향 확인',
+                        `4. ${purchaseIntentTemplate.confirmTitle}`,
                         `- 의향 확인: ${(doc.final_intents || []).join(', ')}`,
-                        `- 본인 의사 동의: ${doc.agreed_final ? '위 내용을 확인하고 본인의 의사로 동의합니다.' : '미동의'}`,
+                        `- 본인 의사 동의: ${doc.agreed_final ? purchaseIntentTemplate.agreeLabel : '미동의'}`,
                         `- 작성일: ${docYear}년 ${docMonth}월 ${docDay}일`,
                       ].join('\n');
                       navigator.clipboard?.writeText(docText);
@@ -25419,7 +26223,7 @@ export default function AdminDashboardPage() {
                     return (
                       <div className="fixed inset-0 z-50 pointer-events-none flex justify-end p-3 sm:p-6">
                         <div className="pointer-events-auto w-full max-w-[860px] h-full bg-slate-100 rounded-3xl border-2 border-emerald-600/40 shadow-[0_24px_60px_rgba(15,23,42,0.28)] flex flex-col overflow-hidden">
-                          {/* 모달리스 상단 타이틀 & 액션 바 (배경 리스트도 동시에 클릭 가능) */}
+                          {/* 모달리스 상단 타이틀 & 액션 바 */}
                           <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-wrap items-center justify-between gap-2 shrink-0">
                             <div className="flex items-center gap-2.5 min-w-0">
                               <span className="px-2.5 py-0.5 rounded-md bg-emerald-500 text-slate-950 font-mono font-extrabold text-xs">
@@ -25427,32 +26231,62 @@ export default function AdminDashboardPage() {
                               </span>
                               <div className="truncate">
                                 <span className="font-extrabold text-sm">
-                                  {doc.applicant_name} — 구매·구독의향서 A4 원본 문서확인
-                                </span>
-                                <span className="ml-2 text-[11px] text-emerald-300 font-normal hidden sm:inline">
-                                  (모달리스 창 · 좌측 리스트에서 다른 건을 바로 클릭해 비교할 수 있습니다)
+                                  {doc.applicant_name} — {isEditingSelectedIntentDoc ? '구매·구독의향서 내용 수정 모드' : '구매·구독의향서 A4 원본 문서확인'}
                                 </span>
                               </div>
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
+                              {isEditingSelectedIntentDoc ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={handleSaveSelectedDocEdit}
+                                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    수정 저장
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsEditingSelectedIntentDoc(false)}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs transition cursor-pointer"
+                                  >
+                                    취소
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEditSelectedDoc(doc)}
+                                    className="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    내용 수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => window.print()}
+                                    className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs transition cursor-pointer"
+                                  >
+                                    🖨️ A4 인쇄
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={copySelectedDocText}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
+                                  >
+                                    📋 내용 복사
+                                  </button>
+                                </>
+                              )}
                               <button
                                 type="button"
-                                onClick={() => window.print()}
-                                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs transition cursor-pointer"
-                              >
-                                🖨️ A4 인쇄
-                              </button>
-                              <button
-                                type="button"
-                                onClick={copySelectedDocText}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
-                              >
-                                📋 내용 복사
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedPurchaseIntentDoc(null)}
+                                onClick={() => {
+                                  setSelectedPurchaseIntentDoc(null);
+                                  setIsEditingSelectedIntentDoc(false);
+                                }}
                                 className="p-1.5 rounded-lg bg-white/10 hover:bg-rose-500 text-white transition cursor-pointer"
                                 title="모달리스 창 닫기"
                               >
@@ -25463,7 +26297,7 @@ export default function AdminDashboardPage() {
 
                           {/* 모달리스 본문: A4 용지 서식 스크롤 영역 */}
                           <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80">
-                            <div className="max-w-[780px] min-h-[1040px] mx-auto bg-white text-slate-900 border border-slate-300 shadow-[0_12px_32px_rgba(15,23,42,0.12)] px-6 sm:px-14 py-9 sm:py-12 flex flex-col justify-between">
+                            <div className={`max-w-[780px] min-h-[1040px] mx-auto bg-white text-slate-900 border ${isEditingSelectedIntentDoc ? 'border-2 border-amber-500' : 'border-slate-300'} shadow-[0_12px_32px_rgba(15,23,42,0.12)] px-6 sm:px-14 py-9 sm:py-12 flex flex-col justify-between`}>
                               <div className="space-y-6">
                                 {/* 공문 상단 문서번호 및 접수일시 */}
                                 <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 border-b border-slate-300 pb-2.5 font-mono">
@@ -25474,43 +26308,74 @@ export default function AdminDashboardPage() {
                                 {/* 공문 타이틀 */}
                                 <div className="text-center py-3 border-b-2 border-slate-900">
                                   <h1 className="text-xl sm:text-[26px] font-extrabold tracking-tight text-slate-950">
-                                    한팜 맞춤형 재배관리 플랫폼 구독의향서
+                                    {purchaseIntentTemplate.docTitle}
                                   </h1>
                                 </div>
 
                                 {/* 공문 전문 (도입부) */}
                                 <div className="space-y-2 text-xs sm:text-[14px] leading-relaxed text-slate-800 font-medium">
-                                  <p>
-                                    한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.
-                                  </p>
+                                  <p>{purchaseIntentTemplate.introLine1}</p>
                                   <p className="text-slate-950 font-semibold">
-                                    본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.
+                                    {purchaseIntentTemplate.introLine2}
                                   </p>
                                 </div>
 
-                                {/* 1. 구독의향자 정보 (작성된 내용 밑줄 표시) */}
+                                {/* 1. 구독의향자 정보 */}
                                 <div className="space-y-2.5">
                                   <h2 className="text-sm sm:text-base font-extrabold text-slate-950">
-                                    1. 구독의향자 정보
+                                    {purchaseIntentTemplate.sec1Title}
                                   </h2>
                                   <div className="pl-2 sm:pl-4 space-y-2 text-xs sm:text-[14px] text-slate-900">
                                     <div className="flex flex-wrap items-baseline gap-2">
-                                      <span className="font-bold w-36 shrink-0">- 성명(또는 농장명):</span>
-                                      <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-emerald-950 bg-emerald-50/40">
-                                        {doc.applicant_name}
-                                      </span>
+                                      <span className="font-bold w-36 shrink-0">{purchaseIntentTemplate.labelApplicant}</span>
+                                      {isEditingSelectedIntentDoc ? (
+                                        <input
+                                          type="text"
+                                          value={doc.applicant_name}
+                                          onChange={(e) =>
+                                            setSelectedDocEditDraft({ ...doc, applicant_name: e.target.value })
+                                          }
+                                          className="min-w-[240px] sm:min-w-[300px] border-b-2 border-amber-500 px-2 py-0.5 font-extrabold text-slate-950 bg-amber-50/50 focus:outline-none"
+                                        />
+                                      ) : (
+                                        <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-emerald-950 bg-emerald-50/40">
+                                          {doc.applicant_name}
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="flex flex-wrap items-baseline gap-2">
-                                      <span className="font-bold w-36 shrink-0">- 연락처:</span>
-                                      <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-slate-950 bg-emerald-50/40">
-                                        {doc.contact}
-                                      </span>
+                                      <span className="font-bold w-36 shrink-0">{purchaseIntentTemplate.labelContact}</span>
+                                      {isEditingSelectedIntentDoc ? (
+                                        <input
+                                          type="text"
+                                          value={doc.contact}
+                                          onChange={(e) =>
+                                            setSelectedDocEditDraft({ ...doc, contact: e.target.value })
+                                          }
+                                          className="min-w-[240px] sm:min-w-[300px] border-b-2 border-amber-500 px-2 py-0.5 font-extrabold text-slate-950 bg-amber-50/50 focus:outline-none"
+                                        />
+                                      ) : (
+                                        <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-slate-950 bg-emerald-50/40">
+                                          {doc.contact}
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="flex flex-wrap items-baseline gap-2">
-                                      <span className="font-bold w-36 shrink-0">- 주요 재배작물:</span>
-                                      <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-slate-950 bg-emerald-50/40">
-                                        {doc.main_crops}
-                                      </span>
+                                      <span className="font-bold w-36 shrink-0">{purchaseIntentTemplate.labelCrops}</span>
+                                      {isEditingSelectedIntentDoc ? (
+                                        <input
+                                          type="text"
+                                          value={doc.main_crops}
+                                          onChange={(e) =>
+                                            setSelectedDocEditDraft({ ...doc, main_crops: e.target.value })
+                                          }
+                                          className="min-w-[240px] sm:min-w-[300px] border-b-2 border-amber-500 px-2 py-0.5 font-extrabold text-slate-950 bg-amber-50/50 focus:outline-none"
+                                        />
+                                      ) : (
+                                        <span className="inline-block min-w-[240px] sm:min-w-[300px] border-b border-slate-800 px-2 py-0.5 font-extrabold text-slate-950 bg-emerald-50/40">
+                                          {doc.main_crops}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -25518,15 +26383,25 @@ export default function AdminDashboardPage() {
                                 {/* 2. 구독 희망 서비스 */}
                                 <div className="space-y-2">
                                   <h2 className="text-sm sm:text-base font-extrabold text-slate-950">
-                                    2. 구독 희망 서비스
+                                    {purchaseIntentTemplate.sec2Title}
                                   </h2>
-                                  <div className="pl-2 sm:pl-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-8 text-xs sm:text-[14px]">
-                                    {['맞춤형 재배일정', '맞춤형 재배일정 + AI 병해충 진단'].map((svc) => {
+                                  <div className="pl-2 sm:pl-4 flex flex-col sm:flex-row sm:items-center flex-wrap gap-3 sm:gap-8 text-xs sm:text-[14px]">
+                                    {purchaseIntentTemplate.serviceOptions.map((svc) => {
                                       const checked = (doc.desired_services || []).includes(svc);
                                       return (
                                         <div
                                           key={svc}
-                                          className="inline-flex items-center gap-2 font-bold text-slate-900"
+                                          onClick={() => {
+                                            if (!isEditingSelectedIntentDoc) return;
+                                            const cur = Array.isArray(doc.desired_services) ? doc.desired_services : [];
+                                            const next = cur.includes(svc)
+                                              ? cur.filter((x: string) => x !== svc)
+                                              : [...cur, svc];
+                                            setSelectedDocEditDraft({ ...doc, desired_services: next });
+                                          }}
+                                          className={`inline-flex items-center gap-2 font-bold text-slate-900 ${
+                                            isEditingSelectedIntentDoc ? 'cursor-pointer hover:text-emerald-700' : ''
+                                          }`}
                                         >
                                           <span
                                             className={`w-4 h-4 border border-slate-800 inline-flex items-center justify-center text-[11px] font-extrabold ${
@@ -25549,16 +26424,22 @@ export default function AdminDashboardPage() {
                                 {/* 3. 월 구독료 지불의향 */}
                                 <div className="space-y-2">
                                   <h2 className="text-sm sm:text-base font-extrabold text-slate-950">
-                                    3. 월 구독료 지불의향
+                                    {purchaseIntentTemplate.sec3Title}
                                   </h2>
                                   <div className="pl-2 sm:pl-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs sm:text-[14px]">
-                                    {['월 5,000원', '월 10,000원', '월 20,000원', '월 30,000원 초과'].map(
+                                    {purchaseIntentTemplate.priceOptions.map(
                                       (price) => {
                                         const checked = doc.monthly_wtp === price;
                                         return (
                                           <div
                                             key={price}
-                                            className="inline-flex items-center gap-2 font-bold text-slate-900"
+                                            onClick={() => {
+                                              if (!isEditingSelectedIntentDoc) return;
+                                              setSelectedDocEditDraft({ ...doc, monthly_wtp: price });
+                                            }}
+                                            className={`inline-flex items-center gap-2 font-bold text-slate-900 ${
+                                              isEditingSelectedIntentDoc ? 'cursor-pointer hover:text-emerald-700' : ''
+                                            }`}
                                           >
                                             <span
                                               className={`w-4 h-4 border border-slate-800 inline-flex items-center justify-center text-[11px] font-extrabold ${
@@ -25582,29 +26463,42 @@ export default function AdminDashboardPage() {
                                 {/* 4. 구독의향 확인 */}
                                 <div className="space-y-2.5">
                                   <h2 className="text-sm sm:text-base font-extrabold text-slate-950">
-                                    4. 구독의향 확인
+                                    {purchaseIntentTemplate.sec4Title}
                                   </h2>
                                   <div className="pl-2 sm:pl-4 space-y-1.5 text-xs sm:text-[14px] text-slate-800 leading-relaxed">
                                     <p className="font-semibold text-slate-950">
-                                      본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.
+                                      {purchaseIntentTemplate.sec4Line1}
                                     </p>
                                     <p>
-                                      본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.
+                                      {purchaseIntentTemplate.sec4Line2}
                                     </p>
                                     <div className="pt-2 flex items-center justify-end gap-1.5 text-xs sm:text-sm font-extrabold text-slate-950">
                                       <span>작성일:</span>
-                                      <span className="inline-block w-12 text-center border-b border-slate-800">
-                                        {docYear}
-                                      </span>
-                                      <span>년</span>
-                                      <span className="inline-block w-9 text-center border-b border-slate-800">
-                                        {docMonth}
-                                      </span>
-                                      <span>월</span>
-                                      <span className="inline-block w-9 text-center border-b border-slate-800">
-                                        {docDay}
-                                      </span>
-                                      <span>일</span>
+                                      {isEditingSelectedIntentDoc ? (
+                                        <input
+                                          type="date"
+                                          value={doc.written_date || '2026-11-09'}
+                                          onChange={(e) =>
+                                            setSelectedDocEditDraft({ ...doc, written_date: e.target.value })
+                                          }
+                                          className="px-2 py-0.5 border border-amber-400 rounded bg-amber-50/50 text-xs font-extrabold"
+                                        />
+                                      ) : (
+                                        <>
+                                          <span className="inline-block w-12 text-center border-b border-slate-800">
+                                            {docYear}
+                                          </span>
+                                          <span>년</span>
+                                          <span className="inline-block w-9 text-center border-b border-slate-800">
+                                            {docMonth}
+                                          </span>
+                                          <span>월</span>
+                                          <span className="inline-block w-9 text-center border-b border-slate-800">
+                                            {docDay}
+                                          </span>
+                                          <span>일</span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -25613,7 +26507,7 @@ export default function AdminDashboardPage() {
                                 <div className="rounded-3xl border border-slate-300 bg-slate-50/70 p-5 space-y-3.5">
                                   <div className="flex items-center justify-between gap-2">
                                     <h3 className="text-sm sm:text-base font-extrabold text-slate-950 tracking-tight">
-                                      한팜 구매·구독 의향 확인
+                                      {purchaseIntentTemplate.confirmTitle}
                                     </h3>
                                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-900 text-[11px] font-extrabold">
                                       본인 동의 완료
@@ -25635,12 +26529,22 @@ export default function AdminDashboardPage() {
                                         의향 확인 (복수 선택 가능)
                                       </div>
                                       <div className="flex flex-wrap items-center gap-4 pt-1">
-                                        {['농자재 구매의향', '플랫폼 유료 구독의향'].map((intentItem) => {
+                                        {purchaseIntentTemplate.finalIntentOptions.map((intentItem) => {
                                           const checked = (doc.final_intents || []).includes(intentItem);
                                           return (
                                             <div
                                               key={intentItem}
-                                              className="inline-flex items-center gap-2"
+                                              onClick={() => {
+                                                if (!isEditingSelectedIntentDoc) return;
+                                                const cur = Array.isArray(doc.final_intents) ? doc.final_intents : [];
+                                                const next = cur.includes(intentItem)
+                                                  ? cur.filter((x: string) => x !== intentItem)
+                                                  : [...cur, intentItem];
+                                                setSelectedDocEditDraft({ ...doc, final_intents: next });
+                                              }}
+                                              className={`inline-flex items-center gap-2 ${
+                                                isEditingSelectedIntentDoc ? 'cursor-pointer' : ''
+                                              }`}
                                             >
                                               <span
                                                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -25668,7 +26572,7 @@ export default function AdminDashboardPage() {
                                   <hr className="border-slate-200" />
 
                                   <p className="text-xs text-slate-800 leading-relaxed font-medium">
-                                    본인은 한팜 서비스가 정식 출시되고 상품·서비스의 품질, 가격 및 이용조건이 적합할 경우 위 선택한 서비스를 이용할 의향이 있습니다. 본 의향 확인은 법적 구속력이 없으며 실제 구매·구독 의무가 발생하지 않습니다.
+                                    {purchaseIntentTemplate.confirmNotice}
                                   </p>
 
                                   <div className="flex items-center gap-2.5 py-0.5">
@@ -25676,17 +26580,36 @@ export default function AdminDashboardPage() {
                                       <Check className="w-3 h-3 stroke-[3]" />
                                     </span>
                                     <span className="text-xs sm:text-sm font-extrabold text-slate-950">
-                                      위 내용을 확인하고 본인의 의사로 동의합니다.
+                                      {purchaseIntentTemplate.agreeLabel}
                                     </span>
                                   </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={copySelectedDocText}
-                                    className="w-full py-2.5 px-5 rounded-full bg-slate-200/80 hover:bg-slate-200 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
-                                  >
-                                    동의 내용 확인 및 복사
-                                  </button>
+                                  {isEditingSelectedIntentDoc ? (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setIsEditingSelectedIntentDoc(false)}
+                                        className="w-full py-2.5 px-5 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
+                                      >
+                                        수정 취소
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={handleSaveSelectedDocEdit}
+                                        className="w-full py-2.5 px-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm transition cursor-pointer"
+                                      >
+                                        💾 수정 내용 저장
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={copySelectedDocText}
+                                      className="w-full py-2.5 px-5 rounded-full bg-slate-200/80 hover:bg-slate-200 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
+                                    >
+                                      동의 내용 확인 및 복사
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
@@ -25697,7 +26620,7 @@ export default function AdminDashboardPage() {
                                   <strong>{doc.agreed_privacy ? '동의함' : '별도 안내 예정'}</strong>
                                 </span>
                                 <span className="font-extrabold text-slate-800 tracking-wide">
-                                  한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중
+                                  {purchaseIntentTemplate.recipientName}
                                 </span>
                               </div>
                             </div>
