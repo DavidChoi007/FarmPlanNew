@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #F8FAFC;
+    color: #0f172a;
+  }
+}
+
+/* 관리자 페이지 전체 밝은 테마 (User Intro 페이지와 통일된 화이트 & 소프트 민트 스타일) */
+.admin-light-theme .bg-emerald-950,
+.admin-light-theme .bg-emerald-950\/90,
+.admin-light-theme .bg-emerald-950\/60,
+.admin-light-theme .bg-emerald-900,
+.admin-light-theme .bg-indigo-950 {
+  background-color: #E9F7F1 !important;
+  color: #0f172a !important;
+  border-color: #a7f3d0 !important;
+}
+
+.admin-light-theme .bg-slate-900,
+.admin-light-theme .bg-slate-900\/90,
+.admin-light-theme .bg-slate-900\/80,
+.admin-light-theme .bg-\[\#111927\],
+.admin-light-theme .bg-\[\#151f30\],
+.admin-light-theme .bg-\[\#111826\],
+.admin-light-theme .bg-\[\#141c2b\] {
+  background-color: #F1F5F9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.admin-light-theme input.bg-slate-900,
+.admin-light-theme select.bg-slate-900,
+.admin-light-theme textarea.bg-slate-900,
+.admin-light-theme input.bg-slate-800,
+.admin-light-theme select.bg-slate-800 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.admin-light-theme .bg-slate-800,
+.admin-light-theme .bg-slate-800\/90 {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+}
+
+.admin-light-theme button.bg-slate-900,
+.admin-light-theme button.bg-slate-800 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.admin-light-theme button.bg-slate-900:hover,
+.admin-light-theme button.bg-slate-800:hover {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
+/* 밝은 배경으로 전환된 컨테이너 내부 텍스트 가독성 보장 */
+.admin-light-theme .bg-emerald-950 .text-white:not([style*="background"]):not(.bg-emerald-600):not(.bg-emerald-500):not(.bg-rose-600),
+.admin-light-theme .bg-emerald-900 .text-white:not([style*="background"]),
+.admin-light-theme .bg-indigo-950 .text-white:not([style*="background"]),
+.admin-light-theme .bg-slate-900 .text-white:not([style*="background"]):not(.bg-emerald-600):not(.bg-emerald-500),
+.admin-light-theme .bg-\[\#111927\] .text-white,
+.admin-light-theme .bg-\[\#151f30\] .text-white,
+.admin-light-theme .bg-\[\#111826\] .text-white {
+  color: #0f172a !important;
+}
+
+.admin-light-theme .bg-emerald-950 .text-slate-300,
+.admin-light-theme .bg-emerald-950 .text-slate-200,
+.admin-light-theme .bg-emerald-950 .text-slate-400,
+.admin-light-theme .bg-emerald-950 .text-emerald-100,
+.admin-light-theme .bg-emerald-950 .text-emerald-200,
+.admin-light-theme .bg-slate-900 .text-slate-300,
+.admin-light-theme .bg-slate-900 .text-slate-200,
+.admin-light-theme .bg-slate-900 .text-slate-400,
+.admin-light-theme .bg-\[\#111927\] .text-slate-300,
+.admin-light-theme .bg-\[\#111927\] .text-slate-200,
+.admin-light-theme .bg-\[\#111927\] .text-slate-400,
+.admin-light-theme .bg-\[\#151f30\] .text-slate-300,
+.admin-light-theme .bg-\[\#111826\] .text-slate-300 {
+  color: #334155 !important;
+}
+
+.admin-light-theme .bg-emerald-950 .text-emerald-300,
+.admin-light-theme .bg-emerald-950 .text-emerald-400,
+.admin-light-theme .bg-slate-900 .text-emerald-300,
+.admin-light-theme .bg-slate-900 .text-emerald-400,
+.admin-light-theme .bg-slate-800 .text-emerald-300,
+.admin-light-theme .bg-\[\#111927\] .text-emerald-300,
+.admin-light-theme .bg-\[\#111927\] .text-emerald-400 {
+  color: #047857 !important;
+}
+
+.admin-light-theme .bg-emerald-950 .text-amber-300,
+.admin-light-theme .bg-slate-900 .text-amber-300,
+.admin-light-theme .bg-\[\#111927\] .text-amber-300,
+.admin-light-theme .bg-\[\#151f30\] .text-amber-300 {
+  color: #b45309 !important;
+}

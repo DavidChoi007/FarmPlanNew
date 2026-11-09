@@ -1,0 +1,483 @@
+import React, { useState } from 'react';
+import { Sprout, Check, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Link } from '../router.tsx';
+
+export default function PurchaseIntentPublicPage() {
+  const today = new Date();
+  const [form, setForm] = useState({
+    applicantName: '',
+    contact: '',
+    mainCrops: '',
+    desiredServices: ['맞춤형 재배일정 + AI 병해충 진단'] as string[],
+    monthlyWtp: '월 10,000원',
+    finalIntents: ['농자재 구매의향', '플랫폼 유료 구독의향'] as string[],
+    writtenYear: '2026',
+    writtenMonth: String(today.getMonth() + 1).padStart(2, '0'),
+    writtenDay: String(today.getDate()).padStart(2, '0'),
+    agreedFinal: true,
+    agreedPrivacySeparate: true,
+  });
+
+  const [copiedMessage, setCopiedMessage] = useState<string>('');
+  const [submitted, setSubmitted] = useState<boolean>(false);
+
+  const toggleDesiredService = (service: string) => {
+    setForm((prev) => {
+      const exists = prev.desiredServices.includes(service);
+      return {
+        ...prev,
+        desiredServices: exists
+          ? prev.desiredServices.filter((s) => s !== service)
+          : [...prev.desiredServices, service],
+      };
+    });
+  };
+
+  const toggleFinalIntent = (intent: string) => {
+    setForm((prev) => {
+      const exists = prev.finalIntents.includes(intent);
+      return {
+        ...prev,
+        finalIntents: exists
+          ? prev.finalIntents.filter((i) => i !== intent)
+          : [...prev.finalIntents, intent],
+      };
+    });
+  };
+
+  const buildSummaryText = () => {
+    return [
+      '[한팜 맞춤형 재배관리 플랫폼 구독의향서]',
+      '',
+      '한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.',
+      '본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.',
+      '',
+      '1. 구독의향자 정보',
+      `- 성명(또는 농장명): ${form.applicantName || '(미입력)'}`,
+      `- 연락처: ${form.contact || '(미입력)'}`,
+      `- 주요 재배작물: ${form.mainCrops || '(미입력)'}`,
+      '',
+      '2. 구독 희망 서비스',
+      `- ${form.desiredServices.length > 0 ? form.desiredServices.join(', ') : '(미선택)'}`,
+      '',
+      '3. 월 구독료 지불의향',
+      `- ${form.monthlyWtp || '(미선택)'}`,
+      '',
+      '4. 한팜 구매·구독 의향 확인',
+      `- 의향 확인: ${form.finalIntents.length > 0 ? form.finalIntents.join(', ') : '(미선택)'}`,
+      '- 본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.',
+      '- 본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.',
+      `- 본인 의사 동의 여부: ${form.agreedFinal ? '동의함' : '미동의'}`,
+      `- 작성일: ${form.writtenYear}년 ${form.writtenMonth}월 ${form.writtenDay}일`,
+      `- 개인정보 수집·이용 및 서비스 출시 안내 별도 동의: ${form.agreedPrivacySeparate ? '동의함' : '추후 별도 동의'}`,
+    ].join('\n');
+  };
+
+  const handleCopyConsentText = () => {
+    const text = buildSummaryText();
+    navigator.clipboard?.writeText(text);
+    setCopiedMessage('동의 내용 및 구독의향서 전문이 클립보드에 복사되었습니다.');
+    setTimeout(() => setCopiedMessage(''), 4000);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.applicantName.trim()) {
+      window.alert('성명(또는 농장명)을 입력해 주세요.');
+      return;
+    }
+    if (!form.agreedFinal) {
+      window.alert('최종 확인 폼의 "위 내용을 확인하고 본인의 의사로 동의합니다." 항목에 체크해 주세요.');
+      return;
+    }
+    try {
+      const savedRaw = localStorage.getItem('hanfarm_purchase_intents_v1');
+      const existing = savedRaw ? JSON.parse(savedRaw) : [];
+      const newEntry = {
+        intent_id: `LOI-2026-${String(existing.length + 101).padStart(3, '0')}`,
+        applicant_name: form.applicantName.trim(),
+        contact: form.contact.trim() || '010-****-****',
+        main_crops: form.mainCrops.trim() || '가을배추',
+        desired_services: form.desiredServices,
+        monthly_wtp: form.monthlyWtp,
+        final_intents: form.finalIntents,
+        written_date: `${form.writtenYear}-${form.writtenMonth.padStart(2, '0')}-${form.writtenDay.padStart(2, '0')}`,
+        agreed_final: form.agreedFinal,
+        agreed_privacy: form.agreedPrivacySeparate,
+        created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      };
+      localStorage.setItem('hanfarm_purchase_intents_v1', JSON.stringify([newEntry, ...existing]));
+    } catch {
+      // ignore storage errors
+    }
+    setSubmitted(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-200/80 text-slate-900 py-8 px-3 sm:px-6">
+      <div className="max-w-[820px] mx-auto space-y-4">
+        {/* 상단 컨트롤 바 */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
+              <Sprout className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-extrabold text-sm text-slate-900 block leading-none">
+                한팜 (FarmPlan) 표준 공문 양식
+              </span>
+              <span className="text-[11px] text-slate-600 font-semibold">
+                A4 (210 × 297mm) 맞춤형 재배관리 플랫폼 구독·구매의향서
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-xs font-extrabold text-slate-800 cursor-pointer"
+            >
+              🖨️ A4 인쇄 / PDF 저장
+            </button>
+            <Link
+              to="/admin"
+              className="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-xs font-bold text-slate-700 inline-flex items-center gap-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              관리자 페이지
+            </Link>
+          </div>
+        </div>
+
+        {submitted ? (
+          <div className="bg-white border border-slate-300 shadow-[0_14px_40px_rgba(15,23,42,0.12)] p-10 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-slate-900">
+              한팜 맞춤형 재배관리 플랫폼 구독·구매의향서가 접수되었습니다
+            </h2>
+            <p className="text-sm text-slate-600 max-w-lg mx-auto leading-relaxed">
+              <strong>{form.applicantName}</strong> 님의 소중한 구독·구매 의향 확인이 정상적으로 저장되었습니다.
+            </p>
+            <pre className="text-left text-xs bg-slate-50 border border-slate-200 rounded-2xl p-4 max-w-xl mx-auto whitespace-pre-wrap font-mono text-slate-700">
+              {buildSummaryText()}
+            </pre>
+            <div className="pt-2 flex justify-center gap-3">
+              <button
+                type="button"
+                onClick={handleCopyConsentText}
+                className="px-5 py-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs cursor-pointer"
+              >
+                동의 내용 복사
+              </button>
+              <a
+                href="https://www.farmplan.co.kr"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = 'https://www.farmplan.co.kr';
+                }}
+                className="px-6 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs inline-flex items-center justify-center cursor-pointer"
+              >
+                완료
+              </a>
+            </div>
+            {copiedMessage && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-extrabold text-center max-w-md mx-auto">
+                {copiedMessage}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* 실제 A4 1페이지 공문 컨테이너 */
+          <form
+            onSubmit={handleSubmit}
+            className="w-full min-h-[1120px] bg-white text-slate-900 border border-slate-300 shadow-[0_14px_40px_rgba(15,23,42,0.12)] px-7 sm:px-16 py-10 sm:py-14 flex flex-col justify-between"
+          >
+            <div className="space-y-7">
+              {/* 공문 상단 문서번호 및 분류 헤더 */}
+              <div className="flex items-center justify-between text-[11px] text-slate-500 border-b border-slate-300 pb-2.5 font-mono">
+                <span>문서번호: 제 HANFARM-2026-LOI 호</span>
+                <span>양식구분: 한팜 맞춤형 재배관리 플랫폼 표준 구독·구매의향서</span>
+              </div>
+
+              {/* 공문 타이틀 */}
+              <div className="text-center py-3 border-b-2 border-slate-900">
+                <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-slate-950">
+                  한팜 맞춤형 재배관리 플랫폼 구독의향서
+                </h1>
+              </div>
+
+              {/* 공문 전문 (도입부) */}
+              <div className="space-y-2.5 text-sm sm:text-[15px] leading-relaxed text-slate-800 font-medium pt-1">
+                <p>
+                  한팜은 작물·품종·지역·기상정보에 기반한 맞춤형 재배일정과 AI 병해충 진단 서비스를 개발하고 있습니다.
+                </p>
+                <p className="text-slate-950 font-semibold">
+                  본인은 해당 서비스가 실제 재배관리에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추고, 합리적인 구독료로 제공될 경우 이용할 의향이 있음을 확인합니다.
+                </p>
+              </div>
+
+              {/* 1. 구독의향자 정보 */}
+              <div className="space-y-3 pt-1">
+                <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
+                  1. 구독의향자 정보
+                </h2>
+                <div className="pl-2 sm:pl-4 space-y-2.5 text-sm sm:text-[15px] text-slate-900">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-bold w-40 shrink-0">- 성명(또는 농장명):</span>
+                    <input
+                      type="text"
+                      value={form.applicantName}
+                      onChange={(e) => setForm({ ...form, applicantName: e.target.value })}
+                      placeholder="성명 또는 농장명 입력"
+                      className="w-64 sm:w-80 border-b border-slate-800 px-2 py-0.5 text-sm sm:text-[15px] font-bold text-slate-950 bg-transparent focus:outline-none focus:border-emerald-700"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-bold w-40 shrink-0">- 연락처:</span>
+                    <input
+                      type="text"
+                      value={form.contact}
+                      onChange={(e) => setForm({ ...form, contact: e.target.value })}
+                      placeholder="010-0000-0000"
+                      className="w-64 sm:w-80 border-b border-slate-800 px-2 py-0.5 text-sm sm:text-[15px] font-bold text-slate-950 bg-transparent focus:outline-none focus:border-emerald-700"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="font-bold w-40 shrink-0">- 주요 재배작물:</span>
+                    <input
+                      type="text"
+                      value={form.mainCrops}
+                      onChange={(e) => setForm({ ...form, mainCrops: e.target.value })}
+                      placeholder="예: 가을배추, 고추, 마늘 등"
+                      className="w-64 sm:w-80 border-b border-slate-800 px-2 py-0.5 text-sm sm:text-[15px] font-bold text-slate-950 bg-transparent focus:outline-none focus:border-emerald-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 구독 희망 서비스 */}
+              <div className="space-y-2.5 pt-1">
+                <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
+                  2. 구독 희망 서비스
+                </h2>
+                <div className="pl-2 sm:pl-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-10 text-sm sm:text-[15px]">
+                  {['맞춤형 재배일정', '맞춤형 재배일정 + AI 병해충 진단'].map((svc) => {
+                    const checked = form.desiredServices.includes(svc);
+                    return (
+                      <button
+                        key={svc}
+                        type="button"
+                        onClick={() => toggleDesiredService(svc)}
+                        className="inline-flex items-center gap-2.5 text-left font-bold text-slate-900 hover:text-emerald-700 cursor-pointer py-0.5"
+                      >
+                        <span
+                          className={`w-5 h-5 border border-slate-800 inline-flex items-center justify-center text-xs font-extrabold ${
+                            checked ? 'bg-slate-900 text-white' : 'bg-white text-transparent'
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <span>{svc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3. 월 구독료 지불의향 */}
+              <div className="space-y-2.5 pt-1">
+                <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
+                  3. 월 구독료 지불의향
+                </h2>
+                <div className="pl-2 sm:pl-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm sm:text-[15px]">
+                  {['월 5,000원', '월 10,000원', '월 20,000원', '월 30,000원 초과'].map((price) => {
+                    const checked = form.monthlyWtp === price;
+                    return (
+                      <button
+                        key={price}
+                        type="button"
+                        onClick={() => setForm({ ...form, monthlyWtp: price })}
+                        className="inline-flex items-center gap-2.5 text-left font-bold text-slate-900 hover:text-emerald-700 cursor-pointer py-0.5"
+                      >
+                        <span
+                          className={`w-5 h-5 border border-slate-800 inline-flex items-center justify-center text-xs font-extrabold ${
+                            checked ? 'bg-slate-900 text-white' : 'bg-white text-transparent'
+                          }`}
+                        >
+                          ✓
+                        </span>
+                        <span>{price}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. 구독의향 확인 */}
+              <div className="space-y-3 pt-1">
+                <h2 className="text-base sm:text-[17px] font-extrabold text-slate-950">
+                  4. 구독의향 확인
+                </h2>
+                <div className="pl-2 sm:pl-4 space-y-2 text-sm sm:text-[15px] text-slate-800 leading-relaxed">
+                  <p className="font-semibold text-slate-950">
+                    본인은 한팜 플랫폼이 정식 출시되고, 서비스의 정확도·기능·가격 등이 적합할 경우 유료 구독할 의향이 있습니다.
+                  </p>
+                  <p>
+                    본 의향서는 법적 구속력이 없으며 실제 구독이나 결제 의무가 발생하지 않습니다.
+                  </p>
+
+                  {/* 작성일: 2026년 _____월 _____일 */}
+                  <div className="pt-3 flex items-center justify-end gap-1.5 text-sm sm:text-base font-extrabold text-slate-950">
+                    <span>작성일:</span>
+                    <input
+                      type="text"
+                      value={form.writtenYear}
+                      onChange={(e) => setForm({ ...form, writtenYear: e.target.value })}
+                      className="w-14 text-center border-b border-slate-800 bg-transparent font-extrabold focus:outline-none"
+                    />
+                    <span>년</span>
+                    <input
+                      type="text"
+                      value={form.writtenMonth}
+                      onChange={(e) => setForm({ ...form, writtenMonth: e.target.value })}
+                      className="w-10 text-center border-b border-slate-800 bg-transparent font-extrabold focus:outline-none"
+                    />
+                    <span>월</span>
+                    <input
+                      type="text"
+                      value={form.writtenDay}
+                      onChange={(e) => setForm({ ...form, writtenDay: e.target.value })}
+                      className="w-10 text-center border-b border-slate-800 bg-transparent font-extrabold focus:outline-none"
+                    />
+                    <span>일</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* A4 공문 하단 내장: 첨부 이미지 형태의 [한팜 구매·구독 의향 확인] 최종 서명·확인 박스 */}
+              <div className="rounded-3xl border border-slate-300 bg-slate-50/60 p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-950 tracking-tight">
+                    한팜 구매·구독 의향 확인
+                  </h3>
+                  <span className="px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold">
+                    최종 확인 폼
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                  <div className="sm:col-span-5 space-y-1.5">
+                    <label className="block text-xs font-bold text-slate-700">
+                      성명 또는 농장명
+                    </label>
+                    <input
+                      type="text"
+                      value={form.applicantName}
+                      onChange={(e) => setForm({ ...form, applicantName: e.target.value })}
+                      placeholder="성명을 입력해 주세요"
+                      className="w-full px-4 py-2.5 rounded-full bg-white border border-slate-300 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-600"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-7 space-y-1.5">
+                    <div className="text-xs font-bold text-slate-700">
+                      의향 확인 (복수 선택 가능)
+                    </div>
+                    <div className="flex flex-wrap items-center gap-5 pt-1">
+                      {['농자재 구매의향', '플랫폼 유료 구독의향'].map((intentItem) => {
+                        const checked = form.finalIntents.includes(intentItem);
+                        return (
+                          <button
+                            key={intentItem}
+                            type="button"
+                            onClick={() => toggleFinalIntent(intentItem)}
+                            className="inline-flex items-center gap-2.5 text-left cursor-pointer"
+                          >
+                            <span
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                                checked
+                                  ? 'border-emerald-600 bg-emerald-600 text-white'
+                                  : 'border-slate-400 bg-white'
+                              }`}
+                            >
+                              {checked && <Check className="w-3 h-3 stroke-[3]" />}
+                            </span>
+                            <span className="text-sm font-extrabold text-slate-900">
+                              {intentItem}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-slate-200" />
+
+                <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
+                  본인은 한팜 서비스가 정식 출시되고 상품·서비스의 품질, 가격 및 이용조건이 적합할 경우 위 선택한 서비스를 이용할 의향이 있습니다. 본 의향 확인은 법적 구속력이 없으며 실제 구매·구독 의무가 발생하지 않습니다.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, agreedFinal: !form.agreedFinal })}
+                  className="w-full flex items-center gap-3 py-0.5 text-left cursor-pointer"
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition ${
+                      form.agreedFinal
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-slate-400 bg-white'
+                    }`}
+                  >
+                    {form.agreedFinal && <Check className="w-3 h-3 stroke-[3]" />}
+                  </span>
+                  <span className="text-sm sm:text-[15px] font-extrabold text-slate-950">
+                    위 내용을 확인하고 본인의 의사로 동의합니다.
+                  </span>
+                </button>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyConsentText}
+                    className="w-full py-2.5 px-5 rounded-full bg-slate-200/80 hover:bg-slate-200 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
+                  >
+                    동의 내용 확인 및 복사
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>구독·구매의향서 최종 제출</span>
+                  </button>
+                </div>
+
+                {copiedMessage && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-extrabold text-center">
+                    {copiedMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 공문 최하단 구분선 및 부기 사항 */}
+            <div className="pt-6 mt-6 border-t border-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-600">
+              <span className="font-semibold">
+                ※ 개인정보 수집·이용 및 서비스 출시 안내에 대한 동의는 별도로 받습니다.
+              </span>
+              <span className="font-extrabold text-slate-800 tracking-wide">
+                한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중
+              </span>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
