@@ -9329,6 +9329,12 @@ const server = http.createServer(async (req, res) => {
     const distPath = path.resolve(process.cwd(), 'dist');
     const publicPath = path.resolve(process.cwd(), 'public');
     let filePath = path.join(distPath, pathname === '/' ? 'index.html' : pathname);
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+      const dirIndex = path.join(filePath, 'index.html');
+      if (fs.existsSync(dirIndex) && fs.statSync(dirIndex).isFile()) {
+        filePath = dirIndex;
+      }
+    }
     if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
       const publicCandidate = path.join(publicPath, pathname);
       if (fs.existsSync(publicCandidate) && fs.statSync(publicCandidate).isFile()) {
@@ -9354,8 +9360,21 @@ const server = http.createServer(async (req, res) => {
 
     const indexHtml = path.join(distPath, 'index.html');
     if (fs.existsSync(indexHtml)) {
+      let html = fs.readFileSync(indexHtml, 'utf-8');
+      const lowerPath = pathname.toLowerCase();
+      if (lowerPath.includes('/survey')) {
+        html = html
+          .replace(/<title>[\s\S]*?<\/title>/i, '<title>재배컨설팅 서비스 설문조사</title>')
+          .replace(/property="og:title"\s+content="[^"]*"/i, 'property="og:title" content="재배컨설팅 서비스 설문조사"')
+          .replace(/property="og:description"\s+content="[^"]*"/i, 'property="og:description" content="재배컨설팅 서비스 설문조사"');
+      } else if (lowerPath.includes('/purchase-intent')) {
+        html = html
+          .replace(/<title>[\s\S]*?<\/title>/i, '<title>구매 및 구독 의향서</title>')
+          .replace(/property="og:title"\s+content="[^"]*"/i, 'property="og:title" content="구매 및 구독 의향서"')
+          .replace(/property="og:description"\s+content="[^"]*"/i, 'property="og:description" content="구매 및 구독 의향서"');
+      }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      fs.createReadStream(indexHtml).pipe(res);
+      res.end(html);
       return;
     }
 

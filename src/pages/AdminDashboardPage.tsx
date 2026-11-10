@@ -3218,6 +3218,59 @@ export default function AdminDashboardPage() {
     return merged;
   };
 
+  const buildCompactPurchaseIntentSharePath = (tpl: any) => {
+    const base = `${getBasePath()}/purchase-intent/`;
+    if (!tpl || typeof tpl !== 'object') return base;
+    const diff: Record<string, any> = {};
+    for (const [k, defVal] of Object.entries(DEFAULT_PURCHASE_INTENT_TEMPLATE)) {
+      const curVal = tpl[k];
+      if (curVal !== undefined && JSON.stringify(curVal) !== JSON.stringify(defVal)) {
+        diff[k] = curVal;
+      }
+    }
+    if (Object.keys(diff).length === 0) return base;
+    return `${base}?cfg=${encodeSharePayload(diff)}`;
+  };
+
+  const buildCompactSurveySharePath = (surveyObj: any) => {
+    const base = `${getBasePath()}/survey/`;
+    if (!surveyObj || typeof surveyObj !== 'object') return base;
+    const sId = surveyObj.survey_id || 'SURV-HANFARM-2026';
+    const diff: Record<string, any> = {};
+    if (surveyObj.title && surveyObj.title !== '한팜 맞춤형 재배관리 서비스 수요조사') {
+      diff.title = surveyObj.title;
+    }
+    if (Number(surveyObj.is_active ?? 1) === 0) {
+      diff.is_active = 0;
+    }
+    const qs = Array.isArray(surveyObj.questions) ? surveyObj.questions : [];
+    if (qs.length > 0 && JSON.stringify(qs) !== JSON.stringify(DEFAULT_SURVEY_QUESTIONS_DEF)) {
+      if (qs.length !== DEFAULT_SURVEY_QUESTIONS_DEF.length) {
+        diff.questions = qs;
+      } else {
+        const qDiff: Record<number, any> = {};
+        qs.forEach((q: any, idx: number) => {
+          const defQ = DEFAULT_SURVEY_QUESTIONS_DEF[idx];
+          if (JSON.stringify(q) !== JSON.stringify(defQ)) {
+            qDiff[idx] = q;
+          }
+        });
+        if (Object.keys(qDiff).length > 0) {
+          diff.qDiff = qDiff;
+        }
+      }
+    }
+    const params = new URLSearchParams();
+    if (sId !== 'SURV-HANFARM-2026') {
+      params.set('survey_id', sId);
+    }
+    if (Object.keys(diff).length > 0) {
+      params.set('cfg', encodeSharePayload(diff));
+    }
+    const qsStr = params.toString();
+    return qsStr ? `${base}?${qsStr}` : base;
+  };
+
   const [purchaseIntentTemplate, setPurchaseIntentTemplate] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(() => {
     try {
       const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
@@ -24439,8 +24492,7 @@ export default function AdminDashboardPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {(surveyData.forms || []).map((fItem: any, idx: number) => {
-                            const cfgToken = encodeSharePayload(fItem);
-                            const sharePath = `${getBasePath()}/survey?survey_id=${encodeURIComponent(fItem.survey_id)}${cfgToken ? `&cfg=${cfgToken}` : ''}`;
+                            const sharePath = buildCompactSurveySharePath(fItem);
                             const rCount = fItem.response_count ?? surveyData.totalResponses ?? 0;
                             const isActive = Number(fItem.is_active) === 1;
                             return (
@@ -24612,29 +24664,25 @@ export default function AdminDashboardPage() {
                           배포용 설문 URL
                         </span>
                         <span className="font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate">
-                          {`${window.location.origin}${getBasePath()}/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
+                          {`${window.location.origin}${getBasePath()}/survey/`}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
-                            const sId = surveyData.activeSurvey?.survey_id || selectedSurveyUnitId || 'SURV-HANFARM-2026';
-                            const cfgToken = surveyData.activeSurvey ? encodeSharePayload(surveyData.activeSurvey) : '';
-                            const shareUrl = `${window.location.origin}${getBasePath()}/survey?survey_id=${encodeURIComponent(sId)}${
-                              cfgToken ? `&cfg=${cfgToken}` : ''
-                            }`;
+                            const shareUrl = `${window.location.origin}${buildCompactSurveySharePath(
+                              surveyData.activeSurvey
+                            )}`;
                             navigator.clipboard?.writeText(shareUrl);
-                            showToast('설문 배포 URL 복사 완료 (모바일·PC 최신 수정본 동기화 포함)');
+                            showToast('설문 배포 URL 복사 완료 (카카오톡 미리보기: 재배컨설팅 서비스 설문조사)');
                           }}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
                         >
                           설문 URL 복사
                         </button>
                         <a
-                          href={`${getBasePath()}/survey?survey_id=${encodeURIComponent(
-                            surveyData.activeSurvey?.survey_id || selectedSurveyUnitId || 'SURV-HANFARM-2026'
-                          )}${surveyData.activeSurvey ? `&cfg=${encodeSharePayload(surveyData.activeSurvey)}` : ''}`}
+                          href={buildCompactSurveySharePath(surveyData.activeSurvey)}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs inline-flex items-center gap-1.5 transition"
@@ -26462,26 +26510,25 @@ export default function AdminDashboardPage() {
                       배포용 구매·구독의향서 URL
                     </span>
                     <span className="font-mono text-xs sm:text-sm font-extrabold text-emerald-950 truncate">
-                      {`${window.location.origin}${getBasePath()}/purchase-intent`}
+                      {`${window.location.origin}${getBasePath()}/purchase-intent/`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
-                        const cfgToken = encodeSharePayload(purchaseIntentTemplate);
-                        const shareUrl = `${window.location.origin}${getBasePath()}/purchase-intent${
-                          cfgToken ? `?cfg=${cfgToken}` : ''
-                        }`;
+                        const shareUrl = `${window.location.origin}${buildCompactPurchaseIntentSharePath(
+                          purchaseIntentTemplate
+                        )}`;
                         navigator.clipboard?.writeText(shareUrl);
-                        showToast('구매·구독의향서 배포 URL 복사 완료 (최신 양식 동기화 포함)');
+                        showToast('구매·구독의향서 배포 URL 복사 완료 (카카오톡 미리보기: 구매 및 구독 의향서)');
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer"
                     >
                       의향서 URL 복사
                     </button>
                     <a
-                      href={`${getBasePath()}/purchase-intent?cfg=${encodeSharePayload(purchaseIntentTemplate)}`}
+                      href={buildCompactPurchaseIntentSharePath(purchaseIntentTemplate)}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 transition"

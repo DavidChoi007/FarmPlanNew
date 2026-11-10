@@ -212,15 +212,31 @@ export default function SurveyPublicPage() {
   };
 
   useEffect(() => {
+    document.title = '재배컨설팅 서비스 설문조사';
+    const setMetaContent = (selector: string, val: string) => {
+      const el = document.querySelector(selector);
+      if (el) el.setAttribute('content', val);
+    };
+    setMetaContent('meta[property="og:title"]', '재배컨설팅 서비스 설문조사');
+    setMetaContent('meta[property="og:description"]', '재배컨설팅 서비스 설문조사');
+    setMetaContent('meta[name="description"]', '재배컨설팅 서비스 설문조사');
+    setMetaContent('meta[name="twitter:title"]', '재배컨설팅 서비스 설문조사');
+    setMetaContent('meta[name="twitter:description"]', '재배컨설팅 서비스 설문조사');
+
     const params = new URLSearchParams(window.location.search);
     const sharedCfg = decodeSharePayload(params.get('cfg'));
     if (sharedCfg && typeof sharedCfg === 'object') {
+      let resolvedQuestions = FALLBACK_QUESTIONS;
+      if (Array.isArray(sharedCfg.questions) && sharedCfg.questions.length > 0) {
+        resolvedQuestions = sharedCfg.questions;
+      } else if (sharedCfg.qDiff && typeof sharedCfg.qDiff === 'object') {
+        resolvedQuestions = FALLBACK_QUESTIONS.map((q, idx) =>
+          sharedCfg.qDiff[idx] ? { ...q, ...sharedCfg.qDiff[idx] } : q
+        );
+      }
       const nextSurvey = {
         ...sharedCfg,
-        questions:
-          Array.isArray(sharedCfg.questions) && sharedCfg.questions.length > 0
-            ? sharedCfg.questions
-            : FALLBACK_QUESTIONS,
+        questions: resolvedQuestions,
       };
       setSurveyMeta((prev: any) => ({ ...prev, ...nextSurvey }));
       try {

@@ -79,6 +79,17 @@ export default function PurchaseIntentPublicPage() {
   });
 
   useEffect(() => {
+    document.title = '구매 및 구독 의향서';
+    const setMetaContent = (selector: string, val: string) => {
+      const el = document.querySelector(selector);
+      if (el) el.setAttribute('content', val);
+    };
+    setMetaContent('meta[property="og:title"]', '구매 및 구독 의향서');
+    setMetaContent('meta[property="og:description"]', '구매 및 구독 의향서');
+    setMetaContent('meta[name="description"]', '구매 및 구독 의향서');
+    setMetaContent('meta[name="twitter:title"]', '구매 및 구독 의향서');
+    setMetaContent('meta[name="twitter:description"]', '구매 및 구독 의향서');
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('cfg')) return;
     fetch('/api/purchase-intents')
