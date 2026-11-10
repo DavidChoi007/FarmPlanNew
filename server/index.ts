@@ -6846,8 +6846,7 @@ const server = http.createServer(async (req, res) => {
       const overallMinCol = dateToExactCol(dPrep1Start, false);
       const overallMaxCol = Math.max(overallMinCol + 4, dateToExactCol(dHarv2End, true));
 
-      // [관리자 커스텀 수정 테이블 초기화 및 병합]
-      // 관리자가 세부 정보 폼에서 수정한 생육과정 데이터·농자재 명세·연쇄 재조정된 후속 일정을 조회하여 반영
+      // [관리자 커스텀 수정 테이블 및 생육과정별 1종 최고점 제품·평수별 필요갯수·개조식 추천근거 DB 저장 테이블 초기화]
       db.exec(`
         CREATE TABLE IF NOT EXISTS schedule_provision_custom_item (
           request_no TEXT NOT NULL,
@@ -6868,7 +6867,32 @@ const server = http.createServer(async (req, res) => {
           materials_json TEXT,
           updated_at TEXT DEFAULT (datetime('now', 'localtime')),
           PRIMARY KEY (request_no, item_id)
-        )
+        );
+        CREATE TABLE IF NOT EXISTS schedule_stage_recommendation_log (
+          request_no TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          process_code TEXT,
+          stage_group_name TEXT,
+          sub_item_name TEXT,
+          area_pyeong REAL,
+          material_id TEXT,
+          product_name TEXT,
+          material_category TEXT,
+          sub_type TEXT,
+          manufacturer TEXT,
+          match_score INTEGER,
+          recommended_qty INTEGER,
+          unit_spec TEXT,
+          unit_price INTEGER,
+          total_cost INTEGER,
+          quantity_calc_formula TEXT,
+          recommended_for_area TEXT,
+          rationale_bullets_json TEXT,
+          selection_rationale TEXT,
+          materials_json TEXT,
+          updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+          PRIMARY KEY (request_no, item_id)
+        );
       `);
 
       const customRows = db
@@ -6878,6 +6902,42 @@ const server = http.createServer(async (req, res) => {
       for (const cr of customRows) {
         customByItemId.set(cr.item_id, cr);
       }
+
+      const upsertStageRecStmt = db.prepare(`
+        INSERT INTO schedule_stage_recommendation_log (
+          request_no, item_id, process_code, stage_group_name, sub_item_name,
+          area_pyeong, material_id, product_name, material_category, sub_type, manufacturer,
+          match_score, recommended_qty, unit_spec, unit_price, total_cost,
+          quantity_calc_formula, recommended_for_area, rationale_bullets_json, selection_rationale, materials_json, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+        ON CONFLICT(request_no, item_id) DO UPDATE SET
+          process_code = excluded.process_code,
+          stage_group_name = excluded.stage_group_name,
+          sub_item_name = excluded.sub_item_name,
+          area_pyeong = excluded.area_pyeong,
+          material_id = excluded.material_id,
+          product_name = excluded.product_name,
+          material_category = excluded.material_category,
+          sub_type = excluded.sub_type,
+          manufacturer = excluded.manufacturer,
+          match_score = excluded.match_score,
+          recommended_qty = excluded.recommended_qty,
+          unit_spec = excluded.unit_spec,
+          unit_price = excluded.unit_price,
+          total_cost = excluded.total_cost,
+          quantity_calc_formula = excluded.quantity_calc_formula,
+          recommended_for_area = excluded.recommended_for_area,
+          rationale_bullets_json = excluded.rationale_bullets_json,
+          selection_rationale = excluded.selection_rationale,
+          materials_json = excluded.materials_json,
+          updated_at = datetime('now', 'localtime')
+      `);
+
+      const syncCustomMatStmt = db.prepare(`
+        UPDATE schedule_provision_custom_item
+        SET materials_json = ?, updated_at = datetime('now', 'localtime')
+        WHERE request_no = ? AND item_id = ?
+      `);
 
       for (let i = 0; i < rawScheduleItems.length; i++) {
         const it = rawScheduleItems[i];
@@ -6903,13 +6963,62 @@ const server = http.createServer(async (req, res) => {
           if (custom.materials_json) {
             try {
               const parsedMats = JSON.parse(custom.materials_json);
-              if (Array.isArray(parsedMats)) {
-                it.materials = parsedMats;
+              if (Array.isArray(parsedMats) && parsedMats.length > 0) {
+                // 최고 추천점수 1종 선정 및 평수 기반 필요 갯수·개조식 추천근거가 반영된 최신 구조로 정규화 후 DB 동기화
+                const sortedCustom = [...parsedMats].sort(
+                  (a, b) => Number(b.match_score || 0) - Number(a.match_score || 0)
+                );
+                const topCustom = sortedCustom[0];
+                const dynamicTop = Array.isArray(it.materials) && it.materials[0] ? it.materials[0] : null;
+                if (
+                  dynamicTop &&
+                  (!Array.isArray(topCustom?.rationale_bullets) ||
+                    parsedMats.length > 1 ||
+                    Number(topCustom?.area_pyeong || 0) !== Number(areaPyeong))
+                ) {
+                  it.materials = [dynamicTop];
+                  syncCustomMatStmt.run(JSON.stringify(it.materials), activeRequest.request_no, it.item_id);
+                } else {
+                  it.materials = [topCustom];
+                }
               }
             } catch {}
           }
           (it as any).custom_ai_reason = custom.ai_analysis_reason || '';
           (it as any).is_admin_customized = true;
+        }
+
+        // 생육과정별 최고점 1종 추천 제품 + 재배지 평수 계산 필요 갯수 + 개조식 추천 근거를 DB에 영구 저장
+        const topMat = Array.isArray(it.materials) && it.materials[0] ? it.materials[0] : null;
+        if (topMat) {
+          const bulletsArr = Array.isArray(topMat.rationale_bullets)
+            ? topMat.rationale_bullets
+            : String(topMat.selection_rationale || '')
+                .split('\n')
+                .filter(Boolean);
+          upsertStageRecStmt.run(
+            String(activeRequest.request_no),
+            String(it.item_id),
+            String(it.process_code || ''),
+            String(it.stage_group_name || ''),
+            String(it.sub_item_name || ''),
+            Number(areaPyeong || 300),
+            String(topMat.material_id || ''),
+            String(topMat.product_name || ''),
+            String(topMat.material_category || ''),
+            String(topMat.sub_type || ''),
+            String(topMat.manufacturer || ''),
+            Number(topMat.match_score || 95),
+            Number(topMat.recommended_qty || 1),
+            String(topMat.unit_spec || '1개'),
+            Number(topMat.unit_price || 15000),
+            Number(topMat.total_cost || Number(topMat.recommended_qty || 1) * Number(topMat.unit_price || 15000)),
+            String(topMat.quantity_calc_formula || ''),
+            String(topMat.recommended_for_area || ''),
+            JSON.stringify(bulletsArr),
+            String(topMat.selection_rationale || bulletsArr.join('\n')),
+            JSON.stringify([topMat])
+          );
         }
       }
 

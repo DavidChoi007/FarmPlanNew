@@ -505,6 +505,33 @@ export function initDatabase() {
       source_context TEXT DEFAULT 'ADMIN_SIMULATOR', -- ADMIN_SIMULATOR | SCHEDULE_ENGINE
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- 20-3. 작물 재배일정 생육과정별 최고점 1종 추천 제품 · 평수 기반 필요 갯수 · 개조식 추천 근거 영구 저장 테이블
+    CREATE TABLE IF NOT EXISTS schedule_stage_recommendation_log (
+      request_no TEXT NOT NULL,
+      item_id TEXT NOT NULL,
+      process_code TEXT,
+      stage_group_name TEXT,
+      sub_item_name TEXT,
+      area_pyeong REAL DEFAULT 300,
+      material_id TEXT,
+      product_name TEXT,
+      material_category TEXT,
+      sub_type TEXT,
+      manufacturer TEXT,
+      match_score INTEGER DEFAULT 95,
+      recommended_qty INTEGER DEFAULT 1,
+      unit_spec TEXT,
+      unit_price INTEGER DEFAULT 15000,
+      total_cost INTEGER DEFAULT 15000,
+      quantity_calc_formula TEXT,
+      recommended_for_area TEXT,
+      rationale_bullets_json TEXT,
+      selection_rationale TEXT,
+      materials_json TEXT,
+      updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+      PRIMARY KEY (request_no, item_id)
+    );
   `);
 
   seedInitialData();

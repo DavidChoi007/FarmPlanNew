@@ -1476,14 +1476,81 @@ export default function UserIntroPage() {
     setTimeout(() => setUserAgroOrderToast(''), 4500);
   };
 
-  const parseRecommendedQuantity = (recommendedText?: string, areaPyeong = 300): number => {
-    if (recommendedText) {
-      const match = String(recommendedText).match(/(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/);
-      if (match && Number(match[1]) > 0 && Number(match[1]) <= 30) {
-        return Number(match[1]);
+  const parseRecommendedQuantity = (matOrText?: any, areaPyeong = 300): number => {
+    const safeArea = Math.max(10, Number(areaPyeong || 300));
+    if (matOrText && typeof matOrText === 'object') {
+      if (
+        Number(matOrText.recommended_qty) > 0 &&
+        (!matOrText.area_pyeong || Number(matOrText.area_pyeong) === safeArea)
+      ) {
+        return Number(matOrText.recommended_qty);
+      }
+      if (Number(matOrText.base_units_per_100pyeong) > 0) {
+        return Math.max(
+          1,
+          Math.ceil((safeArea / 100) * Number(matOrText.base_units_per_100pyeong))
+        );
+      }
+      const cat = String(matOrText.material_category || '').toUpperCase();
+      const fallbackRate = cat === 'FERTILIZER' ? 1.5 : 0.5;
+      if (matOrText.recommended_for_area) {
+        const text = String(matOrText.recommended_for_area);
+        const totalMatch =
+          text.match(/총\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/) ||
+          text.match(/권장(?:\s*구매)?\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/);
+        if (totalMatch && Number(totalMatch[1]) > 0) {
+          return Number(totalMatch[1]);
+        }
+      }
+      return Math.max(1, Math.ceil((safeArea / 100) * fallbackRate));
+    }
+    if (matOrText) {
+      const text = String(matOrText);
+      const totalMatch =
+        text.match(/총\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/) ||
+        text.match(/권장(?:\s*구매)?\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/) ||
+        text.match(/(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/);
+      if (totalMatch && Number(totalMatch[1]) > 0 && Number(totalMatch[1]) <= 200) {
+        return Number(totalMatch[1]);
       }
     }
-    return Math.max(1, Math.round(areaPyeong / 150));
+    return Math.max(1, Math.ceil((safeArea / 100) * 1.0));
+  };
+
+  const buildStageRationaleBullets = (mat: any, stageTitle: string, areaPyeong = 300): string[] => {
+    if (Array.isArray(mat?.rationale_bullets) && mat.rationale_bullets.length > 0) {
+      return mat.rationale_bullets;
+    }
+    const safeArea = Math.max(10, Number(areaPyeong || 300));
+    const qty = parseRecommendedQuantity(mat, safeArea);
+    const unitSpec = String(mat?.unit_spec || '1개');
+    const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+    const unitLabel = unitMatch ? unitMatch[1] : '개';
+    const baseRate =
+      Number(mat?.base_units_per_100pyeong) ||
+      (String(mat?.material_category || '').toUpperCase() === 'FERTILIZER' ? 1.5 : 0.5);
+    const areaRatio = Number((safeArea / 100).toFixed(2));
+    const rawUnits = Number(((safeArea / 100) * baseRate).toFixed(2));
+    const score = Number(mat?.match_score || 96);
+
+    const bullets: string[] = [
+      `• [최고 추천점수 1종 선정 (${score}점)] '${stageTitle}' 생육과정 후보 제품 중 추천 적합도 최고점(${score}점 / 1위)으로 선정된 핵심 1종 제품입니다.`,
+    ];
+    if (mat?.rationale_stage) {
+      bullets.push(`• [생육과정 필수 요구성분·기능 부합] ${mat.rationale_stage}`);
+    } else if (mat?.selection_rationale) {
+      bullets.push(`• [생육과정 필수 요구성분·기능 부합] ${String(mat.selection_rationale).split('\n')[0].replace(/^•\s*/, '')}`);
+    }
+    if (mat?.rationale_soil) {
+      bullets.push(`• [토양검정 화학성 맞춤 보정] ${mat.rationale_soil}`);
+    }
+    if (mat?.rationale_climate) {
+      bullets.push(`• [지역 기후·PLS 안전기준 적합성] ${mat.rationale_climate}`);
+    }
+    bullets.push(
+      `• [재배지 평수(${safeArea.toLocaleString()}평) 기반 필요 갯수 산출] 100평당 기준량(${baseRate}${unitLabel}) × 면적비율(${safeArea.toLocaleString()}평 ÷ 100평 = ${areaRatio}배) = ${rawUnits}${unitLabel} 산출 → 포장단위 올림 총 ${qty}${unitLabel}(${unitSpec}) 추천`
+    );
+    return bullets;
   };
 
   const loadScheduleProvision = async (
@@ -1508,12 +1575,15 @@ export default function UserIntroPage() {
             group.stage_group_name ||
             `STG-${gIdx + 1}`;
           (group.items || []).forEach((it: any) => {
-            (it.materials || []).forEach((mat: any) => {
-              const matKey = `${stageId}__${mat.material_id || mat.product_name}`;
+            const topMats = [...(it.materials || [])]
+              .sort((a: any, b: any) => Number(b?.match_score || 0) - Number(a?.match_score || 0))
+              .slice(0, 1);
+            topMats.forEach((mat: any) => {
+              const matKey = `${stageId}__${it.item_id || ''}__${mat.material_id || mat.product_name}`;
               if (!initSelection[matKey]) {
                 initSelection[matKey] = {
                   checked: true,
-                  qty: parseRecommendedQuantity(mat.recommended_for_area, areaPyeong),
+                  qty: parseRecommendedQuantity(mat, areaPyeong),
                 };
               }
             });
@@ -2856,61 +2926,84 @@ export default function UserIntroPage() {
                                     const cleanSubName = String(it.sub_item_name || '')
                                       .replace(/\s*\([^)]*\)/g, '')
                                       .trim();
-                                    (it.materials || []).forEach((mat: any) => {
+                                    // 각 생육과정(SCH-01~SCH-16)별 최고 추천점수 1종(Top 1) 제품만 선정
+                                    const topMats = [...(it.materials || [])]
+                                      .sort(
+                                        (a: any, b: any) =>
+                                          Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                                      )
+                                      .slice(0, 1);
+                                    topMats.forEach((mat: any) => {
                                       const matCode = mat.material_id || mat.product_name;
-                                      const selKey = `${stageId}__${matCode}`;
-                                      if (!mergedMaterialsMap.has(selKey)) {
-                                        mergedMaterialsMap.set(selKey, {
-                                          selKey,
-                                          stageId,
-                                          stageName,
-                                          stageStartDate,
-                                          material_id: mat.material_id || matCode,
-                                          material_category: mat.material_category || '',
-                                          product_name: mat.product_name || '맞춤 처방 농자재',
-                                          sub_type: mat.sub_type || '맞춤 농자재',
-                                          manufacturer: mat.manufacturer || '한팜인증',
-                                          unit_spec: mat.unit_spec || '1포/기본단위',
-                                          unit_price: Number(mat.unit_price || 18000),
-                                          match_score: mat.match_score || null,
-                                          category_spec_badge: mat.category_spec_badge || '',
-                                          selection_rationale: mat.selection_rationale || '',
-                                          rationale_stage: mat.rationale_stage || '',
-                                          rationale_soil: mat.rationale_soil || '',
-                                          recommended_for_area:
-                                            mat.recommended_for_area ||
-                                            `${areaPyeong.toLocaleString()}평 기준 1단위 권장`,
-                                          nutrient_ratio_summary: mat.nutrient_ratio_summary || '',
-                                          thumbnail_url:
-                                            mat.thumbnail_url || '/api/agro-materials/image/FERT-PRD-01/thumb',
-                                          defaultQty: parseRecommendedQuantity(
-                                            mat.recommended_for_area,
-                                            areaPyeong
-                                          ),
-                                          subProcesses: [
-                                            {
-                                              item_id: it.item_id,
-                                              name: cleanSubName,
-                                              start_date: it.start_date,
-                                              end_date: it.end_date,
-                                            },
-                                          ],
-                                        });
-                                      } else {
-                                        const existing = mergedMaterialsMap.get(selKey);
-                                        if (
-                                          !existing.subProcesses.some(
-                                            (sp: any) => sp.name === cleanSubName
-                                          )
-                                        ) {
-                                          existing.subProcesses.push({
+                                      const selKey = `${stageId}__${it.item_id || ''}__${matCode}`;
+                                      const calcQty = parseRecommendedQuantity(mat, areaPyeong);
+                                      const unitSpecStr = String(mat.unit_spec || '1포/기본단위');
+                                      const unitMatch = unitSpecStr.match(
+                                        /(포|병|봉|통|팩|판|박스|개|롤)/
+                                      );
+                                      const unitLabel = unitMatch ? unitMatch[1] : '개';
+                                      const baseRate =
+                                        Number(mat.base_units_per_100pyeong) ||
+                                        (String(mat.material_category || '').toUpperCase() ===
+                                        'FERTILIZER'
+                                          ? 1.5
+                                          : 0.5);
+                                      const areaRatio = Number((areaPyeong / 100).toFixed(2));
+                                      const rawUnits = Number(
+                                        ((areaPyeong / 100) * baseRate).toFixed(2)
+                                      );
+                                      const bullets = buildStageRationaleBullets(
+                                        mat,
+                                        cleanSubName || stageName,
+                                        areaPyeong
+                                      );
+
+                                      mergedMaterialsMap.set(selKey, {
+                                        selKey,
+                                        stageId,
+                                        stageName,
+                                        stageStartDate,
+                                        item_id: it.item_id,
+                                        process_code: it.process_code,
+                                        sub_item_name: cleanSubName,
+                                        material_id: mat.material_id || matCode,
+                                        material_category: mat.material_category || '',
+                                        product_name: mat.product_name || '맞춤 처방 농자재',
+                                        sub_type: mat.sub_type || '맞춤 농자재',
+                                        manufacturer: mat.manufacturer || '한팜인증',
+                                        unit_spec: unitSpecStr,
+                                        unit_label: unitLabel,
+                                        unit_price: Number(mat.unit_price || 18000),
+                                        match_score: Number(mat.match_score || 96),
+                                        category_spec_badge: mat.category_spec_badge || '',
+                                        selection_rationale:
+                                          mat.selection_rationale || bullets.join('\n'),
+                                        rationale_bullets: bullets,
+                                        rationale_stage: mat.rationale_stage || '',
+                                        rationale_soil: mat.rationale_soil || '',
+                                        rationale_climate: mat.rationale_climate || '',
+                                        rationale_dosage: mat.rationale_dosage || '',
+                                        quantity_calc_formula:
+                                          mat.quantity_calc_formula ||
+                                          `재배지 ${areaPyeong.toLocaleString()}평 ÷ 100평(${areaRatio}배) × 100평당 기준 ${baseRate}${unitLabel} = ${rawUnits}${unitLabel} 산출 → 포장단위 올림 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요`,
+                                        recommended_for_area:
+                                          mat.recommended_for_area ||
+                                          `재배지 ${areaPyeong.toLocaleString()}평 계산: 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseRate}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${calcQty}개)`,
+                                        nutrient_ratio_summary: mat.nutrient_ratio_summary || '',
+                                        thumbnail_url:
+                                          mat.thumbnail_url ||
+                                          '/api/agro-materials/image/FERT-PRD-01/thumb',
+                                        defaultQty: calcQty,
+                                        subProcesses: [
+                                          {
                                             item_id: it.item_id,
+                                            process_code: it.process_code,
                                             name: cleanSubName,
                                             start_date: it.start_date,
                                             end_date: it.end_date,
-                                          });
-                                        }
-                                      }
+                                          },
+                                        ],
+                                      });
                                     });
                                   });
 
@@ -3397,11 +3490,12 @@ export default function UserIntroPage() {
                                                         </span>
                                                         {mat.match_score && (
                                                           <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
-                                                            추천 적합도 {mat.match_score}점
+                                                            최고 추천점수 1종 ({mat.match_score}점 · 1위)
                                                           </span>
                                                         )}
-                                                        <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[10px] font-semibold">
-                                                          {mat.unit_spec}
+                                                        <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-extrabold">
+                                                          필요 수량: {mat.defaultQty}
+                                                          {mat.unit_label || '개'} ({mat.unit_spec})
                                                         </span>
                                                       </div>
 
@@ -3420,7 +3514,10 @@ export default function UserIntroPage() {
                                                             key={`${mat.selKey}-proc-${pIdx}`}
                                                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold"
                                                           >
-                                                            <span>적용: {sp.name}</span>
+                                                            <span>
+                                                              생육과정: {sp.name}
+                                                              {sp.process_code ? ` (${sp.process_code})` : ''}
+                                                            </span>
                                                             {sp.start_date && (
                                                               <span className="text-slate-500">
                                                                 ({sp.start_date.slice(5).replace('-', '/')})
@@ -3436,25 +3533,43 @@ export default function UserIntroPage() {
                                                         </div>
                                                       )}
 
-                                                      <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-200 rounded-lg px-2.5 py-1 mt-1">
-                                                        {mat.recommended_for_area}
+                                                      <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-200 rounded-lg px-2.5 py-1.5 mt-1 space-y-0.5">
+                                                        <div>
+                                                          📐 {mat.recommended_for_area}
+                                                        </div>
+                                                        {mat.quantity_calc_formula && (
+                                                          <div className="text-[10px] font-semibold text-emerald-700">
+                                                            산출식: {mat.quantity_calc_formula}
+                                                          </div>
+                                                        )}
                                                       </div>
 
-                                                      {(mat.selection_rationale || mat.rationale_stage) && (
-                                                        <div className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 mt-1 leading-relaxed space-y-0.5">
-                                                          <div className="font-extrabold text-emerald-900 text-[10px]">
-                                                            📋 추천 선정 근거 (생육과정 필요성분 + 토양검정 조합)
-                                                          </div>
-                                                          {mat.rationale_stage ? (
-                                                            <div>• {mat.rationale_stage}</div>
-                                                          ) : (
-                                                            <div>{mat.selection_rationale}</div>
-                                                          )}
-                                                          {mat.rationale_soil && (
-                                                            <div className="text-slate-600">• {mat.rationale_soil}</div>
-                                                          )}
+                                                      <div className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 mt-1 leading-relaxed space-y-1">
+                                                        <div className="font-extrabold text-emerald-900 text-[10px] flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
+                                                          <span>📋 생육과정별 최고점 1종 추천 근거 (개조식)</span>
+                                                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
+                                                            DB저장 완료
+                                                          </span>
                                                         </div>
-                                                      )}
+                                                        <ul className="space-y-1 text-[11px] text-slate-700">
+                                                          {(Array.isArray(mat.rationale_bullets) &&
+                                                          mat.rationale_bullets.length > 0
+                                                            ? mat.rationale_bullets
+                                                            : buildStageRationaleBullets(
+                                                                mat,
+                                                                mat.sub_item_name || sb.stageName,
+                                                                areaPyeong
+                                                              )
+                                                          ).map((bLine: string, bIdx: number) => (
+                                                            <li
+                                                              key={`${mat.selKey}-bul-${bIdx}`}
+                                                              className="leading-snug font-medium text-slate-700"
+                                                            >
+                                                              {bLine.startsWith('•') ? bLine : `• ${bLine}`}
+                                                            </li>
+                                                          ))}
+                                                        </ul>
+                                                      </div>
                                                     </div>
                                                   </div>
 
@@ -4592,95 +4707,123 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          {/* 3. 필요 농자재 명세 조회 영역 (수정 불가) */}
+                          {/* 3. 필요 농자재 명세 조회 영역 (최고 추천점수 1종 선정 · 재배지 평수 계산 필요 수량 · 개조식 추천 근거) */}
                           <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-3">
                             <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
-                              <span>
-                                ④ 해당 생육과정 필요 농자재 명세 ({viewItem.materials?.length || 0}종)
+                              <span className="flex items-center gap-2 flex-wrap">
+                                <span>④ 해당 생육과정 최고 추천점수 1종 농자재 명세</span>
+                                <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                                  최고점 1종 선정 · DB저장 완료
+                                </span>
                               </span>
                               <span className="text-xs text-emerald-700 font-bold">
-                                요청 재배지 면적: {Number(provisionData.activeRequest?.area_pyeong || 300).toLocaleString()}평 기준 처방량 자동 산출
+                                요청 재배지 면적: {Number(provisionData.activeRequest?.area_pyeong || 300).toLocaleString()}평 기준 필요 갯수 자동 산출
                               </span>
                             </div>
 
-                            <div className="grid sm:grid-cols-2 gap-3">
-                              {(viewItem.materials || []).map((mat: any, mIdx: number) => (
-                                <div
-                                  key={`${mat.material_id || 'MAT'}-${mIdx}`}
-                                  className="bg-white rounded-xl border border-slate-200 p-3 flex items-start gap-2.5 shadow-2xs"
-                                >
-                                  <img
-                                    src={mat.thumbnail_url || '/api/agro-materials/image/FERT-PRD-01/thumb'}
-                                    alt={mat.product_name}
-                                    className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0 bg-slate-50"
-                                  />
-                                  <div className="min-w-0 flex-1 space-y-1.5">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[10px]">
-                                        {mat.sub_type || '맞춤 농자재'}
-                                      </span>
-                                      {mat.manufacturer && (
-                                        <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
-                                          {mat.manufacturer}
-                                        </span>
-                                      )}
-                                      {mat.match_score && (
-                                        <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[10px]">
-                                          추천 적합도 {mat.match_score}점
-                                        </span>
-                                      )}
-                                      {mat.unit_spec && (
-                                        <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 font-semibold text-[10px] ml-auto">
-                                          {mat.unit_spec}
-                                        </span>
-                                      )}
-                                    </div>
+                            <div className="grid grid-cols-1 gap-3">
+                              {[...(viewItem.materials || [])]
+                                .sort(
+                                  (a: any, b: any) =>
+                                    Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                                )
+                                .slice(0, 1)
+                                .map((mat: any, mIdx: number) => {
+                                  const reqArea = Number(
+                                    provisionData.activeRequest?.area_pyeong || 300
+                                  );
+                                  const neededQty = parseRecommendedQuantity(mat, reqArea);
+                                  const unitSpec = String(mat.unit_spec || '1개');
+                                  const unitMatch = unitSpec.match(
+                                    /(포|병|봉|통|팩|판|박스|개|롤)/
+                                  );
+                                  const unitLabel = unitMatch ? unitMatch[1] : '개';
+                                  const bullets = buildStageRationaleBullets(
+                                    mat,
+                                    viewItem.sub_item_name || viewItem.process_name || '생육과정',
+                                    reqArea
+                                  );
 
-                                    <div className="font-extrabold text-slate-900 text-xs">
-                                      {mat.product_name || '-'}
-                                    </div>
-
-                                    {(mat.category_spec_badge || mat.nutrient_ratio_summary) && (
-                                      <div className="text-[11px] text-indigo-800 bg-indigo-50/70 border border-indigo-100 rounded px-2 py-1 font-semibold leading-snug">
-                                        {mat.category_spec_badge || mat.nutrient_ratio_summary}
-                                      </div>
-                                    )}
-
-                                    <div className="px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800">
-                                      {mat.recommended_for_area ||
-                                        `${Number(provisionData.activeRequest?.area_pyeong || 300).toLocaleString()}평 기준 권장량 처방`}
-                                    </div>
-
-                                    {(mat.selection_rationale || mat.rationale_stage) && (
-                                      <div className="px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed space-y-1">
-                                        <div className="font-extrabold text-emerald-900 flex items-center justify-between">
-                                          <span>📋 생육과정·토양성분 조합 추천 근거</span>
-                                          <span className="text-[10px] text-emerald-700 font-mono">
-                                            {mat.material_category === 'FERTILIZER'
-                                              ? '비료 9대 보증성분 기준'
-                                              : mat.material_category === 'NUTRIENT'
-                                              ? '영양제 기능성분 기준'
-                                              : '병해충 PLS·IRAC 기준'}
+                                  return (
+                                    <div
+                                      key={`${mat.material_id || 'MAT'}-${mIdx}`}
+                                      className="bg-white rounded-xl border-2 border-emerald-200 p-3.5 flex items-start gap-3 shadow-2xs"
+                                    >
+                                      <img
+                                        src={
+                                          mat.thumbnail_url ||
+                                          '/api/agro-materials/image/FERT-PRD-01/thumb'
+                                        }
+                                        alt={mat.product_name}
+                                        className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0 bg-slate-50"
+                                      />
+                                      <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold text-[10px]">
+                                            {mat.sub_type || '맞춤 농자재'}
+                                          </span>
+                                          {mat.manufacturer && (
+                                            <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
+                                              {mat.manufacturer}
+                                            </span>
+                                          )}
+                                          {mat.match_score && (
+                                            <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[10px]">
+                                              최고 추천점수 1종 ({mat.match_score}점 · 1위)
+                                            </span>
+                                          )}
+                                          <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-900 font-extrabold text-[10px]">
+                                            평수 계산 필요 수량: {neededQty}
+                                            {unitLabel} ({unitSpec})
                                           </span>
                                         </div>
-                                        {mat.rationale_stage && (
-                                          <div>
-                                            • <strong className="text-emerald-800">[생육과정 필요성분]</strong> {mat.rationale_stage}
+
+                                        <div className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                                          {mat.product_name || '-'}
+                                        </div>
+
+                                        {(mat.category_spec_badge || mat.nutrient_ratio_summary) && (
+                                          <div className="text-[11px] text-indigo-800 bg-indigo-50/70 border border-indigo-100 rounded px-2.5 py-1 font-semibold leading-snug">
+                                            {mat.category_spec_badge || mat.nutrient_ratio_summary}
                                           </div>
                                         )}
-                                        {mat.rationale_soil && (
+
+                                        <div className="px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800 space-y-0.5">
                                           <div>
-                                            • <strong className="text-amber-800">[현재 토양성분 보정]</strong> {mat.rationale_soil}
+                                            📐{' '}
+                                            {mat.recommended_for_area ||
+                                              `재배지 ${reqArea.toLocaleString()}평 계산: 총 ${neededQty}${unitLabel}(${unitSpec}) 필요`}
                                           </div>
-                                        )}
-                                        {!mat.rationale_stage && mat.selection_rationale && (
-                                          <div>{mat.selection_rationale}</div>
-                                        )}
+                                          {mat.quantity_calc_formula && (
+                                            <div className="text-[10px] font-semibold text-emerald-700">
+                                              산출식: {mat.quantity_calc_formula}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div className="px-3 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed space-y-1.5">
+                                          <div className="font-extrabold text-emerald-900 flex items-center justify-between border-b border-slate-200 pb-1">
+                                            <span>📋 생육과정별 최고점 1종 추천 근거 (개조식 · DB저장)</span>
+                                            <span className="text-[10px] text-emerald-700 font-mono">
+                                              {mat.material_category === 'FERTILIZER'
+                                                ? '비료 9대 보증성분 기준'
+                                                : mat.material_category === 'NUTRIENT'
+                                                ? '영양제 기능성분 기준'
+                                                : '병해충 PLS·IRAC 기준'}
+                                            </span>
+                                          </div>
+                                          <ul className="space-y-1 text-[11px] text-slate-700">
+                                            {bullets.map((bLine: string, bIdx: number) => (
+                                              <li key={`det-bul-${bIdx}`} className="leading-snug font-medium">
+                                                {bLine.startsWith('•') ? bLine : `• ${bLine}`}
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </div>
                                       </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                                    </div>
+                                  );
+                                })}
                             </div>
                           </div>
                         </div>

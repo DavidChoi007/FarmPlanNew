@@ -776,7 +776,161 @@ if (typeof window !== 'undefined') {
     }
 
     if (p === '/api/schedule-provision') {
-      return jsonResponse(snap.scheduleProvision || {});
+      const baseProv = JSON.parse(JSON.stringify(snap.scheduleProvision || {}));
+      const reqNoParam = (u.searchParams.get('request_no') || '').trim();
+      const allReqList: any[] = Array.isArray(snap.scheduleRequests?.items)
+        ? snap.scheduleRequests.items
+        : Array.isArray(baseProv.allRequests)
+        ? baseProv.allRequests
+        : [];
+      const matchedReq = reqNoParam
+        ? allReqList.find((r: any) => r.request_no === reqNoParam)
+        : null;
+      if (matchedReq) {
+        baseProv.activeRequest = {
+          ...(baseProv.activeRequest || {}),
+          ...matchedReq,
+        };
+      }
+      const activeReq = baseProv.activeRequest || {};
+      const safeAreaPyeong = Math.max(10, Number(activeReq.area_pyeong || 300));
+      const areaRatio = Number((safeAreaPyeong / 100).toFixed(2));
+      const regionLabel =
+        [activeReq.sido, activeReq.sigungu, activeReq.eupmyeondong].filter(Boolean).join(' ') ||
+        '충청북도 충주시 단월동';
+
+      const normalizeStageSingleMaterial = (it: any) => {
+        const rawMats: any[] = Array.isArray(it?.materials) ? it.materials : [];
+        if (rawMats.length === 0) return [];
+        const sorted = [...rawMats].sort(
+          (a, b) => Number(b?.match_score || 90) - Number(a?.match_score || 90)
+        );
+        const top = { ...sorted[0] };
+        const secondScore = sorted[1]?.match_score;
+        const cat = String(top.material_category || 'FERTILIZER').toUpperCase();
+        const unitSpecStr = String(
+          top.unit_spec || (cat === 'FERTILIZER' ? '20kg/포' : '500ml/병')
+        );
+        const unitMatch = unitSpecStr.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+        const unitLabel = unitMatch ? unitMatch[1] : cat === 'FERTILIZER' ? '포' : '병';
+
+        let baseUnitsPer100 = Number(top.base_units_per_100pyeong || 0);
+        if (!(baseUnitsPer100 > 0)) {
+          const dosageStr = String(top.dosage_per_100pyeong || '');
+          const rMatch = dosageStr.match(
+            /(\d+(?:\.\d+)?)\s*[~~-]\s*(\d+(?:\.\d+)?)\s*(포|병|봉|통|팩|개)/
+          );
+          const sMatch = dosageStr.match(/(\d+(?:\.\d+)?)\s*(포|병|봉|통|팩|개)/);
+          if (rMatch) {
+            baseUnitsPer100 = Number(((Number(rMatch[1]) + Number(rMatch[2])) / 2).toFixed(1));
+          } else if (sMatch && Number(sMatch[1]) > 0 && Number(sMatch[1]) <= 15) {
+            baseUnitsPer100 = Number(sMatch[1]);
+          } else {
+            baseUnitsPer100 = cat === 'FERTILIZER' ? 1.5 : 0.5;
+          }
+        }
+
+        const rawNeeded = Number(((safeAreaPyeong / 100) * baseUnitsPer100).toFixed(2));
+        const recommendedQty = Math.max(1, Math.ceil(rawNeeded));
+        const unitPrice = Number(top.unit_price || 15000);
+        const totalCost = recommendedQty * unitPrice;
+        const finalScore = Number(top.match_score || 96);
+        const stageTitle = String(it.sub_item_name || it.process_name || '해당 생육과정');
+
+        const quantityCalcFormula = `재배지 ${safeAreaPyeong.toLocaleString()}평 ÷ 100평(${areaRatio}배) × 100평당 기준 ${baseUnitsPer100}${unitLabel} = 산출 ${rawNeeded}${unitLabel} → 포장단위 올림 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요`;
+        const rationaleStage =
+          top.rationale_stage ||
+          `[${stageTitle}] 공정 생리 목표 달성을 위한 핵심 성분(${
+            top.target_nutrient_or_pest || top.nutrient_ratio_summary || '맞춤 유효성분'
+          }) 기준에 최적 부합합니다.`;
+        const rationaleSoil =
+          top.rationale_soil ||
+          `${regionLabel} 토양검정 화학성(pH·유기물·유효인산·치환성 양이온) 진단 결과에 맞춰 양분 균형과 흡수율을 보정합니다.`;
+        const rationaleClimate =
+          top.rationale_climate ||
+          `해당 시기 예상 기온·습도 기상 여건 및 PLS 안전사용기준을 충족하여 약해 없이 안정적인 효과를 발휘합니다.`;
+        const rationaleDosage = `재배지 면적 ${safeAreaPyeong.toLocaleString()}평 기준: 100평당 기준량(${baseUnitsPer100}${unitLabel} · ${
+          top.dosage_per_100pyeong || '정량 희석 살포'
+        }) × 면적비율(${areaRatio}배) = ${rawNeeded}${unitLabel} 산출 → 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요 (예상금액 ${totalCost.toLocaleString()}원)`;
+
+        const rationaleBullets = [
+          `• [최고 추천점수 1종 선정 (${finalScore}점)] '${stageTitle}' 생육과정 후보 자재(${Math.max(
+            rawMats.length,
+            Number(top.candidate_pool_size || 4)
+          )}종 평가${secondScore ? `, 차순위 ${secondScore}점` : ''}) 중 추천점수 1위(${finalScore}점)로 선정된 핵심 1종 제품입니다.`,
+          `• [생육과정 필수 요구성분·기능 부합] ${rationaleStage}`,
+          `• [토양검정 화학성 맞춤 보정] ${rationaleSoil}`,
+          `• [지역 기후·PLS 안전기준 적합성] ${rationaleClimate}`,
+          `• [재배지 평수(${safeAreaPyeong.toLocaleString()}평) 기반 필요 갯수 산출] ${rationaleDosage}`,
+        ];
+
+        return [
+          {
+            ...top,
+            match_score: finalScore,
+            unit_spec: unitSpecStr,
+            unit_label: unitLabel,
+            unit_price: unitPrice,
+            area_pyeong: safeAreaPyeong,
+            area_ratio: areaRatio,
+            base_units_per_100pyeong: baseUnitsPer100,
+            raw_needed_units: rawNeeded,
+            recommended_qty: recommendedQty,
+            total_cost: totalCost,
+            quantity_calc_formula: quantityCalcFormula,
+            recommended_for_area: `재배지 ${safeAreaPyeong.toLocaleString()}평 계산: 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseUnitsPer100}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${recommendedQty}개)`,
+            rationale_top1: rationaleBullets[0].replace(/^•\s*/, ''),
+            rationale_stage: rationaleStage,
+            rationale_soil: rationaleSoil,
+            rationale_climate: rationaleClimate,
+            rationale_dosage: rationaleDosage,
+            rationale_bullets: rationaleBullets,
+            selection_rationale: rationaleBullets.join('\n'),
+            is_top1_recommended: true,
+          },
+        ];
+      };
+
+      if (Array.isArray(baseProv.scheduleItems)) {
+        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) => ({
+          ...it,
+          materials: normalizeStageSingleMaterial(it),
+        }));
+      }
+      if (Array.isArray(baseProv.stageGroups)) {
+        const byItemId = new Map<string, any>();
+        (baseProv.scheduleItems || []).forEach((it: any) => byItemId.set(it.item_id, it));
+        baseProv.stageGroups = baseProv.stageGroups.map((grp: any) => ({
+          ...grp,
+          items: Array.isArray(grp.items)
+            ? grp.items.map((gi: any) => byItemId.get(gi.item_id) || {
+                ...gi,
+                materials: normalizeStageSingleMaterial(gi),
+              })
+            : [],
+        }));
+      }
+
+      try {
+        const dbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
+        const prevDb = JSON.parse(localStorage.getItem(dbKey) || '{}');
+        const reqKey = String(activeReq.request_no || 'REQ-DEFAULT');
+        prevDb[reqKey] = (baseProv.scheduleItems || []).map((it: any) => ({
+          request_no: reqKey,
+          item_id: it.item_id,
+          process_code: it.process_code,
+          stage_group_name: it.stage_group_name,
+          sub_item_name: it.sub_item_name,
+          area_pyeong: safeAreaPyeong,
+          recommended_material: it.materials?.[0] || null,
+          updated_at: new Date().toISOString(),
+        }));
+        localStorage.setItem(dbKey, JSON.stringify(prevDb));
+      } catch {
+        // ignore storage quota errors
+      }
+
+      return jsonResponse(baseProv);
     }
     if (p === '/api/ templates' || p === '/api/templates') {
       return jsonResponse(snap.templates || { items: [] });

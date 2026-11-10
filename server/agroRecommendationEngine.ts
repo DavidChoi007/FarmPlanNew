@@ -1181,18 +1181,45 @@ export function evaluateCategoryRecommendations(params: {
       );
     }
 
-    // 경작 면적(areaPyeong) 및 토양 과부족 보정 계수 반영 권장 수량 산출
-    const areaFactor = Math.max(0.5, Number((areaPyeong / 100).toFixed(1)));
-    const baseUnitsPer100Pyeong = category === 'FERTILIZER' ? 1.5 : 0.5;
+    // 경작 면적(areaPyeong) 및 토양 과부족 보정 계수 반영 필요 갯수(recommended_qty) 정밀 산출
+    const safeAreaPyeong = Math.max(10, Number(areaPyeong || 300));
+    const areaRatio = Number((safeAreaPyeong / 100).toFixed(2));
+    const unitSpecStr = String(m.unit_spec || m.weight_spec || m.volume_spec || (category === 'FERTILIZER' ? '20kg/포' : '500ml/병'));
+    const unitLabelMatch = unitSpecStr.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+    const unitLabel = unitLabelMatch ? unitLabelMatch[1] : category === 'FERTILIZER' ? '포' : '병';
+
+    // 100평당 기준 소요량 파싱 (예: "100평당 2~3포" -> 평균/기준치 추출, 없으면 품목별 표준치 적용)
+    let baseUnitsPer100Pyeong = category === 'FERTILIZER' ? 1.5 : 0.5;
+    const dosageStr = String(m.dosage_per_100pyeong || '');
+    const rangeMatch = dosageStr.match(/(\d+(?:\.\d+)?)\s*[~~-]\s*(\d+(?:\.\d+)?)\s*(포|병|봉|통|팩|개)/);
+    const singleUnitMatch = dosageStr.match(/(\d+(?:\.\d+)?)\s*(포|병|봉|통|팩|개)/);
+    if (rangeMatch) {
+      const low = Number(rangeMatch[1]);
+      const high = Number(rangeMatch[2]);
+      if (low > 0 && high >= low && high <= 20) {
+        baseUnitsPer100Pyeong = Number(((low + high) / 2).toFixed(1));
+      }
+    } else if (singleUnitMatch) {
+      const val = Number(singleUnitMatch[1]);
+      if (val > 0 && val <= 15) {
+        baseUnitsPer100Pyeong = val;
+      }
+    }
+
     const soilBoostMultiplier =
       category === 'FERTILIZER' && (deficientKeys.has('om') || deficientKeys.has('k') || deficientKeys.has('p2o5'))
-        ? 1 + Number(policy.deficiency_boost_pct || 20) / 100
+        ? Number((1 + Number(policy.deficiency_boost_pct || 20) / 100).toFixed(2))
         : 1.0;
-    const recommendedQty = Math.max(1, Math.ceil((areaPyeong / 100) * baseUnitsPer100Pyeong * soilBoostMultiplier));
+    const rawNeededUnits = Number(((safeAreaPyeong / 100) * baseUnitsPer100Pyeong * soilBoostMultiplier).toFixed(2));
+    const recommendedQty = Math.max(1, Math.ceil(rawNeededUnits));
     const unitPrice = Number(m.unit_price || 15000);
     const totalCost = recommendedQty * unitPrice;
 
-    // 대분류별 핵심 스펙 배지 텍스트 및 한 줄 선정 근거(selection_rationale) 조합
+    const quantityCalcFormula = `재배지 ${safeAreaPyeong.toLocaleString()}평 ÷ 100평(${areaRatio}배) × 100평당 기준 ${baseUnitsPer100Pyeong}${unitLabel}${
+      soilBoostMultiplier > 1 ? ` × 토양부족 보정(${soilBoostMultiplier}배)` : ''
+    } = 산출 ${rawNeededUnits}${unitLabel} → 포장단위 올림 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요`;
+
+    // 대분류별 핵심 스펙 배지 텍스트 및 개조식 추천 근거(rationale_bullets / selection_rationale) 조합
     const categorySpecBadge =
       category === 'PESTICIDE'
         ? `유효성분: ${m.active_ingredient || m.nutrient_ratio_summary} | 작용기작: ${
@@ -1212,7 +1239,21 @@ export function evaluateCategoryRecommendations(params: {
             Number(m.om_pct) > 0 ? `·OM ${m.om_pct}%` : ''
           } | ${m.application_method || '전층시비'} (${m.release_duration || '완효성'})`;
 
-    const selectionRationale = `${reasonsStage[0]} ${reasonsSoil[0]}`;
+    const rationaleDosageText = `재배지 면적 ${safeAreaPyeong.toLocaleString()}평 기준: 100평당 기준량(${baseUnitsPer100Pyeong}${unitLabel} · ${
+      m.dosage_per_100pyeong || '정량 희석 살포'
+    }) × 면적비율(${areaRatio}배)${
+      soilBoostMultiplier > 1 ? ` × 토양부족 보정(+${Math.round((soilBoostMultiplier - 1) * 100)}%)` : ''
+    } = ${rawNeededUnits}${unitLabel} 산출 → 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요 (예상금액 ${totalCost.toLocaleString()}원)`;
+
+    const rationaleBullets = [
+      `• [최고 추천점수 1종 선정 (${finalScore}점)] '${stageSpec.stageName}' 생육과정 후보 농자재 중 적합도 최고점(${finalScore}점 / 1위)으로 선정된 최적 대표 1종 제품입니다.`,
+      `• [생육과정 필수 요구성분 부합] ${reasonsStage[0]}`,
+      `• [토양검정 화학성 맞춤 보정] ${reasonsSoil[0]}`,
+      `• [지역 기후·PLS 안전기준 적합성] ${reasonsClimate[0]}`,
+      `• [재배지 평수(${safeAreaPyeong.toLocaleString()}평) 필요 갯수 산출] ${rationaleDosageText}`,
+    ];
+
+    const selectionRationale = rationaleBullets.join('\n');
 
     return {
       ...m,
@@ -1224,12 +1265,16 @@ export function evaluateCategoryRecommendations(params: {
       product_name: m.product_name,
       is_organic: Number(m.is_organic) === 1,
       organic_label: m.organic_label,
-      unit_spec: m.unit_spec || m.weight_spec || m.volume_spec || '1개',
+      unit_spec: unitSpecStr,
+      unit_label: unitLabel,
       unit_price: unitPrice,
+      area_pyeong: safeAreaPyeong,
+      area_ratio: areaRatio,
+      base_units_per_100pyeong: baseUnitsPer100Pyeong,
+      raw_needed_units: rawNeededUnits,
+      quantity_calc_formula: quantityCalcFormula,
       dosage_per_100pyeong: m.dosage_per_100pyeong || '정량 희석 살포',
-      recommended_for_area: `${areaPyeong.toLocaleString()}평 기준 약 ${areaFactor}배 처방 (${
-        m.dosage_per_100pyeong || '정량'
-      }) · 권장 구매 ${recommendedQty}개`,
+      recommended_for_area: `재배지 ${safeAreaPyeong.toLocaleString()}평 계산: 총 ${recommendedQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseUnitsPer100Pyeong}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${recommendedQty}개)`,
       target_nutrient_or_pest: m.target_nutrient_or_pest || '',
       nutrient_ratio_summary: m.nutrient_ratio_summary || m.target_nutrient_or_pest || '',
       category_spec_badge: categorySpecBadge,
@@ -1241,12 +1286,12 @@ export function evaluateCategoryRecommendations(params: {
       score_breakdown: scoreBreakdown,
       recommended_qty: recommendedQty,
       total_cost: totalCost,
+      rationale_top1: rationaleBullets[0].replace(/^•\s*/, ''),
       rationale_stage: reasonsStage[0],
       rationale_soil: reasonsSoil[0],
       rationale_climate: reasonsClimate[0],
-      rationale_dosage: `경작면적 ${areaPyeong.toLocaleString()}평 기준 ${recommendedQty}개(${
-        m.unit_spec || '표준규격'
-      }) 권장 · 표준용량(${m.dosage_per_100pyeong}) 준수`,
+      rationale_dosage: rationaleDosageText,
+      rationale_bullets: rationaleBullets,
       selection_rationale: selectionRationale,
     };
   });
@@ -1280,7 +1325,7 @@ export function evaluateCategoryRecommendations(params: {
 }
 
 /**
- * 맞춤형 작물재배 일정(SCH-01 ~ SCH-16)의 각 생육과정별 최적 농자재 및 추천 근거 일괄 선정 함수
+ * 맞춤형 작물재배 일정(SCH-01 ~ SCH-16)의 각 생육과정별 최고 추천점수 농자재 1종 선정 및 평수별 필요 갯수·개조식 추천 근거 산출 함수
  */
 export function selectScheduleStageMaterials(params: {
   stageKey: string;
@@ -1297,7 +1342,8 @@ export function selectScheduleStageMaterials(params: {
   policy?: any;
 }) {
   const stageSpec = resolveStageSpecByProcessOrItem(params.stageKey);
-  const results: any[] = [];
+  const candidates: any[] = [];
+  const primaryCategory = stageSpec.neededCategories[0];
 
   for (const cat of stageSpec.neededCategories) {
     const count = stageSpec.categoryCounts[cat] || 1;
@@ -1305,13 +1351,54 @@ export function selectScheduleStageMaterials(params: {
     const picked = evaluateCategoryRecommendations({
       ...params,
       category: cat,
-      maxCount: count,
+      maxCount: Math.max(3, count),
       stageSpec,
     });
-    results.push(...picked);
+    for (const item of picked) {
+      // 해당 생육과정의 주력 카테고리(neededCategories[0]) 후보에 동점 시 우선권을 부여하고 최고 점수 1종을 선발
+      const isPrimaryCat = cat === primaryCategory;
+      const effectiveRankScore = Number(item.match_score || 0) + (isPrimaryCat ? 1.5 : 0);
+      candidates.push({
+        ...item,
+        _effectiveRankScore: effectiveRankScore,
+      });
+    }
   }
 
-  return results;
+  // 전체 후보군 중 추천 적합도(match_score)가 가장 높은 상위 1종(Top 1)만 선정
+  candidates.sort((a, b) => {
+    if (b._effectiveRankScore !== a._effectiveRankScore) {
+      return b._effectiveRankScore - a._effectiveRankScore;
+    }
+    return Number(b.match_score || 0) - Number(a.match_score || 0);
+  });
+
+  if (candidates.length === 0) return [];
+
+  const top1 = { ...candidates[0] };
+  delete top1._effectiveRankScore;
+
+  const totalCandidatesCount = candidates.length;
+  const secondScore = candidates[1]?.match_score;
+  const top1Bullet = `• [최고 추천점수 1종 선정 (${top1.match_score}점)] '${stageSpec.stageName}' 생육과정 후보 자재(${totalCandidatesCount}종 평가${
+    secondScore ? `, 차순위 ${secondScore}점` : ''
+  }) 중 추천점수 1위(${top1.match_score}점)로 선정된 핵심 1종 제품입니다.`;
+
+  const updatedBullets = [
+    top1Bullet,
+    `• [생육과정 필수 요구성분·기능 부합] ${top1.rationale_stage}`,
+    `• [토양검정 화학성 맞춤 보정] ${top1.rationale_soil}`,
+    `• [지역 기후·PLS 안전기준 적합성] ${top1.rationale_climate}`,
+    `• [재배지 평수(${Number(params.areaPyeong || 300).toLocaleString()}평) 기반 필요 갯수 산출] ${top1.rationale_dosage}`,
+  ];
+
+  top1.rationale_top1 = top1Bullet.replace(/^•\s*/, '');
+  top1.rationale_bullets = updatedBullets;
+  top1.selection_rationale = updatedBullets.join('\n');
+  top1.is_top1_recommended = true;
+  top1.candidate_pool_size = totalCandidatesCount;
+
+  return [top1];
 }
 
 /**

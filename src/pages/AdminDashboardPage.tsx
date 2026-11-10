@@ -10760,14 +10760,19 @@ export default function AdminDashboardPage() {
                       {/* 3. 필요 농자재 명세 조회 · 수정 · 추가 · 삭제 영역 */}
                       <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200 space-y-3">
                         <div className="font-extrabold text-slate-900 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200 pb-2">
-                          <span>④ 해당 생육과정 필요 농자재 명세 ({detailItem.materials?.length || 0}종 · 추가/수정/삭제 가능)</span>
+                          <span className="flex items-center gap-2 flex-wrap">
+                            <span>④ 해당 생육과정 최고 추천점수 1종 농자재 명세 ({detailItem.materials?.length || 0}종 · 편집/DB저장 가능)</span>
+                            <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                              최고점 1종 선정 · DB저장 완료
+                            </span>
+                          </span>
                           <span className="text-xs text-emerald-700 font-bold">
-                            요청 재배지 면적: {Number(provisionData.activeRequest.area_pyeong || 1000).toLocaleString()}평 기준 처방량 자동 산출
+                            요청 재배지 면적: {Number(provisionData.activeRequest.area_pyeong || 1000).toLocaleString()}평 기준 필요 갯수 자동 산출
                           </span>
                         </div>
 
                         {/* 등록된 필요 농자재 카드 목록 (인라인 편집 + 삭제 버튼) */}
-                        <div className="grid sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3">
                           {(detailItem.materials || []).map((mat: any, mIdx: number) => (
                             <div
                               key={`${mat.material_id || 'MAT'}-${mIdx}`}
@@ -10870,28 +10875,52 @@ export default function AdminDashboardPage() {
                                   className="w-full px-2 py-1 rounded border border-slate-200 text-[11px] text-slate-600"
                                 />
 
-                                <input
-                                  type="text"
-                                  value={mat.recommended_for_area || ''}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setEditDetailForm((prev: any) => {
-                                      const nextMats = [...(prev.materials || [])];
-                                      nextMats[mIdx] = { ...nextMats[mIdx], recommended_for_area: val };
-                                      return { ...prev, materials: nextMats };
-                                    });
-                                  }}
-                                  placeholder="평수 기준 권장 처방량"
-                                  className="w-full px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800"
-                                />
+                                <div className="grid sm:grid-cols-4 gap-1.5">
+                                  <div className="sm:col-span-3">
+                                    <input
+                                      type="text"
+                                      value={mat.recommended_for_area || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditDetailForm((prev: any) => {
+                                          const nextMats = [...(prev.materials || [])];
+                                          nextMats[mIdx] = { ...nextMats[mIdx], recommended_for_area: val };
+                                          return { ...prev, materials: nextMats };
+                                        });
+                                      }}
+                                      placeholder="평수 기준 필요 수량 산출 문구"
+                                      className="w-full px-2 py-1 rounded bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-800"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-1 bg-amber-50 border border-amber-300 rounded px-2 py-1">
+                                    <span className="text-[10px] font-extrabold text-amber-900 shrink-0">필요갯수:</span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={mat.recommended_qty ?? 1}
+                                      onChange={(e) => {
+                                        const val = Math.max(1, Number(e.target.value) || 1);
+                                        setEditDetailForm((prev: any) => {
+                                          const nextMats = [...(prev.materials || [])];
+                                          nextMats[mIdx] = { ...nextMats[mIdx], recommended_qty: val };
+                                          return { ...prev, materials: nextMats };
+                                        });
+                                      }}
+                                      className="w-full bg-white border border-amber-300 rounded px-1.5 py-0.5 text-[11px] font-extrabold text-amber-950 text-center"
+                                    />
+                                    <span className="text-[10px] font-bold text-amber-800 shrink-0">
+                                      {mat.unit_label || '개'}
+                                    </span>
+                                  </div>
+                                </div>
 
-                                {(mat.category_spec_badge || mat.selection_rationale || mat.rationale_stage) && (
-                                  <div className="p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed space-y-1">
-                                    <div className="flex items-center justify-between gap-1 font-extrabold text-emerald-900">
-                                      <span>📋 변경 등록항목·생육요구·토양성분 조합 추천 근거</span>
+                                {(mat.category_spec_badge || mat.selection_rationale || mat.rationale_stage || mat.rationale_bullets) && (
+                                  <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed space-y-1.5">
+                                    <div className="flex items-center justify-between gap-1 font-extrabold text-emerald-900 border-b border-slate-200 pb-1">
+                                      <span>📋 생육과정별 최고점 1종 추천 근거 (개조식 · DB저장)</span>
                                       {mat.match_score && (
                                         <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px]">
-                                          적합도 {mat.match_score}점
+                                          최고 추천점수 {mat.match_score}점 (1위)
                                         </span>
                                       )}
                                     </div>
@@ -10900,18 +10929,63 @@ export default function AdminDashboardPage() {
                                         {mat.category_spec_badge}
                                       </div>
                                     )}
-                                    {mat.rationale_stage ? (
-                                      <div>
-                                        • <strong className="text-emerald-800">[생육과정 필요성분]</strong> {mat.rationale_stage}
-                                      </div>
+                                    {Array.isArray(mat.rationale_bullets) && mat.rationale_bullets.length > 0 ? (
+                                      <ul className="space-y-1 text-[11px] text-slate-700">
+                                        {mat.rationale_bullets.map((bLine: string, bIdx: number) => (
+                                          <li key={`adm-bul-${bIdx}`} className="leading-snug font-medium">
+                                            {bLine.startsWith('•') ? bLine : `• ${bLine}`}
+                                          </li>
+                                        ))}
+                                      </ul>
                                     ) : (
-                                      mat.selection_rationale && <div>{mat.selection_rationale}</div>
+                                      <>
+                                        {mat.rationale_stage ? (
+                                          <div>
+                                            • <strong className="text-emerald-800">[생육과정 필요성분]</strong> {mat.rationale_stage}
+                                          </div>
+                                        ) : (
+                                          mat.selection_rationale && (
+                                            <div className="whitespace-pre-line">{mat.selection_rationale}</div>
+                                          )
+                                        )}
+                                        {mat.rationale_soil && (
+                                          <div>
+                                            • <strong className="text-amber-800">[현재 토양성분 보정]</strong> {mat.rationale_soil}
+                                          </div>
+                                        )}
+                                      </>
                                     )}
-                                    {mat.rationale_soil && (
-                                      <div>
-                                        • <strong className="text-amber-800">[현재 토양성분 보정]</strong> {mat.rationale_soil}
-                                      </div>
-                                    )}
+                                    <div className="pt-1">
+                                      <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
+                                        개조식 추천 근거 직접 편집 (줄바꿈으로 항목 구분 · 저장 시 DB 반영):
+                                      </label>
+                                      <textarea
+                                        rows={4}
+                                        value={
+                                          Array.isArray(mat.rationale_bullets)
+                                            ? mat.rationale_bullets.join('\n')
+                                            : mat.selection_rationale || ''
+                                        }
+                                        onChange={(e) => {
+                                          const textVal = e.target.value;
+                                          const lines = textVal
+                                            .split('\n')
+                                            .map((l) => l.trim())
+                                            .filter(Boolean)
+                                            .map((l) => (l.startsWith('•') ? l : `• ${l}`));
+                                          setEditDetailForm((prev: any) => {
+                                            const nextMats = [...(prev.materials || [])];
+                                            nextMats[mIdx] = {
+                                              ...nextMats[mIdx],
+                                              rationale_bullets: lines,
+                                              selection_rationale: lines.join('\n'),
+                                            };
+                                            return { ...prev, materials: nextMats };
+                                          });
+                                        }}
+                                        className="w-full p-2 rounded bg-white border border-slate-300 text-[11px] text-slate-800 leading-relaxed"
+                                      />
+                                    </div>
                                   </div>
                                 )}
                               </div>
