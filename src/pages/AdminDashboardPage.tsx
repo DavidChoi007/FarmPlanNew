@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, getBasePath } from '../router.tsx';
+import { getKoreaDongs } from '../../server/koreaAddresses.ts';
 import {
   LayoutDashboard,
   Layers,
@@ -2792,14 +2793,25 @@ export default function AdminDashboardPage() {
       }));
       return;
     }
+    const fallbackDongs = getKoreaDongs(sido, sigungu);
+    if (fallbackDongs.length > 0) {
+      const firstFallback = fallbackDongs[0] || '';
+      setSurveyDongList(fallbackDongs);
+      setSurveyRegionDong(firstFallback);
+      setNewSurveyRespForm((prev: any) => ({
+        ...prev,
+        respondent_region: [sido, sigungu, firstFallback].filter(Boolean).join(' '),
+      }));
+    }
     try {
       const res = await fetch(
         `/api/addresses?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}&pageSize=200`
       ).then((r) => r.json());
       const items = Array.isArray(res?.items) ? res.items : [];
-      const uniqueDongs = Array.from(
+      const apiDongs = Array.from(
         new Set<string>(items.map((it: any) => String(it.eupmyeondong || '').trim()).filter(Boolean))
       );
+      const uniqueDongs = Array.from(new Set<string>([...fallbackDongs, ...apiDongs]));
       const firstDong = uniqueDongs[0] || '';
       setSurveyDongList(uniqueDongs);
       setSurveyRegionDong(firstDong);
@@ -2808,12 +2820,14 @@ export default function AdminDashboardPage() {
         respondent_region: [sido, sigungu, firstDong].filter(Boolean).join(' '),
       }));
     } catch {
-      setSurveyDongList([]);
-      setSurveyRegionDong('');
-      setNewSurveyRespForm((prev: any) => ({
-        ...prev,
-        respondent_region: [sido, sigungu].filter(Boolean).join(' '),
-      }));
+      if (fallbackDongs.length === 0) {
+        setSurveyDongList([]);
+        setSurveyRegionDong('');
+        setNewSurveyRespForm((prev: any) => ({
+          ...prev,
+          respondent_region: [sido, sigungu].filter(Boolean).join(' '),
+        }));
+      }
     }
   };
 

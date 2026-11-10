@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { normalizeAppPath } from '../router.tsx';
 import {
+  KOREA_SIDO_LIST,
+  KOREA_SIGUNGUS_BY_SIDO,
+  getKoreaDongs,
+} from '../../server/koreaAddresses.ts';
+import {
   Sprout,
   CheckCircle2,
   ClipboardList,
@@ -160,8 +165,8 @@ export default function SurveyPublicPage() {
     sidos: string[];
     sigungusBySido: Record<string, string[]>;
   }>({
-    sidos: [],
-    sigungusBySido: {},
+    sidos: KOREA_SIDO_LIST,
+    sigungusBySido: KOREA_SIGUNGUS_BY_SIDO,
   });
   const [dongList, setDongList] = useState<string[]>([]);
   const [respondentContact, setRespondentContact] = useState('');
@@ -180,19 +185,29 @@ export default function SurveyPublicPage() {
       setRegionDong('');
       return;
     }
+    const fallbackDongs = getKoreaDongs(sido, sigungu);
+    if (fallbackDongs.length > 0) {
+      setDongList(fallbackDongs);
+      setRegionDong(fallbackDongs[0]);
+    }
     try {
       const res = await fetch(
         `/api/addresses?sido=${encodeURIComponent(sido)}&sigungu=${encodeURIComponent(sigungu)}&pageSize=200`
       ).then((r) => r.json());
       const items = Array.isArray(res?.items) ? res.items : [];
-      const uniqueDongs = Array.from(
+      const apiDongs = Array.from(
         new Set<string>(items.map((it: any) => String(it.eupmyeondong || '').trim()).filter(Boolean))
       );
-      setDongList(uniqueDongs);
-      setRegionDong(uniqueDongs[0] || '');
+      const mergedDongs = Array.from(new Set<string>([...fallbackDongs, ...apiDongs]));
+      if (mergedDongs.length > 0) {
+        setDongList(mergedDongs);
+        setRegionDong((prev) => (prev && mergedDongs.includes(prev) ? prev : mergedDongs[0]));
+      }
     } catch {
-      setDongList([]);
-      setRegionDong('');
+      if (fallbackDongs.length === 0) {
+        setDongList([]);
+        setRegionDong('');
+      }
     }
   };
 
@@ -215,10 +230,13 @@ export default function SurveyPublicPage() {
     fetch('/api/addresses/meta')
       .then((r) => r.json())
       .then((meta) => {
-        if (meta && Array.isArray(meta.sidos)) {
+        if (meta && Array.isArray(meta.sidos) && meta.sidos.length > 0) {
           setAddressMeta({
             sidos: meta.sidos,
-            sigungusBySido: meta.sigungusBySido || {},
+            sigungusBySido: {
+              ...KOREA_SIGUNGUS_BY_SIDO,
+              ...(meta.sigungusBySido || {}),
+            },
           });
         }
       })

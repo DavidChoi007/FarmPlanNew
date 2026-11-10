@@ -2,6 +2,19 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import {
+  KOREA_SIDO_LIST,
+  KOREA_SIGUNGUS_BY_SIDO,
+  generateKoreaAddressDataset,
+} from '../server/koreaAddresses.ts';
+
+let cachedKoreaAddresses: ReturnType<typeof generateKoreaAddressDataset> | null = null;
+function getKoreaAddressesCache() {
+  if (!cachedKoreaAddresses) {
+    cachedKoreaAddresses = generateKoreaAddressDataset();
+  }
+  return cachedKoreaAddresses;
+}
 
 if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.io')) {
   const origFetch = window.fetch.bind(window);
@@ -97,7 +110,46 @@ if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.i
     if (p === '/api/templates') return jsonResponse(snap.templates || []);
     if (p === '/api/histories') return jsonResponse(snap.histories || []);
     if (p === '/api/prescriptions') return jsonResponse(snap.prescriptions || []);
-    if (p === '/api/addresses/meta') return jsonResponse(snap.addressesMeta || { totalCount: 0, sidos: [], sigungusBySido: {} });
+    if (p === '/api/addresses/meta') {
+      return jsonResponse(
+        snap.addressesMeta?.sidos?.length
+          ? snap.addressesMeta
+          : {
+              totalCount: getKoreaAddressesCache().length,
+              sidos: KOREA_SIDO_LIST,
+              sigungusBySido: KOREA_SIGUNGUS_BY_SIDO,
+            }
+      );
+    }
+    if (p === '/api/addresses') {
+      const sido = (u.searchParams.get('sido') || '').trim();
+      const sigungu = (u.searchParams.get('sigungu') || '').trim();
+      const q = (u.searchParams.get('q') || '').trim().toLowerCase();
+      const page = Math.max(1, Number(u.searchParams.get('page')) || 1);
+      const pageSize = Math.max(1, Math.min(200, Number(u.searchParams.get('pageSize')) || 50));
+
+      const allAddr = getKoreaAddressesCache();
+      const filtered = allAddr.filter((it) => {
+        if (sido && sido !== 'ALL' && it.sido !== sido) return false;
+        if (sigungu && sigungu !== 'ALL' && it.sigungu !== sigungu) return false;
+        if (q) {
+          const hay = `${it.full_address} ${it.sido} ${it.sigungu} ${it.eupmyeondong} ${it.bjd_code}`.toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const safePage = Math.min(page, totalPages);
+      const items = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+      return jsonResponse({
+        items,
+        total,
+        page: safePage,
+        pageSize,
+        totalPages,
+      });
+    }
     if (p === '/api/payment-bank-accounts') return jsonResponse(snap.paymentBankAccounts || { items: [] });
     if (p === '/api/crop-growth-process-plans') return jsonResponse(snap.cropGrowthPlans || { items: [] });
     if (p === '/api/agro-recommendation-module') return jsonResponse(snap.agroRecModule || {});
