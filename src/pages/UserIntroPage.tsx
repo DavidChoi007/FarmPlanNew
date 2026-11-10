@@ -3494,6 +3494,11 @@ export default function UserIntroPage() {
                                           {mat.manufacturer}
                                         </span>
                                       )}
+                                      {mat.match_score && (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[10px]">
+                                          추천 적합도 {mat.match_score}점
+                                        </span>
+                                      )}
                                       {mat.unit_spec && (
                                         <span className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 font-semibold text-[10px] ml-auto">
                                           {mat.unit_spec}
@@ -3505,9 +3510,9 @@ export default function UserIntroPage() {
                                       {mat.product_name || '-'}
                                     </div>
 
-                                    {mat.nutrient_ratio_summary && (
-                                      <div className="text-[11px] text-slate-600 leading-snug">
-                                        {mat.nutrient_ratio_summary}
+                                    {(mat.category_spec_badge || mat.nutrient_ratio_summary) && (
+                                      <div className="text-[11px] text-indigo-800 bg-indigo-50/70 border border-indigo-100 rounded px-2 py-1 font-semibold leading-snug">
+                                        {mat.category_spec_badge || mat.nutrient_ratio_summary}
                                       </div>
                                     )}
 
@@ -3515,6 +3520,34 @@ export default function UserIntroPage() {
                                       {mat.recommended_for_area ||
                                         `${Number(provisionData.activeRequest?.area_pyeong || 300).toLocaleString()}평 기준 권장량 처방`}
                                     </div>
+
+                                    {(mat.selection_rationale || mat.rationale_stage) && (
+                                      <div className="px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-700 leading-relaxed space-y-1">
+                                        <div className="font-extrabold text-emerald-900 flex items-center justify-between">
+                                          <span>📋 생육과정·토양성분 조합 추천 근거</span>
+                                          <span className="text-[10px] text-emerald-700 font-mono">
+                                            {mat.material_category === 'FERTILIZER'
+                                              ? '비료 9대 보증성분 기준'
+                                              : mat.material_category === 'NUTRIENT'
+                                              ? '영양제 기능성분 기준'
+                                              : '병해충 PLS·IRAC 기준'}
+                                          </span>
+                                        </div>
+                                        {mat.rationale_stage && (
+                                          <div>
+                                            • <strong className="text-emerald-800">[생육과정 필요성분]</strong> {mat.rationale_stage}
+                                          </div>
+                                        )}
+                                        {mat.rationale_soil && (
+                                          <div>
+                                            • <strong className="text-amber-800">[현재 토양성분 보정]</strong> {mat.rationale_soil}
+                                          </div>
+                                        )}
+                                        {!mat.rationale_stage && mat.selection_rationale && (
+                                          <div>{mat.selection_rationale}</div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -3590,11 +3623,17 @@ export default function UserIntroPage() {
                                 stageName,
                                 stageStartDate,
                                 material_id: mat.material_id || matCode,
+                                material_category: mat.material_category || '',
                                 product_name: mat.product_name || '맞춤 처방 농자재',
                                 sub_type: mat.sub_type || '맞춤 농자재',
                                 manufacturer: mat.manufacturer || '한팜인증',
                                 unit_spec: mat.unit_spec || '1포/기본단위',
                                 unit_price: Number(mat.unit_price || 18000),
+                                match_score: mat.match_score || null,
+                                category_spec_badge: mat.category_spec_badge || '',
+                                selection_rationale: mat.selection_rationale || '',
+                                rationale_stage: mat.rationale_stage || '',
+                                rationale_soil: mat.rationale_soil || '',
                                 recommended_for_area:
                                   mat.recommended_for_area ||
                                   `${areaPyeong.toLocaleString()}평 기준 1단위 권장`,
@@ -4122,6 +4161,11 @@ export default function UserIntroPage() {
                                               <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
                                                 {mat.manufacturer}
                                               </span>
+                                              {mat.match_score && (
+                                                <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                                                  추천 적합도 {mat.match_score}점
+                                                </span>
+                                              )}
                                               <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 text-[10px] font-semibold">
                                                 {mat.unit_spec}
                                               </span>
@@ -4153,9 +4197,31 @@ export default function UserIntroPage() {
                                               ))}
                                             </div>
 
+                                            {(mat.category_spec_badge || mat.nutrient_ratio_summary) && (
+                                              <div className="text-[11px] font-semibold text-indigo-800 bg-indigo-50/70 border border-indigo-100 rounded-lg px-2 py-1 mt-1 leading-snug">
+                                                {mat.category_spec_badge || mat.nutrient_ratio_summary}
+                                              </div>
+                                            )}
+
                                             <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-200 rounded-lg px-2.5 py-1 mt-1">
                                               {mat.recommended_for_area}
                                             </div>
+
+                                            {(mat.selection_rationale || mat.rationale_stage) && (
+                                              <div className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 mt-1 leading-relaxed space-y-0.5">
+                                                <div className="font-extrabold text-emerald-900 text-[10px]">
+                                                  📋 추천 선정 근거 (생육과정 필요성분 + 토양검정 조합)
+                                                </div>
+                                                {mat.rationale_stage ? (
+                                                  <div>• {mat.rationale_stage}</div>
+                                                ) : (
+                                                  <div>{mat.selection_rationale}</div>
+                                                )}
+                                                {mat.rationale_soil && (
+                                                  <div className="text-slate-600">• {mat.rationale_soil}</div>
+                                                )}
+                                              </div>
+                                            )}
                                           </div>
                                         </div>
 
@@ -5231,12 +5297,17 @@ export default function UserIntroPage() {
                                   </button>
                                 </div>
 
-                                {/* 주요 영양소 첨가비 정보 박스 */}
+                                {/* 품목 구분별 주요 성분·처방 정보 박스 */}
                                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                                     <span className="font-extrabold text-emerald-900">
-                                      주요 영양소 첨가비:{' '}
+                                      {item.material_category === 'PESTICIDE'
+                                        ? '유효성분·작용기작:'
+                                        : item.material_category === 'NUTRIENT'
+                                        ? '생리활성·기능성분:'
+                                        : '주요 영양소 첨가비:'}{' '}
                                       {item.nutrient_ratio_summary ||
+                                        item.active_ingredient ||
                                         `N ${item.n_pct ?? 0}% · P ${item.p_pct ?? 0}% · K ${item.k_pct ?? 0}%`}
                                     </span>
                                     <span className="text-[11px] font-bold text-slate-600">
@@ -5246,41 +5317,92 @@ export default function UserIntroPage() {
                                       </strong>
                                     </span>
                                   </div>
-                                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                                    <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-extrabold">
-                                      질소(N) {item.n_pct ?? 0}%
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-900 font-extrabold">
-                                      인산(P₂O₅) {item.p_pct ?? 0}%
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-extrabold">
-                                      칼륨(K₂O) {item.k_pct ?? 0}%
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold">
-                                      칼슘(CaO) {item.ca_pct ?? 0}%
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
-                                      고토(MgO) {item.mg_pct ?? 0}%
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-pink-100 text-pink-900 font-bold">
-                                      붕소(B₂O₃) {item.b_pct ?? 0}%
-                                    </span>
-                                    {Number(item.sio2_pct) > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold">
-                                        규산(SiO₂) {item.sio2_pct}%
+                                  {item.material_category === 'PESTICIDE' ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-extrabold">
+                                        유효성분: {item.active_ingredient || item.nutrient_ratio_summary || '복합 유효성분'}
                                       </span>
-                                    )}
-                                    {Number(item.s_pct) > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-900 font-bold">
-                                        유황(S) {item.s_pct}%
+                                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-extrabold">
+                                        작용기작: {item.moa_group_code || '복합/유기농자재'}
                                       </span>
-                                    )}
-                                    {Number(item.om_pct) > 0 && (
-                                      <span className="px-2 py-0.5 rounded bg-stone-200 text-stone-900 font-extrabold">
-                                        유기물(OM) {item.om_pct}%
+                                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                                        PLS 안전기준:{' '}
+                                        {Number(item.safety_phi_days) > 0
+                                          ? `수확 ${item.safety_phi_days}일 전 · ${item.safety_max_count || 3}회 이내`
+                                          : '친환경/유기농 수확기 제한 없음'}
                                       </span>
-                                    )}
-                                  </div>
+                                      {item.dilution_ratio && (
+                                        <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-bold">
+                                          희석: {item.dilution_ratio}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : item.material_category === 'NUTRIENT' ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-extrabold">
+                                        유리아미노산 {item.amino_acid_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-extrabold">
+                                        해조·풀빅산 {item.seaweed_humic_pct ?? 0}%
+                                      </span>
+                                      {Number(item.ca_pct) > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold">
+                                          수용성 칼슘(Ca) {item.ca_pct}%
+                                        </span>
+                                      )}
+                                      {Number(item.b_pct) > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-pink-100 text-pink-900 font-bold">
+                                          수용성 붕소(B) {item.b_pct}%
+                                        </span>
+                                      )}
+                                      {item.chelate_micro_summary && (
+                                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 font-bold">
+                                          {item.chelate_micro_summary}
+                                        </span>
+                                      )}
+                                      {item.dilution_ratio && (
+                                        <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                                          희석: {item.dilution_ratio}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-extrabold">
+                                        질소(N) {item.n_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-900 font-extrabold">
+                                        인산(P₂O₅) {item.p_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-extrabold">
+                                        칼륨(K₂O) {item.k_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-bold">
+                                        칼슘(CaO) {item.ca_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
+                                        고토(MgO) {item.mg_pct ?? 0}%
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-pink-100 text-pink-900 font-bold">
+                                        붕소(B₂O₃) {item.b_pct ?? 0}%
+                                      </span>
+                                      {Number(item.sio2_pct) > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold">
+                                          규산(SiO₂) {item.sio2_pct}%
+                                        </span>
+                                      )}
+                                      {Number(item.s_pct) > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-yellow-100 text-yellow-900 font-bold">
+                                          유황(S) {item.s_pct}%
+                                        </span>
+                                      )}
+                                      {Number(item.om_pct) > 0 && (
+                                        <span className="px-2 py-0.5 rounded bg-stone-200 text-stone-900 font-extrabold">
+                                          유기물(OM) {item.om_pct}%
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
 
                                 <div className="text-xs text-slate-600 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -5657,94 +5779,268 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 주요 영양소 첨가비 상세 테이블 */}
-                        <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 space-y-2.5">
-                          <div className="font-extrabold text-emerald-950 text-sm flex items-center justify-between">
-                            <span>주요 영양소 첨가비 (보증성분 함량 %)</span>
-                            <span className="text-[11px] font-bold text-emerald-700">
-                              농촌진흥청 비료 공정규격 기준
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-emerald-900 bg-white px-3 py-2 rounded-xl border border-emerald-200">
-                            {selectedUserAgroDetail.nutrient_ratio_summary ||
-                              `N ${selectedUserAgroDetail.n_pct ?? 0}% · P ${
-                                selectedUserAgroDetail.p_pct ?? 0
-                              }% · K ${selectedUserAgroDetail.k_pct ?? 0}%`}
-                          </div>
-                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">질소 (N)</div>
-                              <div className="font-extrabold text-sky-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.n_pct ?? 0}%
-                              </div>
+                        {/* 품목 구분별 핵심 유효성분 / 생리활성성분 / 보증성분 상세 테이블 */}
+                        {selectedUserAgroDetail.material_category === 'PESTICIDE' ? (
+                          <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 space-y-2.5">
+                            <div className="font-extrabold text-rose-950 text-sm flex items-center justify-between">
+                              <span>병해충관리제 유효성분 · 작용기작 · PLS 안전사용기준</span>
+                              <span className="text-[11px] font-bold text-rose-700">
+                                농촌진흥청 농약안전정보시스템 / PLS 기준
+                              </span>
                             </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                인산 (P₂O₅)
-                              </div>
-                              <div className="font-extrabold text-orange-600 text-sm mt-0.5">
-                                {selectedUserAgroDetail.p_pct ?? 0}%
-                              </div>
+                            <div className="text-xs font-bold text-rose-900 bg-white px-3 py-2 rounded-xl border border-rose-200">
+                              {selectedUserAgroDetail.nutrient_ratio_summary ||
+                                selectedUserAgroDetail.active_ingredient ||
+                                '유효성분 및 PLS 방제 정보'}
                             </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                칼륨 (K₂O)
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                              <div className="bg-white p-2.5 rounded-xl border border-rose-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  유효성분 및 함량
+                                </div>
+                                <div className="font-extrabold text-rose-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.active_ingredient || '상세 요약 참조'}
+                                </div>
                               </div>
-                              <div className="font-extrabold text-amber-600 text-sm mt-0.5">
-                                {selectedUserAgroDetail.k_pct ?? 0}%
+                              <div className="bg-white p-2.5 rounded-xl border border-rose-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  작용기작 그룹코드 (저항성 교호살포 기호)
+                                </div>
+                                <div className="font-extrabold text-purple-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.moa_group_code || '복합/미분류'}
+                                </div>
                               </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                칼슘 (CaO)
+                              <div className="bg-white p-2.5 rounded-xl border border-rose-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  농약 품목등록번호 / 유기농업자재 공시번호
+                                </div>
+                                <div className="font-extrabold text-slate-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.pesticide_reg_no || '농진청 등록품목'}
+                                </div>
                               </div>
-                              <div className="font-extrabold text-emerald-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.ca_pct ?? 0}%
-                              </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                고토 (MgO)
-                              </div>
-                              <div className="font-extrabold text-purple-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.mg_pct ?? 0}%
-                              </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                붕소 (B₂O₃)
-                              </div>
-                              <div className="font-extrabold text-pink-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.b_pct ?? 0}%
-                              </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                규산 (SiO₂)
-                              </div>
-                              <div className="font-extrabold text-teal-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.sio2_pct ?? 0}%
-                              </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
-                              <div className="text-[10px] text-slate-500 font-bold">유황 (S)</div>
-                              <div className="font-extrabold text-yellow-700 text-sm mt-0.5">
-                                {selectedUserAgroDetail.s_pct ?? 0}%
-                              </div>
-                            </div>
-                            <div className="bg-white p-2.5 rounded-xl border border-emerald-200 col-span-2 sm:col-span-1">
-                              <div className="text-[10px] text-slate-500 font-bold">
-                                유기물 (OM)
-                              </div>
-                              <div className="font-extrabold text-stone-800 text-sm mt-0.5">
-                                {selectedUserAgroDetail.om_pct ?? 0}%
+                              <div className="bg-white p-2.5 rounded-xl border border-rose-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  PLS 안전사용기준 (수확 전 일수 / 최대 횟수)
+                                </div>
+                                <div className="font-extrabold text-amber-800 text-xs mt-0.5">
+                                  {Number(selectedUserAgroDetail.safety_phi_days) > 0
+                                    ? `수확 ${selectedUserAgroDetail.safety_phi_days}일 전까지`
+                                    : '수확 전 제한 없음 (친환경/유기농자재)'}{' '}
+                                  ·{' '}
+                                  {Number(selectedUserAgroDetail.safety_max_count) > 0
+                                    ? `${selectedUserAgroDetail.safety_max_count}회 이내`
+                                    : '발생 시 적기 살포'}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
+                        ) : selectedUserAgroDetail.material_category === 'NUTRIENT' ? (
+                          <div className="bg-sky-50/70 p-4 rounded-2xl border border-sky-200 space-y-2.5">
+                            <div className="font-extrabold text-sky-950 text-sm flex items-center justify-between">
+                              <span>생리활성 기능성분 · 킬레이트 미량요소 · 수용성 무기성분</span>
+                              <span className="text-[11px] font-bold text-sky-700">
+                                기능성 생리활성 영양제 규격
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-sky-900 bg-white px-3 py-2 rounded-xl border border-sky-200">
+                              {selectedUserAgroDetail.nutrient_ratio_summary ||
+                                `유리아미노산 ${selectedUserAgroDetail.amino_acid_pct ?? 0}% · 해조/풀빅산 ${
+                                  selectedUserAgroDetail.seaweed_humic_pct ?? 0
+                                }% · Ca ${selectedUserAgroDetail.ca_pct ?? 0}% · B ${
+                                  selectedUserAgroDetail.b_pct ?? 0
+                                }%`}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  유리아미노산
+                                </div>
+                                <div className="font-extrabold text-sky-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.amino_acid_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  해조추출물·풀빅산
+                                </div>
+                                <div className="font-extrabold text-teal-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.seaweed_humic_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  수용성 칼슘(Ca)
+                                </div>
+                                <div className="font-extrabold text-emerald-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.ca_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  수용성 붕소(B)
+                                </div>
+                                <div className="font-extrabold text-pink-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.b_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  수용성 고토(Mg)
+                                </div>
+                                <div className="font-extrabold text-purple-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.mg_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  수용성 N·P·K
+                                </div>
+                                <div className="font-extrabold text-amber-700 text-xs mt-1">
+                                  {selectedUserAgroDetail.n_pct ?? 0}-
+                                  {selectedUserAgroDetail.p_pct ?? 0}-
+                                  {selectedUserAgroDetail.k_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-sky-200 col-span-2 text-left">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  킬레이트 미량요소 (Fe·Zn·Mn·Mo)
+                                </div>
+                                <div className="font-extrabold text-slate-800 text-xs mt-0.5 truncate">
+                                  {selectedUserAgroDetail.chelate_micro_summary ||
+                                    'EDTA 킬레이트 미량요소 복합 함유'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 space-y-2.5">
+                            <div className="font-extrabold text-emerald-950 text-sm flex items-center justify-between">
+                              <span>주요 영양소 첨가비 (보증성분 함량 %)</span>
+                              <span className="text-[11px] font-bold text-emerald-700">
+                                농촌진흥청 비료 공정규격 기준
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-emerald-900 bg-white px-3 py-2 rounded-xl border border-emerald-200">
+                              {selectedUserAgroDetail.nutrient_ratio_summary ||
+                                `N ${selectedUserAgroDetail.n_pct ?? 0}% · P ${
+                                  selectedUserAgroDetail.p_pct ?? 0
+                                }% · K ${selectedUserAgroDetail.k_pct ?? 0}%`}
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">질소 (N)</div>
+                                <div className="font-extrabold text-sky-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.n_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  인산 (P₂O₅)
+                                </div>
+                                <div className="font-extrabold text-orange-600 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.p_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  칼륨 (K₂O)
+                                </div>
+                                <div className="font-extrabold text-amber-600 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.k_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  칼슘 (CaO)
+                                </div>
+                                <div className="font-extrabold text-emerald-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.ca_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  고토 (MgO)
+                                </div>
+                                <div className="font-extrabold text-purple-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.mg_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  붕소 (B₂O₃)
+                                </div>
+                                <div className="font-extrabold text-pink-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.b_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  규산 (SiO₂)
+                                </div>
+                                <div className="font-extrabold text-teal-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.sio2_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">유황 (S)</div>
+                                <div className="font-extrabold text-yellow-700 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.s_pct ?? 0}%
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200 col-span-2 sm:col-span-1">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  유기물 (OM)
+                                </div>
+                                <div className="font-extrabold text-stone-800 text-sm mt-0.5">
+                                  {selectedUserAgroDetail.om_pct ?? 0}%
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
-                        {/* 시비량 및 생육단계 정보 */}
+                        {/* 시비량·희석배수 및 생육단계 정보 */}
                         <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-2">
+                          {selectedUserAgroDetail.application_method && (
+                            <div>
+                              <span className="text-slate-500 font-bold">
+                                {selectedUserAgroDetail.material_category === 'PESTICIDE'
+                                  ? '살포 방식 및 혼용 기준: '
+                                  : selectedUserAgroDetail.material_category === 'NUTRIENT'
+                                  ? '권장 처리 방식 (엽면/관주): '
+                                  : '시비 방법: '}
+                              </span>
+                              <span className="font-extrabold text-indigo-800">
+                                {selectedUserAgroDetail.application_method}
+                                {selectedUserAgroDetail.material_category === 'FERTILIZER' &&
+                                selectedUserAgroDetail.release_duration
+                                  ? ` · ${selectedUserAgroDetail.release_duration}`
+                                  : ''}
+                              </span>
+                            </div>
+                          )}
+                          {selectedUserAgroDetail.dilution_ratio &&
+                            selectedUserAgroDetail.material_category !== 'FERTILIZER' && (
+                              <div>
+                                <span className="text-slate-500 font-bold">
+                                  표준 희석배수 (물 20L 기준):{' '}
+                                </span>
+                                <span className="font-extrabold text-sky-800">
+                                  {selectedUserAgroDetail.dilution_ratio}
+                                </span>
+                              </div>
+                            )}
+                          {selectedUserAgroDetail.stress_target &&
+                            selectedUserAgroDetail.material_category === 'NUTRIENT' && (
+                              <div>
+                                <span className="text-slate-500 font-bold">
+                                  타깃 생리장해·스트레스:{' '}
+                                </span>
+                                <span className="font-extrabold text-teal-800">
+                                  {selectedUserAgroDetail.stress_target}
+                                </span>
+                              </div>
+                            )}
                           <div>
                             <span className="text-slate-500 font-bold">
                               100평(330㎡) 권장 사용량:{' '}
@@ -5754,7 +6050,11 @@ export default function UserIntroPage() {
                             </span>
                           </div>
                           <div>
-                            <span className="text-slate-500 font-bold">핵심 효능: </span>
+                            <span className="text-slate-500 font-bold">
+                              {selectedUserAgroDetail.material_category === 'PESTICIDE'
+                                ? '방제 대상 병해충·잡초: '
+                                : '핵심 효능 및 대상 작물: '}
+                            </span>
                             <span className="font-bold text-slate-900">
                               {selectedUserAgroDetail.target_nutrient_or_pest}
                             </span>

@@ -314,25 +314,25 @@ export default function SurveyPublicPage() {
   if (submittedId) {
     return (
       <div className="min-h-screen bg-slate-100 py-12 px-4 flex items-center justify-center">
-        <div className="max-w-2xl w-full bg-white rounded-3xl border border-emerald-200 shadow-xl overflow-hidden">
-          <div className="bg-emerald-950 text-white p-8 text-center space-y-3">
+        <div className="max-w-3xl w-full bg-white rounded-3xl border border-emerald-200 shadow-xl overflow-hidden">
+          <div className="bg-emerald-950 text-white p-8 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center mx-auto text-emerald-300">
-              <CheckCircle2 className="w-9 h-9" />
+              <CheckCircle2 className="w-10 h-10" />
             </div>
-            <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
+            <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-base font-bold">
               접수 번호: {submittedId}
             </span>
-            <h1 className="text-2xl font-extrabold">
+            <h1 className="text-4xl font-extrabold">
               {surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.'}
             </h1>
-            <p className="text-sm text-slate-300">
+            <p className="text-lg text-slate-300">
               {surveyMeta.footer_sub ||
                 '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'}
             </p>
           </div>
           <div className="p-8 space-y-6 text-center">
-            <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1.5 text-left">
-              <div className="font-extrabold text-sm text-emerald-950">응답 요약 확인</div>
+            <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-base text-emerald-900 space-y-2 text-left">
+              <div className="font-extrabold text-lg text-emerald-950">응답 요약 확인</div>
               {respondentRegion && <div>• 주요 재배 지역: {respondentRegion}</div>}
               <div>• 연령대 / 재배규모: {singleAnswers.q1} / {singleAnswers.q2}</div>
               <div>
@@ -352,9 +352,9 @@ export default function SurveyPublicPage() {
                   setQ3Selected([]);
                   setQ3OtherText('');
                 }}
-                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-base flex items-center gap-2 transition cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-5 h-5" />
                 추가 응답 작성하기
               </button>
             </div>
@@ -366,24 +366,24 @@ export default function SurveyPublicPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 text-slate-900">
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* 상단 브랜드 & 진행률 바 */}
-        <div className="flex items-center justify-between bg-white px-5 py-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-              <Sprout className="w-4 h-4" />
+        <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+              <Sprout className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-slate-900">한팜 (HANFARM)</div>
-              <div className="text-[11px] text-slate-500">맞춤형 재배일정 &amp; AI 병해충 진단 수요조사</div>
+              <div className="text-base font-extrabold text-slate-900">한팜 (HANFARM)</div>
+              <div className="text-sm text-slate-500">맞춤형 재배일정 &amp; AI 병해충 진단 수요조사</div>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-xs font-extrabold text-emerald-700">
+              <div className="text-base font-extrabold text-emerald-700">
                 응답 진행률 {answeredCount} / {questions.length} 문항
               </div>
-              <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden mt-1">
+              <div className="w-36 h-2.5 bg-slate-100 rounded-full overflow-hidden mt-1">
                 <div
                   className="h-full bg-emerald-600 transition-all"
                   style={{ width: `${Math.round((answeredCount / questions.length) * 100)}%` }}
@@ -392,9 +392,9 @@ export default function SurveyPublicPage() {
             </div>
             <Link
               to="/admin"
-              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-bold text-slate-700 inline-flex items-center gap-1 transition"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-base font-bold text-slate-700 inline-flex items-center gap-1.5 transition"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
               관리자 페이지
             </Link>
           </div>
@@ -403,16 +403,16 @@ export default function SurveyPublicPage() {
         {/* 설문 헤더 및 안내문 영역 */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="bg-emerald-950 text-white p-6 sm:p-8 space-y-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
-              <ClipboardList className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-base font-bold">
+              <ClipboardList className="w-4 h-4" />
               HANFARM USER DEMAND SURVEY
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
               {surveyMeta.title || '한팜 맞춤형 재배관리 서비스 수요조사'}
             </h1>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-4 text-sm leading-relaxed text-slate-700 bg-gradient-to-b from-emerald-50/40 to-white border-b border-slate-100">
+          <div className="p-6 sm:p-8 space-y-4 text-lg leading-relaxed text-slate-700 bg-gradient-to-b from-emerald-50/40 to-white border-b border-slate-100">
             <p className="font-bold text-slate-900">{surveyMeta.greeting_text || '안녕하세요.'}</p>
             <p>
               <strong className="text-emerald-900 font-extrabold">한팜(HANFARM)</strong>은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록{' '}
@@ -422,63 +422,63 @@ export default function SurveyPublicPage() {
               {surveyMeta.duration_text ||
                 '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.'}
             </p>
-            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 font-extrabold text-xs sm:text-sm">
+            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 font-extrabold text-base sm:text-lg">
               {surveyMeta.notice_text ||
                 '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.'}
             </div>
             {isSurveyClosed && (
-              <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 font-extrabold text-xs sm:text-sm flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
+              <div className="p-5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 font-extrabold text-base sm:text-lg flex items-center gap-2.5">
+                <AlertCircle className="w-6 h-6 shrink-0 text-rose-600" />
                 <span>현재 본 설문조사는 마감 처리되어 더 이상 설문 참여 및 응답 제출이 불가능합니다.</span>
               </div>
             )}
           </div>
 
           {/* 참여자 기본 정보 (선택 입력) */}
-          <div className="px-6 sm:px-8 py-5 bg-slate-50/70 border-b border-slate-200/80 space-y-3">
-            <div className="text-xs font-extrabold text-slate-700 flex items-center justify-between">
+          <div className="px-6 sm:px-8 py-6 bg-slate-50/70 border-b border-slate-200/80 space-y-4">
+            <div className="text-base font-extrabold text-slate-700 flex flex-wrap items-center justify-between gap-2">
               <span>참여자 기본 정보 (선택 입력 · 미입력 시 익명으로 접수됩니다)</span>
-              <span className="text-[11px] font-normal text-slate-500">추첨 경품 및 베타테스터 안내용</span>
+              <span className="text-sm font-normal text-slate-500">추첨 경품 및 베타테스터 안내용</span>
             </div>
-            <div className="grid sm:grid-cols-2 gap-3 text-xs">
+            <div className="grid sm:grid-cols-2 gap-4 text-base">
               <div>
-                <label className="block font-bold text-slate-600 mb-1 flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-emerald-600" /> 성함 또는 농장명 (선택)
+                <label className="block font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-emerald-600" /> 성함 또는 농장명 (선택)
                 </label>
                 <input
                   type="text"
                   value={respondentName}
                   onChange={(e) => setRespondentName(e.target.value)}
                   placeholder="예: 홍길동 농가 (미입력 시 익명)"
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-600 mb-1 flex items-center gap-1">
-                  <Phone className="w-3.5 h-3.5 text-emerald-600" /> 연락처 (선택)
+                <label className="block font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
+                  <Phone className="w-4 h-4 text-emerald-600" /> 연락처 (선택)
                 </label>
                 <input
                   type="text"
                   value={respondentContact}
                   onChange={(e) => setRespondentContact(e.target.value)}
                   placeholder="예: 010-1234-5678"
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
                 />
               </div>
             </div>
 
-            <div className="text-xs">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="font-bold text-slate-600 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-600" /> 주요 재배 지역 (선택 · 시/도 → 시/군/구 → 읍/면/동)
+            <div className="text-base">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                <label className="font-bold text-slate-600 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-600" /> 주요 재배 지역 (선택 · 시/도 → 시/군/구 → 읍/면/동)
                 </label>
                 {respondentRegion && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-extrabold">
                     선택됨: {respondentRegion}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <select
                     value={regionSido}
@@ -496,7 +496,7 @@ export default function SurveyPublicPage() {
                       setRegionSigungu(nextSgg);
                       loadDongOptions(nextSido, nextSgg);
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer"
                   >
                     <option value="">시/도 선택</option>
                     {(addressMeta.sidos.length > 0
@@ -542,7 +542,7 @@ export default function SurveyPublicPage() {
                       }
                       loadDongOptions(regionSido, nextSgg);
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <option value="">시/군/구 선택</option>
                     {(addressMeta.sigungusBySido[regionSido] || []).map((sgg) => (
@@ -558,7 +558,7 @@ export default function SurveyPublicPage() {
                     value={regionDong}
                     disabled={isSurveyClosed || !regionSido || !regionSigungu}
                     onChange={(e) => setRegionDong(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
                   >
                     <option value="">읍/면/동 선택</option>
                     {dongList.map((dong) => (
@@ -581,13 +581,13 @@ export default function SurveyPublicPage() {
                   key={q.id}
                   className="p-5 sm:p-6 rounded-2xl bg-slate-50/70 border border-slate-200/90 space-y-4"
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
                         {q.number}. {q.question}
                       </h3>
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${
+                        className={`px-3 py-1 rounded-full text-sm font-bold shrink-0 ${
                           isMulti
                             ? 'bg-teal-100 text-teal-800'
                             : 'bg-emerald-100 text-emerald-800'
@@ -597,13 +597,13 @@ export default function SurveyPublicPage() {
                       </span>
                     </div>
                     {q.subtitle && (
-                      <p className="text-xs sm:text-sm italic text-emerald-800 bg-emerald-50/90 px-3.5 py-2 rounded-xl border border-emerald-200/80">
+                      <p className="text-base sm:text-lg italic text-emerald-800 bg-emerald-50/90 px-4 py-2.5 rounded-xl border border-emerald-200/80">
                         *{q.subtitle}*
                       </p>
                     )}
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-2.5">
+                  <div className="grid sm:grid-cols-2 gap-3">
                     {q.options.map((opt) => {
                       const isChecked = isMulti
                         ? q3Selected.includes(opt)
@@ -616,14 +616,14 @@ export default function SurveyPublicPage() {
                           onClick={() =>
                             isMulti ? toggleQ3Option(opt) : handleSelectSingle(q.id, opt)
                           }
-                          className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border text-xs sm:text-sm font-bold cursor-pointer transition select-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                          className={`w-full text-left flex items-center gap-3 p-4 rounded-xl border text-base sm:text-lg font-bold cursor-pointer transition select-none disabled:opacity-60 disabled:cursor-not-allowed ${
                             isChecked
                               ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                               : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30'
                           }`}
                         >
                           <span
-                            className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                            className={`w-6 h-6 rounded flex items-center justify-center border shrink-0 text-base ${
                               isChecked
                                 ? 'bg-white text-emerald-700 border-white'
                                 : 'border-slate-300 bg-slate-50'
@@ -641,7 +641,7 @@ export default function SurveyPublicPage() {
                     q.allowOtherInput &&
                     q3Selected.some((o) => o.includes('기타')) && (
                       <div className="pt-2">
-                        <label className="block text-xs font-extrabold text-emerald-900 mb-1.5">
+                        <label className="block text-base font-extrabold text-emerald-900 mb-2">
                           ⑦ 기타 재배 작물 직접 입력
                         </label>
                         <input
@@ -649,7 +649,7 @@ export default function SurveyPublicPage() {
                           value={q3OtherText}
                           onChange={(e) => setQ3OtherText(e.target.value)}
                           placeholder="재배 중인 기타 작물명을 입력해 주세요 (예: 시설 수박, 멜론, 인삼, 버섯 등)"
-                          className="w-full px-4 py-2.5 rounded-xl bg-white border-2 border-emerald-500 text-sm font-bold text-slate-900 focus:outline-none"
+                          className="w-full px-4 py-3 rounded-xl bg-white border-2 border-emerald-500 text-lg font-bold text-slate-900 focus:outline-none"
                         />
                       </div>
                     )}
@@ -658,19 +658,19 @@ export default function SurveyPublicPage() {
             })}
 
             {errorMsg && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm font-bold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-base sm:text-lg font-bold flex items-center gap-2.5">
+                <AlertCircle className="w-5 h-5 shrink-0" />
                 <span>{errorMsg}</span>
               </div>
             )}
 
             {/* 하단 감사 인사 및 제출 버튼 */}
             <div className="pt-4 border-t border-slate-200 space-y-5 text-center">
-              <div className="space-y-1">
-                <p className="text-base font-extrabold text-slate-900">
+              <div className="space-y-1.5">
+                <p className="text-xl font-extrabold text-slate-900">
                   {surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.'}
                 </p>
-                <p className="text-xs sm:text-sm text-slate-500">
+                <p className="text-base sm:text-lg text-slate-500">
                   {surveyMeta.footer_sub ||
                     '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'}
                 </p>
@@ -679,9 +679,9 @@ export default function SurveyPublicPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || isSurveyClosed}
-                className="w-full sm:w-auto min-w-64 px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-600/20 inline-flex items-center justify-center gap-2 transition cursor-pointer"
+                className="w-full sm:w-auto min-w-72 px-9 py-4.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-lg sm:text-xl shadow-lg shadow-emerald-600/20 inline-flex items-center justify-center gap-2.5 transition cursor-pointer"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5" />
                 {isSurveyClosed
                   ? '설문 마감 (참여 불가)'
                   : isSubmitting

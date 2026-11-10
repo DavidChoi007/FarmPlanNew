@@ -1229,6 +1229,18 @@ function ensureAgroMaterials() {
     ['detail_image_3', "TEXT DEFAULT ''"],
     ['detail_image_4', "TEXT DEFAULT ''"],
     ['description_banner_url', "TEXT DEFAULT ''"],
+    ['application_method', "TEXT DEFAULT ''"],
+    ['release_duration', "TEXT DEFAULT ''"],
+    ['amino_acid_pct', 'REAL DEFAULT 0'],
+    ['seaweed_humic_pct', 'REAL DEFAULT 0'],
+    ['chelate_micro_summary', "TEXT DEFAULT ''"],
+    ['stress_target', "TEXT DEFAULT ''"],
+    ['dilution_ratio', "TEXT DEFAULT ''"],
+    ['active_ingredient', "TEXT DEFAULT ''"],
+    ['moa_group_code', "TEXT DEFAULT ''"],
+    ['pesticide_reg_no', "TEXT DEFAULT ''"],
+    ['safety_phi_days', "TEXT DEFAULT ''"],
+    ['safety_max_count', "TEXT DEFAULT ''"],
   ];
   for (const [colName, colDef] of extraCols) {
     if (!existingCols.has(colName)) {
@@ -1248,8 +1260,10 @@ function ensureAgroMaterials() {
       n_pct, p_pct, k_pct, ca_pct, mg_pct, b_pct, sio2_pct, s_pct, om_pct,
       dosage_per_100pyeong, unit_spec, retail_price, unit_price, discount_rate, reward_points, stock_status,
       usage_stage, weather_trigger,
-      thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
+      application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
+      stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const f of [
@@ -1257,6 +1271,113 @@ function ensureAgroMaterials() {
     ...INITIAL_NUTRIENT_PRODUCTS,
     ...INITIAL_PESTICIDE_PRODUCTS,
   ]) {
+    const cat = f.material_category;
+    const isFert = cat === 'FERTILIZER';
+    const isNutr = cat === 'NUTRIENT';
+    const isPest = cat === 'PESTICIDE';
+
+    const defaultAppMethod = isFert
+      ? f.sub_type.includes('웃거름')
+        ? '표층추비 (고랑·포기 사이 웃거름)'
+        : '전층시비 (파종·정식 전 로터리 경운 혼화)'
+      : isNutr
+      ? f.dosage_per_100pyeong.includes('관주')
+        ? '엽면시비 및 뿌리권 관주시비 겸용'
+        : '엽면시비 (아침·저녁 잎 앞뒷면 경엽살포)'
+      : f.dosage_per_100pyeong.includes('토양') || f.dosage_per_100pyeong.includes('관주')
+      ? '토양혼화 · 뿌리권 관주처리'
+      : '경엽살포 (잎 뒷면·생장점 충분 살포 / 알칼리성 약제 혼용 주의)';
+
+    const defaultReleaseDuration = isFert
+      ? f.sub_type.includes('완효성') || f.formulation_type.includes('코팅')
+        ? '완효성 코팅 용출 (60~100일 지속)'
+        : f.sub_type.includes('웃거름')
+        ? '속효성 흡수 (15~25일)'
+        : f.sub_type.includes('유기질') || f.sub_type.includes('토양개량')
+        ? '지효성 토양개량 (90~120일)'
+        : '표준 기비 지속형 (30~45일)'
+      : '';
+
+    const defaultAminoPct = isNutr
+      ? f.sub_type.includes('뿌리') || f.product_name.includes('아미노')
+        ? 18.0
+        : f.sub_type.includes('칼슘')
+        ? 12.0
+        : 10.0
+      : 0;
+
+    const defaultSeaweedPct = isNutr
+      ? f.sub_type.includes('광합성') || f.sub_type.includes('해조')
+        ? 15.0
+        : 8.0
+      : 0;
+
+    const defaultChelateSummary = isNutr
+      ? '킬레이트 철(EDTA-Fe) 0.5% · 아연(Zn) 0.3% · 망간(Mn) 0.3% · 몰리브덴(Mo) 0.05%'
+      : '';
+
+    const defaultStressTarget = isNutr
+      ? f.sub_type.includes('칼슘')
+        ? '배추 결구기 칼슘결핍(팁번·꿀통배추), 무·감자 속빈현상 및 세포벽 연화 예방'
+        : f.sub_type.includes('뿌리')
+        ? '정식 직후 몸살·활착 지연 극복 및 잔뿌리(세근) 발근 촉진'
+        : f.sub_type.includes('비대')
+        ? '결구·괴경·구비대 불량 해소 및 당도·저장성 향상'
+        : '일조량 부족·저온 냉해·고온 위조 등 이상기후 생리장해 급속 회복'
+      : '';
+
+    const dilutionMatch = f.dosage_per_100pyeong.match(/([0-9,~]+배[^)]*)/);
+    const defaultDilutionRatio =
+      isNutr || isPest
+        ? dilutionMatch
+          ? dilutionMatch[1]
+          : isNutr
+          ? '500~1,000배 (물 20L당 20~40ml)'
+          : '1,000~2,000배 (물 20L당 10~20ml)'
+        : '';
+
+    const defaultActiveIngredient = isPest
+      ? f.nutrient_ratio_summary.split('(')[0].trim() || f.nutrient_ratio_summary
+      : '';
+
+    const moaMatch = f.nutrient_ratio_summary.match(/작용기작\s*([^)·]+)/);
+    const defaultMoaGroup = isPest
+      ? moaMatch
+        ? moaMatch[1].trim()
+        : f.is_organic
+        ? '유기농업자재 (천연식물추출물 · 저항성 무관)'
+        : f.sub_type.includes('살균')
+        ? 'FRAC 다3+나3 (예방·치료 복합)'
+        : f.sub_type.includes('제초')
+        ? 'HRAC 비선택성/토양처리'
+        : 'IRAC 28 / 4a (침투이행성 살충)'
+      : '';
+
+    const regMatch =
+      f.origin_country.match(/등록번호:\s*([^)]+)/) ||
+      f.organic_label.match(/(공시-[0-9-]+)/);
+    const defaultPestRegNo = isPest
+      ? regMatch
+        ? regMatch[1].trim()
+        : f.is_organic
+        ? '유기농업자재 공시-2-5-315'
+        : '농촌진흥청 농약등록 제 19-살충/살균-190 호'
+      : '';
+
+    const defaultSafetyPhi = isPest
+      ? f.is_organic
+        ? '제한 없음 (수확 전일 살포 가능 · PLS 무잔류)'
+        : f.sub_type.includes('토양') || f.sub_type.includes('제초')
+        ? '정식 전 · 고랑 처리 전용 (수확 30일 전까지)'
+        : '수확 7일 전까지 사용 권장 (PLS 기준 준수)'
+      : '';
+
+    const defaultSafetyMaxCount = isPest
+      ? f.is_organic
+        ? '횟수 제한 없음 (5~7일 간격)'
+        : '작기당 3회 이내 (교호살포 권장)'
+      : '';
+
     upsertFert.run(
       f.material_id,
       f.product_code,
@@ -1297,7 +1418,19 @@ function ensureAgroMaterials() {
       f.detail_image_2,
       f.detail_image_3,
       f.detail_image_4,
-      f.description_banner_url
+      f.description_banner_url,
+      defaultAppMethod,
+      defaultReleaseDuration,
+      defaultAminoPct,
+      defaultSeaweedPct,
+      defaultChelateSummary,
+      defaultStressTarget,
+      defaultDilutionRatio,
+      defaultActiveIngredient,
+      defaultMoaGroup,
+      defaultPestRegNo,
+      defaultSafetyPhi,
+      defaultSafetyMaxCount
     );
   }
 

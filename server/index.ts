@@ -16,6 +16,13 @@ import {
   PESTICIDE_CATEGORIES,
   renderFertilizerSvg,
 } from './fertilizerProductAssets.ts';
+import {
+  RECOMMENDATION_LOGIC_SPEC,
+  STAGE_REQUIREMENT_SPECS,
+  resolveStageSpecByProcessOrItem,
+  evaluateCategoryRecommendations,
+  selectScheduleStageMaterials,
+} from './agroRecommendationEngine.ts';
 
 initDatabase();
 
@@ -391,7 +398,19 @@ async function syncAgroMaterialSchemaToSupabase() {
         ADD COLUMN IF NOT EXISTS detail_image_2 TEXT DEFAULT '',
         ADD COLUMN IF NOT EXISTS detail_image_3 TEXT DEFAULT '',
         ADD COLUMN IF NOT EXISTS detail_image_4 TEXT DEFAULT '',
-        ADD COLUMN IF NOT EXISTS description_banner_url TEXT DEFAULT '';
+        ADD COLUMN IF NOT EXISTS description_banner_url TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS application_method TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS release_duration TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS amino_acid_pct REAL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS seaweed_humic_pct REAL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS chelate_micro_summary TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS stress_target TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS dilution_ratio TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS active_ingredient TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS moa_group_code TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS pesticide_reg_no TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS safety_phi_days TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS safety_max_count TEXT DEFAULT '';
 
       CREATE TABLE IF NOT EXISTS public.payment_bank_account (
         account_id TEXT PRIMARY KEY,
@@ -1725,6 +1744,50 @@ const server = http.createServer(async (req, res) => {
         materials,
         growthProcesses,
         cropGrowthPlans,
+        logicSpec: {
+          ...RECOMMENDATION_LOGIC_SPEC,
+          scoringFormula: RECOMMENDATION_LOGIC_SPEC.coreFormula,
+          categoryModels: RECOMMENDATION_LOGIC_SPEC.categoryModels.map((cm: any) => ({
+            ...cm,
+            title: `${cm.categoryKr} 추천 근거 및 채점 방식`,
+            keyFields: cm.keyRegisteredFields,
+          })),
+        },
+        stageRequirementSpecs: Object.values(STAGE_REQUIREMENT_SPECS).map((sp: any) => ({
+          ...sp,
+          itemId: sp.stageKey,
+          subItemName: sp.stageName,
+          requiredFertilizerNutrients: [
+            ...(sp.fertilizerSpec?.minOmPct ? ['OM(유기물)'] : []),
+            ...(sp.fertilizerSpec?.minNPct ? ['N(질소)'] : []),
+            ...(sp.fertilizerSpec?.minPPct ? ['P₂O₅(인산)'] : []),
+            ...(sp.fertilizerSpec?.minKPct ? ['K₂O(칼륨)'] : []),
+            ...(sp.fertilizerSpec?.minCaPct ? ['CaO(칼슘)'] : []),
+            ...(sp.fertilizerSpec?.minMgPct ? ['MgO(고토)'] : []),
+            ...(sp.fertilizerSpec?.requireBoron ? ['B₂O₃(붕소)'] : []),
+            ...(sp.fertilizerSpec?.requireSilicate ? ['SiO₂(규산)'] : []),
+            ...(sp.fertilizerSpec?.requireSulfur ? ['S(유황)'] : []),
+          ],
+          preferredFertSubTypes: [
+            sp.fertilizerSpec?.preferredMethod || '',
+            sp.fertilizerSpec?.preferredRelease || '',
+          ].filter(Boolean),
+          requiredNutrientActives: [
+            ...(sp.nutrientSpec?.requireAmino ? ['유리아미노산'] : []),
+            ...(sp.nutrientSpec?.requireSeaweedHumic ? ['해조추출물·풀빅산'] : []),
+            ...(sp.nutrientSpec?.requireChelateMicro ? ['킬레이트 미량요소'] : []),
+            ...(sp.nutrientSpec?.requireWaterSolubleCa ? ['수용성 칼슘(Ca)'] : []),
+            ...(sp.nutrientSpec?.requireWaterSolubleB ? ['수용성 붕소(B)'] : []),
+            ...(sp.nutrientSpec?.requireWaterSolubleMg ? ['수용성 고토(Mg)'] : []),
+          ],
+          targetStresses: sp.nutrientSpec?.stressTargets || [],
+          targetPestsOrDiseases: sp.pesticideSpec?.targetPests || [],
+          recommendAllocation: {
+            fertilizer: sp.categoryCounts?.FERTILIZER ?? 0,
+            nutrient: sp.categoryCounts?.NUTRIENT ?? 0,
+            pesticide: sp.categoryCounts?.PESTICIDE ?? 0,
+          },
+        })),
       });
       return;
     }
@@ -2310,223 +2373,46 @@ const server = http.createServer(async (req, res) => {
       const deficientKeys = new Set(soilDiagnostics.filter((d) => d.status === 'DEFICIENT').map((d) => d.key));
       const excessKeys = new Set(soilDiagnostics.filter((d) => d.status === 'EXCESS').map((d) => d.key));
 
-      // 카테고리별 스코어링 및 추천 근거 생성 함수
-      const scoreAndSelectMaterials = (category: 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE', maxCount: number) => {
-        const candidates = allMaterials.filter((m) => m.material_category === category);
-        const ruleKeywords =
-          category === 'FERTILIZER'
-            ? String(matchedRule?.fertilizer_categories_csv || '').split(',')
-            : category === 'NUTRIENT'
-            ? String(matchedRule?.nutrient_categories_csv || '').split(',')
-            : String(matchedRule?.pesticide_categories_csv || '').split(',');
-
-        const scored = candidates.map((m) => {
-          let score = 65;
-          const reasonsSoil: string[] = [];
-          const reasonsStage: string[] = [];
-          const reasonsClimate: string[] = [];
-
-          const fullText = `${m.product_name} ${m.sub_type} ${m.target_nutrient_or_pest} ${m.nutrient_ratio_summary} ${m.usage_stage} ${m.weather_trigger}`;
-
-          // 1) 작물별 생육 과정 관리에 직접 매핑된 자재 가산점
-          if (planMaterialIds.includes(m.material_id)) {
-            score += 22;
-            reasonsStage.push(
-              `[${cropRow.crop_name} > ${processRow.process_name}] 표준 생육과정 매뉴얼에 핵심 투입 자재로 지정된 제품입니다.`
-            );
-          }
-
-          // 2) 생육과정 매핑 규칙 키워드 매칭
-          for (const kw of ruleKeywords) {
-            const cleanKw = kw.trim();
-            if (cleanKw && fullText.includes(cleanKw)) {
-              score += 12;
-              break;
-            }
-          }
-          if (fullText.includes(processRow.process_name.slice(0, 2))) {
-            score += 8;
-          }
-
-          // 3) 토양검정 과부족 연동 스코어링 및 토양 근거 생성
-          if (category === 'FERTILIZER' || category === 'NUTRIENT') {
-            if (
-              (deficientKeys.has('ph') || deficientKeys.has('ca')) &&
-              (Number(m.ca_pct) > 0 || fullText.includes('칼슘') || fullText.includes('석회'))
-            ) {
-              score += 16;
-              reasonsSoil.push(
-                `${addrRow.eupmyeondong} 토양의 산도(pH ${soilInput.soil_ph}) 및 칼슘(${soilInput.exch_ca_cmol} cmol+/kg) 보완을 위해 칼슘·산도교정 성분이 직접 작용합니다.`
-              );
-            }
-            if (
-              deficientKeys.has('om') &&
-              (Number(m.om_pct) > 0 || fullText.includes('퇴비') || fullText.includes('유기') || fullText.includes('아미노'))
-            ) {
-              score += 15;
-              reasonsSoil.push(
-                `토양 유기물(${soilInput.organic_matter_g_kg} g/kg)이 ${cropRow.crop_name} 적정 기준(${soilStd.om_min}~${soilStd.om_max}) 대비 부족하여 유기물·부식산 보충에 최적입니다.`
-              );
-            }
-            if (
-              deficientKeys.has('k') &&
-              (Number(m.k_pct) >= 8 || fullText.includes('칼륨') || fullText.includes('가리') || fullText.includes('NK') || fullText.includes('비대'))
-            ) {
-              score += 15;
-              reasonsSoil.push(
-                `토양 치환성 칼륨(${soilInput.exch_k_cmol} cmol+/kg) 부족을 교정하여 구·과실 비대 및 줄기 조직 강화를 돕습니다.`
-              );
-            }
-            if (
-              deficientKeys.has('p2o5') &&
-              (Number(m.p_pct) >= 8 || fullText.includes('인산') || fullText.includes('발근') || fullText.includes('활착'))
-            ) {
-              score += 14;
-              reasonsSoil.push(
-                `유효인산(${soilInput.avail_p2o5_mg_kg} mg/kg) 부족에 따른 초기 잔뿌리(세근) 발달 및 화아분화 저해를 보완합니다.`
-              );
-            }
-            if (
-              deficientKeys.has('mg') &&
-              (Number(m.mg_pct) > 0 || fullText.includes('고토') || fullText.includes('마그네슘') || fullText.includes('만능'))
-            ) {
-              score += 12;
-              reasonsSoil.push(
-                `마그네슘(${soilInput.exch_mg_cmol} cmol+/kg) 보충을 통해 엽록소 합성과 광합성 효율을 끌어올립니다.`
-              );
-            }
-            if (excessKeys.has('ec') && category === 'FERTILIZER' && Number(m.n_pct) >= 18) {
-              score -= 10;
-            }
-          }
-
-          // 4) 기후(작년+올해 예측 평균) 및 병해충 위험도 연동 스코어링
-          if (category === 'PESTICIDE') {
-            if (
-              isHighHumidity &&
-              (fullText.includes('살균') || fullText.includes('노균') || fullText.includes('탄저') || fullText.includes('역병') || fullText.includes('무름'))
-            ) {
-              score += 18;
-              reasonsClimate.push(
-                `${targetMonth}월 ${addrRow.eupmyeondong} 예측·평년 평균습도(${climateAvgHum}%) 및 강우량(${climateTotalRain}mm, 강우 ${rainyDays}일) 다습 조건에서 급증하는 곰팡이·세균성 병해를 선제 차단합니다.`
-              );
-            }
-            if (
-              isHighTemp &&
-              (fullText.includes('살충') || fullText.includes('나방') || fullText.includes('총채') || fullText.includes('진딧물') || fullText.includes('해머'))
-            ) {
-              score += 16;
-              reasonsClimate.push(
-                `낮 최고기온 평균 ${climateMaxTemp}℃의 고온 환경에서 번식 속도가 빨라지는 나방류 유충·진딧물·총채벌레의 밀도를 초기에 억제합니다.`
-              );
-            }
-            if (
-              (processRow.process_name.includes('토양') || processRow.process_name.includes('밑거름') || processRow.process_name.includes('정식')) &&
-              (fullText.includes('토양') || fullText.includes('입제') || fullText.includes('거세미') || fullText.includes('선충'))
-            ) {
-              score += 18;
-              reasonsStage.push(
-                `파종·정식 전 토양 혼화 처리를 통해 지하부 해충(거세미·굼벵이·고자리파리·선충)에 의한 초기 결주 피해를 예방합니다.`
-              );
-            }
-          } else if (category === 'NUTRIENT') {
-            if (isHighTemp && (fullText.includes('칼슘') || fullText.includes('아미노'))) {
-              score += 10;
-              reasonsClimate.push(
-                `고온기(${climateMaxTemp}℃) 증산 불균형으로 인한 칼슘 이동 저해 및 고온 스트레스를 완화합니다.`
-              );
-            }
-            if ((isLowTemp || rainyDays >= 6) && (fullText.includes('썬마스터') || fullText.includes('광합성') || fullText.includes('아미노'))) {
-              score += 12;
-              reasonsClimate.push(
-                `강우·흐린 날(${rainyDays}일) 일조 부족 및 저온(${climateMinTemp}℃) 스트레스 환경에서 대사 활력을 보완합니다.`
-              );
-            }
-          }
-
-          // 5) 관리자 정책(친환경 선호 / 가격 전략 / 브랜드 가중치) 반영
-          if (policy.organic_preference === 'ORGANIC_FIRST' && Number(m.is_organic) === 1) {
-            score += 12;
-          } else if (policy.organic_preference === 'CONVENTIONAL_FIRST' && Number(m.is_organic) === 0) {
-            score += 8;
-          }
-          if (
-            policy.brand_priority === 'NUVO_HANFARM_FIRST' &&
-            (fullText.includes('누보') || fullText.includes('한팜'))
-          ) {
-            score += 6;
-          }
-          if (policy.price_strategy === 'COST_SAVER' && Number(m.unit_price) <= 18000) {
-            score += 6;
-          } else if (policy.price_strategy === 'PREMIUM_YIELD' && Number(m.unit_price) >= 18000) {
-            score += 6;
-          }
-
-          if (reasonsSoil.length === 0) {
-            reasonsSoil.push(
-              `${addrRow.eupmyeondong} 토양(${soilInput.soil_texture}, pH ${soilInput.soil_ph}, OM ${soilInput.organic_matter_g_kg}g/kg) 조건에서 양분 균형을 안정적으로 유지합니다.`
-            );
-          }
-          if (reasonsStage.length === 0) {
-            reasonsStage.push(
-              `[${cropRow.crop_name} - ${processRow.process_name}] 단계의 핵심 목표인 '${matchedRule?.physiological_goal || '생육 촉진 및 품질 향상'}'에 부합하는 주력 ${
-                category === 'FERTILIZER' ? '비료' : category === 'NUTRIENT' ? '영양제' : '병해충관리제'
-              }입니다.`
-            );
-          }
-          if (reasonsClimate.length === 0) {
-            reasonsClimate.push(
-              `${targetMonth}월 지역 평균기온 ${climateAvgTemp}℃(최고 ${climateMaxTemp}℃ / 최저 ${climateMinTemp}℃), 습도 ${climateAvgHum}% 기상 여건에서 안정적인 약효·비효를 발휘합니다.`
-            );
-          }
-
-          // 평수(area_pyeong) 및 토양 과부족 보정율 기반 추천 수량 산출
-          const baseUnitsPer100Pyeong = category === 'FERTILIZER' ? 1.5 : 0.5;
-          const soilBoostMultiplier =
-            category === 'FERTILIZER' && (deficientKeys.has('om') || deficientKeys.has('k') || deficientKeys.has('p2o5'))
-              ? 1 + Number(policy.deficiency_boost_pct || 20) / 100
-              : 1.0;
-          const recommendedQty = Math.max(
-            1,
-            Math.ceil((area_pyeong / 100) * baseUnitsPer100Pyeong * soilBoostMultiplier)
-          );
-          const unitPrice = Number(m.unit_price || 15000);
-          const totalCost = recommendedQty * unitPrice;
-
-          return {
-            material_id: m.material_id,
-            product_code: m.product_code,
-            material_category: m.material_category,
-            sub_type: m.sub_type,
-            manufacturer: m.manufacturer,
-            product_name: m.product_name,
-            is_organic: Number(m.is_organic) === 1,
-            organic_label: m.organic_label,
-            unit_spec: m.unit_spec || m.weight_spec || m.volume_spec,
-            unit_price: unitPrice,
-            dosage_per_100pyeong: m.dosage_per_100pyeong,
-            target_nutrient_or_pest: m.target_nutrient_or_pest,
-            nutrient_ratio_summary: m.nutrient_ratio_summary,
-            usage_stage: m.usage_stage,
-            weather_trigger: m.weather_trigger,
-            thumbnail_url: m.thumbnail_url,
-            match_score: Math.min(99, Math.max(72, score)),
-            recommended_qty: recommendedQty,
-            total_cost: totalCost,
-            rationale_soil: reasonsSoil[0],
-            rationale_stage: reasonsStage[0],
-            rationale_climate: reasonsClimate[0],
-            rationale_dosage: `경작면적 ${area_pyeong.toLocaleString()}평 기준 ${recommendedQty}개(${m.unit_spec || '표준규격'}) 권장 · 표준용량(${m.dosage_per_100pyeong}) 준수`,
-          };
-        });
-
-        scored.sort((a, b) => b.match_score - a.match_score);
-        return scored.slice(0, maxCount);
+      // 모듈화된 3대 대분류(비료·영양제·병해충관리제) 전용 등록항목 기반 정량 채점 및 추천 근거 산출 엔진 호출
+      const stageSpec = resolveStageSpecByProcessOrItem(processRow.process_code, processRow.process_name);
+      const commonEvalParams = {
+        allMaterials,
+        stageSpec,
+        cropName: cropRow.crop_name,
+        cultivarName: cultivarRow?.cultivar_name || '표준품종',
+        regionName: `${addrRow.sido} ${addrRow.sigungu} ${addrRow.eupmyeondong}`,
+        areaPyeong: area_pyeong,
+        soilInput,
+        soilStd,
+        climate: {
+          month: targetMonth,
+          temp_avg: climateAvgTemp,
+          temp_max: climateMaxTemp,
+          temp_min: climateMinTemp,
+          humidity_avg: climateAvgHum,
+          rainfall_total_mm: climateTotalRain,
+          rainy_days: rainyDays,
+        },
+        daysToHarvest: Number(body.days_to_harvest ?? stageSpec.daysBeforeHarvestTypical),
+        preferredMaterialIds: planMaterialIds,
+        policy,
       };
 
-      const recommendedFertilizers = scoreAndSelectMaterials('FERTILIZER', 2);
-      const recommendedNutrients = scoreAndSelectMaterials('NUTRIENT', 2);
-      const recommendedPesticides = scoreAndSelectMaterials('PESTICIDE', 2);
+      const recommendedFertilizers = evaluateCategoryRecommendations({
+        ...commonEvalParams,
+        category: 'FERTILIZER',
+        maxCount: 2,
+      });
+      const recommendedNutrients = evaluateCategoryRecommendations({
+        ...commonEvalParams,
+        category: 'NUTRIENT',
+        maxCount: 2,
+      });
+      const recommendedPesticides = evaluateCategoryRecommendations({
+        ...commonEvalParams,
+        category: 'PESTICIDE',
+        maxCount: 2,
+      });
 
       const totalEstimatedCost =
         recommendedFertilizers.reduce((acc, x) => acc + x.total_cost, 0) +
@@ -2629,6 +2515,7 @@ const server = http.createServer(async (req, res) => {
         soilDiagnostics,
         climateSummary,
         matchedRule,
+        stageSpec,
         recommendations: {
           fertilizers: recommendedFertilizers,
           nutrients: recommendedNutrients,
@@ -2857,13 +2744,45 @@ const server = http.createServer(async (req, res) => {
       const s_pct = Number(body.s_pct) || 0;
       const om_pct = Number(body.om_pct) || 0;
 
+      const application_method = (body.application_method || '').trim();
+      const release_duration = (body.release_duration || '').trim();
+      const amino_acid_pct = Number(body.amino_acid_pct) || 0;
+      const seaweed_humic_pct = Number(body.seaweed_humic_pct) || 0;
+      const chelate_micro_summary = (body.chelate_micro_summary || '').trim();
+      const stress_target = (body.stress_target || '').trim();
+      const dilution_ratio = (body.dilution_ratio || '').trim();
+      const active_ingredient = (body.active_ingredient || '').trim();
+      const moa_group_code = (body.moa_group_code || '').trim();
+      const pesticide_reg_no = (body.pesticide_reg_no || '').trim();
+      const safety_phi_days = (body.safety_phi_days || '').trim();
+      const safety_max_count = (body.safety_max_count || '').trim();
+
       const autoSummary =
         (body.nutrient_ratio_summary || '').trim() ||
-        `N ${n_pct}% · P₂O₅ ${p_pct}% · K₂O ${k_pct}%` +
-          (mg_pct ? ` + 고토(MgO) ${mg_pct}%` : '') +
-          (b_pct ? ` + 붕소(B₂O₃) ${b_pct}%` : '') +
-          (ca_pct ? ` + 칼슘(CaO) ${ca_pct}%` : '') +
-          (om_pct ? ` + 유기물(OM) ${om_pct}%` : '');
+        (cat === 'PESTICIDE'
+          ? [
+              active_ingredient || '유효성분 미입력',
+              moa_group_code ? `작용기작 ${moa_group_code}` : '',
+              dilution_ratio ? `희석 ${dilution_ratio}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : cat === 'NUTRIENT'
+          ? [
+              amino_acid_pct ? `유리아미노산 ${amino_acid_pct}%` : '',
+              seaweed_humic_pct ? `해조·풀빅산 ${seaweed_humic_pct}%` : '',
+              ca_pct ? `수용성 Ca ${ca_pct}%` : '',
+              b_pct ? `수용성 B ${b_pct}%` : '',
+              mg_pct ? `수용성 Mg ${mg_pct}%` : '',
+              chelate_micro_summary || '',
+            ]
+              .filter(Boolean)
+              .join(' + ')
+          : `N ${n_pct}% · P₂O₅ ${p_pct}% · K₂O ${k_pct}%` +
+            (mg_pct ? ` + 고토(MgO) ${mg_pct}%` : '') +
+            (b_pct ? ` + 붕소(B₂O₃) ${b_pct}%` : '') +
+            (ca_pct ? ` + 칼슘(CaO) ${ca_pct}%` : '') +
+            (om_pct ? ` + 유기물(OM) ${om_pct}%` : ''));
 
       const unit_price = Number(body.unit_price) || 15000;
       const retail_price = Number(body.retail_price) || Math.round(unit_price * 1.15);
@@ -2936,6 +2855,18 @@ const server = http.createServer(async (req, res) => {
         description_banner_url: (
           body.description_banner_url || `/api/agro-materials/image/${idEnc}/desc`
         ).trim(),
+        application_method,
+        release_duration,
+        amino_acid_pct,
+        seaweed_humic_pct,
+        chelate_micro_summary,
+        stress_target,
+        dilution_ratio,
+        active_ingredient,
+        moa_group_code,
+        pesticide_reg_no,
+        safety_phi_days,
+        safety_max_count,
       };
 
       db.prepare(`
@@ -2947,8 +2878,10 @@ const server = http.createServer(async (req, res) => {
           n_pct, p_pct, k_pct, ca_pct, mg_pct, b_pct, sio2_pct, s_pct, om_pct,
           dosage_per_100pyeong, unit_spec, retail_price, unit_price, discount_rate, reward_points, stock_status,
           usage_stage, weather_trigger,
-          thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
+          application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
+          stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         fullRowData.material_id,
         fullRowData.product_code,
@@ -2989,7 +2922,19 @@ const server = http.createServer(async (req, res) => {
         fullRowData.detail_image_2,
         fullRowData.detail_image_3,
         fullRowData.detail_image_4,
-        fullRowData.description_banner_url
+        fullRowData.description_banner_url,
+        fullRowData.application_method,
+        fullRowData.release_duration,
+        fullRowData.amino_acid_pct,
+        fullRowData.seaweed_humic_pct,
+        fullRowData.chelate_micro_summary,
+        fullRowData.stress_target,
+        fullRowData.dilution_ratio,
+        fullRowData.active_ingredient,
+        fullRowData.moa_group_code,
+        fullRowData.pesticide_reg_no,
+        fullRowData.safety_phi_days,
+        fullRowData.safety_max_count
       );
 
       // Supabase public.agro_material 테이블에도 동기화
@@ -6771,6 +6716,76 @@ const server = http.createServer(async (req, res) => {
         },
       ];
 
+      // [변경된 3대 대분류(비료·영양제·병해충관리제) 등록 항목 + 생육과정 요구성분 + 현재 토양성분 + 기상/PLS 기준 통합 추천 엔진 적용]
+      const scheduleSoilStdRow =
+        (db.prepare('SELECT * FROM soil_standard WHERE crop_id = ?').get(reqCropId) as any) ||
+        (db.prepare('SELECT * FROM soil_standard LIMIT 1').get() as any) || {
+          ph_min: 6.0,
+          ph_max: 6.8,
+          om_min: 25,
+          om_max: 35,
+          p2o5_min: 300,
+          p2o5_max: 500,
+          k_min: 0.65,
+          k_max: 0.85,
+          ca_min: 5.0,
+          ca_max: 6.5,
+          mg_min: 1.5,
+          mg_max: 2.5,
+          ec_min: 0.5,
+          ec_max: 2.0,
+        };
+      const schedulePolicyRow =
+        (db.prepare("SELECT * FROM agro_recommendation_policy WHERE policy_id = 'DEFAULT_POLICY'").get() as any) || {};
+      const scheduleSoilInput = {
+        soil_ph: Number(activeRequest.soil_ph ?? 6.2),
+        soil_ec: Number(activeRequest.soil_ec ?? 1.1),
+        organic_matter_g_kg: Number(activeRequest.organic_matter_g_kg ?? 24),
+        avail_p2o5_mg_kg: Number(activeRequest.avail_p2o5_mg_kg ?? 360),
+        exch_k_cmol: Number(activeRequest.exch_k_cmol ?? 0.68),
+        exch_ca_cmol: Number(activeRequest.exch_ca_cmol ?? 5.4),
+        exch_mg_cmol: Number(activeRequest.exch_mg_cmol ?? 1.7),
+        soil_texture: String(activeRequest.soil_texture || '양토'),
+        land_category: String(activeRequest.land_category || '전(밭)'),
+      };
+      const scheduleRegionName = `${activeRequest.sido || '충청북도'} ${activeRequest.sigungu || '충주시'} ${
+        activeRequest.eupmyeondong || '단월동'
+      }`;
+
+      for (const schItem of rawScheduleItems) {
+        const stWeather = analyzePeriodClimate(schItem.start_date, schItem.end_date, schItem.is_after_planting);
+        const stMonth = Number(String(schItem.start_date || '2026-08-15').slice(5, 7)) || 8;
+        const daysToHarv = Math.max(0, diffDaysInclusive(schItem.end_date, safeHarvestDate) - 1);
+        const preferredIds = (schItem.materials || []).map((m: any) => m.material_id).filter(Boolean);
+
+        const dynamicallyRecommended = selectScheduleStageMaterials({
+          stageKey: schItem.item_id,
+          allMaterials,
+          cropName: cropDisplayName,
+          cultivarName: cvDisplayName,
+          regionName: scheduleRegionName,
+          areaPyeong,
+          soilInput: scheduleSoilInput,
+          soilStd: scheduleSoilStdRow,
+          climate: {
+            month: stMonth,
+            temp_avg: Number(stWeather.avg_temp ?? 18.5),
+            temp_max: Number(stWeather.max_temp ?? 23.0),
+            temp_min: Number(stWeather.min_temp ?? 14.0),
+            humidity_avg: Number(stWeather.avg_humidity ?? 68),
+            rainfall_total_mm: Number(stWeather.total_precip_mm ?? 30),
+            rainy_days: Number(stWeather.rainy_days ?? 3),
+          },
+          daysToHarvest: daysToHarv,
+          preferredMaterialIds: preferredIds,
+          policy: schedulePolicyRow,
+        });
+
+        if (dynamicallyRecommended.length > 0) {
+          schItem.materials = dynamicallyRecommended;
+        }
+      }
+
       // [기초 코드 관리 > 생육 구분 기초 코드 (growth_type_code)] 테이블에서 6대 단계 구분 마스터를 순서대로(sort_order ASC) 조회 및 연동
       const dbGrowthTypes = db
         .prepare('SELECT * FROM growth_type_code ORDER BY sort_order ASC, type_code ASC')
@@ -9310,11 +9325,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 정적 파일 서빙 (프로덕션 배포용)
+    // 정적 파일 서빙 (프로덕션 배포 및 public/docs PDF 서빙용)
     const distPath = path.resolve(process.cwd(), 'dist');
-    const filePath = path.join(distPath, pathname === '/' ? 'index.html' : pathname);
+    const publicPath = path.resolve(process.cwd(), 'public');
+    let filePath = path.join(distPath, pathname === '/' ? 'index.html' : pathname);
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      const publicCandidate = path.join(publicPath, pathname);
+      if (fs.existsSync(publicCandidate) && fs.statSync(publicCandidate).isFile()) {
+        filePath = publicCandidate;
+      }
+    }
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      const ext = path.extname(filePath);
+      const ext = path.extname(filePath).toLowerCase();
       const mimeMap: Record<string, string> = {
         '.html': 'text/html; charset=utf-8',
         '.js': 'application/javascript; charset=utf-8',
@@ -9323,6 +9345,7 @@ const server = http.createServer(async (req, res) => {
         '.jpg': 'image/jpeg',
         '.png': 'image/png',
         '.svg': 'image/svg+xml',
+        '.pdf': 'application/pdf',
       };
       res.writeHead(200, { 'Content-Type': mimeMap[ext] || 'application/octet-stream' });
       fs.createReadStream(filePath).pipe(res);
