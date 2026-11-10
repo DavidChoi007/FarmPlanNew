@@ -24598,20 +24598,20 @@ export default function AdminDashboardPage() {
 
                   {/* 탭 1 (기본): 실제 설문조사 모양 화면 (재배자·사용자에게 보여지는 실제 설문지와 동일한 UI + 직접 응답 제출 가능) */}
                   {surveyViewSubTab === 'form_view' && (
-                    <div className="max-w-3xl mx-auto space-y-6">
+                    <div className="max-w-4xl mx-auto space-y-6">
                       {/* 설문 헤더 및 안내문 카드 */}
                       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
                         <div className="bg-emerald-950 text-white p-6 sm:p-8 space-y-3">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
-                            <ClipboardList className="w-3.5 h-3.5" />
+                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-base font-bold">
+                            <ClipboardList className="w-4 h-4" />
                             HANFARM USER DEMAND SURVEY
                           </div>
-                          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
                             # {surveyData.activeSurvey?.title || '한팜 맞춤형 재배관리 서비스 수요조사'}
                           </h1>
                         </div>
 
-                        <div className="p-6 sm:p-8 space-y-4 text-sm leading-relaxed text-slate-700 bg-gradient-to-b from-emerald-50/40 to-white border-b border-slate-200">
+                        <div className="p-6 sm:p-8 space-y-4 text-lg leading-relaxed text-slate-700 bg-gradient-to-b from-emerald-50/40 to-white border-b border-slate-200">
                           <p className="font-bold text-slate-900">
                             {surveyData.activeSurvey?.greeting_text || '안녕하세요.'}
                           </p>
@@ -24626,23 +24626,23 @@ export default function AdminDashboardPage() {
                             {surveyData.activeSurvey?.duration_text ||
                               '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.'}
                           </p>
-                          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 font-extrabold text-xs sm:text-sm">
+                          <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 font-extrabold text-base sm:text-lg">
                             {surveyData.activeSurvey?.notice_text ||
                               '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.'}
                           </div>
                         </div>
 
                         {/* 참여자 정보 입력란 (선택) */}
-                        <div className="px-6 sm:px-8 py-5 bg-slate-50/70 border-b border-slate-200/80 space-y-3">
-                          <div className="text-xs font-extrabold text-slate-700 flex items-center justify-between">
+                        <div className="px-6 sm:px-8 py-6 bg-slate-50/70 border-b border-slate-200/80 space-y-4">
+                          <div className="text-base font-extrabold text-slate-700 flex flex-wrap items-center justify-between gap-2">
                             <span>참여자 기본 정보 (선택 입력 · 미입력 시 익명으로 접수됩니다)</span>
-                            <span className="text-[11px] font-normal text-slate-500">
+                            <span className="text-sm font-normal text-slate-500">
                               실제 설문조사 페이지와 동일하게 응답을 체크하고 제출할 수 있습니다
                             </span>
                           </div>
-                          <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                          <div className="grid sm:grid-cols-2 gap-4 text-base">
                             <div>
-                              <label className="block font-bold text-slate-600 mb-1">
+                              <label className="block font-bold text-slate-600 mb-1.5">
                                 성함 또는 농장명 (선택)
                               </label>
                               <input
@@ -24655,11 +24655,11 @@ export default function AdminDashboardPage() {
                                   })
                                 }
                                 placeholder="예: 홍길동 농가 (미입력 시 익명)"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
                               />
                             </div>
                             <div>
-                              <label className="block font-bold text-slate-600 mb-1">
+                              <label className="block font-bold text-slate-600 mb-1.5">
                                 연락처 (선택)
                               </label>
                               <input
@@ -24672,23 +24672,23 @@ export default function AdminDashboardPage() {
                                   })
                                 }
                                 placeholder="예: 010-1234-5678"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
                               />
                             </div>
                           </div>
 
-                          <div className="text-xs">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <label className="font-bold text-slate-600 flex items-center gap-1">
-                                <MapPin className="w-3.5 h-3.5 text-emerald-600" /> 주요 재배 지역 (선택 · 시/도 → 시/군/구 → 읍/면/동)
+                          <div className="text-base">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                              <label className="font-bold text-slate-600 flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4 text-emerald-600" /> 주요 재배 지역 (선택 · 시/도 → 시/군/구 → 읍/면/동)
                               </label>
                               {newSurveyRespForm.respondent_region && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
+                                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-extrabold">
                                   선택됨: {newSurveyRespForm.respondent_region}
                                 </span>
                               )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                               <select
                                 value={surveyRegionSido}
                                 onChange={(e) => {
@@ -24705,7 +24705,7 @@ export default function AdminDashboardPage() {
                                   setSurveyRegionSigungu(nextSgg);
                                   loadSurveyDongOptions(nextSido, nextSgg);
                                 }}
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer"
                               >
                                 <option value="">시/도 선택</option>
                                 {addressMeta.sidos.map((sd) => (
@@ -24732,7 +24732,7 @@ export default function AdminDashboardPage() {
                                   }
                                   loadSurveyDongOptions(surveyRegionSido, nextSgg);
                                 }}
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
                               >
                                 <option value="">시/군/구 선택</option>
                                 {(addressMeta.sigungusBySido[surveyRegionSido] || []).map((sgg) => (
@@ -24755,7 +24755,7 @@ export default function AdminDashboardPage() {
                                       .join(' '),
                                   });
                                 }}
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-semibold text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
                               >
                                 <option value="">읍/면/동 선택</option>
                                 {surveyDongList.map((dong) => (
@@ -24789,13 +24789,13 @@ export default function AdminDashboardPage() {
                                   key={q.id}
                                   className="p-5 sm:p-6 rounded-2xl bg-slate-50/70 border border-slate-200/90 space-y-4"
                                 >
-                                  <div className="space-y-1.5">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <h3 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug">
+                                  <div className="space-y-2">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
                                         {q.number}. {q.question}
                                       </h3>
                                       <span
-                                        className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${
+                                        className={`shrink-0 px-3 py-1 rounded-full text-sm font-extrabold ${
                                           isMulti
                                             ? 'bg-teal-100 text-teal-800'
                                             : 'bg-emerald-100 text-emerald-800'
@@ -24805,13 +24805,13 @@ export default function AdminDashboardPage() {
                                       </span>
                                     </div>
                                     {q.subtitle && (
-                                      <p className="text-xs sm:text-sm italic text-emerald-900 bg-emerald-50/80 px-3.5 py-2 rounded-xl border border-emerald-200/70">
+                                      <p className="text-base sm:text-lg italic text-emerald-900 bg-emerald-50/80 px-4 py-2.5 rounded-xl border border-emerald-200/70">
                                         *{q.subtitle}*
                                       </p>
                                     )}
                                   </div>
 
-                                  <div className="grid sm:grid-cols-2 gap-2.5">
+                                  <div className="grid sm:grid-cols-2 gap-3">
                                     {(q.options || []).map((opt: string) => {
                                       const isSelected = isMulti
                                         ? (newSurveyRespForm.q3_crops || []).includes(opt)
@@ -24837,14 +24837,14 @@ export default function AdminDashboardPage() {
                                               });
                                             }
                                           }}
-                                          className={`w-full text-left flex items-center gap-3 p-3.5 rounded-xl border text-xs sm:text-sm font-bold cursor-pointer transition select-none ${
+                                          className={`w-full text-left flex items-center gap-3 p-4 rounded-xl border text-base sm:text-lg font-bold cursor-pointer transition select-none ${
                                             isSelected
                                               ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                                               : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30'
                                           }`}
                                         >
                                           <span
-                                            className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
+                                            className={`w-6 h-6 rounded flex items-center justify-center border shrink-0 text-base ${
                                               isSelected
                                                 ? 'bg-white text-emerald-700 border-white'
                                                 : 'border-slate-300 bg-slate-50'
@@ -24863,7 +24863,7 @@ export default function AdminDashboardPage() {
                                       o.includes('기타')
                                     ) && (
                                       <div className="pt-2">
-                                        <label className="block text-xs font-extrabold text-emerald-800 mb-1">
+                                        <label className="block text-base font-extrabold text-emerald-800 mb-2">
                                           ⑦ 기타 재배 작물 직접 입력
                                         </label>
                                         <input
@@ -24876,7 +24876,7 @@ export default function AdminDashboardPage() {
                                             })
                                           }
                                           placeholder="재배 중인 기타 작물명을 직접 입력해 주세요 (예: 인삼, 버섯, 화훼 등)"
-                                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border-2 border-emerald-500 text-xs sm:text-sm font-bold text-slate-900 focus:outline-none"
+                                          className="w-full px-4 py-3 rounded-xl bg-white border-2 border-emerald-500 text-lg font-bold text-slate-900 focus:outline-none"
                                         />
                                       </div>
                                     )}
@@ -24887,12 +24887,12 @@ export default function AdminDashboardPage() {
 
                           {/* 하단 감사 문구 및 설문 응답 제출 버튼 */}
                           <div className="pt-4 border-t border-slate-200 space-y-5 text-center">
-                            <div className="space-y-1">
-                              <div className="text-base font-extrabold text-slate-900">
+                            <div className="space-y-1.5">
+                              <div className="text-xl font-extrabold text-slate-900">
                                 {surveyData.activeSurvey?.footer_title ||
                                   '설문에 참여해 주셔서 감사합니다.'}
                               </div>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-base sm:text-lg text-slate-500">
                                 {surveyData.activeSurvey?.footer_sub ||
                                   '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'}
                               </p>
@@ -24900,9 +24900,9 @@ export default function AdminDashboardPage() {
 
                             <button
                               type="submit"
-                              className="w-full sm:w-auto min-w-72 px-8 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/20 inline-flex items-center justify-center gap-2 transition cursor-pointer"
+                              className="w-full sm:w-auto min-w-72 px-9 py-4.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-lg sm:text-xl shadow-lg shadow-emerald-600/20 inline-flex items-center justify-center gap-2.5 transition cursor-pointer"
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-5 h-5" />
                               설문 응답 제출하기 (수집 DB 반영)
                             </button>
                           </div>
