@@ -2925,7 +2925,7 @@ export default function UserIntroPage() {
                             단계 (관리명칭)
                           </th>
                           <th className="py-3 px-3 text-center border-r border-slate-200 font-extrabold text-xs">
-                            하위 관리명칭 (작업 항목)
+                            생육 과정명
                           </th>
                           <th className="py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700">
                             추천 진행일 (요일 포함)
@@ -3055,7 +3055,7 @@ export default function UserIntroPage() {
                                       {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
                                     </span>
                                     <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-                                      세부보기 ›
+                                      요약보기 ›
                                     </span>
                                   </div>
                                 </td>
@@ -3338,7 +3338,7 @@ export default function UserIntroPage() {
                               </div>
                               <div>
                                 <div className="text-[11px] font-extrabold text-slate-600 mb-1">
-                                  하위 관리명칭 (작업 항목명)
+                                  생육 과정명
                                 </div>
                                 <div className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 font-bold text-slate-900">
                                   {viewItem.sub_item_name || '-'}
