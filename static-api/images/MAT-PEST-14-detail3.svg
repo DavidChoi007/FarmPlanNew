@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="600" height="450">
+  <rect width="600" height="450" rx="20" fill="#0f172a"/>
+  <rect x="16" y="16" width="568" height="418" rx="16" fill="#ffffff"/>
+  <rect x="16" y="16" width="568" height="76" rx="16" fill="#047857"/>
+  <text x="40" y="48" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#a7f3d0">(주)농협케미컬 · MAT-PEST-14</text>
+  <text x="40" y="74" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="17" font-weight="900" fill="#ffffff">세부 이미지 ③ — 100평(10a) 표준 시비량 및 살포 방법</text>
+
+  <text x="40" y="125" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#0f172a">아그리마이신 수화제 (스트렙토마이신 · 배추 무름병·세균성점무늬병 항생 살균제) 250g</text>
+
+  <!-- 중앙 시각 그래픽 영역 -->
+  <rect x="40" y="145" width="520" height="140" rx="14" fill="#ecfdf5" stroke="#10b981" stroke-width="2"/>
+  <g transform="translate(60, 175)">
+          <text x="0" y="26" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#047857">▶ 100평(330㎡) 권장 처방량: 100평당 100g (물 20L당 15~20g / 1,000~1,500배 희석 살포)</text>
+          <text x="0" y="62" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="700" fill="#1e293b">▶ 적용 생육단계: 결구 개시기 및 나방 가해 상처 발생 직후 살포 (PRC-19, PRC-22)</text>
+        </g>
+
+  <!-- 하단 3줄 핵심 스펙 -->
+  <g transform="translate(40, 310)">
+    <rect x="0" y="0" width="520" height="100" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="20" y="28" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#0f172a">• 100평(330㎡) 권장 처방량: 100평당 100g (물 20L당 15~20g / 1,000~1,500배 희석 살포)</text>
+    <text x="20" y="56" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#334155">• 적용 생육단계: 결구 개시기 및 나방 가해 상처 발생 직후 살포 (PRC-19, PRC-22)</text>
+    <text x="20" y="84" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#047857">• 기상·토양 연동 기준: 나방 식흔이나 강풍 상처 부위를 통한 무름병 세균 2차 감염 예방 시</text>
+  </g>
+</svg>

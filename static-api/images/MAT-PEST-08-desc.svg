@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1120" width="900" height="1120">
+  <rect width="900" height="1120" fill="#f8fafc"/>
+  <!-- 상단 타이틀 배너 -->
+  <rect x="30" y="30" width="840" height="170" rx="24" fill="#047857"/>
+  <text x="70" y="78" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="800" fill="#a7f3d0">FARMPLAN 공식 인증 농자재 상세 기술서 · (주)경농 (MAT-PEST-08)</text>
+  <text x="70" y="122" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="28" font-weight="900" fill="#ffffff">고랑깨끗 유제 (펜디메탈린 · 정식·파종 전 잡초 발아억제 토양처리 제초제) 1L</text>
+  <text x="70" y="162" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="700" fill="#e2e8f0">비료 구분 카테고리: [제초제 (고랑·헛골 비선택성/토양처리)] | 제형: 유제 (EC · 발아전 토양처리) | 포장단위: 1L (1,000ml) / 병</text>
+
+  <!-- 섹션 1: 주요 영양소 첨가비 상세 분석표 -->
+  <rect x="30" y="225" width="840" height="275" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="65" y="268" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="20" font-weight="900" fill="#0f172a">1. 주요 영양소 첨가비 (보증성분 함량 %)</text>
+  <text x="65" y="296" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="700" fill="#047857">펜디메탈린(Pendimethalin) 31.7% (작용기작 그룹 K1 · 토양 표층 처리막 형성)</text>
+
+  <g transform="translate(65, 320)">
+    <rect x="0" y="0" width="142" height="145" rx="16" fill="#0f172a"/>
+    <text x="71" y="42" font-family="sans-serif" font-size="15" font-weight="700" fill="#94a3b8" text-anchor="middle">질소 (N)</text>
+    <text x="71" y="95" font-family="sans-serif" font-size="34" font-weight="900" fill="#38bdf8" text-anchor="middle">0%</text>
+    <text x="71" y="126" font-family="sans-serif" font-size="12" fill="#cbd5e1" text-anchor="middle">초기·중기 엽생장</text>
+
+    <rect x="157" y="0" width="142" height="145" rx="16" fill="#0f172a"/>
+    <text x="228" y="42" font-family="sans-serif" font-size="15" font-weight="700" fill="#94a3b8" text-anchor="middle">인산 (P₂O₅)</text>
+    <text x="228" y="95" font-family="sans-serif" font-size="34" font-weight="900" fill="#fb923c" text-anchor="middle">0%</text>
+    <text x="228" y="126" font-family="sans-serif" font-size="12" fill="#cbd5e1" text-anchor="middle">뿌리발달·생식생장</text>
+
+    <rect x="314" y="0" width="142" height="145" rx="16" fill="#0f172a"/>
+    <text x="385" y="42" font-family="sans-serif" font-size="15" font-weight="700" fill="#94a3b8" text-anchor="middle">칼륨 (K₂O)</text>
+    <text x="385" y="95" font-family="sans-serif" font-size="34" font-weight="900" fill="#facc15" text-anchor="middle">0%</text>
+    <text x="385" y="126" font-family="sans-serif" font-size="12" fill="#cbd5e1" text-anchor="middle">결구·괴경비대·저장성</text>
+
+    <rect x="471" y="0" width="142" height="145" rx="16" fill="#0f172a"/>
+    <text x="542" y="42" font-family="sans-serif" font-size="15" font-weight="700" fill="#94a3b8" text-anchor="middle">칼슘·고토</text>
+    <text x="542" y="95" font-family="sans-serif" font-size="28" font-weight="900" fill="#4ade80" text-anchor="middle">0/0%</text>
+    <text x="542" y="126" font-family="sans-serif" font-size="12" fill="#cbd5e1" text-anchor="middle">세포벽·광합성 촉진</text>
+
+    <rect x="628" y="0" width="142" height="145" rx="16" fill="#0f172a"/>
+    <text x="699" y="42" font-family="sans-serif" font-size="15" font-weight="700" fill="#94a3b8" text-anchor="middle">붕소·규산·황</text>
+    <text x="699" y="95" font-family="sans-serif" font-size="28" font-weight="900" fill="#c084fc" text-anchor="middle">0%</text>
+    <text x="699" y="126" font-family="sans-serif" font-size="12" fill="#cbd5e1" text-anchor="middle">생리장해·지력개선</text>
+  </g>
+
+  <!-- 섹션 2: 핵심 효능 및 재배일정(PGDD) 연동 사용 기준 -->
+  <rect x="30" y="525" width="840" height="285" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="65" y="568" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="20" font-weight="900" fill="#0f172a">2. 제품 핵심 효능 및 작물별 표준 시비 기준</text>
+
+  <rect x="65" y="592" width="770" height="62" rx="12" fill="#ecfdf5" stroke="#10b981"/>
+  <text x="90" y="629" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="15.5" font-weight="800" fill="#0f172a">핵심 효능 : 배추 정식 전 및 감자·마늘·양파 파종 직후 토양 표면 처리로 45일간 일년생 화본과·광엽 잡초 발아 원천 억제</text>
+
+  <rect x="65" y="670" width="375" height="115" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="90" y="705" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="800" fill="#64748b">100평(330㎡) / 300평(10a) 표준 사용량</text>
+  <text x="90" y="738" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="17" font-weight="900" fill="#047857">100평당 100~120ml (물 40L에 희석하여 정식·멀칭 전 두둑·고랑 전면에 균일 살포)</text>
+  <text x="90" y="766" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#475569">포장규격: 1L (1,000ml) / 병 | 공급단가: ₩15,500</text>
+
+  <rect x="460" y="670" width="375" height="115" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="485" y="705" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="800" fill="#64748b">권장 시비 시기 (생육단계 연동)</text>
+  <text x="485" y="738" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="15.5" font-weight="900" fill="#0f172a">두둑 성형 직후 ~ 비닐멀칭 피복 전 토양 표면 처리 (PRC-05)</text>
+  <text x="485" y="766" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="12.5" font-weight="700" fill="#047857">정식·파종 전 토양 수분이 적당할 때 선제 처리</text>
+
+  <!-- 섹션 3: 작물별(가을배추·감자·상추·시금치) 시비 처방 가이드 및 보관 주의사항 -->
+  <rect x="30" y="835" width="840" height="255" rx="20" fill="#0f172a"/>
+  <text x="65" y="880" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="20" font-weight="900" fill="#34d399">3. FarmPlan 토양검정 · 적산온도(PGDD) 연동 시비 매뉴얼</text>
+  <text x="65" y="920" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14.5" font-weight="700" fill="#f8fafc">• [가을배추 (불암3호·불암플러스·휘파람)] 정식 1~2주 전 밑거름 및 결구 시작기(PGDD 432℃·일) 추비 처방</text>
+  <text x="65" y="955" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14.5" font-weight="700" fill="#f8fafc">• [감자 (수미·두백·설봉)] 파종 전 전층시비 및 괴경비대기 칼륨·마그네슘 보충으로 전분 함량·수량 증대</text>
+  <text x="65" y="990" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14.5" font-weight="700" fill="#f8fafc">• [상추·시금치 (청치마·포항초)] 초기 활착 촉진 및 엽색·잎두께 향상, 산성토양 교정으로 연작장해 경감</text>
+  <text x="65" y="1035" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="600" fill="#94a3b8">※ 주의사항: 직사광선과 습기를 피해 서늘한 곳에 밀봉 보관하시고, 흙토람 토양검정 처방량에 맞춰 가감 시비하십시오.</text>
+</svg>
