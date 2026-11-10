@@ -179,6 +179,12 @@ if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.i
         img.setAttribute('src', `/FarmPlanNew/static-api/images/${mapped}`);
       }
     });
+    document.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => {
+      const rawHref = a.getAttribute('href') || '';
+      if (rawHref.startsWith('/docs/')) {
+        a.setAttribute('href', `/FarmPlanNew${rawHref}`);
+      }
+    });
   }
 
   void getSnapshot();
