@@ -47,7 +47,7 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
   {
     id: 'q3',
     number: 3,
-    question: '현재 주로 재배하는 작물은 무엇입니까? (복수 선택 가능)',
+    question: '현재 주로 재배하는 작물은 무엇입니까?',
     subtitle: '',
     type: 'multiple',
     allowOtherInput: true,
@@ -100,9 +100,9 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
   {
     id: 'q7',
     number: 7,
-    question: 'AI 병해충 진단 서비스까지 추가된다면 이용하시겠습니까?',
+    question: '병해충 사진 진단 서비스까지 추가된다면 이용하시겠습니까?',
     subtitle:
-      '작물 사진을 촬영하면 AI가 병해충을 진단하고 적절한 관리 및 방제 방법을 안내하는 서비스입니다.',
+      '작물 사진을 촬영하면 병해충을 자동으로 진단하고 알맞은 관리 및 방제 방법을 안내하는 서비스입니다.',
     type: 'single',
     options: ['① 반드시 이용', '② 이용할 의향 있음', '③ 잘 모르겠음', '④ 이용 의향 없음'],
   },
@@ -110,7 +110,7 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
     id: 'q8',
     number: 8,
     question:
-      '맞춤형 재배일정과 AI 병해충 진단이 모두 포함된 서비스에 월 얼마까지 지불할 의향이 있으십니까?',
+      '맞춤형 재배일정과 병해충 진단이 모두 포함된 서비스에 월 얼마까지 지불할 의향이 있으십니까?',
     subtitle: '',
     type: 'single',
     options: [
@@ -125,7 +125,7 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
     id: 'q9',
     number: 9,
     question:
-      '재배일정에 맞춰 필요한 농자재를 추천하고 온라인 주문·배송까지 제공한다면 이용하시겠습니까?',
+      '재배일정에 맞춰 필요한 농자재를 추천하고 주문·배송까지 제공한다면 이용하시겠습니까?',
     subtitle: '',
     type: 'single',
     options: ['① 적극 이용', '② 필요할 때 이용', '③ 이용하지 않음'],
@@ -140,13 +140,13 @@ export default function SurveyPublicPage() {
   const [surveyMeta, setSurveyMeta] = useState<any>({
     survey_id: urlSurveyId,
     title: '한팜 맞춤형 재배관리 서비스 수요조사',
-    greeting_text: '안녕하세요.',
+    greeting_text: '안녕하세요, 농업인 여러분.',
     intro_text:
-      '한팜(HANFARM)은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 AI 병해충 진단 서비스를 개발하고 있습니다.',
+      '한팜은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 병해충 진단 서비스를 개발하고 있습니다.',
     duration_text:
-      '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.',
+      '본 설문은 서비스 개발과 적정 이용료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.',
     notice_text:
-      '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.',
+      '※ 본 설문은 맞춤형 재배일정과 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.',
     footer_title: '설문에 참여해 주셔서 감사합니다.',
     footer_sub: '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.',
     questions: FALLBACK_QUESTIONS,
@@ -246,6 +246,12 @@ export default function SurveyPublicPage() {
     q.type === 'multiple' ? q3Selected.length > 0 : Boolean(singleAnswers[q.id])
   ).length;
 
+  const cleanKoreanText = (text: string) =>
+    String(text || '')
+      .replace(/\s*\(HANFARM\)/gi, '')
+      .replace(/\s*\(복수\s*선택\s*가능\)/g, '')
+      .trim();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSurveyClosed) {
@@ -312,377 +318,399 @@ export default function SurveyPublicPage() {
 
   if (submittedId) {
     return (
-      <div className="min-h-screen bg-slate-100 py-12 px-4 flex items-center justify-center">
-        <div className="max-w-3xl w-full bg-white rounded-3xl border border-emerald-200 shadow-xl overflow-hidden">
-          <div className="bg-emerald-950 text-white p-8 text-center space-y-4">
+      <div className="min-h-screen bg-slate-100 py-8 px-3 sm:px-6 flex items-center justify-center">
+        <div className="max-w-2xl w-full bg-white rounded-3xl border-2 border-emerald-200 shadow-xl overflow-hidden">
+          <div className="bg-emerald-950 text-white p-6 sm:p-8 text-center space-y-3">
             <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center mx-auto text-emerald-300">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-base font-bold">
-              접수 번호: {submittedId}
-            </span>
-            <h1 className="text-4xl font-extrabold">
-              {surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.'}
+            <h1 className="text-xl sm:text-3xl font-extrabold whitespace-nowrap">
+              {cleanKoreanText(surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.')}
             </h1>
-            <p className="text-lg text-slate-300">
-              {surveyMeta.footer_sub ||
-                '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'}
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed break-keep">
+              {cleanKoreanText(
+                surveyMeta.footer_sub ||
+                  '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'
+              )}
             </p>
           </div>
-          <div className="p-8 space-y-6 text-center">
-            <div className="p-6 rounded-2xl bg-emerald-50 border border-emerald-200 text-base text-emerald-900 space-y-2 text-left">
-              <div className="font-extrabold text-lg text-emerald-950">응답 요약 확인</div>
-              {respondentRegion && <div>• 주요 재배 지역: {respondentRegion}</div>}
-              <div>• 연령대 / 재배규모: {singleAnswers.q1} / {singleAnswers.q2}</div>
+          <div className="p-5 sm:p-8 space-y-6 text-center">
+            <div className="p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200 text-[17px] sm:text-lg text-emerald-950 space-y-2.5 text-left leading-relaxed">
+              <div className="font-extrabold text-lg sm:text-xl text-emerald-950 border-b border-emerald-200 pb-2 whitespace-nowrap">
+                설문 응답 요약
+              </div>
+              {respondentRegion && <div>• 재배 지역: {respondentRegion}</div>}
+              <div>• 연령대 / 규모: {singleAnswers.q1} / {singleAnswers.q2}</div>
               <div>
-                • 주 재배 작물: {q3Selected.join(', ')}
+                • 주요 작물: {q3Selected.join(', ')}
                 {q3OtherText ? ` (${q3OtherText})` : ''}
               </div>
-              <div>• 맞춤형 재배일정 이용 의향: {singleAnswers.q5} ({singleAnswers.q6})</div>
-              <div>• AI 병해충 진단 이용 의향: {singleAnswers.q7} (통합 구독: {singleAnswers.q8})</div>
-              <div>• 농자재 추천 및 온라인 주문·배송: {singleAnswers.q9}</div>
+              <div>• 맞춤형 재배일정: {singleAnswers.q5} ({singleAnswers.q6})</div>
+              <div>• 병해충 진단: {singleAnswers.q7} ({singleAnswers.q8})</div>
+              <div>• 농자재 주문·배송: {singleAnswers.q9}</div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setSubmittedId(null);
-                  setSingleAnswers({});
-                  setQ3Selected([]);
-                  setQ3OtherText('');
-                }}
-                className="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-base flex items-center gap-2 transition cursor-pointer"
-              >
-                <RotateCcw className="w-5 h-5" />
-                추가 응답 작성하기
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSubmittedId(null);
+                setSingleAnswers({});
+                setQ3Selected([]);
+                setQ3OtherText('');
+              }}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-[17px] inline-flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <RotateCcw className="w-5 h-5" />
+              다시 작성하기
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
+  const displayTitle = cleanKoreanText(
+    surveyMeta.title || '한팜 맞춤형 재배관리 서비스 수요조사'
+  );
+
   return (
-    <div className="min-h-screen bg-slate-100 py-8 px-4 sm:px-6 text-slate-900">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* 상단 브랜드 & 진행률 바 */}
-        <div className="flex items-center justify-between bg-white px-5 py-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+    <div className="min-h-screen bg-slate-100 py-4 sm:py-8 px-3 sm:px-6 text-slate-900">
+      <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
+        {/* 상단 브랜드 & 응답 진행률 바 (한 줄 고정, 영어 제거) */}
+        <div className="flex items-center justify-between gap-2 bg-white px-4 py-3.5 sm:px-5 sm:py-4 rounded-2xl border-2 border-slate-200 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shrink-0">
               <Sprout className="w-5 h-5" />
             </div>
-            <div>
-              <div className="text-base font-extrabold text-slate-900">한팜 (HANFARM)</div>
-              <div className="text-sm text-slate-500">맞춤형 재배일정 &amp; AI 병해충 진단 수요조사</div>
+            <div className="min-w-0">
+              <div className="text-[17px] sm:text-lg font-extrabold text-slate-900 whitespace-nowrap leading-tight">
+                한팜 수요조사
+              </div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-600 whitespace-nowrap">
+                맞춤형 재배일정 · 병해충 진단
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-base font-extrabold text-emerald-700">
-                응답 진행률 {answeredCount} / {questions.length} 문항
-              </div>
-              <div className="w-36 h-2.5 bg-slate-100 rounded-full overflow-hidden mt-1">
-                <div
-                  className="h-full bg-emerald-600 transition-all"
-                  style={{ width: `${Math.round((answeredCount / questions.length) * 100)}%` }}
-                />
-              </div>
+
+          <div className="text-right shrink-0">
+            <div className="text-[15px] sm:text-base font-extrabold text-emerald-800 whitespace-nowrap">
+              진행률 {answeredCount} / {questions.length} 문항
+            </div>
+            <div className="w-24 sm:w-36 h-2.5 bg-slate-200 rounded-full overflow-hidden mt-1 ml-auto">
+              <div
+                className="h-full bg-emerald-600 transition-all"
+                style={{ width: `${Math.round((answeredCount / questions.length) * 100)}%` }}
+              />
             </div>
           </div>
         </div>
 
-        {/* 설문 헤더 및 안내문 영역 */}
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="bg-emerald-950 text-white p-6 sm:p-8 space-y-3">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/20 text-emerald-300 text-base font-bold">
-              <ClipboardList className="w-4 h-4" />
-              HANFARM USER DEMAND SURVEY
+        {/* 설문 헤더 및 안내문 카드 */}
+        <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xs overflow-hidden">
+          <div className="bg-emerald-950 text-white px-4 py-5 sm:px-8 sm:py-7 space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-sm sm:text-base font-extrabold whitespace-nowrap">
+              <ClipboardList className="w-4 h-4 shrink-0" />
+              농업인 서비스 수요조사
             </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-              {surveyMeta.title || '한팜 맞춤형 재배관리 서비스 수요조사'}
+            <h1 className="text-[17px] sm:text-2xl md:text-3xl font-extrabold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+              {displayTitle}
             </h1>
           </div>
 
-          <div className="p-6 sm:p-8 space-y-4 text-lg leading-relaxed text-slate-700 bg-gradient-to-b from-emerald-50/40 to-white border-b border-slate-100">
-            <p className="font-bold text-slate-900">{surveyMeta.greeting_text || '안녕하세요.'}</p>
-            <p>
-              <strong className="text-emerald-900 font-extrabold">한팜(HANFARM)</strong>은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록{' '}
-              <strong className="text-emerald-900 font-extrabold">맞춤형 재배일정 및 AI 병해충 진단 서비스</strong>를 개발하고 있습니다.
+          <div className="p-4 sm:p-7 space-y-3.5 text-[17px] sm:text-lg leading-relaxed text-slate-800 bg-gradient-to-b from-emerald-50/40 to-white">
+            <p className="font-extrabold text-slate-900 text-lg sm:text-xl whitespace-nowrap">
+              {cleanKoreanText(surveyMeta.greeting_text || '안녕하세요, 농업인 여러분.')}
             </p>
-            <p>
-              {surveyMeta.duration_text ||
-                '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.'}
+            <p className="break-keep">
+              <strong className="text-emerald-900 font-extrabold">한팜</strong>은 농업인분들께서 보다 쉽고 편하게 작물을 재배하실 수 있도록{' '}
+              <strong className="text-emerald-900 font-extrabold">
+                맞춤형 재배일정 및 병해충 진단 서비스
+              </strong>
+              를 개발하고 있습니다.
             </p>
-            <div className="p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 font-extrabold text-base sm:text-lg">
-              {surveyMeta.notice_text ||
-                '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.'}
+            <p className="break-keep">
+              {cleanKoreanText(
+                surveyMeta.duration_text ||
+                  '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.'
+              )}
+            </p>
+            <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-950 font-bold text-[16px] sm:text-lg leading-relaxed break-keep">
+              {cleanKoreanText(
+                surveyMeta.notice_text ||
+                  '※ 본 설문은 맞춤형 재배일정과 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.'
+              )}
             </div>
             {isSurveyClosed && (
-              <div className="p-5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 font-extrabold text-base sm:text-lg flex items-center gap-2.5">
+              <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 font-extrabold text-[16px] sm:text-lg flex items-center gap-2.5 break-keep">
                 <AlertCircle className="w-6 h-6 shrink-0 text-rose-600" />
-                <span>현재 본 설문조사는 마감 처리되어 더 이상 설문 참여 및 응답 제출이 불가능합니다.</span>
+                <span>현재 본 설문조사는 마감되어 더 이상 응답 제출이 불가능합니다.</span>
               </div>
             )}
           </div>
+        </div>
 
-          {/* 참여자 기본 정보 (선택 입력) */}
-          <div className="px-6 sm:px-8 py-6 bg-slate-50/70 border-b border-slate-200/80 space-y-4">
-            <div className="text-base font-extrabold text-slate-700 flex flex-wrap items-center justify-between gap-2">
-              <span>참여자 기본 정보 (선택 입력 · 미입력 시 익명으로 접수됩니다)</span>
-              <span className="text-sm font-normal text-slate-500">추첨 경품 및 베타테스터 안내용</span>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4 text-base">
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
-                  <User className="w-4 h-4 text-emerald-600" /> 성함 또는 농장명 (선택)
-                </label>
-                <input
-                  type="text"
-                  value={respondentName}
-                  onChange={(e) => setRespondentName(e.target.value)}
-                  placeholder="예: 홍길동 농가 (미입력 시 익명)"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-slate-600 mb-1.5 flex items-center gap-1.5">
-                  <Phone className="w-4 h-4 text-emerald-600" /> 연락처 (선택)
-                </label>
-                <input
-                  type="text"
-                  value={respondentContact}
-                  onChange={(e) => setRespondentContact(e.target.value)}
-                  placeholder="예: 010-1234-5678"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900"
-                />
-              </div>
+        {/* 참여자 기본 정보 카드 (선택 입력) */}
+        <div className="bg-white rounded-3xl border-2 border-slate-200 p-4 sm:p-7 shadow-xs space-y-4">
+          <div className="border-b border-slate-200 pb-3 space-y-1">
+            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 whitespace-nowrap">
+              참여자 기본 정보 (선택 입력)
+            </h2>
+            <p className="text-[15px] sm:text-base text-slate-600 whitespace-nowrap">
+              미입력 시 익명 접수 · 경품 및 안내용
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
+                <User className="w-4 h-4 text-emerald-700 shrink-0" />
+                성함 또는 농장명 (선택)
+              </label>
+              <input
+                type="text"
+                value={respondentName}
+                onChange={(e) => setRespondentName(e.target.value)}
+                placeholder="예: 홍길동 농가"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 focus:bg-white border-2 border-slate-300 focus:border-emerald-600 font-bold text-[17px] sm:text-lg text-slate-900 focus:outline-none"
+              />
             </div>
 
-            <div className="text-base">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                <label className="font-bold text-slate-600 flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-emerald-600" /> 주요 재배 지역 (선택 · 시/도 → 시/군/구 → 읍/면/동)
-                </label>
-                {respondentRegion && (
-                  <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm font-extrabold">
-                    선택됨: {respondentRegion}
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <select
-                    value={regionSido}
-                    disabled={isSurveyClosed}
-                    onChange={(e) => {
-                      const nextSido = e.target.value;
-                      setRegionSido(nextSido);
-                      if (!nextSido) {
-                        setRegionSigungu('');
-                        setRegionDong('');
-                        setDongList([]);
-                        return;
-                      }
-                      const nextSgg = addressMeta.sigungusBySido[nextSido]?.[0] || '';
-                      setRegionSigungu(nextSgg);
-                      loadDongOptions(nextSido, nextSgg);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer"
-                  >
-                    <option value="">시/도 선택</option>
-                    {(addressMeta.sidos.length > 0
-                      ? addressMeta.sidos
-                      : [
-                          '서울특별시',
-                          '부산광역시',
-                          '대구광역시',
-                          '인천광역시',
-                          '광주광역시',
-                          '대전광역시',
-                          '울산광역시',
-                          '세종특별자치시',
-                          '경기도',
-                          '강원특별자치도',
-                          '충청북도',
-                          '충청남도',
-                          '전북특별자치도',
-                          '전라남도',
-                          '경상북도',
-                          '경상남도',
-                          '제주특별자치도',
-                        ]
-                    ).map((sd) => (
-                      <option key={sd} value={sd}>
-                        {sd}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <select
-                    value={regionSigungu}
-                    disabled={isSurveyClosed || !regionSido}
-                    onChange={(e) => {
-                      const nextSgg = e.target.value;
-                      setRegionSigungu(nextSgg);
-                      if (!nextSgg) {
-                        setRegionDong('');
-                        setDongList([]);
-                        return;
-                      }
-                      loadDongOptions(regionSido, nextSgg);
-                    }}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
-                  >
-                    <option value="">시/군/구 선택</option>
-                    {(addressMeta.sigungusBySido[regionSido] || []).map((sgg) => (
-                      <option key={sgg} value={sgg}>
-                        {sgg}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <select
-                    value={regionDong}
-                    disabled={isSurveyClosed || !regionSido || !regionSigungu}
-                    onChange={(e) => setRegionDong(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 font-semibold text-base text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
-                  >
-                    <option value="">읍/면/동 선택</option>
-                    {dongList.map((dong) => (
-                      <option key={dong} value={dong}>
-                        {dong}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+            <div>
+              <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
+                <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
+                연락처 (선택)
+              </label>
+              <input
+                type="tel"
+                value={respondentContact}
+                onChange={(e) => setRespondentContact(e.target.value)}
+                placeholder="예: 010-1234-5678"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 focus:bg-white border-2 border-slate-300 focus:border-emerald-600 font-bold text-[17px] sm:text-lg text-slate-900 focus:outline-none"
+              />
             </div>
           </div>
 
-          {/* 문항 1 ~ 9 리스트 */}
-          <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
-            {questions.map((q) => {
-              const isMulti = q.type === 'multiple';
-              return (
-                <div
-                  key={q.id}
-                  className="p-5 sm:p-6 rounded-2xl bg-slate-50/70 border border-slate-200/90 space-y-4"
-                >
-                  <div className="space-y-2">
-                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug break-keep">
-                      <span>
-                        {q.number}. {q.question}
-                      </span>
-                      <span
-                        className={`inline-flex items-center align-middle ml-2 px-3 py-0.5 rounded-full text-sm font-bold whitespace-nowrap ${
-                          isMulti
-                            ? 'bg-teal-100 text-teal-800'
-                            : 'bg-emerald-100 text-emerald-800'
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 whitespace-nowrap">
+                <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                주요 재배 지역 (선택)
+              </label>
+              {respondentRegion && (
+                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-sm font-extrabold whitespace-nowrap overflow-hidden text-ellipsis">
+                  {respondentRegion}
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <select
+                value={regionSido}
+                disabled={isSurveyClosed}
+                onChange={(e) => {
+                  const nextSido = e.target.value;
+                  setRegionSido(nextSido);
+                  if (!nextSido) {
+                    setRegionSigungu('');
+                    setRegionDong('');
+                    setDongList([]);
+                    return;
+                  }
+                  const nextSgg = addressMeta.sigungusBySido[nextSido]?.[0] || '';
+                  setRegionSigungu(nextSgg);
+                  loadDongOptions(nextSido, nextSgg);
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-300 font-bold text-[17px] sm:text-lg text-slate-900 cursor-pointer"
+              >
+                <option value="">시/도 선택</option>
+                {(addressMeta.sidos.length > 0
+                  ? addressMeta.sidos
+                  : [
+                      '서울특별시',
+                      '부산광역시',
+                      '대구광역시',
+                      '인천광역시',
+                      '광주광역시',
+                      '대전광역시',
+                      '울산광역시',
+                      '세종특별자치시',
+                      '경기도',
+                      '강원특별자치도',
+                      '충청북도',
+                      '충청남도',
+                      '전북특별자치도',
+                      '전라남도',
+                      '경상북도',
+                      '경상남도',
+                      '제주특별자치도',
+                    ]
+                ).map((sd) => (
+                  <option key={sd} value={sd}>
+                    {sd}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={regionSigungu}
+                disabled={isSurveyClosed || !regionSido}
+                onChange={(e) => {
+                  const nextSgg = e.target.value;
+                  setRegionSigungu(nextSgg);
+                  if (!nextSgg) {
+                    setRegionDong('');
+                    setDongList([]);
+                    return;
+                  }
+                  loadDongOptions(regionSido, nextSgg);
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-300 font-bold text-[17px] sm:text-lg text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">시/군/구 선택</option>
+                {(addressMeta.sigungusBySido[regionSido] || []).map((sgg) => (
+                  <option key={sgg} value={sgg}>
+                    {sgg}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={regionDong}
+                disabled={isSurveyClosed || !regionSido || !regionSigungu}
+                onChange={(e) => setRegionDong(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-300 font-bold text-[17px] sm:text-lg text-slate-900 cursor-pointer disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="">읍/면/동 선택</option>
+                {dongList.map((dong) => (
+                  <option key={dong} value={dong}>
+                    {dong}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* 설문 문항 1 ~ 9 리스트 */}
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+          {questions.map((q) => {
+            const isMulti = q.type === 'multiple';
+            const cleanedQuestion = cleanKoreanText(q.question);
+            return (
+              <div
+                key={q.id}
+                className="bg-white p-4 sm:p-6 rounded-3xl border-2 border-slate-200 shadow-xs space-y-4"
+              >
+                <div className="space-y-2">
+                  <h3 className="text-[18px] sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
+                    <span>
+                      {q.number}. {cleanedQuestion}
+                    </span>
+                    <span
+                      className={`inline-flex items-center align-middle ml-2 px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-extrabold whitespace-nowrap ${
+                        isMulti
+                          ? 'bg-teal-100 text-teal-900 border border-teal-300'
+                          : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                      }`}
+                    >
+                      {isMulti ? '복수 선택' : '단일 선택'}
+                    </span>
+                  </h3>
+                  {q.subtitle && (
+                    <p className="text-[15px] sm:text-base font-semibold text-emerald-950 bg-emerald-50/90 px-3.5 py-2.5 rounded-xl border border-emerald-200 leading-relaxed break-keep">
+                      {cleanKoreanText(q.subtitle)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+                  {q.options.map((opt) => {
+                    const isChecked = isMulti
+                      ? q3Selected.includes(opt)
+                      : singleAnswers[q.id] === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        disabled={isSurveyClosed}
+                        onClick={() =>
+                          isMulti ? toggleQ3Option(opt) : handleSelectSingle(q.id, opt)
+                        }
+                        className={`w-full min-h-[54px] text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 text-[17px] sm:text-lg font-bold cursor-pointer transition select-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                          isChecked
+                            ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs'
+                            : 'bg-slate-50/70 text-slate-900 border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/40'
                         }`}
                       >
-                        {isMulti ? '복수 선택' : '단일 선택'}
-                      </span>
-                    </h3>
-                    {q.subtitle && (
-                      <p className="text-base sm:text-lg italic text-emerald-800 bg-emerald-50/90 px-4 py-2.5 rounded-xl border border-emerald-200/80">
-                        *{q.subtitle}*
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {q.options.map((opt) => {
-                      const isChecked = isMulti
-                        ? q3Selected.includes(opt)
-                        : singleAnswers[q.id] === opt;
-                      return (
-                        <button
-                          key={opt}
-                          type="button"
-                          disabled={isSurveyClosed}
-                          onClick={() =>
-                            isMulti ? toggleQ3Option(opt) : handleSelectSingle(q.id, opt)
-                          }
-                          className={`w-full text-left flex items-center gap-3 p-4 rounded-xl border text-base sm:text-lg font-bold cursor-pointer transition select-none disabled:opacity-60 disabled:cursor-not-allowed ${
+                        <span
+                          className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 shrink-0 text-base font-extrabold ${
                             isChecked
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30'
+                              ? 'bg-white text-emerald-800 border-white'
+                              : 'border-slate-400 bg-white'
                           }`}
                         >
-                          <span
-                            className={`w-6 h-6 rounded flex items-center justify-center border shrink-0 text-base ${
-                              isChecked
-                                ? 'bg-white text-emerald-700 border-white'
-                                : 'border-slate-300 bg-slate-50'
-                            }`}
-                          >
-                            {isChecked && '✓'}
-                          </span>
-                          <span className="leading-snug">{opt}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {isMulti &&
-                    q.allowOtherInput &&
-                    q3Selected.some((o) => o.includes('기타')) && (
-                      <div className="pt-2">
-                        <label className="block text-base font-extrabold text-emerald-900 mb-2">
-                          ⑦ 기타 재배 작물 직접 입력
-                        </label>
-                        <input
-                          type="text"
-                          value={q3OtherText}
-                          onChange={(e) => setQ3OtherText(e.target.value)}
-                          placeholder="재배 중인 기타 작물명을 입력해 주세요 (예: 시설 수박, 멜론, 인삼, 버섯 등)"
-                          className="w-full px-4 py-3 rounded-xl bg-white border-2 border-emerald-500 text-lg font-bold text-slate-900 focus:outline-none"
-                        />
-                      </div>
-                    )}
+                          {isChecked && '✓'}
+                        </span>
+                        <span className="leading-snug break-keep">{opt}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              );
-            })}
 
-            {errorMsg && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-base sm:text-lg font-bold flex items-center gap-2.5">
-                <AlertCircle className="w-5 h-5 shrink-0" />
-                <span>{errorMsg}</span>
+                {isMulti &&
+                  q.allowOtherInput &&
+                  q3Selected.some((o) => o.includes('기타')) && (
+                    <div className="pt-2">
+                      <label className="block text-[16px] sm:text-lg font-extrabold text-emerald-950 mb-2 whitespace-nowrap">
+                        ⑦ 기타 재배 작물 직접 입력
+                      </label>
+                      <input
+                        type="text"
+                        value={q3OtherText}
+                        onChange={(e) => setQ3OtherText(e.target.value)}
+                        placeholder="예: 수박, 멜론, 인삼, 버섯 등"
+                        className="w-full px-4 py-3 rounded-xl bg-white border-2 border-emerald-600 text-[17px] sm:text-lg font-bold text-slate-900 focus:outline-none"
+                      />
+                    </div>
+                  )}
               </div>
-            )}
+            );
+          })}
 
-            {/* 하단 감사 인사 및 제출 버튼 */}
-            <div className="pt-4 border-t border-slate-200 space-y-5 text-center">
-              <div className="space-y-1.5">
-                <p className="text-xl font-extrabold text-slate-900">
-                  {surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.'}
-                </p>
-                <p className="text-base sm:text-lg text-slate-500">
-                  {surveyMeta.footer_sub ||
-                    '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'}
-                </p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting || isSurveyClosed}
-                className="w-full sm:w-auto min-w-72 px-9 py-4.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-lg sm:text-xl shadow-lg shadow-emerald-600/20 inline-flex items-center justify-center gap-2.5 transition cursor-pointer"
-              >
-                <Send className="w-5 h-5" />
-                {isSurveyClosed
-                  ? '설문 마감 (참여 불가)'
-                  : isSubmitting
-                  ? '설문 응답 제출 중...'
-                  : '설문 응답 제출하기'}
-              </button>
+          {errorMsg && (
+            <div className="p-4 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-800 text-[16px] sm:text-lg font-extrabold flex items-center gap-2.5 break-keep">
+              <AlertCircle className="w-6 h-6 shrink-0 text-rose-600" />
+              <span>{errorMsg}</span>
             </div>
-          </form>
-        </div>
+          )}
+
+          {/* 하단 감사 인사 및 제출 카드 */}
+          <div className="bg-white rounded-3xl border-2 border-slate-200 p-5 sm:p-7 shadow-xs space-y-5 text-center">
+            <div className="space-y-1.5">
+              <p className="text-lg sm:text-2xl font-extrabold text-slate-900 whitespace-nowrap">
+                {cleanKoreanText(surveyMeta.footer_title || '설문에 참여해 주셔서 감사합니다.')}
+              </p>
+              <p className="text-[15px] sm:text-base text-slate-600 leading-relaxed break-keep">
+                {cleanKoreanText(
+                  surveyMeta.footer_sub ||
+                    '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'
+                )}
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting || isSurveyClosed}
+              className="w-full sm:w-auto min-w-72 px-8 py-4 rounded-2xl bg-emerald-700 hover:bg-emerald-600 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-extrabold text-xl shadow-lg shadow-emerald-700/20 inline-flex items-center justify-center gap-2.5 transition cursor-pointer"
+            >
+              <Send className="w-5 h-5" />
+              {isSurveyClosed
+                ? '설문 마감 (참여 불가)'
+                : isSubmitting
+                ? '설문 응답 제출 중...'
+                : '설문 응답 제출하기'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
