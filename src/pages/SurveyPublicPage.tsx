@@ -574,12 +574,12 @@ export default function SurveyPublicPage() {
                   className="p-5 sm:p-6 rounded-2xl bg-slate-50/70 border border-slate-200/90 space-y-4"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
+                    <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug break-keep">
+                      <span>
                         {q.number}. {q.question}
-                      </h3>
+                      </span>
                       <span
-                        className={`px-3 py-1 rounded-full text-sm font-bold shrink-0 ${
+                        className={`inline-flex items-center align-middle ml-2 px-3 py-0.5 rounded-full text-sm font-bold whitespace-nowrap ${
                           isMulti
                             ? 'bg-teal-100 text-teal-800'
                             : 'bg-emerald-100 text-emerald-800'
@@ -587,7 +587,7 @@ export default function SurveyPublicPage() {
                       >
                         {isMulti ? '복수 선택' : '단일 선택'}
                       </span>
-                    </div>
+                    </h3>
                     {q.subtitle && (
                       <p className="text-base sm:text-lg italic text-emerald-800 bg-emerald-50/90 px-4 py-2.5 rounded-xl border border-emerald-200/80">
                         *{q.subtitle}*
