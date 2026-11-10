@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { normalizeAppPath } from '../router.tsx';
+import { normalizeAppPath, decodeSharePayload } from '../router.tsx';
 import {
   KOREA_SIDO_LIST,
   KOREA_SIGUNGUS_BY_SIDO,
@@ -212,20 +212,50 @@ export default function SurveyPublicPage() {
   };
 
   useEffect(() => {
-    fetch(`/api/surveys/public?survey_id=${encodeURIComponent(urlSurveyId)}`)
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.ok && res.survey) {
-          setSurveyMeta({
-            ...res.survey,
-            questions:
-              Array.isArray(res.survey.questions) && res.survey.questions.length > 0
-                ? res.survey.questions
-                : FALLBACK_QUESTIONS,
-          });
+    const params = new URLSearchParams(window.location.search);
+    const sharedCfg = decodeSharePayload(params.get('cfg'));
+    if (sharedCfg && typeof sharedCfg === 'object') {
+      const nextSurvey = {
+        ...sharedCfg,
+        questions:
+          Array.isArray(sharedCfg.questions) && sharedCfg.questions.length > 0
+            ? sharedCfg.questions
+            : FALLBACK_QUESTIONS,
+      };
+      setSurveyMeta((prev: any) => ({ ...prev, ...nextSurvey }));
+      try {
+        const rawForms = localStorage.getItem('hanfarm_surveys_forms_v1');
+        const forms = rawForms ? JSON.parse(rawForms) : [];
+        const sId = nextSurvey.survey_id || urlSurveyId;
+        const idx = Array.isArray(forms) ? forms.findIndex((f: any) => f.survey_id === sId) : -1;
+        if (idx >= 0) {
+          forms[idx] = { ...forms[idx], ...nextSurvey, survey_id: sId };
+          localStorage.setItem('hanfarm_surveys_forms_v1', JSON.stringify(forms));
+        } else {
+          localStorage.setItem(
+            'hanfarm_surveys_forms_v1',
+            JSON.stringify([{ ...nextSurvey, survey_id: sId }, ...(Array.isArray(forms) ? forms : [])])
+          );
         }
-      })
-      .catch(() => {});
+      } catch {
+        // ignore
+      }
+    } else {
+      fetch(`/api/surveys/public?survey_id=${encodeURIComponent(urlSurveyId)}`)
+        .then((r) => r.json())
+        .then((res) => {
+          if (res?.ok && res.survey) {
+            setSurveyMeta({
+              ...res.survey,
+              questions:
+                Array.isArray(res.survey.questions) && res.survey.questions.length > 0
+                  ? res.survey.questions
+                  : FALLBACK_QUESTIONS,
+            });
+          }
+        })
+        .catch(() => {});
+    }
 
     fetch('/api/addresses/meta')
       .then((r) => r.json())

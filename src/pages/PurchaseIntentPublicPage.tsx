@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Sprout, Check, CheckCircle2, ArrowLeft } from 'lucide-react';
-import { Link } from '../router.tsx';
+import { Link, decodeSharePayload } from '../router.tsx';
 
 const DEFAULT_TEMPLATE = {
   docNumber: '제 HANFARM-2026-LOI 호',
@@ -32,12 +32,40 @@ const DEFAULT_TEMPLATE = {
   recipientName: '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중',
 };
 
+function normalizeIntentTemplate(raw: any): typeof DEFAULT_TEMPLATE {
+  if (!raw || typeof raw !== 'object') return DEFAULT_TEMPLATE;
+  const src = raw.template && typeof raw.template === 'object' ? raw.template : raw;
+  return {
+    ...DEFAULT_TEMPLATE,
+    ...src,
+    serviceOptions:
+      Array.isArray(src.serviceOptions) && src.serviceOptions.length > 0
+        ? src.serviceOptions.map((x: any) => String(x || '').trim()).filter(Boolean)
+        : DEFAULT_TEMPLATE.serviceOptions,
+    priceOptions:
+      Array.isArray(src.priceOptions) && src.priceOptions.length > 0
+        ? src.priceOptions.map((x: any) => String(x || '').trim()).filter(Boolean)
+        : DEFAULT_TEMPLATE.priceOptions,
+    finalIntentOptions:
+      Array.isArray(src.finalIntentOptions) && src.finalIntentOptions.length > 0
+        ? src.finalIntentOptions.map((x: any) => String(x || '').trim()).filter(Boolean)
+        : DEFAULT_TEMPLATE.finalIntentOptions,
+  };
+}
+
 export default function PurchaseIntentPublicPage() {
   const today = new Date();
   const [tpl, setTpl] = useState<typeof DEFAULT_TEMPLATE>(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const urlCfg = decodeSharePayload(params.get('cfg'));
+      if (urlCfg) {
+        const normalized = normalizeIntentTemplate(urlCfg);
+        localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(normalized));
+        return normalized;
+      }
       const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
-      if (saved) return { ...DEFAULT_TEMPLATE, ...JSON.parse(saved) };
+      if (saved) return normalizeIntentTemplate(JSON.parse(saved));
     } catch {
       // ignore
     }
@@ -45,11 +73,13 @@ export default function PurchaseIntentPublicPage() {
   });
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cfg')) return;
     fetch('/api/purchase-intents')
       .then((r) => r.json())
       .then((res) => {
         if (res?.template) {
-          const merged = { ...DEFAULT_TEMPLATE, ...res.template };
+          const merged = normalizeIntentTemplate(res.template);
           setTpl(merged);
           try {
             localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(merged));

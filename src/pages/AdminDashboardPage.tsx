@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, getBasePath } from '../router.tsx';
+import { Link, getBasePath, encodeSharePayload } from '../router.tsx';
 import { getKoreaDongs } from '../../server/koreaAddresses.ts';
 import {
   LayoutDashboard,
@@ -24431,7 +24431,8 @@ export default function AdminDashboardPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {(surveyData.forms || []).map((fItem: any, idx: number) => {
-                            const sharePath = `${getBasePath()}/survey/${fItem.survey_id}`;
+                            const cfgToken = encodeSharePayload(fItem);
+                            const sharePath = `${getBasePath()}/survey?survey_id=${encodeURIComponent(fItem.survey_id)}${cfgToken ? `&cfg=${cfgToken}` : ''}`;
                             const rCount = fItem.response_count ?? surveyData.totalResponses ?? 0;
                             const isActive = Number(fItem.is_active) === 1;
                             return (
@@ -24610,18 +24611,22 @@ export default function AdminDashboardPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const shareUrl = `${window.location.origin}${getBasePath()}/survey/${
-                              surveyData.activeSurvey?.survey_id || selectedSurveyUnitId
+                            const sId = surveyData.activeSurvey?.survey_id || selectedSurveyUnitId || 'SURV-HANFARM-2026';
+                            const cfgToken = surveyData.activeSurvey ? encodeSharePayload(surveyData.activeSurvey) : '';
+                            const shareUrl = `${window.location.origin}${getBasePath()}/survey?survey_id=${encodeURIComponent(sId)}${
+                              cfgToken ? `&cfg=${cfgToken}` : ''
                             }`;
                             navigator.clipboard?.writeText(shareUrl);
-                            showToast(`설문 배포 URL 복사 완료: ${shareUrl}`);
+                            showToast('설문 배포 URL 복사 완료 (모바일·PC 최신 수정본 동기화 포함)');
                           }}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
                         >
                           설문 URL 복사
                         </button>
                         <a
-                          href={`${getBasePath()}/survey/${surveyData.activeSurvey?.survey_id || selectedSurveyUnitId}`}
+                          href={`${getBasePath()}/survey?survey_id=${encodeURIComponent(
+                            surveyData.activeSurvey?.survey_id || selectedSurveyUnitId || 'SURV-HANFARM-2026'
+                          )}${surveyData.activeSurvey ? `&cfg=${encodeSharePayload(surveyData.activeSurvey)}` : ''}`}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs inline-flex items-center gap-1.5 transition"
@@ -26456,16 +26461,19 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const shareUrl = `${window.location.origin}${getBasePath()}/purchase-intent`;
+                        const cfgToken = encodeSharePayload(purchaseIntentTemplate);
+                        const shareUrl = `${window.location.origin}${getBasePath()}/purchase-intent${
+                          cfgToken ? `?cfg=${cfgToken}` : ''
+                        }`;
                         navigator.clipboard?.writeText(shareUrl);
-                        showToast(`구매·구독의향서 배포 URL 복사 완료: ${shareUrl}`);
+                        showToast('구매·구독의향서 배포 URL 복사 완료 (최신 양식 동기화 포함)');
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer"
                     >
                       의향서 URL 복사
                     </button>
                     <a
-                      href={`${getBasePath()}/purchase-intent`}
+                      href={`${getBasePath()}/purchase-intent?cfg=${encodeSharePayload(purchaseIntentTemplate)}`}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 transition"
