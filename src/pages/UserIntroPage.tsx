@@ -218,6 +218,7 @@ export default function UserIntroPage() {
   const [myPageTab, setMyPageTab] = useState<
     'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'ORDERS' | 'PROFILE'
   >('FARMLAND');
+  const [isMyPageMobileDrawerOpen, setIsMyPageMobileDrawerOpen] = useState<boolean>(false);
   const [myFarmlands, setMyFarmlands] = useState<any[]>([]);
   const [myCropPlans, setMyCropPlans] = useState<any[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
@@ -6179,10 +6180,71 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* 좌측 메뉴 영역 + 우측 관련 내용 영역 2단 레이아웃 */}
+            {/* 모바일 전용: 좌측 슬라이드 메뉴 열기 상단 컨트롤 바 */}
+            <div className="lg:hidden flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-200 px-3.5 py-2.5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setIsMyPageMobileDrawerOpen(true)}
+                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition shrink-0"
+              >
+                <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
+                  <span className="block h-0.5 w-full bg-white rounded-full" />
+                  <span className="block h-0.5 w-full bg-white rounded-full" />
+                  <span className="block h-0.5 w-full bg-white rounded-full" />
+                </span>
+                <span>마이페이지 메뉴</span>
+              </button>
+              <div className="min-w-0 flex-1 text-right">
+                <div className="text-[11px] font-bold text-slate-500">현재 선택 메뉴</div>
+                <div className="text-xs font-extrabold text-emerald-700 truncate">
+                  {myPageTab === 'FARMLAND'
+                    ? '① 내 재배지 등록 · 관리'
+                    : myPageTab === 'CROPS'
+                    ? '② 내 재배작물 등록'
+                    : myPageTab === 'PROGRESS'
+                    ? '③ 작물재배현황 및 진행율'
+                    : myPageTab === 'ORDERS'
+                    ? '④ 농자재 구매현황'
+                    : myPageTab === 'PROFILE'
+                    ? '⑤ 회원 기본정보 관리'
+                    : '전체 항목 한눈에 보기'}
+                </div>
+              </div>
+            </div>
+
+            {/* 모바일 좌측 슬라이드 드로어 배경 오버레이 */}
+            {isMyPageMobileDrawerOpen && (
+              <div
+                onClick={() => setIsMyPageMobileDrawerOpen(false)}
+                className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[1px] lg:hidden transition-opacity"
+                aria-hidden="true"
+              />
+            )}
+
+            {/* 좌측 메뉴 영역 (모바일: 좌측 슬라이드 드로어 / PC: 고정 사이드바) + 우측 관련 내용 영역 */}
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* ==================== [좌측 영역: 마이페이지 메뉴 사이드바] ==================== */}
-              <aside className="w-full lg:w-[310px] xl:w-[330px] shrink-0 space-y-4 lg:sticky lg:top-24">
+              <aside
+                className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-slate-50 p-4 overflow-y-auto shadow-2xl border-r border-slate-200 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:w-[310px] xl:w-[330px] lg:max-w-none lg:bg-transparent lg:p-0 lg:overflow-visible lg:shadow-none lg:border-0 shrink-0 space-y-4 lg:sticky lg:top-24 ${
+                  isMyPageMobileDrawerOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+                }`}
+              >
+                {/* 모바일 슬라이드 드로어 상단 닫기 헤더 */}
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 lg:hidden">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                    <span className="text-sm font-extrabold text-slate-900">마이페이지 메뉴</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMyPageMobileDrawerOpen(false)}
+                    aria-label="메뉴 닫기"
+                    className="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 flex items-center justify-center cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
                 {/* 좌측 마이페이지 전용 네비게이션 메뉴 */}
                 <nav
                   aria-label="마이페이지 메뉴"
@@ -6256,7 +6318,10 @@ export default function UserIntroPage() {
                       <button
                         key={item.code}
                         type="button"
-                        onClick={() => setMyPageTab(item.code as any)}
+                        onClick={() => {
+                          setMyPageTab(item.code as any);
+                          setIsMyPageMobileDrawerOpen(false);
+                        }}
                         className={`w-full text-left px-3.5 py-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
                           isSelected
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
@@ -6335,6 +6400,7 @@ export default function UserIntroPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setIsMyPageMobileDrawerOpen(false);
                       setActiveMenu('재배일정 확인');
                       setMobileScheduleStep('list');
                     }}
