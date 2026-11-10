@@ -6181,13 +6181,13 @@ export default function UserIntroPage() {
             </section>
 
             {/* 모바일 전용: 좌측 슬라이드 메뉴 열기 상단 컨트롤 바 */}
-            <div className="lg:hidden flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-200 px-3.5 py-2.5 shadow-xs">
+            <div className="lg:hidden flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-200 px-3.5 py-3 shadow-xs">
               <button
                 type="button"
                 onClick={() => setIsMyPageMobileDrawerOpen(true)}
-                className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition shrink-0"
+                className="inline-flex items-center gap-2.5 px-4 py-3 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold shadow-xs cursor-pointer transition shrink-0"
               >
-                <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
+                <span className="flex flex-col gap-1 w-4" aria-hidden="true">
                   <span className="block h-0.5 w-full bg-white rounded-full" />
                   <span className="block h-0.5 w-full bg-white rounded-full" />
                   <span className="block h-0.5 w-full bg-white rounded-full" />
@@ -6322,7 +6322,7 @@ export default function UserIntroPage() {
                           setMyPageTab(item.code as any);
                           setIsMyPageMobileDrawerOpen(false);
                         }}
-                        className={`w-full text-left px-3.5 py-3 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                        className={`w-full text-left px-3.5 py-4 lg:py-3 min-h-[76px] lg:min-h-0 rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
                           isSelected
                             ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                             : 'bg-white hover:bg-slate-50 text-slate-800 border-transparent hover:border-slate-200'
