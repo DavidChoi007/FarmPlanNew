@@ -120,21 +120,35 @@ export default function UserIntroPage() {
     signup_type: 'EMAIL' | 'GOOGLE_GMAIL';
     farmTitle: string;
     isLoggedIn: boolean;
-  }>({
-    id: '배철민',
-    email: 'CloudBae@naver.com',
-    name: '배철민',
-    nickname: 'CloudBae',
-    gender: '남성',
-    birth_date: '1978-05-15',
-    age: 48,
-    road_address: '충청북도 충주시 충원대로 268 (단월동)',
-    road_address_detail: '한팜스마트농원 101호',
-    postal_code: '27481',
-    phone: '010-2026-0109',
-    signup_type: 'EMAIL',
-    farmTitle: '배철민 님의 농장',
-    isLoggedIn: false,
+  }>(() => {
+    const baseUser = {
+      id: '배철민',
+      email: 'CloudBae@naver.com',
+      name: '배철민',
+      nickname: 'CloudBae',
+      gender: '남성',
+      birth_date: '1978-05-15',
+      age: 48,
+      road_address: '충청북도 충주시 충원대로 268 (단월동)',
+      road_address_detail: '한팜스마트농원 101호',
+      postal_code: '27481',
+      phone: '010-2026-0109',
+      signup_type: 'EMAIL' as const,
+      farmTitle: '배철민 님의 농장',
+      isLoggedIn: false,
+    };
+    try {
+      const saved = localStorage.getItem('hanfarm_auth_session_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return { ...baseUser, ...parsed };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return baseUser;
   });
 
   // ==================== 로그인 / 회원가입 (이메일 · Google Gmail) / 비밀번호 찾기 & 마이페이지 상태 ====================
@@ -666,22 +680,34 @@ export default function UserIntroPage() {
     if (res.member) {
       const resolvedName =
         res.member.name && res.member.name !== '배클라우드' ? res.member.name : '배철민';
-      setLoggedInUser((prev) => ({
-        id: resolvedName,
-        email: res.member.email || 'CloudBae@naver.com',
-        name: resolvedName,
-        nickname: res.member.nickname || 'CloudBae',
-        gender: res.member.gender || '남성',
-        birth_date: res.member.birth_date || '1978-05-15',
-        age: Number(res.member.age || 48),
-        road_address: res.member.road_address || '충청북도 충주시 충원대로 268 (단월동)',
-        road_address_detail: res.member.road_address_detail || '한팜스마트농원 101호',
-        postal_code: res.member.postal_code || '27481',
-        phone: res.member.phone || '010-2026-0109',
-        signup_type: res.member.signup_type === 'GOOGLE_GMAIL' ? 'GOOGLE_GMAIL' : 'EMAIL',
-        farmTitle: `${resolvedName} 님의 농장`,
-        isLoggedIn: markLoggedIn !== undefined ? markLoggedIn : prev.isLoggedIn,
-      }));
+      setLoggedInUser((prev) => {
+        const nextUser = {
+          id: resolvedName,
+          email: res.member.email || 'CloudBae@naver.com',
+          name: resolvedName,
+          nickname: res.member.nickname || 'CloudBae',
+          gender: res.member.gender || '남성',
+          birth_date: res.member.birth_date || '1978-05-15',
+          age: Number(res.member.age || 48),
+          road_address: res.member.road_address || '충청북도 충주시 충원대로 268 (단월동)',
+          road_address_detail: res.member.road_address_detail || '한팜스마트농원 101호',
+          postal_code: res.member.postal_code || '27481',
+          phone: res.member.phone || '010-2026-0109',
+          signup_type: (res.member.signup_type === 'GOOGLE_GMAIL' ? 'GOOGLE_GMAIL' : 'EMAIL') as
+            | 'EMAIL'
+            | 'GOOGLE_GMAIL',
+          farmTitle: `${resolvedName} 님의 농장`,
+          isLoggedIn: markLoggedIn !== undefined ? markLoggedIn : prev.isLoggedIn,
+        };
+        if (nextUser.isLoggedIn) {
+          try {
+            localStorage.setItem('hanfarm_auth_session_v1', JSON.stringify(nextUser));
+          } catch {
+            // ignore
+          }
+        }
+        return nextUser;
+      });
     }
     if (Array.isArray(res.farmlands)) setMyFarmlands(res.farmlands);
     if (Array.isArray(res.cropPlans)) setMyCropPlans(res.cropPlans);
@@ -800,6 +826,11 @@ export default function UserIntroPage() {
   };
 
   const handleLogout = () => {
+    try {
+      localStorage.removeItem('hanfarm_auth_session_v1');
+    } catch {
+      // ignore
+    }
     setLoggedInUser((prev) => ({
       ...prev,
       isLoggedIn: false,

@@ -3221,12 +3221,12 @@ export default function AdminDashboardPage() {
   const getExternalShareBaseUrl = () => {
     if (typeof window !== 'undefined') {
       const host = window.location.hostname.toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1') {
-        return 'https://davidchoi007.github.io/FarmPlanNew';
+      if (host === 'localhost' || host === '127.0.0.1' || host.endsWith('.tmp.now')) {
+        return 'https://farm-plan-three.vercel.app';
       }
       return `${window.location.origin}${getBasePath()}`;
     }
-    return 'https://davidchoi007.github.io/FarmPlanNew';
+    return 'https://farm-plan-three.vercel.app';
   };
 
   const buildCompactPurchaseIntentSharePath = (tpl: any, forExternalShare = false) => {
@@ -3413,7 +3413,7 @@ export default function AdminDashboardPage() {
     },
   ]);
 
-  useEffect(() => {
+  const loadPurchaseIntentsData = () => {
     fetch('/api/purchase-intents')
       .then((r) => r.json())
       .then((res) => {
@@ -3428,11 +3428,47 @@ export default function AdminDashboardPage() {
           }
         }
         if (Array.isArray(res?.entries) && res.entries.length > 0) {
-          setPurchaseIntentEntries(res.entries);
+          setPurchaseIntentEntries((prev) => {
+            const seen = new Set<string>();
+            const combined: any[] = [];
+            for (const item of [...res.entries, ...prev]) {
+              const id = String(item?.intent_id || '');
+              if (id && !seen.has(id)) {
+                seen.add(id);
+                combined.push(item);
+              }
+            }
+            return combined;
+          });
         }
       })
       .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadPurchaseIntentsData();
+    loadSurveyManagementData();
   }, []);
+
+  useEffect(() => {
+    const handleSyncExternalSubmissions = () => {
+      loadSurveyManagementData();
+      loadPurchaseIntentsData();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleSyncExternalSubmissions();
+      }
+    };
+    window.addEventListener('storage', handleSyncExternalSubmissions);
+    window.addEventListener('focus', handleSyncExternalSubmissions);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('storage', handleSyncExternalSubmissions);
+      window.removeEventListener('focus', handleSyncExternalSubmissions);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [selectedSurveyUnitId, surveyAgeFilter, surveyScaleFilter, surveyKeyword]);
 
   const handleStartEditIntentTemplate = () => {
     setIntentTemplateDraft({ ...purchaseIntentTemplate });

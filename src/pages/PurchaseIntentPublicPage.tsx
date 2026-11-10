@@ -184,7 +184,7 @@ export default function PurchaseIntentPublicPage() {
     setTimeout(() => setCopiedMessage(''), 4000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.applicantName.trim()) {
       window.alert('성명(또는 농장명)을 입력해 주세요.');
@@ -194,25 +194,35 @@ export default function PurchaseIntentPublicPage() {
       window.alert('최종 확인 폼의 "위 내용을 확인하고 본인의 의사로 동의합니다." 항목에 체크해 주세요.');
       return;
     }
+    const newEntry = {
+      intent_id: `LOI-2026-${Date.now().toString().slice(-4)}`,
+      applicant_name: form.applicantName.trim(),
+      contact: form.contact.trim() || '010-****-****',
+      main_crops: form.mainCrops.trim() || '가을배추',
+      desired_services: form.desiredServices,
+      monthly_wtp: form.monthlyWtp,
+      final_intents: form.finalIntents,
+      written_date: `${form.writtenYear}-${form.writtenMonth.padStart(2, '0')}-${form.writtenDay.padStart(2, '0')}`,
+      agreed_final: form.agreedFinal,
+      agreed_privacy: form.agreedPrivacySeparate,
+      created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    };
     try {
       const savedRaw = localStorage.getItem('hanfarm_purchase_intents_v1');
       const existing = savedRaw ? JSON.parse(savedRaw) : [];
-      const newEntry = {
-        intent_id: `LOI-2026-${String(existing.length + 101).padStart(3, '0')}`,
-        applicant_name: form.applicantName.trim(),
-        contact: form.contact.trim() || '010-****-****',
-        main_crops: form.mainCrops.trim() || '가을배추',
-        desired_services: form.desiredServices,
-        monthly_wtp: form.monthlyWtp,
-        final_intents: form.finalIntents,
-        written_date: `${form.writtenYear}-${form.writtenMonth.padStart(2, '0')}-${form.writtenDay.padStart(2, '0')}`,
-        agreed_final: form.agreedFinal,
-        agreed_privacy: form.agreedPrivacySeparate,
-        created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      };
-      localStorage.setItem('hanfarm_purchase_intents_v1', JSON.stringify([newEntry, ...existing]));
+      const safeExisting = Array.isArray(existing) ? existing : [];
+      localStorage.setItem('hanfarm_purchase_intents_v1', JSON.stringify([newEntry, ...safeExisting]));
     } catch {
       // ignore storage errors
+    }
+    try {
+      await fetch('/api/purchase-intents/entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry),
+      });
+    } catch {
+      // ignore network errors
     }
     setSubmitted(true);
   };
