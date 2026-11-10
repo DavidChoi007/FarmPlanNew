@@ -3207,14 +3207,22 @@ export default function AdminDashboardPage() {
       '본인은 한팜 서비스가 정식 출시되고 상품·서비스의 품질, 가격 및 이용조건이 적합할 경우 위 선택한 서비스를 이용할 의향이 있습니다. 본 의향 확인은 법적 구속력이 없으며 실제 구매·구독 의무가 발생하지 않습니다.',
     agreeLabel: '위 내용을 확인하고 본인의 의사로 동의합니다.',
     footerNote: '※ 개인정보 수집·이용 및 서비스 출시 안내에 대한 동의는 별도로 받습니다.',
-    recipientName: '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중',
+    recipientName: '한팜(HANFARM) 재배컨설팅 플랫폼 귀중',
+  };
+
+  const normalizePurchaseIntentTemplate = (raw: any) => {
+    const merged = { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...(raw || {}) };
+    if (merged.recipientName === '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중') {
+      merged.recipientName = '한팜(HANFARM) 재배컨설팅 플랫폼 귀중';
+    }
+    return merged;
   };
 
   const [purchaseIntentTemplate, setPurchaseIntentTemplate] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(() => {
     try {
       const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
       if (saved) {
-        return { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...JSON.parse(saved) };
+        return normalizePurchaseIntentTemplate(JSON.parse(saved));
       }
     } catch {
       // ignore
@@ -3322,7 +3330,7 @@ export default function AdminDashboardPage() {
       .then((r) => r.json())
       .then((res) => {
         if (res?.template) {
-          const merged = { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...res.template };
+          const merged = normalizePurchaseIntentTemplate(res.template);
           setPurchaseIntentTemplate(merged);
           setIntentTemplateDraft(merged);
           try {
