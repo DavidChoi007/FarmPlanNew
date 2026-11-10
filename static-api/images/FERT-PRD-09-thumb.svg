@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="bagHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6d28d9"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="600" height="600" fill="url(#bgGrad)"/>
+  <circle cx="300" cy="310" r="230" fill="#8b5cf6" opacity="0.08"/>
+
+  <!-- 비료 포대 본체 -->
+  <g filter="url(#shadow)">
+    <rect x="135" y="65" width="330" height="465" rx="22" fill="#ffffff" stroke="#cbd5e1" stroke-width="3"/>
+    <!-- 포대 상단 실링 라인 -->
+    <rect x="145" y="55" width="310" height="18" rx="6" fill="#6d28d9"/>
+    <line x1="155" y1="64" x2="445" y2="64" stroke="#ffffff" stroke-width="2" stroke-dasharray="6,6"/>
+
+    <!-- 포대 상단 브랜드 헤더 -->
+    <path d="M135 85 H465 V195 H135 Z" fill="url(#bagHeader)"/>
+    <rect x="155" y="98" width="130" height="26" rx="13" fill="#ffffff" opacity="0.95"/>
+    <text x="220" y="116" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#6d28d9" text-anchor="middle">(주)누보</text>
+    <rect x="340" y="98" width="105" height="26" rx="13" fill="#eab308"/>
+    <text x="392" y="116" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="12" font-weight="800" fill="#0f172a" text-anchor="middle">우수농자재</text>
+
+    <text x="300" y="152" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="800" fill="#ffffff" text-anchor="middle">완효성비료</text>
+    <text x="300" y="178" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="middle">코드: FERT-PRD-09 | 폴리머 코팅 입상 (100일 용출)</text>
+
+    <!-- 포대 중앙 상품명 및 영양소 배합비 박스 -->
+    <rect x="155" y="212" width="290" height="125" rx="16" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="2"/>
+    <text x="300" y="245" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="17" font-weight="900" fill="#0f172a" text-anchor="middle">시비엔(N) 코팅 완효성비료 (15-6-</text>
+    <text x="300" y="268" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="800" fill="#6d28d9" text-anchor="middle">10+고토2+붕소0.2) 20kg</text>
+
+    <!-- N-P-K-Ca-Mg 원형 배지 -->
+    <g transform="translate(168, 284)">
+      <rect x="0" y="0" width="50" height="38" rx="8" fill="#0f172a"/>
+      <text x="25" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#94a3b8" text-anchor="middle">질소 N</text>
+      <text x="25" y="31" font-family="sans-serif" font-size="13" font-weight="900" fill="#38bdf8" text-anchor="middle">15%</text>
+
+      <rect x="54" y="0" width="50" height="38" rx="8" fill="#0f172a"/>
+      <text x="79" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#94a3b8" text-anchor="middle">인산 P</text>
+      <text x="79" y="31" font-family="sans-serif" font-size="13" font-weight="900" fill="#fb923c" text-anchor="middle">6%</text>
+
+      <rect x="108" y="0" width="50" height="38" rx="8" fill="#0f172a"/>
+      <text x="133" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#94a3b8" text-anchor="middle">칼륨 K</text>
+      <text x="133" y="31" font-family="sans-serif" font-size="13" font-weight="900" fill="#facc15" text-anchor="middle">10%</text>
+
+      <rect x="162" y="0" width="50" height="38" rx="8" fill="#0f172a"/>
+      <text x="187" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#94a3b8" text-anchor="middle">칼슘 Ca</text>
+      <text x="187" y="31" font-family="sans-serif" font-size="13" font-weight="900" fill="#4ade80" text-anchor="middle">1%</text>
+
+      <rect x="216" y="0" width="50" height="38" rx="8" fill="#0f172a"/>
+      <text x="241" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#94a3b8" text-anchor="middle">고토Mg</text>
+      <text x="241" y="31" font-family="sans-serif" font-size="13" font-weight="900" fill="#c084fc" text-anchor="middle">2%</text>
+    </g>
+
+    <!-- 주요 첨가비 및 작물 안내 -->
+    <rect x="155" y="352" width="290" height="82" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1.5"/>
+    <text x="300" y="374" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="11.5" font-weight="800" fill="#334155" text-anchor="middle">주요 영양소 첨가비</text>
+    <text x="300" y="395" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="11" font-weight="700" fill="#6d28d9" text-anchor="middle">N 15% · P₂O₅ 6% · K₂O 10% + 고토(MgO) 2.</text>
+    <text x="300" y="418" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="11" font-weight="600" fill="#64748b" text-anchor="middle">권장 사용량: 100평당 25~30kg (1.2~1.5포 정식 전 전층시비)</text>
+
+    <!-- 포대 하단 중량 바 -->
+    <path d="M135 455 H465 V512 Q465 530 447 530 H153 Q135 530 135 512 Z" fill="#0f172a"/>
+    <text x="165" y="498" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="15" font-weight="800" fill="#cbd5e1">실중량 : <tspan fill="#ffffff" font-size="20">20kg / 포</tspan></text>
+    <text x="440" y="498" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="18" font-weight="900" fill="#eab308" text-anchor="end">₩29,000</text>
+    <rect x="145" y="522" width="310" height="14" rx="5" fill="#6d28d9"/>
+  </g>
+</svg>

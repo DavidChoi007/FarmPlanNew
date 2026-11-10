@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" width="600" height="450">
+  <rect width="600" height="450" rx="20" fill="#0f172a"/>
+  <rect x="16" y="16" width="568" height="418" rx="16" fill="#ffffff"/>
+  <rect x="16" y="16" width="568" height="76" rx="16" fill="#0f766e"/>
+  <text x="40" y="48" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#a7f3d0">대유 · MAT-NUTR-07</text>
+  <text x="40" y="74" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="17" font-weight="900" fill="#ffffff">세부 이미지 ③ — 100평(10a) 표준 시비량 및 살포 방법</text>
+
+  <text x="40" y="125" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#0f172a">대유 속찬칼슘붕소 (배추 꿀통·팁번 예방 고흡수 킬레이트 칼슘제) 500ml</text>
+
+  <!-- 중앙 시각 그래픽 영역 -->
+  <rect x="40" y="145" width="520" height="140" rx="14" fill="#f0fdfa" stroke="#14b8a6" stroke-width="2"/>
+  <g transform="translate(60, 175)">
+          <text x="0" y="26" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="16" font-weight="900" fill="#0f766e">▶ 100평(330㎡) 권장 처방량: 100평당 150~200ml (물 20L당 25ml / 800배 속잎 엽면시비)</text>
+          <text x="0" y="62" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="14" font-weight="700" fill="#1e293b">▶ 적용 생육단계: 외엽 번무기 ~ 결구 초기·중기 (5~7일 간격 3회)</text>
+        </g>
+
+  <!-- 하단 3줄 핵심 스펙 -->
+  <g transform="translate(40, 310)">
+    <rect x="0" y="0" width="520" height="100" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="20" y="28" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="800" fill="#0f172a">• 100평(330㎡) 권장 처방량: 100평당 150~200ml (물 20L당 25ml / 800배 속잎 엽면시비)</text>
+    <text x="20" y="56" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#334155">• 적용 생육단계: 외엽 번무기 ~ 결구 초기·중기 (5~7일 간격 3회)</text>
+    <text x="20" y="84" font-family="Pretendard, Malgun Gothic, sans-serif" font-size="13" font-weight="700" fill="#0f766e">• 기상·토양 연동 기준: 결구 개시기(PGDD 432℃·일) 도달 및 건조·고온기 칼슘 흡수 저해 시</text>
+  </g>
+</svg>
