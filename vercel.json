@@ -1,0 +1,35 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/survey",
+      "destination": "/survey/index.html"
+    },
+    {
+      "source": "/survey/:path*",
+      "destination": "/survey/index.html"
+    },
+    {
+      "source": "/purchase-intent",
+      "destination": "/purchase-intent/index.html"
+    },
+    {
+      "source": "/purchase-intent/:path*",
+      "destination": "/purchase-intent/index.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/:path*",
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/((?!assets/|static-api/|images/|docs/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
