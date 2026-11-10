@@ -443,15 +443,12 @@ export default function SurveyPublicPage() {
             <button
               type="button"
               onClick={() => {
-                setSubmittedId(null);
-                setSingleAnswers({});
-                setQ3Selected([]);
-                setQ3OtherText('');
+                window.location.href = normalizeAppPath('/');
               }}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-[17px] inline-flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[17px] inline-flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
             >
-              <RotateCcw className="w-5 h-5" />
-              다시 작성하기
+              <Sprout className="w-5 h-5" />
+              FarmPlan 이동
             </button>
           </div>
         </div>
