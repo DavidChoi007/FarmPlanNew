@@ -2931,29 +2931,94 @@ export default function AdminDashboardPage() {
   };
 
   const openEditSurveyFormModal = (formItem?: any) => {
-    const target = formItem || surveyData.activeSurvey;
+    const target = formItem || surveyData.activeSurvey || (surveyData.forms || [])[0] || {};
+    const baseQs =
+      Array.isArray(target?.questions) && target.questions.length > 0
+        ? target.questions
+        : DEFAULT_SURVEY_QUESTIONS_DEF;
     setSurveyFormModalMode('edit');
     setSurveyEditForm({
-      ...target,
-      questions:
-        Array.isArray(target?.questions) && target.questions.length > 0
-          ? target.questions
-          : DEFAULT_SURVEY_QUESTIONS_DEF,
+      survey_id: target.survey_id || 'SURV-HANFARM-2026',
+      title: target.title || '한팜 맞춤형 재배관리 서비스 수요조사',
+      greeting_text: target.greeting_text || '안녕하세요, 농업인 여러분.',
+      intro_text:
+        target.intro_text ||
+        '한팜은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 병해충 진단 서비스를 개발하고 있습니다.',
+      duration_text:
+        target.duration_text ||
+        '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.',
+      notice_text:
+        target.notice_text ||
+        '※ 본 설문은 맞춤형 재배일정과 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.',
+      footer_title: target.footer_title || '설문에 참여해 주셔서 감사합니다.',
+      footer_sub:
+        target.footer_sub ||
+        '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.',
+      is_active: target.is_active === undefined ? 1 : Number(target.is_active) ? 1 : 0,
+      questions: baseQs.map((q: any, i: number) => ({
+        ...q,
+        id: q.id || `q${i + 1}`,
+        number: i + 1,
+        question: q.question || '',
+        subtitle: q.subtitle || '',
+        type: q.type === 'multiple' ? 'multiple' : 'single',
+        allowOtherInput: Boolean(q.allowOtherInput),
+        options: Array.isArray(q.options) && q.options.length > 0 ? [...q.options] : ['① 예', '② 아니오'],
+      })),
     });
     setIsSurveyFormModalOpen(true);
   };
 
   const handleSaveSurveyForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanedQuestions = (Array.isArray(surveyEditForm.questions) ? surveyEditForm.questions : []).map(
+      (q: any, idx: number) => {
+        const opts = (Array.isArray(q.options) ? q.options : [])
+          .map((o: any) => String(o ?? '').trim())
+          .filter(Boolean);
+        return {
+          ...q,
+          id: q.id || `q${idx + 1}`,
+          number: idx + 1,
+          question: String(q.question || '').trim(),
+          subtitle: String(q.subtitle || '').trim(),
+          type: q.type === 'multiple' ? 'multiple' : 'single',
+          allowOtherInput: Boolean(q.allowOtherInput || opts.some((o: string) => o.includes('기타'))),
+          options: opts.length > 0 ? opts : ['① 예', '② 아니오'],
+        };
+      }
+    );
+    const payload = {
+      ...surveyEditForm,
+      questions: cleanedQuestions,
+    };
     const res = await fetch('/api/surveys/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(surveyEditForm),
+      body: JSON.stringify(payload),
     }).then((r) => r.json());
     if (res?.ok) {
-      showToast(`설문조사 [${surveyEditForm.title}] 저장 및 배포 URL 반영 완료`);
+      setSurveyEditForm(payload);
+      setSurveyData((prev: any) => {
+        const prevForms = Array.isArray(prev?.forms) ? [...prev.forms] : [];
+        const fIdx = prevForms.findIndex((f: any) => f.survey_id === payload.survey_id);
+        if (fIdx >= 0) {
+          prevForms[fIdx] = { ...prevForms[fIdx], ...payload };
+        } else {
+          prevForms.unshift({ ...payload, response_count: 0 });
+        }
+        return {
+          ...prev,
+          forms: prevForms,
+          activeSurvey:
+            !prev?.activeSurvey || prev.activeSurvey.survey_id === payload.survey_id
+              ? { ...(prev?.activeSurvey || {}), ...payload }
+              : prev.activeSurvey,
+        };
+      });
+      showToast(`설문조사 [${payload.title}] 문항 및 양식 저장 완료`);
       setIsSurveyFormModalOpen(false);
-      loadSurveyManagementData({ survey_id: surveyEditForm.survey_id });
+      await loadSurveyManagementData({ survey_id: payload.survey_id });
     }
   };
 
@@ -24358,7 +24423,11 @@ export default function AdminDashboardPage() {
                             return (
                               <tr
                                 key={fItem.survey_id}
-                                className="hover:bg-emerald-50/40 transition"
+                                onClick={() => {
+                                  setSelectedSurveyUnitId(fItem.survey_id);
+                                  loadSurveyManagementData({ survey_id: fItem.survey_id });
+                                }}
+                                className="hover:bg-emerald-50/40 transition cursor-pointer"
                               >
                                 <td className="py-4 px-5 whitespace-nowrap text-center w-24 min-w-[88px]">
                                   <span className="inline-flex items-center justify-center min-w-[40px] px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 font-mono font-extrabold text-xs text-emerald-800">
@@ -24614,15 +24683,26 @@ export default function AdminDashboardPage() {
                         </div>
 
                         <div className="p-5 sm:p-7 space-y-3.5 text-[17px] sm:text-lg leading-relaxed text-slate-800 bg-gradient-to-b from-emerald-50/40 to-white">
-                          <p className="font-extrabold text-slate-900 text-lg sm:text-xl whitespace-nowrap">
-                            {surveyData.activeSurvey?.greeting_text || '안녕하세요, 농업인 여러분.'}
-                          </p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-extrabold text-slate-900 text-lg sm:text-xl whitespace-nowrap">
+                              {surveyData.activeSurvey?.greeting_text || '안녕하세요, 농업인 여러분.'}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => openEditSurveyFormModal(surveyData.activeSurvey)}
+                              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shadow-2xs transition cursor-pointer shrink-0"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              설문 문항 수정
+                            </button>
+                          </div>
                           <p className="break-keep">
-                            <strong className="text-emerald-900 font-extrabold">한팜</strong>은 농업인분들께서 보다 쉽고 편하게 작물을 재배하실 수 있도록{' '}
-                            <strong className="text-emerald-900 font-extrabold">
-                              맞춤형 재배일정 및 병해충 진단 서비스
-                            </strong>
-                            를 개발하고 있습니다.
+                            {String(
+                              surveyData.activeSurvey?.intro_text ||
+                                '한팜은 농업인분들께서 보다 쉽고 편하게 작물을 재배하실 수 있도록 맞춤형 재배일정 및 병해충 진단 서비스를 개발하고 있습니다.'
+                            )
+                              .replace(/\s*\(HANFARM\)/gi, '')
+                              .trim()}
                           </p>
                           <p className="break-keep">
                             {surveyData.activeSurvey?.duration_text ||
@@ -25661,7 +25741,7 @@ export default function AdminDashboardPage() {
                         <label className="block font-bold text-slate-800 mb-1">설문 소개 본문</label>
                         <textarea
                           rows={2}
-                          value={surveyEditForm.intro_text}
+                          value={surveyEditForm.intro_text || ''}
                           onChange={(e) => setSurveyEditForm({ ...surveyEditForm, intro_text: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300"
                         />
@@ -25671,109 +25751,229 @@ export default function AdminDashboardPage() {
                         <label className="block font-bold text-slate-800 mb-1">응답 유의사항 안내문 (※ 강조 문구)</label>
                         <textarea
                           rows={2}
-                          value={surveyEditForm.notice_text}
+                          value={surveyEditForm.notice_text || ''}
                           onChange={(e) => setSurveyEditForm({ ...surveyEditForm, notice_text: e.target.value })}
                           className="w-full px-3 py-2 rounded-xl bg-amber-50/60 border border-amber-300 font-bold"
                         />
                       </div>
 
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1">하단 감사 인사 제목</label>
+                          <input
+                            type="text"
+                            value={surveyEditForm.footer_title || ''}
+                            onChange={(e) => setSurveyEditForm({ ...surveyEditForm, footer_title: e.target.value })}
+                            placeholder="예: 설문에 참여해 주셔서 감사합니다."
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-bold text-slate-800 mb-1">하단 보조 안내 문구</label>
+                          <input
+                            type="text"
+                            value={surveyEditForm.footer_sub || ''}
+                            onChange={(e) => setSurveyEditForm({ ...surveyEditForm, footer_sub: e.target.value })}
+                            placeholder="예: 본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다."
+                            className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300"
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <div className="font-extrabold text-emerald-900">
-                            설문 문항 구성 (총 {(surveyEditForm.questions || []).length}개 문항)
+                          <div className="font-extrabold text-emerald-900 text-sm">
+                            설문 문항 구성 및 보기 편집 (총 {(surveyEditForm.questions || []).length}개 문항)
                           </div>
                           <button
                             type="button"
                             onClick={handleAddSurveyQuestion}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer"
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             + 문항 추가
                           </button>
                         </div>
 
-                        {(surveyEditForm.questions || []).map((qItem: any, idx: number) => (
-                          <div key={qItem.id || idx} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-bold text-[11px]">
-                                문항 {qItem.number}
-                              </span>
-                              <input
-                                type="text"
-                                value={qItem.question}
-                                onChange={(e) => {
-                                  const nextQs = [...surveyEditForm.questions];
-                                  nextQs[idx] = { ...nextQs[idx], question: e.target.value };
-                                  setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
-                                }}
-                                placeholder="질문 내용을 입력해 주세요"
-                                className="flex-1 min-w-52 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 font-bold"
-                                required
-                              />
-                              <select
-                                value={qItem.type || 'single'}
-                                onChange={(e) => {
-                                  const nextQs = [...surveyEditForm.questions];
-                                  nextQs[idx] = {
-                                    ...nextQs[idx],
-                                    type: e.target.value as 'single' | 'multiple',
-                                  };
-                                  setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
-                                }}
-                                className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 font-bold text-[11px]"
-                              >
-                                <option value="single">단일 선택</option>
-                                <option value="multiple">복수 선택</option>
-                              </select>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveSurveyQuestion(idx)}
-                                className="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[11px] cursor-pointer"
-                              >
-                                문항 삭제
-                              </button>
-                            </div>
+                        {(surveyEditForm.questions || []).map((qItem: any, idx: number) => {
+                          const circleNums = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+                          const optsList: string[] = Array.isArray(qItem.options) ? qItem.options : [];
+                          return (
+                            <div
+                              key={qItem.id || idx}
+                              className="p-4 rounded-2xl bg-slate-50 border-2 border-slate-200 space-y-3"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="px-2.5 py-1 rounded-lg bg-emerald-700 text-white font-extrabold text-xs">
+                                  문항 {idx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={qItem.question || ''}
+                                  onChange={(e) => {
+                                    const nextQs = [...(surveyEditForm.questions || [])];
+                                    nextQs[idx] = { ...nextQs[idx], question: e.target.value };
+                                    setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
+                                  }}
+                                  placeholder="질문 내용을 입력해 주세요"
+                                  className="flex-1 min-w-56 px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
+                                  required
+                                />
+                                <select
+                                  value={qItem.type || 'single'}
+                                  onChange={(e) => {
+                                    const nextQs = [...(surveyEditForm.questions || [])];
+                                    nextQs[idx] = {
+                                      ...nextQs[idx],
+                                      type: e.target.value as 'single' | 'multiple',
+                                    };
+                                    setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
+                                  }}
+                                  className="px-3 py-2 rounded-xl bg-white border border-slate-300 font-bold text-xs cursor-pointer"
+                                >
+                                  <option value="single">단일 선택</option>
+                                  <option value="multiple">복수 선택</option>
+                                </select>
+                                <div className="inline-flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    disabled={idx === 0}
+                                    onClick={() => {
+                                      const nextQs = [...(surveyEditForm.questions || [])];
+                                      const temp = nextQs[idx - 1];
+                                      nextQs[idx - 1] = nextQs[idx];
+                                      nextQs[idx] = temp;
+                                      setSurveyEditForm({
+                                        ...surveyEditForm,
+                                        questions: nextQs.map((q, i) => ({ ...q, number: i + 1 })),
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-300 text-slate-700 font-bold text-[11px] cursor-pointer"
+                                    title="위로 이동"
+                                  >
+                                    ▲
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={idx === (surveyEditForm.questions || []).length - 1}
+                                    onClick={() => {
+                                      const nextQs = [...(surveyEditForm.questions || [])];
+                                      const temp = nextQs[idx + 1];
+                                      nextQs[idx + 1] = nextQs[idx];
+                                      nextQs[idx] = temp;
+                                      setSurveyEditForm({
+                                        ...surveyEditForm,
+                                        questions: nextQs.map((q, i) => ({ ...q, number: i + 1 })),
+                                      });
+                                    }}
+                                    className="px-2 py-1.5 rounded-lg bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-300 text-slate-700 font-bold text-[11px] cursor-pointer"
+                                    title="아래로 이동"
+                                  >
+                                    ▼
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSurveyQuestion(idx)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-bold text-[11px] cursor-pointer"
+                                  >
+                                    문항 삭제
+                                  </button>
+                                </div>
+                              </div>
 
-                            <div className="grid sm:grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                                  부연 설명 (선택 · 이탤릭 안내문)
+                                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                                  문항 보조 설명 (선택 입력 · 질문 아래 안내 박스)
                                 </label>
                                 <input
                                   type="text"
                                   value={qItem.subtitle || ''}
                                   onChange={(e) => {
-                                    const nextQs = [...surveyEditForm.questions];
+                                    const nextQs = [...(surveyEditForm.questions || [])];
                                     nextQs[idx] = { ...nextQs[idx], subtitle: e.target.value };
                                     setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
                                   }}
                                   placeholder="예: 작물·품종·지역·기상정보에 따라 일정을 안내하는 서비스입니다."
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-[11px]"
+                                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs"
                                 />
                               </div>
-                              <div>
-                                <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                                  보기 항목 (쉼표 `,` 또는 `/` 로 구분하여 편집)
-                                </label>
-                                <input
-                                  type="text"
-                                  value={(qItem.options || []).join(' / ')}
-                                  onChange={(e) => {
-                                    const raw = e.target.value;
-                                    const parsedOpts = raw
-                                      .split(/\s*\/\s*/)
-                                      .map((s) => s.trim())
-                                      .filter(Boolean);
-                                    const nextQs = [...surveyEditForm.questions];
-                                    nextQs[idx] = { ...nextQs[idx], options: parsedOpts };
-                                    setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
-                                  }}
-                                  className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-semibold"
-                                />
+
+                              <div className="space-y-2 bg-white p-3 rounded-xl border border-slate-200">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11px] font-extrabold text-slate-700">
+                                    선택 보기 항목 ({optsList.length}개)
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextQs = [...(surveyEditForm.questions || [])];
+                                      const nextOptIdx = optsList.length;
+                                      const prefix = circleNums[nextOptIdx] || `(${nextOptIdx + 1})`;
+                                      nextQs[idx] = {
+                                        ...nextQs[idx],
+                                        options: [...optsList, `${prefix} 새 보기 항목`],
+                                      };
+                                      setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    보기 추가
+                                  </button>
+                                </div>
+
+                                <div className="grid sm:grid-cols-2 gap-2">
+                                  {optsList.map((optStr: string, optIdx: number) => (
+                                    <div key={optIdx} className="flex items-center gap-1.5">
+                                      <span className="text-[11px] font-mono font-bold text-slate-400 w-5 text-center shrink-0">
+                                        {optIdx + 1}
+                                      </span>
+                                      <input
+                                        type="text"
+                                        value={optStr}
+                                        onChange={(e) => {
+                                          const nextQs = [...(surveyEditForm.questions || [])];
+                                          const nextOpts = [...optsList];
+                                          nextOpts[optIdx] = e.target.value;
+                                          nextQs[idx] = { ...nextQs[idx], options: nextOpts };
+                                          setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
+                                        }}
+                                        placeholder={`보기 ${optIdx + 1} 내용 입력`}
+                                        className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-50 focus:bg-white border border-slate-300 text-xs font-semibold text-slate-900"
+                                      />
+                                      {optsList.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const nextQs = [...(surveyEditForm.questions || [])];
+                                            const nextOpts = optsList.filter((_, i) => i !== optIdx);
+                                            nextQs[idx] = { ...nextQs[idx], options: nextOpts };
+                                            setSurveyEditForm({ ...surveyEditForm, questions: nextQs });
+                                          }}
+                                          className="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-[11px] shrink-0 cursor-pointer"
+                                          title="보기 삭제"
+                                        >
+                                          삭제
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
+
+                        <div className="pt-1 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={handleAddSurveyQuestion}
+                            className="w-full py-2.5 rounded-xl border-2 border-dashed border-emerald-400 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-800 font-extrabold text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                          >
+                            <Plus className="w-4 h-4" />
+                            + 아래에 새 설문 문항 추가하기
+                          </button>
+                        </div>
                       </div>
 
                       <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">

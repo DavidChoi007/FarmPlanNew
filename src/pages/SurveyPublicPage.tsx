@@ -421,11 +421,17 @@ export default function SurveyPublicPage() {
               {cleanKoreanText(surveyMeta.greeting_text || '안녕하세요, 농업인 여러분.')}
             </p>
             <p className="break-keep">
-              <strong className="text-emerald-900 font-extrabold">한팜</strong>은 농업인분들께서 보다 쉽고 편하게 작물을 재배하실 수 있도록{' '}
-              <strong className="text-emerald-900 font-extrabold">
-                맞춤형 재배일정 및 병해충 진단 서비스
-              </strong>
-              를 개발하고 있습니다.
+              {surveyMeta.intro_text ? (
+                cleanKoreanText(surveyMeta.intro_text)
+              ) : (
+                <>
+                  <strong className="text-emerald-900 font-extrabold">한팜</strong>은 농업인분들께서 보다 쉽고 편하게 작물을 재배하실 수 있도록{' '}
+                  <strong className="text-emerald-900 font-extrabold">
+                    맞춤형 재배일정 및 병해충 진단 서비스
+                  </strong>
+                  를 개발하고 있습니다.
+                </>
+              )}
             </p>
             <p className="break-keep">
               {cleanKoreanText(

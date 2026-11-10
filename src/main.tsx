@@ -101,38 +101,189 @@ if (typeof window !== 'undefined' && window.location.hostname.endsWith('github.i
     if (p === '/api/payment-bank-accounts') return jsonResponse(snap.paymentBankAccounts || { items: [] });
     if (p === '/api/crop-growth-process-plans') return jsonResponse(snap.cropGrowthPlans || { items: [] });
     if (p === '/api/agro-recommendation-module') return jsonResponse(snap.agroRecModule || {});
-    if (p === '/api/surveys') {
-      const surveyId = u.searchParams.get('survey_id') || '';
+    if (
+      p === '/api/surveys' ||
+      p === '/api/surveys/public' ||
+      p === '/api/surveys/save' ||
+      p === '/api/surveys/delete' ||
+      p === '/api/surveys/submit' ||
+      p === '/api/surveys/response/delete'
+    ) {
+      const FORMS_KEY = 'hanfarm_surveys_forms_v1';
+      const RESPS_KEY = 'hanfarm_surveys_responses_v1';
       const baseSurveys = snap.surveys || { forms: [], responses: [] };
-      const forms: any[] = Array.isArray(baseSurveys.forms) ? baseSurveys.forms : [];
+      let forms: any[] = [];
+      let responses: any[] = [];
+      try {
+        const rawForms = localStorage.getItem(FORMS_KEY);
+        forms = rawForms ? JSON.parse(rawForms) : Array.isArray(baseSurveys.forms) ? [...baseSurveys.forms] : [];
+      } catch {
+        forms = Array.isArray(baseSurveys.forms) ? [...baseSurveys.forms] : [];
+      }
+      try {
+        const rawResps = localStorage.getItem(RESPS_KEY);
+        responses = rawResps ? JSON.parse(rawResps) : Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : [];
+      } catch {
+        responses = Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : [];
+      }
+
+      if (p === '/api/surveys/save') {
+        try {
+          const body = init?.body ? JSON.parse(String(init.body)) : {};
+          const surveyId = String(body.survey_id || 'SURV-HANFARM-2026').trim();
+          const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          const idx = forms.findIndex((f) => f.survey_id === surveyId);
+          const nextForm = {
+            ...(idx >= 0 ? forms[idx] : {}),
+            ...body,
+            survey_id: surveyId,
+            is_active: body.is_active === undefined ? 1 : Number(body.is_active) ? 1 : 0,
+            updated_at: nowStr,
+            questions: Array.isArray(body.questions) ? body.questions : idx >= 0 ? forms[idx].questions : [],
+          };
+          if (idx >= 0) {
+            forms[idx] = nextForm;
+          } else {
+            forms.unshift(nextForm);
+          }
+          localStorage.setItem(FORMS_KEY, JSON.stringify(forms));
+          if (snap.surveys) {
+            snap.surveys.forms = forms;
+            snap.surveys.activeSurvey = nextForm;
+          }
+          return jsonResponse({ ok: true, survey_id: surveyId, survey: nextForm });
+        } catch {
+          return jsonResponse({ ok: true });
+        }
+      }
+
+      if (p === '/api/surveys/delete') {
+        try {
+          const body = init?.body ? JSON.parse(String(init.body)) : {};
+          const targetId = String(body.survey_id || '').trim();
+          forms = forms.filter((f) => f.survey_id !== targetId);
+          responses = responses.filter((r) => r.survey_id !== targetId);
+          localStorage.setItem(FORMS_KEY, JSON.stringify(forms));
+          localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      if (p === '/api/surveys/submit') {
+        const respId = `RESP-${Date.now().toString().slice(-6)}`;
+        try {
+          const body = init?.body ? JSON.parse(String(init.body)) : {};
+          const surveyId = String(body.survey_id || 'SURV-HANFARM-2026').trim();
+          const newResp = {
+            response_id: respId,
+            survey_id: surveyId,
+            respondent_name: body.respondent_name || '익명 농업인',
+            respondent_region: body.respondent_region || '',
+            respondent_contact: body.respondent_contact || '',
+            q1_age: body.q1_age || '',
+            q2_scale: body.q2_scale || '',
+            q3_crops: Array.isArray(body.q3_crops) ? body.q3_crops : [],
+            q3_other_text: body.q3_other_text || '',
+            q4_difficulty: body.q4_difficulty || '',
+            q5_schedule_intent: body.q5_schedule_intent || '',
+            q6_schedule_wtp: body.q6_schedule_wtp || '',
+            q7_ai_pest_intent: body.q7_ai_pest_intent || '',
+            q8_bundle_wtp: body.q8_bundle_wtp || '',
+            q9_commerce_intent: body.q9_commerce_intent || '',
+            answers_map: body.answers_map || {},
+            submitted_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+          };
+          responses.unshift(newResp);
+          localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true, response_id: respId });
+      }
+
+      if (p === '/api/surveys/response/delete') {
+        try {
+          const body = init?.body ? JSON.parse(String(init.body)) : {};
+          const targetRespId = String(body.response_id || '').trim();
+          responses = responses.filter((r) => r.response_id !== targetRespId);
+          localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      if (p === '/api/surveys/public') {
+        const surveyId = u.searchParams.get('survey_id') || 'SURV-HANFARM-2026';
+        const found =
+          forms.find((f) => f.survey_id === surveyId) ||
+          forms[0] ||
+          baseSurveys.activeSurvey || {
+            survey_id: surveyId,
+            title: '한팜 맞춤형 재배관리 서비스 수요조사',
+            is_active: 1,
+          };
+        return jsonResponse({ ok: true, survey: found });
+      }
+
+      // GET /api/surveys
+      const surveyId = u.searchParams.get('survey_id') || '';
       const activeSurvey =
         (surveyId && forms.find((f) => f.survey_id === surveyId)) ||
-        baseSurveys.activeSurvey ||
         forms[0] ||
+        baseSurveys.activeSurvey ||
         null;
+      const targetSurveyId = activeSurvey?.survey_id || 'SURV-HANFARM-2026';
+      const surveyResponses = responses.filter(
+        (r) => !r.survey_id || r.survey_id === targetSurveyId
+      );
+      const totalCount = surveyResponses.length;
+      const questionsList: any[] = Array.isArray(activeSurvey?.questions)
+        ? activeSurvey.questions
+        : [];
+      const questionStats = questionsList.map((qDef: any) => {
+        const optionCounts = (qDef.options || []).map((opt: string) => {
+          let cnt = 0;
+          for (const r of surveyResponses) {
+            const customVal = r.answers_map?.[qDef.id];
+            if (Array.isArray(customVal) && customVal.includes(opt)) cnt++;
+            else if (typeof customVal === 'string' && customVal === opt) cnt++;
+            else if (qDef.id === 'q1' && r.q1_age === opt) cnt++;
+            else if (qDef.id === 'q2' && r.q2_scale === opt) cnt++;
+            else if (qDef.id === 'q3' && Array.isArray(r.q3_crops) && r.q3_crops.includes(opt)) cnt++;
+            else if (qDef.id === 'q4' && r.q4_difficulty === opt) cnt++;
+            else if (qDef.id === 'q5' && r.q5_schedule_intent === opt) cnt++;
+            else if (qDef.id === 'q6' && r.q6_schedule_wtp === opt) cnt++;
+            else if (qDef.id === 'q7' && r.q7_ai_pest_intent === opt) cnt++;
+            else if (qDef.id === 'q8' && r.q8_bundle_wtp === opt) cnt++;
+            else if (qDef.id === 'q9' && r.q9_commerce_intent === opt) cnt++;
+          }
+          const pct = totalCount > 0 ? Number(((cnt / totalCount) * 100).toFixed(1)) : 0;
+          return { option: opt, count: cnt, pct };
+        });
+        return {
+          ...qDef,
+          optionCounts,
+          otherInputs: [],
+        };
+      });
+
+      const formsWithCounts = forms.map((f) => ({
+        ...f,
+        response_count: responses.filter((r) => (r.survey_id || 'SURV-HANFARM-2026') === f.survey_id).length,
+      }));
+
       return jsonResponse({
         ...baseSurveys,
-        activeSurvey,
-      });
-    }
-    if (p === '/api/surveys/public') {
-      const surveyId = u.searchParams.get('survey_id') || 'SURV-HANFARM-2026';
-      const baseSurveys = snap.surveys || { forms: [] };
-      const forms: any[] = Array.isArray(baseSurveys.forms) ? baseSurveys.forms : [];
-      const found =
-        forms.find((f) => f.survey_id === surveyId) ||
-        baseSurveys.activeSurvey ||
-        forms[0] || {
-          survey_id: surveyId,
-          title: '한팜 맞춤형 재배관리 서비스 수요조사',
-          is_active: 1,
-        };
-      return jsonResponse({ ok: true, survey: found });
-    }
-    if (p === '/api/surveys/submit') {
-      return jsonResponse({
         ok: true,
-        response_id: `RESP-${Date.now().toString().slice(-6)}`,
+        forms: formsWithCounts,
+        activeSurvey,
+        responses: surveyResponses,
+        totalResponses: totalCount,
+        filteredCount: surveyResponses.length,
+        questionStats,
       });
     }
     if (p === '/api/purchase-intents') {
