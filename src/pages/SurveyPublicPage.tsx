@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, normalizeAppPath } from '../router.tsx';
+import { normalizeAppPath } from '../router.tsx';
 import {
   Sprout,
   CheckCircle2,
@@ -10,7 +10,6 @@ import {
   MapPin,
   User,
   Phone,
-  ArrowLeft,
 } from 'lucide-react';
 
 interface SurveyQuestion {
@@ -390,13 +389,6 @@ export default function SurveyPublicPage() {
                 />
               </div>
             </div>
-            <Link
-              to="/admin"
-              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-base font-bold text-slate-700 inline-flex items-center gap-1.5 transition"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              관리자 페이지
-            </Link>
           </div>
         </div>
 
