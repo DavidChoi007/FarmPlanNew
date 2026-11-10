@@ -526,28 +526,15 @@ export default function PurchaseIntentPublicPage() {
                   </span>
                 </button>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleCopyConsentText}
-                    className="w-full py-2.5 px-5 rounded-full bg-slate-200/80 hover:bg-slate-200 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
-                  >
-                    동의 내용 확인 및 복사
-                  </button>
+                <div className="pt-1">
                   <button
                     type="submit"
-                    className="w-full py-2.5 px-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="w-full py-3 px-6 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm sm:text-base shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Check className="w-4 h-4" />
-                    <span>구독·구매의향서 최종 제출</span>
+                    <span>구매의향서 최종 승인 및 제출</span>
                   </button>
                 </div>
-
-                {copiedMessage && (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-extrabold text-center">
-                    {copiedMessage}
-                  </div>
-                )}
               </div>
             </div>
 

@@ -27436,17 +27436,10 @@ export default function AdminDashboardPage() {
                           </span>
                         </button>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                          <button
-                            type="button"
-                            onClick={handleCopyPurchaseIntentText}
-                            className="w-full py-2.5 px-5 rounded-full bg-slate-200/80 hover:bg-slate-200 text-slate-800 font-extrabold text-xs sm:text-sm transition cursor-pointer"
-                          >
-                            동의 내용 확인 및 복사
-                          </button>
+                        <div className="pt-1">
                           <button
                             type="submit"
-                            className={`w-full py-2.5 px-5 rounded-full text-white font-extrabold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                            className={`w-full py-3 px-6 rounded-full text-white font-extrabold text-sm sm:text-base shadow-xs transition flex items-center justify-center gap-2 cursor-pointer ${
                               editingIntentEntryId
                                 ? 'bg-amber-600 hover:bg-amber-500'
                                 : 'bg-emerald-600 hover:bg-emerald-500'
@@ -27456,7 +27449,7 @@ export default function AdminDashboardPage() {
                             <span>
                               {editingIntentEntryId
                                 ? `[${editingIntentEntryId}] 의향서 내용 수정 저장`
-                                : '구매·구독의향서 제출 및 수집현황 저장'}
+                                : '구매의향서 최종 승인 및 제출'}
                             </span>
                           </button>
                         </div>
