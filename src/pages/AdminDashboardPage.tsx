@@ -3218,58 +3218,93 @@ export default function AdminDashboardPage() {
     return merged;
   };
 
-  const buildCompactPurchaseIntentSharePath = (tpl: any) => {
-    const base = `${getBasePath()}/purchase-intent/`;
-    if (!tpl || typeof tpl !== 'object') return base;
-    const diff: Record<string, any> = {};
-    for (const [k, defVal] of Object.entries(DEFAULT_PURCHASE_INTENT_TEMPLATE)) {
-      const curVal = tpl[k];
-      if (curVal !== undefined && JSON.stringify(curVal) !== JSON.stringify(defVal)) {
-        diff[k] = curVal;
+  const getExternalShareBaseUrl = () => {
+    if (typeof window !== 'undefined') {
+      const host = window.location.hostname.toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return 'https://davidchoi007.github.io/FarmPlanNew';
       }
+      return `${window.location.origin}${getBasePath()}`;
     }
-    if (Object.keys(diff).length === 0) return base;
-    return `${base}?cfg=${encodeSharePayload(diff)}`;
+    return 'https://davidchoi007.github.io/FarmPlanNew';
   };
 
-  const buildCompactSurveySharePath = (surveyObj: any) => {
-    const base = `${getBasePath()}/survey/`;
-    if (!surveyObj || typeof surveyObj !== 'object') return base;
-    const sId = surveyObj.survey_id || 'SURV-HANFARM-2026';
-    const diff: Record<string, any> = {};
-    if (surveyObj.title && surveyObj.title !== '한팜 맞춤형 재배관리 서비스 수요조사') {
-      diff.title = surveyObj.title;
+  const buildCompactPurchaseIntentSharePath = (tpl: any, forExternalShare = false) => {
+    const prefix = forExternalShare ? getExternalShareBaseUrl() : getBasePath();
+    const base = `${prefix}/purchase-intent/`;
+    const params = new URLSearchParams();
+    if (forExternalShare) {
+      params.set('og', '20261110');
     }
-    if (Number(surveyObj.is_active ?? 1) === 0) {
-      diff.is_active = 0;
-    }
-    const qs = Array.isArray(surveyObj.questions) ? surveyObj.questions : [];
-    if (qs.length > 0 && JSON.stringify(qs) !== JSON.stringify(DEFAULT_SURVEY_QUESTIONS_DEF)) {
-      if (qs.length !== DEFAULT_SURVEY_QUESTIONS_DEF.length) {
-        diff.questions = qs;
-      } else {
-        const qDiff: Record<number, any> = {};
-        qs.forEach((q: any, idx: number) => {
-          const defQ = DEFAULT_SURVEY_QUESTIONS_DEF[idx];
-          if (JSON.stringify(q) !== JSON.stringify(defQ)) {
-            qDiff[idx] = q;
-          }
-        });
-        if (Object.keys(qDiff).length > 0) {
-          diff.qDiff = qDiff;
+    if (tpl && typeof tpl === 'object') {
+      const diff: Record<string, any> = {};
+      for (const [k, defVal] of Object.entries(DEFAULT_PURCHASE_INTENT_TEMPLATE)) {
+        const curVal = tpl[k];
+        if (curVal !== undefined && JSON.stringify(curVal) !== JSON.stringify(defVal)) {
+          diff[k] = curVal;
         }
       }
-    }
-    const params = new URLSearchParams();
-    if (sId !== 'SURV-HANFARM-2026') {
-      params.set('survey_id', sId);
-    }
-    if (Object.keys(diff).length > 0) {
-      params.set('cfg', encodeSharePayload(diff));
+      if (Object.keys(diff).length > 0) {
+        params.set('cfg', encodeSharePayload(diff));
+      }
     }
     const qsStr = params.toString();
     return qsStr ? `${base}?${qsStr}` : base;
   };
+
+  const buildCompactSurveySharePath = (surveyObj: any, forExternalShare = false) => {
+    const prefix = forExternalShare ? getExternalShareBaseUrl() : getBasePath();
+    const base = `${prefix}/survey/`;
+    const params = new URLSearchParams();
+    if (forExternalShare) {
+      params.set('og', '20261110');
+    }
+    if (surveyObj && typeof surveyObj === 'object') {
+      const sId = surveyObj.survey_id || 'SURV-HANFARM-2026';
+      const diff: Record<string, any> = {};
+      if (surveyObj.title && surveyObj.title !== '한팜 맞춤형 재배관리 서비스 수요조사') {
+        diff.title = surveyObj.title;
+      }
+      if (Number(surveyObj.is_active ?? 1) === 0) {
+        diff.is_active = 0;
+      }
+      const qs = Array.isArray(surveyObj.questions) ? surveyObj.questions : [];
+      if (qs.length > 0 && JSON.stringify(qs) !== JSON.stringify(DEFAULT_SURVEY_QUESTIONS_DEF)) {
+        if (qs.length !== DEFAULT_SURVEY_QUESTIONS_DEF.length) {
+          diff.questions = qs;
+        } else {
+          const qDiff: Record<number, any> = {};
+          qs.forEach((q: any, idx: number) => {
+            const defQ = DEFAULT_SURVEY_QUESTIONS_DEF[idx];
+            if (JSON.stringify(q) !== JSON.stringify(defQ)) {
+              qDiff[idx] = q;
+            }
+          });
+          if (Object.keys(qDiff).length > 0) {
+            diff.qDiff = qDiff;
+          }
+        }
+      }
+      if (sId !== 'SURV-HANFARM-2026') {
+        params.set('survey_id', sId);
+      }
+      if (Object.keys(diff).length > 0) {
+        params.set('cfg', encodeSharePayload(diff));
+      }
+    }
+    const qsStr = params.toString();
+    return qsStr ? `${base}?${qsStr}` : base;
+  };
+
+  useEffect(() => {
+    if (activeTab === 'survey_management') {
+      document.title = '재배컨설팅 서비스 설문조사';
+    } else if (activeTab === 'purchase_intent_content' || activeTab === 'purchase_intent_status') {
+      document.title = '구매 및 구독 의향서';
+    } else {
+      document.title = 'FarmPlan — 맞춤형 농작물 재배 일정 공급 서비스';
+    }
+  }, [activeTab]);
 
   const [purchaseIntentTemplate, setPurchaseIntentTemplate] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(() => {
     try {
@@ -24419,41 +24454,83 @@ export default function AdminDashboardPage() {
                 /* ==================== 1단계: 설문조사 단위 리스트 화면 ==================== */
                 <>
                   {/* 상단 헤더 */}
-                  <div className="bg-emerald-950 text-white p-6 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
-                          HANFARM Survey Unit Management
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                          총 {(surveyData.forms || []).length}개 설문조사 운영중
-                        </span>
+                  <div className="bg-emerald-950 text-white p-6 rounded-2xl space-y-4 shadow-sm">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                            HANFARM Survey Unit Management
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                            총 {(surveyData.forms || []).length}개 설문조사 운영중
+                          </span>
+                        </div>
+                        <h2 className="text-lg font-extrabold mt-1">
+                          설문조사 관리 (설문조사 단위 목록)
+                        </h2>
+                        <p className="text-xs text-slate-300 mt-1">
+                          생성된 설문조사 단위를 목록으로 관리하며, 각 설문조사 항목을 클릭해 <strong>세부페이지</strong>로 들어가면 재배자·사용자에게 제공되는 <strong>실제 설문조사 모양</strong>으로 확인·참여 및 응답 통계를 관리할 수 있습니다.
+                        </p>
                       </div>
-                      <h2 className="text-lg font-extrabold mt-1">
-                        설문조사 관리 (설문조사 단위 목록)
-                      </h2>
-                      <p className="text-xs text-slate-300 mt-1">
-                        생성된 설문조사 단위를 목록으로 관리하며, 각 설문조사 항목을 클릭해 <strong>세부페이지</strong>로 들어가면 재배자·사용자에게 제공되는 <strong>실제 설문조사 모양</strong>으로 확인·참여 및 응답 통계를 관리할 수 있습니다.
-                      </p>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => openSurveyStatsModal()}
+                          className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                          통계분석
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openCreateSurveyFormModal}
+                          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                        >
+                          <Plus className="w-4 h-4" />
+                          새 설문조사 등록
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => openSurveyStatsModal()}
-                        className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                      >
-                        <ClipboardList className="w-4 h-4" />
-                        통계분석
-                      </button>
-                      <button
-                        type="button"
-                        onClick={openCreateSurveyFormModal}
-                        className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        새 설문조사 등록
-                      </button>
+                    {/* 1단계 상단: 카카오톡 외부 공유용 설문 URL 바 */}
+                    <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
+                        <span className="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-extrabold text-[11px]">
+                          카카오톡 공유용 외부 설문 URL
+                        </span>
+                        <span className="font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate">
+                          {buildCompactSurveySharePath(surveyData.activeSurvey || (surveyData.forms || [])[0], true)}
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-300">
+                          (카톡 공유 타이틀: &quot;재배컨설팅 서비스 설문조사&quot;)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const shareUrl = buildCompactSurveySharePath(
+                              surveyData.activeSurvey || (surveyData.forms || [])[0],
+                              true
+                            );
+                            navigator.clipboard?.writeText(shareUrl);
+                            showToast('설문 외부 링크 URL 복사 완료 (카톡 공유 시 "재배컨설팅 서비스 설문조사" 표시)');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
+                        >
+                          설문 외부링크 URL 복사
+                        </button>
+                        <a
+                          href={buildCompactSurveySharePath(surveyData.activeSurvey || (surveyData.forms || [])[0], false)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs inline-flex items-center gap-1.5 transition"
+                        >
+                          새창으로 열기
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </div>
                   </div>
 
@@ -24521,16 +24598,29 @@ export default function AdminDashboardPage() {
                                   className="py-4 px-4 whitespace-nowrap text-center"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      window.open(sharePath, '_blank', 'noopener,noreferrer');
-                                    }}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
-                                  >
-                                    <span>설문조사 이동</span>
-                                    <ArrowUpRight className="w-3.5 h-3.5" />
-                                  </button>
+                                  <div className="inline-flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        window.open(sharePath, '_blank', 'noopener,noreferrer');
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                                    >
+                                      <span>설문조사 이동</span>
+                                      <ArrowUpRight className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const extUrl = buildCompactSurveySharePath(fItem, true);
+                                        navigator.clipboard?.writeText(extUrl);
+                                        showToast('설문 외부 링크 URL 복사 완료 (카톡 공유 시 "재배컨설팅 서비스 설문조사" 표시)');
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-300 font-extrabold text-xs inline-flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                                    >
+                                      <span>외부링크 복사</span>
+                                    </button>
+                                  </div>
                                 </td>
                                 <td className="py-4 px-4 whitespace-nowrap">
                                   <span className="font-extrabold text-emerald-700 text-sm">
@@ -24661,28 +24751,29 @@ export default function AdminDashboardPage() {
                     <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
                         <span className="px-2 py-0.5 rounded bg-emerald-500 text-slate-950 font-extrabold text-[11px]">
-                          배포용 설문 URL
+                          카카오톡 공유용 외부 설문 URL
                         </span>
                         <span className="font-mono text-xs sm:text-sm font-bold text-emerald-300 truncate">
-                          {`${window.location.origin}${getBasePath()}/survey/`}
+                          {buildCompactSurveySharePath(surveyData.activeSurvey, true)}
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-300">
+                          (카톡 공유 타이틀: &quot;재배컨설팅 서비스 설문조사&quot;)
                         </span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => {
-                            const shareUrl = `${window.location.origin}${buildCompactSurveySharePath(
-                              surveyData.activeSurvey
-                            )}`;
+                            const shareUrl = buildCompactSurveySharePath(surveyData.activeSurvey, true);
                             navigator.clipboard?.writeText(shareUrl);
-                            showToast('설문 배포 URL 복사 완료 (카카오톡 미리보기: 재배컨설팅 서비스 설문조사)');
+                            showToast('설문 외부 링크 URL 복사 완료 (카톡 공유 시 "재배컨설팅 서비스 설문조사" 표시)');
                           }}
                           className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs transition cursor-pointer"
                         >
                           설문 URL 복사
                         </button>
                         <a
-                          href={buildCompactSurveySharePath(surveyData.activeSurvey)}
+                          href={buildCompactSurveySharePath(surveyData.activeSurvey, false)}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs inline-flex items-center gap-1.5 transition"
@@ -26507,28 +26598,32 @@ export default function AdminDashboardPage() {
                 <div className="p-3.5 rounded-xl bg-[#E9F7F1] border border-emerald-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
                     <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-extrabold text-[11px]">
-                      배포용 구매·구독의향서 URL
+                      카카오톡 공유용 외부 의향서 URL
                     </span>
                     <span className="font-mono text-xs sm:text-sm font-extrabold text-emerald-950 truncate">
-                      {`${window.location.origin}${getBasePath()}/purchase-intent/`}
+                      {buildCompactPurchaseIntentSharePath(purchaseIntentTemplate, true)}
+                    </span>
+                    <span className="text-[11px] font-bold text-emerald-800">
+                      (카톡 공유 타이틀: &quot;구매 및 구독 의향서&quot;)
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
                       onClick={() => {
-                        const shareUrl = `${window.location.origin}${buildCompactPurchaseIntentSharePath(
-                          purchaseIntentTemplate
-                        )}`;
+                        const shareUrl = buildCompactPurchaseIntentSharePath(
+                          purchaseIntentTemplate,
+                          true
+                        );
                         navigator.clipboard?.writeText(shareUrl);
-                        showToast('구매·구독의향서 배포 URL 복사 완료 (카카오톡 미리보기: 구매 및 구독 의향서)');
+                        showToast('구매·구독의향서 외부 링크 URL 복사 완료 (카톡 공유 시 "구매 및 구독 의향서" 표시)');
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer"
                     >
                       의향서 URL 복사
                     </button>
                     <a
-                      href={buildCompactPurchaseIntentSharePath(purchaseIntentTemplate)}
+                      href={buildCompactPurchaseIntentSharePath(purchaseIntentTemplate, false)}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-emerald-300 font-extrabold text-xs inline-flex items-center gap-1.5 transition"

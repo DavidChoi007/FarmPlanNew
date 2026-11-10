@@ -11,6 +11,10 @@ function applyRouteMeta(html: string, title: string, description: string): strin
       `<meta name="description" content="${description}" />`
     )
     .replace(
+      /<meta\s+property="og:site_name"\s+content="[^"]*"\s*\/?>/i,
+      `<meta property="og:site_name" content="${title}" />`
+    )
+    .replace(
       /<meta\s+property="og:title"\s+content="[^"]*"\s*\/?>/i,
       `<meta property="og:title" content="${title}" />`
     )
@@ -34,10 +38,18 @@ function routeOpenGraphPlugin(): Plugin {
     transformIndexHtml(html, ctx) {
       const reqUrl = (ctx.originalUrl || ctx.path || '').toLowerCase();
       if (reqUrl.includes('/survey')) {
-        return applyRouteMeta(html, '재배컨설팅 서비스 설문조사', '재배컨설팅 서비스 설문조사');
+        return applyRouteMeta(
+          html,
+          '재배컨설팅 서비스 설문조사',
+          '한팜(HANFARM) 맞춤형 재배컨설팅 서비스 설문조사'
+        );
       }
       if (reqUrl.includes('/purchase-intent')) {
-        return applyRouteMeta(html, '구매 및 구독 의향서', '구매 및 구독 의향서');
+        return applyRouteMeta(
+          html,
+          '구매 및 구독 의향서',
+          '한팜(HANFARM) 재배컨설팅 플랫폼 구매 및 구독 의향서'
+        );
       }
       return html;
     },
@@ -50,12 +62,12 @@ function routeOpenGraphPlugin(): Plugin {
       const surveyHtml = applyRouteMeta(
         baseHtml,
         '재배컨설팅 서비스 설문조사',
-        '재배컨설팅 서비스 설문조사'
+        '한팜(HANFARM) 맞춤형 재배컨설팅 서비스 설문조사'
       );
       const purchaseIntentHtml = applyRouteMeta(
         baseHtml,
         '구매 및 구독 의향서',
-        '구매 및 구독 의향서'
+        '한팜(HANFARM) 재배컨설팅 플랫폼 구매 및 구독 의향서'
       );
 
       const writeRouteHtml = (relPath: string, content: string) => {
