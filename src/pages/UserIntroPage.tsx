@@ -2807,8 +2807,587 @@ export default function UserIntroPage() {
                       {/* ==================== [리스트 항목 바로 아래 아코디언 확장 영역: ① 생육과정 정밀 타임라인(48주) & ② 전 생육과정 추천 농자재 단계별 리스트 & 단번에 구매하기] ==================== */}
                       {isExpanded && provisionData && (
                         <div className="pl-2 sm:pl-4 border-l-4 border-emerald-500 space-y-5 pt-1 pb-2">
-                          {/* ① 생육과정 정밀 타임라인 (1~12월 · 48주) & 기후 연동 추천 진행일 조정기 */}
-                          <section className="bg-white rounded-3xl border-2 border-emerald-200 p-4 sm:p-7 shadow-xs space-y-6">
+                          {/* ①-M [모바일 환경 전용 (lg:hidden)]: 첨부 이미지 1~5번 방식 생육과정 정밀 타임라인 구성 */}
+                          <div className="lg:hidden space-y-4">
+                            {/* [모바일 카드 1 (첨부 이미지 1번)]: 한팜 내 재배작물 요약 + 진행 막대 + 기온·강수·다음작업 3열 카드 */}
+                            <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs space-y-4">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-10 h-10 rounded-2xl bg-[#E9F7F1] text-emerald-700 flex items-center justify-center shrink-0">
+                                    <Sprout className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <div className="font-extrabold text-base text-slate-900 leading-tight">
+                                      한팜
+                                    </div>
+                                    <div className="text-xs text-slate-500 font-medium">
+                                      나의 맞춤형 재배관리
+                                    </div>
+                                  </div>
+                                </div>
+                                <Bell className="w-5 h-5 text-slate-500" />
+                              </div>
+
+                              {/* 내 재배작물 요약 그레이 박스 */}
+                              <div className="rounded-2xl bg-[#F4F6F8] p-4 space-y-3.5">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold text-slate-500">내 재배작물</span>
+                                  <span className="px-3 py-1 rounded-full bg-slate-200/80 text-slate-700 font-bold text-[11px]">
+                                    {crop.badge}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3.5">
+                                  <div
+                                    className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs overflow-hidden`}
+                                  >
+                                    <Sprout className="w-9 h-9" />
+                                    <span className="text-[11px] font-extrabold mt-0.5">
+                                      {crop.crop_short}
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h4 className="text-xl font-extrabold text-slate-900 tracking-tight truncate">
+                                      {crop.crop_short || crop.crop_title}
+                                    </h4>
+                                    <p className="text-sm font-semibold text-slate-700 mt-0.5 truncate">
+                                      {crop.region} · {crop.area_pyeong}평
+                                    </p>
+                                    <p className="text-xs text-slate-500 font-medium mt-1">
+                                      {crop.planting_label}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-extrabold text-slate-900">재배 진행상태</span>
+                                    <span className="font-semibold text-slate-500">
+                                      {crop.status_text || '생육 확인 필요'}
+                                    </span>
+                                  </div>
+                                  <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                                    <div
+                                      style={{ width: `${crop.progress_pct}%` }}
+                                      className="h-full rounded-full bg-[#22A559] transition-all"
+                                    />
+                                  </div>
+                                  <p className="text-xs text-slate-500 leading-relaxed pt-0.5">
+                                    적산온도(PGDD) 및 현장 생육 기록을 기준으로 산출된 진행 상태입니다.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* 기온 · 강수 · 다음 작업 3열 미니 카드 */}
+                              <div className="grid grid-cols-3 gap-2.5">
+                                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
+                                  <Thermometer className="w-4 h-4 text-slate-500 mx-auto" />
+                                  <div className="text-xs text-slate-500 font-medium">기온</div>
+                                  <div className="text-base font-extrabold text-slate-900">
+                                    {curDayClimate?.temp_avg ?? crop.temp_c ?? '18.5'}°C
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
+                                  <CloudRain className="w-4 h-4 text-slate-500 mx-auto" />
+                                  <div className="text-xs text-slate-500 font-medium">강수</div>
+                                  <div className="text-base font-extrabold text-slate-900">
+                                    {curDayClimate?.precipitation_mm !== undefined
+                                      ? `${curDayClimate.precipitation_mm}mm`
+                                      : crop.rain_mm || '5mm'}
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
+                                  <Calendar className="w-4 h-4 text-slate-500 mx-auto" />
+                                  <div className="text-xs text-slate-500 font-medium">다음 작업</div>
+                                  <div className="text-base font-extrabold text-slate-900">
+                                    {crop.next_work_dday || crop.next_task_dday || '2일 후'}
+                                  </div>
+                                </div>
+                              </div>
+                            </section>
+
+                            {/* [모바일 카드 2 (첨부 이미지 2번)]: 오늘 할 일 & 예정된 농작업 */}
+                            <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs space-y-5">
+                              {/* 오늘 할 일 */}
+                              <div className="space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-lg font-extrabold text-slate-900">오늘 할 일</h4>
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    작업 {todayTasks.length}개
+                                  </span>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden bg-white">
+                                  {todayTasks.map((task) => (
+                                    <div
+                                      key={task.id}
+                                      onClick={() =>
+                                        setTodayTasks((prev) =>
+                                          prev.map((t) =>
+                                            t.id === task.id
+                                              ? {
+                                                  ...t,
+                                                  done: !t.done,
+                                                  status: !t.done ? '완료' : '예정',
+                                                }
+                                              : t
+                                          )
+                                        )
+                                      }
+                                      className="p-3.5 flex items-start justify-between gap-3 hover:bg-slate-50 transition cursor-pointer"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <span
+                                          className={`w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition ${
+                                            task.done
+                                              ? 'bg-emerald-600 border-emerald-600 text-white'
+                                              : 'border-slate-300 bg-white'
+                                          }`}
+                                        >
+                                          {task.done && <Check className="w-3.5 h-3.5" />}
+                                        </span>
+                                        <div>
+                                          <div
+                                            className={`font-extrabold text-sm ${
+                                              task.done
+                                                ? 'line-through text-slate-400'
+                                                : 'text-slate-900'
+                                            }`}
+                                          >
+                                            {task.title}
+                                          </div>
+                                          <p className="text-xs text-slate-500 mt-0.5">
+                                            {task.desc}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <span
+                                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${
+                                          task.done
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : 'bg-slate-100 text-slate-600'
+                                        }`}
+                                      >
+                                        {task.status}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* 예정된 농작업 */}
+                              <div className="space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="text-lg font-extrabold text-slate-900">
+                                    예정된 농작업
+                                  </h4>
+                                  <button
+                                    type="button"
+                                    onClick={() => setScheduleViewMode('timeline')}
+                                    className="text-xs font-semibold text-slate-500 hover:text-emerald-700 cursor-pointer"
+                                  >
+                                    전체 일정
+                                  </button>
+                                </div>
+
+                                <div className="space-y-2.5">
+                                  {(provisionData.scheduleItems || [])
+                                    .slice(-4, -1)
+                                    .map((item: any) => {
+                                      const cleanName = String(item.sub_item_name || '')
+                                        .replace(/\s*\([^)]*\)/g, '')
+                                        .trim();
+                                      const shortMd = item.start_date
+                                        ? `${item.start_date.slice(5, 7)}/${item.start_date.slice(8, 10)}`
+                                        : '-';
+                                      const isSelected = selectedStageItem?.item_id === item.item_id;
+                                      return (
+                                        <div
+                                          key={`mob-up-${item.item_id}`}
+                                          onClick={() => {
+                                            handleSelectStageItem(item);
+                                            setDetailModalPos({ x: 0, y: 0 });
+                                            setClickedProvisionItem(item);
+                                          }}
+                                          className={`py-2 px-1 rounded-2xl flex items-center justify-between gap-3 transition cursor-pointer ${
+                                            isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-3 min-w-0">
+                                            <span className="px-3.5 py-2.5 rounded-2xl bg-[#F4F6F8] font-extrabold text-sm text-slate-900 shrink-0">
+                                              {shortMd}
+                                            </span>
+                                            <div className="min-w-0">
+                                              <div className="font-extrabold text-sm text-slate-900 truncate">
+                                                {cleanName}
+                                              </div>
+                                              <div className="text-xs text-slate-500 truncate mt-0.5">
+                                                {item.work_content ||
+                                                  item.work_description ||
+                                                  '결구·기온·품질 확인 후 진행'}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            </section>
+
+                            {/* [모바일 카드 3 (첨부 이미지 3, 4, 5번)]: 재배일정 3가지 보기 방식 (타임라인 | 달력 | 생육단계) */}
+                            <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs space-y-4">
+                              {/* 상단 3분할 탭 스위치 (타임라인 | 달력 | 생육단계) */}
+                              <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-slate-100/70 text-sm font-bold">
+                                {[
+                                  { id: 'timeline', label: '타임라인' },
+                                  { id: 'calendar', label: '달력' },
+                                  { id: 'stages', label: '생육단계' },
+                                ].map((t) => (
+                                  <button
+                                    key={t.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setScheduleViewMode(
+                                        t.id as 'timeline' | 'calendar' | 'stages'
+                                      )
+                                    }
+                                    className={`py-2.5 rounded-full transition cursor-pointer ${
+                                      scheduleViewMode === t.id
+                                        ? 'bg-[#EAECEF] text-slate-900 font-extrabold shadow-2xs'
+                                        : 'text-slate-500 hover:text-slate-800'
+                                    }`}
+                                  >
+                                    {t.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* [탭 1: 타임라인 — 첨부 이미지 3번 '농작업 타임라인'] */}
+                              {scheduleViewMode === 'timeline' && (
+                                <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
+                                  <h4 className="text-lg font-extrabold text-slate-900">
+                                    농작업 타임라인
+                                  </h4>
+                                  <div className="space-y-3">
+                                    {(provisionData.scheduleItems || []).map(
+                                      (item: any, idx: number) => {
+                                        const cleanName = String(item.sub_item_name || '')
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim();
+                                        const mNum = Number(
+                                          String(item.start_date || '').slice(5, 7)
+                                        );
+                                        const dNum = Number(
+                                          String(item.start_date || '').slice(8, 10)
+                                        );
+                                        const koreanDateLabel =
+                                          mNum && dNum
+                                            ? `${mNum}월 ${dNum}일`
+                                            : item.start_date || '-';
+                                        const isSelected =
+                                          selectedStageItem?.item_id === item.item_id;
+                                        return (
+                                          <div
+                                            key={`mob-tl-${item.item_id}`}
+                                            onClick={() => {
+                                              handleSelectStageItem(item);
+                                              setDetailModalPos({ x: 0, y: 0 });
+                                              setClickedProvisionItem(item);
+                                            }}
+                                            className={`flex items-start gap-3.5 rounded-xl p-1.5 transition cursor-pointer ${
+                                              isSelected
+                                                ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                                                : 'hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <div className="flex flex-col items-center w-5 shrink-0 pt-0.5">
+                                              <span
+                                                className={`text-sm font-bold leading-none ${
+                                                  isSelected
+                                                    ? 'text-emerald-700 font-extrabold'
+                                                    : 'text-slate-700'
+                                                }`}
+                                              >
+                                                {idx + 1}
+                                              </span>
+                                              {idx <
+                                                (provisionData.scheduleItems?.length || 0) - 1 && (
+                                                <div className="w-px h-8 bg-slate-200 mt-1.5" />
+                                              )}
+                                            </div>
+                                            <div className="min-w-0 flex-1 pb-1">
+                                              <div className="font-extrabold text-[15px] text-slate-900 leading-snug">
+                                                {koreanDateLabel} · {cleanName}
+                                              </div>
+                                              <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                {item.work_content ||
+                                                  item.work_description ||
+                                                  '토양검정과 생육상태 확인 후 진행'}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* [탭 2: 달력 — 첨부 이미지 4번 '2026년 9월' 월간 달력] */}
+                              {scheduleViewMode === 'calendar' && (
+                                <div className="rounded-2xl border border-slate-200 p-4 space-y-3.5">
+                                  <div className="flex items-center justify-between">
+                                    <h4 className="text-xl font-extrabold text-slate-900">
+                                      {calendarYearMonth.year}년 {calendarYearMonth.month}월
+                                    </h4>
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCalendarYearMonth((prev) =>
+                                            prev.month === 1
+                                              ? { year: prev.year - 1, month: 12 }
+                                              : { year: prev.year, month: prev.month - 1 }
+                                          )
+                                        }
+                                        className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                                      >
+                                        <ChevronLeft className="w-4 h-4 text-slate-700" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setCalendarYearMonth((prev) =>
+                                            prev.month === 12
+                                              ? { year: prev.year + 1, month: 1 }
+                                              : { year: prev.year, month: prev.month + 1 }
+                                          )
+                                        }
+                                        className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                                      >
+                                        <ChevronRight className="w-4 h-4 text-slate-700" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+                                    {WEEKDAY_KO.map((w) => (
+                                      <div key={w} className="py-1 text-slate-500 font-semibold">
+                                        {w}
+                                      </div>
+                                    ))}
+                                    {calendarCells.map((cell, cIdx) => {
+                                      if (!cell.day) {
+                                        return (
+                                          <div
+                                            key={cIdx}
+                                            className="h-11 rounded-xl bg-[#F4F6F8]/60"
+                                          />
+                                        );
+                                      }
+                                      const hasTask = cell.items.length > 0;
+                                      const isSelectedDay =
+                                        selectedStageItem?.start_date === cell.ymd;
+                                      return (
+                                        <button
+                                          key={cIdx}
+                                          type="button"
+                                          onClick={() => {
+                                            if (cell.items[0]) {
+                                              handleSelectStageItem(cell.items[0]);
+                                              setDetailModalPos({ x: 0, y: 0 });
+                                              setClickedProvisionItem(cell.items[0]);
+                                            }
+                                          }}
+                                          className={`h-11 rounded-xl flex flex-col items-center justify-center text-sm font-semibold transition cursor-pointer ${
+                                            isSelectedDay
+                                              ? 'bg-emerald-600 text-white font-extrabold shadow-2xs'
+                                              : hasTask
+                                              ? 'bg-[#DDF3E8] text-slate-900 font-extrabold'
+                                              : 'bg-[#F4F6F8] text-slate-800 hover:bg-slate-200/70'
+                                          }`}
+                                        >
+                                          <span>{cell.day}</span>
+                                          {hasTask && (
+                                            <span
+                                              className={`w-1.5 h-1.5 rounded-full mt-0.5 ${
+                                                isSelectedDay ? 'bg-white' : 'bg-[#22A559]'
+                                              }`}
+                                            />
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  <div className="pt-2 text-xs text-slate-600 font-medium leading-relaxed">
+                                    {monthScheduledItems.length > 0
+                                      ? monthScheduledItems
+                                          .map(
+                                            (it: any) =>
+                                              `${Number(it.start_date.slice(5, 7))}/${Number(
+                                                it.start_date.slice(8, 10)
+                                              )} ${String(it.sub_item_name || '')
+                                                .replace(/\s*\([^)]*\)/g, '')
+                                                .trim()}`
+                                          )
+                                          .join(' · ')
+                                      : '이 달에 예정된 농작업이 없습니다. 상단 화살표(< >)로 월을 이동해 보세요.'}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* [탭 3: 생육단계 — 첨부 이미지 5번 '배추 생육단계'] */}
+                              {scheduleViewMode === 'stages' && (
+                                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                  <h4 className="text-lg font-extrabold text-slate-900">
+                                    {crop.crop_short || '배추'} 생육단계
+                                  </h4>
+                                  <div className="space-y-2.5">
+                                    {(provisionData.stageGroups || []).map((grp: any) => {
+                                      const isStageOpen =
+                                        expandedStageGroupCode === grp.stage_group_id;
+                                      const isHarvestStage =
+                                        String(grp.stage_group_name || '').includes('수확') ||
+                                        String(grp.stage_slot_key || '').includes('HARVEST');
+                                      const subNamesSummary = (grp.items || [])
+                                        .map((i: any) =>
+                                          String(i.sub_item_name || '')
+                                            .replace(/\s*\([^)]*\)/g, '')
+                                            .trim()
+                                        )
+                                        .join('·');
+                                      return (
+                                        <div
+                                          key={`mob-stg-${grp.stage_group_id}`}
+                                          className="space-y-2"
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setExpandedStageGroupCode((prev) =>
+                                                prev === grp.stage_group_id
+                                                  ? ''
+                                                  : grp.stage_group_id
+                                              )
+                                            }
+                                            className="w-full py-1.5 flex items-center justify-between gap-3 text-left cursor-pointer"
+                                          >
+                                            <div className="flex items-center gap-3.5 min-w-0">
+                                              <span className="w-10 h-10 rounded-2xl bg-[#F4F6F8] text-slate-700 flex items-center justify-center shrink-0">
+                                                {isHarvestStage ? (
+                                                  <PackageCheck className="w-5 h-5 text-slate-700" />
+                                                ) : (
+                                                  <Sprout className="w-5 h-5 text-slate-700" />
+                                                )}
+                                              </span>
+                                              <div className="min-w-0">
+                                                <div className="font-extrabold text-[15px] text-slate-900 truncate">
+                                                  {grp.stage_group_name}
+                                                </div>
+                                                <div className="text-xs text-slate-500 truncate mt-0.5">
+                                                  {subNamesSummary}
+                                                </div>
+                                              </div>
+                                            </div>
+                                            <ChevronRight
+                                              className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                                                isStageOpen ? 'rotate-90' : ''
+                                              }`}
+                                            />
+                                          </button>
+
+                                          {isStageOpen && (
+                                            <div className="pl-12 space-y-1.5 pb-1">
+                                              {(grp.items || []).map((it: any) => {
+                                                const cleanSub = String(it.sub_item_name || '')
+                                                  .replace(/\s*\([^)]*\)/g, '')
+                                                  .trim();
+                                                const isSel =
+                                                  selectedStageItem?.item_id === it.item_id;
+                                                return (
+                                                  <button
+                                                    key={`mob-stg-it-${it.item_id}`}
+                                                    type="button"
+                                                    onClick={() => {
+                                                      handleSelectStageItem(it);
+                                                      setDetailModalPos({ x: 0, y: 0 });
+                                                      setClickedProvisionItem(it);
+                                                    }}
+                                                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
+                                                      isSel
+                                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
+                                                        : 'bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+                                                    }`}
+                                                  >
+                                                    <span>{cleanSub}</span>
+                                                    <span className="font-mono text-emerald-700 font-bold">
+                                                      {formatYmdWithWeekday(it.start_date)}
+                                                    </span>
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* 모바일 하단: 선택한 생육과정 추천 진행일 조정 및 세부보기 바로가기 */}
+                              {detailItem && (
+                                <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-extrabold text-emerald-900">
+                                      선택 공정: {String(detailItem.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setDetailModalPos({ x: 0, y: 0 });
+                                        setClickedProvisionItem(detailItem);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold cursor-pointer"
+                                    >
+                                      세부 정보 · 추천근거 보기 ›
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <input
+                                      type="date"
+                                      value={curStart}
+                                      onChange={(e) =>
+                                        setEditDetailForm((prev: any) => ({
+                                          ...prev,
+                                          start_date: e.target.value,
+                                        }))
+                                      }
+                                      className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                    />
+                                    <span className="font-mono font-extrabold text-xs text-emerald-900">
+                                      {formatYmdWithWeekday(curStart)}
+                                    </span>
+                                  </div>
+                                  {cascadeDeltaDays !== 0 && (
+                                    <button
+                                      type="button"
+                                      disabled={isSavingDetailItem}
+                                      onClick={handleSaveUserScheduleCascade}
+                                      className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs cursor-pointer"
+                                    >
+                                      ✅ 새 일정 승인 및 후속 {subsequentItems.length}개 공정 반영
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </section>
+                          </div>
+
+                          {/* ①-PC [PC 환경 전용 (hidden lg:block)]: 생육과정 정밀 타임라인 (1~12월 · 48주) & 기후 연동 추천 진행일 조정기 */}
+                          <section className="hidden lg:block bg-white rounded-3xl border-2 border-emerald-200 p-4 sm:p-7 shadow-xs space-y-6">
                             {/* 상단 타이틀 & 보기 전환 */}
                             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                               <div>
