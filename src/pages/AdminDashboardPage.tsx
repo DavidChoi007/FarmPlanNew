@@ -3384,6 +3384,10 @@ export default function AdminDashboardPage() {
       window.alert('참여자 기본 정보의 [성명 또는 닉네임(필수)] 항목을 입력해 주세요.');
       return;
     }
+    if (!String(newSurveyRespForm.respondent_region || '').trim()) {
+      window.alert('참여자 기본 정보의 [주요 재배 지역 (필수)] 항목을 선택해 주세요.');
+      return;
+    }
     if (!Array.isArray(newSurveyRespForm.q3_crops) || newSurveyRespForm.q3_crops.length === 0) {
       window.alert('3번 문항(주로 재배하는 작물)을 최소 1개 이상 선택해 주세요.');
       return;
@@ -26888,7 +26892,7 @@ export default function AdminDashboardPage() {
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <label className="text-[16px] sm:text-lg font-extrabold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                              <MapPin className="w-4 h-4 text-emerald-700 shrink-0" /> 주요 재배 지역 (선택)
+                              <MapPin className="w-4 h-4 text-emerald-700 shrink-0" /> 주요 재배 지역 (필수)
                             </label>
                             {newSurveyRespForm.respondent_region && (
                               <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-sm font-extrabold whitespace-nowrap">

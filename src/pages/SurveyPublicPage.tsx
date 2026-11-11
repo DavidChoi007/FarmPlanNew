@@ -374,6 +374,10 @@ export default function SurveyPublicPage() {
       setErrorMsg('참여자 기본 정보의 [성명 또는 닉네임(필수)] 항목을 입력해 주세요.');
       return;
     }
+    if (!respondentRegion.trim()) {
+      setErrorMsg('참여자 기본 정보의 [주요 재배 지역 (필수)] 항목을 선택해 주세요.');
+      return;
+    }
     for (const q of questions) {
       if (q.type === 'multiple') {
         if (q3Selected.length === 0) {
@@ -640,7 +644,7 @@ export default function SurveyPublicPage() {
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 whitespace-nowrap">
                 <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                주요 재배 지역 (선택)
+                주요 재배 지역 (필수)
               </label>
               {respondentRegion && (
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-sm font-extrabold whitespace-nowrap overflow-hidden text-ellipsis">
