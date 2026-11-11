@@ -218,6 +218,7 @@ export default function UserIntroPage() {
   const [myPageTab, setMyPageTab] = useState<
     'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'ORDERS' | 'PROFILE'
   >('FARMLAND');
+  const [isMobileGnbDrawerOpen, setIsMobileGnbDrawerOpen] = useState<boolean>(false);
   const [isMyPageMobileDrawerOpen, setIsMyPageMobileDrawerOpen] = useState<boolean>(false);
   const [myFarmlands, setMyFarmlands] = useState<any[]>([]);
   const [myCropPlans, setMyCropPlans] = useState<any[]>([]);
@@ -2030,22 +2031,37 @@ export default function UserIntroPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col pb-20 lg:pb-0">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col">
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
-        <div className="max-w-[1600px] w-full mx-auto px-4 sm:px-10 h-16 sm:h-20 flex items-center justify-between gap-4">
-          {/* 좌측 로고 및 6대 메뉴 */}
-          <div className="flex items-center gap-6 lg:gap-12 min-w-0">
+        <div className="max-w-[1600px] w-full mx-auto px-3.5 sm:px-10 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-4">
+          {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 7대 가로 메뉴 */}
+          <div className="flex items-center gap-2.5 sm:gap-6 lg:gap-12 min-w-0">
+            {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsMobileGnbDrawerOpen(true)}
+              aria-label="전체 메뉴 열기"
+              className="lg:hidden inline-flex items-center gap-2 px-3 py-2.5 min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition shrink-0"
+            >
+              <span className="flex flex-col gap-1 w-4" aria-hidden="true">
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+              </span>
+              <span>메뉴</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="flex items-center gap-2.5 shrink-0 cursor-pointer group text-left"
+              className="flex items-center gap-2 sm:gap-2.5 shrink-0 cursor-pointer group text-left"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:bg-emerald-500 transition">
-                <Sprout className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:bg-emerald-500 transition">
+                <Sprout className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <span className="font-extrabold text-xl sm:text-2xl tracking-tight text-slate-900 block leading-none">
+                <span className="font-extrabold text-lg sm:text-2xl tracking-tight text-slate-900 block leading-none">
                   FarmPlan
                 </span>
                 <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline">
@@ -2054,8 +2070,13 @@ export default function UserIntroPage() {
               </div>
             </button>
 
-            {/* 좌측 로고 오른쪽 메뉴 (홈, 재배일정 요청, 재배일정 확인, 마이페이지, 비료, 영양제, 병해충관리제) - 폰트 크기 확대 */}
-            <nav className="flex items-center gap-5 sm:gap-8 text-sm sm:text-lg lg:text-[19px] overflow-x-auto h-16 sm:h-20 no-scrollbar">
+            {/* 모바일 상단 현재 선택 메뉴 배지 */}
+            <span className="lg:hidden px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold truncate max-w-[110px] sm:max-w-[160px]">
+              {activeMenu}
+            </span>
+
+            {/* PC 버전 상단 가로 메뉴 (홈, 재배일정 요청, 재배일정 확인, 비료, 영양제, 병해충관리제, 마이페이지) */}
+            <nav className="hidden lg:flex items-center gap-8 text-[19px] overflow-x-auto h-20 no-scrollbar">
               {userMenus.map((menu) => {
                 const isActive = activeMenu === menu;
                 return (
@@ -2082,7 +2103,7 @@ export default function UserIntroPage() {
           </div>
 
           {/* 우측: 로그인 전에는 [로그인] / [회원가입]만 표시, 로그인 후에만 회원 이름(배철민 님) 배지 표시 */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {loggedInUser.isLoggedIn ? (
               <>
                 <button
@@ -2091,9 +2112,9 @@ export default function UserIntroPage() {
                     setActiveMenu('마이페이지');
                     setMyPageTab('FARMLAND');
                   }}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 transition cursor-pointer shadow-2xs"
                 >
-                  <span className="w-6 h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-xs font-extrabold">
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold">
                     {loggedInUser.name.slice(0, 1)}
                   </span>
                   <span className="font-extrabold text-emerald-950">
@@ -2103,7 +2124,7 @@ export default function UserIntroPage() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
                 >
                   로그아웃
                 </button>
@@ -2118,7 +2139,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('LOGIN');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
                 >
                   로그인
                 </button>
@@ -2131,7 +2152,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
                 >
                   회원가입
                 </button>
@@ -2147,6 +2168,168 @@ export default function UserIntroPage() {
           </div>
         </div>
       </header>
+
+      {/* ==================== 모바일 전용 좌측 슬라이드 PC버전 전체 메뉴 드로어 ==================== */}
+      {isMobileGnbDrawerOpen && (
+        <div
+          onClick={() => setIsMobileGnbDrawerOpen(false)}
+          className="fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-[1px] lg:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-white shadow-2xl border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+          isMobileGnbDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* 드로어 상단 헤더 */}
+        <div className="px-4 py-4 bg-[#E9F7F1] border-b border-emerald-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs">
+              <Sprout className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-base text-slate-900 leading-none">
+                FarmPlan 전체 메뉴
+              </div>
+              <div className="text-[11px] font-semibold text-emerald-800 mt-1">
+                나의 맞춤형 재배일정 · 농자재 처방
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsMobileGnbDrawerOpen(false)}
+            aria-label="전체 메뉴 닫기"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-extrabold cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+            <span>닫기</span>
+          </button>
+        </div>
+
+        {/* 드로어 본문: PC 버전 7대 메뉴 전체 리스트 */}
+        <div className="p-4 flex-1 overflow-y-auto space-y-2">
+          <div className="px-2 pb-1 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+            주요 서비스 메뉴 ({userMenus.length}개)
+          </div>
+          {[
+            {
+              menu: '홈',
+              desc: '맞춤형 영농 브리핑 및 핵심 기능 안내',
+              badge: '메인',
+              icon: Home,
+            },
+            {
+              menu: '재배일정 요청',
+              desc: '내 아이디 요청 이력 조회 및 신규 일정 요청',
+              badge: `${cloudBaeCropList.length}건`,
+              icon: FileEdit,
+            },
+            {
+              menu: '재배일정 확인',
+              desc: '48주 정밀 생육과정 타임라인 및 원클릭 구매',
+              badge: '타임라인',
+              icon: Calendar,
+            },
+            {
+              menu: '비료',
+              desc: '9대 보증성분 · 완효성 맞춤 비료 카탈로그',
+              badge: '농자재',
+              icon: FlaskConical,
+            },
+            {
+              menu: '영양제',
+              desc: '생리활성 아미노산 · 킬레이트 기능성 영양제',
+              badge: '농자재',
+              icon: Sparkles,
+            },
+            {
+              menu: '병해충관리제',
+              desc: 'PLS 안전기준 · 작용기작 교호살포 약제',
+              badge: '농자재',
+              icon: ShieldAlert,
+            },
+            {
+              menu: '마이페이지',
+              desc: '내 재배지 · 재배작물 · 진행율 · 구매현황 관리',
+              badge: '내 농장',
+              icon: User,
+            },
+          ].map((item) => {
+            const IconComp = item.icon;
+            const isSelected = activeMenu === item.menu;
+            return (
+              <button
+                key={item.menu}
+                type="button"
+                onClick={() => {
+                  setActiveMenu(item.menu);
+                  if (item.menu === '재배일정 확인') {
+                    setMobileScheduleStep('list');
+                  }
+                  if (item.menu === '마이페이지') {
+                    setMyPageTab('FARMLAND');
+                  }
+                  setIsMobileGnbDrawerOpen(false);
+                }}
+                className={`w-full text-left px-3.5 py-4 min-h-[72px] rounded-2xl border transition cursor-pointer flex items-center justify-between gap-3 ${
+                  isSelected
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50/70 hover:bg-emerald-50/60 text-slate-800 border-slate-200/80'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white text-emerald-700 border border-emerald-200'
+                    }`}
+                  >
+                    <IconComp className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div
+                      className={`text-sm font-extrabold truncate ${
+                        isSelected ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
+                      {item.menu}
+                    </div>
+                    <div
+                      className={`text-[11px] truncate mt-0.5 ${
+                        isSelected ? 'text-emerald-100 font-medium' : 'text-slate-500 font-medium'
+                      }`}
+                    >
+                      {item.desc}
+                    </div>
+                  </div>
+                </div>
+                <span
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold shrink-0 ${
+                    isSelected ? 'bg-white text-emerald-800' : 'bg-white border border-slate-200 text-slate-700'
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 드로어 하단: 관리자 콘솔 바로가기 */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
+          <Link
+            to="/admin"
+            onClick={() => setIsMobileGnbDrawerOpen(false)}
+            className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center justify-between transition"
+          >
+            <span>관리자 콘솔 (/admin) 바로가기</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </aside>
 
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-10 py-5 sm:py-6 space-y-6">
@@ -9000,68 +9183,6 @@ export default function UserIntroPage() {
           </div>
         )}
       </main>
-
-      {/* ==================== 모바일 전용 하단 고정 탭바 (샘플 이미지 2번과 동일한 5대 탭) ==================== */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 px-2 py-1.5 grid grid-cols-5 text-[11px] font-bold text-slate-500 shadow-[0_-2px_10px_rgba(15,23,42,0.04)]">
-        <button
-          type="button"
-          onClick={() => setActiveMenu('홈')}
-          className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
-            activeMenu === '홈' ? 'text-emerald-600 font-extrabold' : ''
-          }`}
-        >
-          <Home className="w-5 h-5" />
-          <span>홈</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveMenu('재배일정 확인');
-            setMobileScheduleStep('list');
-          }}
-          className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
-            activeMenu === '재배일정 확인' ? 'text-emerald-600 font-extrabold' : ''
-          }`}
-        >
-          <Calendar className="w-5 h-5" />
-          <span>재배일정</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveMenu('재배일정 요청')}
-          className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
-            activeMenu === '재배일정 요청' ? 'text-emerald-600 font-extrabold' : ''
-          }`}
-        >
-          <Cpu className="w-5 h-5" />
-          <span>AI 진단·요청</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveMenu('비료')}
-          className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
-            activeMenu === '비료' || activeMenu === '영양제' || activeMenu === '병해충관리제'
-              ? 'text-emerald-600 font-extrabold'
-              : ''
-          }`}
-        >
-          <ShoppingBag className="w-5 h-5" />
-          <span>농자재</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveMenu('마이페이지');
-            setMyPageTab('FARMLAND');
-          }}
-          className={`flex flex-col items-center justify-center py-1 gap-0.5 cursor-pointer ${
-            activeMenu === '마이페이지' ? 'text-emerald-600 font-extrabold' : 'text-slate-700'
-          }`}
-        >
-          <User className="w-5 h-5 text-emerald-600" />
-          <span>마이페이지</span>
-        </button>
-      </nav>
 
       {/* 푸터 */}
       <footer className="bg-white border-t border-slate-200/80 py-6 mt-8">
