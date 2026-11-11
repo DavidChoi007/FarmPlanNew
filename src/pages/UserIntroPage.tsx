@@ -23,6 +23,7 @@ import {
   Home,
   ShoppingBag,
   ShoppingCart,
+  Package,
   PackageCheck,
   Truck,
   CreditCard,
@@ -30,6 +31,7 @@ import {
   Minus,
   Cpu,
   RotateCcw,
+  Trash2,
   Check,
   X,
 } from 'lucide-react';
@@ -765,12 +767,171 @@ export default function UserIntroPage() {
         })
       : defaultCloudBaeCropList;
 
+  // 삭제된 재배일정 요청/플랜 키 영구 추적 상태 (재배일정 요청 · 재배일정 확인 · 마이페이지 동기화)
+  const [deletedScheduleKeys, setDeletedScheduleKeys] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hanfarm_deleted_schedule_keys_v1') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
   const cloudBaeCropList = [
     ...localAddedCropRequests.filter(
       (loc) => !baseCropList.some((b) => b.crop_plan_id === loc.crop_plan_id)
     ),
     ...baseCropList,
-  ];
+  ].filter((crop: any) => {
+    const keysToCheck = [
+      crop.crop_plan_id,
+      crop.request_no,
+      crop.display_request_no,
+    ].filter(Boolean);
+    return !keysToCheck.some((k) => deletedScheduleKeys.includes(String(k)));
+  });
+
+  // 재배일정 요청 및 재배일정 리스트 통합 연쇄 삭제 핸들러 (요청 + 16개 생육과정 일정 + 추천 제품·근거 + 이력 모두 삭제)
+  const handleDeleteScheduleAndCascade = async (crop: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!crop) return;
+
+    const displayReqNo = crop.display_request_no || crop.request_no || crop.crop_plan_id;
+    const cropTitle = crop.crop_title || `${crop.crop_short || '작물'} (${crop.cultivar_name || ''})`;
+
+    const confirmed = window.confirm(
+      `[${cropTitle} · ${displayReqNo}] 항목을 삭제하시겠습니까?\n\n삭제 시 연관된 아래 저장 데이터가 모두 함께 삭제됩니다:\n• 재배일정 요청 및 재배작물 플랜 데이터\n• 생육과정 정밀 일정(16개 공정) 및 기후 조정 데이터\n• 생육과정별 맞춤 추천 제품(1종) 및 개조식 추천 근거 데이터\n• 선택된 농자재 장바구니 및 생육 이력 데이터`
+    );
+    if (!confirmed) return;
+
+    const keysToDelete = Array.from(
+      new Set([crop.crop_plan_id, crop.request_no, crop.display_request_no].filter(Boolean))
+    ) as string[];
+
+    // 1. 프론트엔드 삭제 상태 및 localStorage 연관 데이터 즉시 제거
+    setDeletedScheduleKeys((prev) => {
+      const next = Array.from(new Set([...prev, ...keysToDelete]));
+      try {
+        localStorage.setItem('hanfarm_deleted_schedule_keys_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+
+    try {
+      const recDbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
+      const recDb = JSON.parse(localStorage.getItem(recDbKey) || '{}');
+      keysToDelete.forEach((k) => {
+        delete recDb[k];
+      });
+      localStorage.setItem(recDbKey, JSON.stringify(recDb));
+
+      const customKey = 'hanfarm_custom_schedule_items_v1';
+      const customDb = JSON.parse(localStorage.getItem(customKey) || '{}');
+      keysToDelete.forEach((k) => {
+        delete customDb[k];
+      });
+      localStorage.setItem(customKey, JSON.stringify(customDb));
+    } catch {
+      // ignore
+    }
+
+    setLocalAddedCropRequests((prev) =>
+      prev.filter(
+        (it) =>
+          !keysToDelete.includes(it.crop_plan_id) &&
+          !keysToDelete.includes(it.request_no) &&
+          !keysToDelete.includes(it.display_request_no)
+      )
+    );
+    setMyCropPlans((prev) =>
+      prev.filter(
+        (cp: any) =>
+          !keysToDelete.includes(cp.crop_plan_id) && !keysToDelete.includes(cp.request_no)
+      )
+    );
+
+    // 2. 열려 있는 상세 아코디언·세부보기 모달·추천 제품 선택 상태 초기화
+    if (
+      selectedReqDetailCrop &&
+      keysToDelete.some(
+        (k) =>
+          k === selectedReqDetailCrop.crop_plan_id ||
+          k === selectedReqDetailCrop.request_no ||
+          k === selectedReqDetailCrop.display_request_no
+      )
+    ) {
+      setSelectedReqDetailCrop(null);
+    }
+
+    if (expandedScheduleRequestNo && keysToDelete.includes(expandedScheduleRequestNo)) {
+      setExpandedScheduleRequestNo(null);
+      setHoveredProvisionItem(null);
+      setClickedProvisionItem(null);
+      setSelectedStageItem(null);
+    }
+
+    if (keysToDelete.includes(selectedRequestNo)) {
+      const remaining = cloudBaeCropList.filter(
+        (c: any) =>
+          !keysToDelete.includes(c.crop_plan_id) &&
+          !keysToDelete.includes(c.request_no) &&
+          !keysToDelete.includes(c.display_request_no)
+      );
+      setPurchaseSelectionMap({});
+      if (remaining[0]?.request_no) {
+        setSelectedRequestNo(remaining[0].request_no);
+      } else {
+        setSelectedRequestNo('');
+        setProvisionData(null);
+      }
+    }
+
+    // 3. 백엔드 DB (member_schedule_request, member_crop_plan, schedule_provision_custom_item, schedule_stage_recommendation_log, cultivation_history_log, schedule_request) 연쇄 삭제 호출
+    try {
+      await fetch('/api/member-schedule-requests/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          request_no: crop.request_no,
+          crop_plan_id: crop.crop_plan_id,
+          display_request_no: crop.display_request_no,
+        }),
+      });
+    } catch {
+      // ignore
+    }
+
+    try {
+      const r = await fetch('/api/mypage/crops/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          crop_plan_id: crop.crop_plan_id,
+          request_no: crop.request_no,
+          display_request_no: crop.display_request_no,
+        }),
+      });
+      const res = await r.json();
+      if (res?.ok) {
+        applyMyPagePayload(res);
+      }
+    } catch {
+      // ignore
+    }
+
+    const msg = `[${cropTitle} · ${displayReqNo}] 재배일정 요청과 연관된 생육과정 일정 데이터 및 맞춤 추천 제품·근거 데이터가 모두 삭제되었습니다.`;
+    setOrderSuccessToast(msg);
+    setMyPageToast(msg);
+    setTimeout(() => {
+      setOrderSuccessToast('');
+      setMyPageToast('');
+    }, 4000);
+  };
 
   const handleSubmitScheduleReqForm = async () => {
     const isSeed = String(reqForm.planting_type || '').includes('씨');
@@ -784,7 +945,7 @@ export default function UserIntroPage() {
 
     const newItem = {
       crop_plan_id: newPlanId,
-      request_no: 'REQ-20261106-009',
+      request_no: newReqDisplayNo,
       display_request_no: newReqDisplayNo,
       crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
       crop_short: reqForm.crop_name,
@@ -810,8 +971,30 @@ export default function UserIntroPage() {
     };
 
     setLocalAddedCropRequests((prev) => [newItem, ...prev]);
-    setSelectedRequestNo('REQ-20261106-009');
+    setSelectedRequestNo(newReqDisplayNo);
     setReqFormSubmitted(true);
+
+    try {
+      await fetch('/api/member-schedule-requests/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_no: newReqDisplayNo,
+          crop_plan_id: newPlanId,
+          sido: reqForm.sido,
+          sigungu: reqForm.sigungu,
+          eupmyeondong: reqForm.eupmyeondong,
+          crop_name: reqForm.crop_name,
+          item_name_3rd: reqForm.cultivar_name,
+          planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+          area_pyeong: Number(reqForm.area_pyeong || 300),
+          desired_start_date: pDate,
+          expected_harvest_date: harvestYmd,
+        }),
+      });
+    } catch {
+      // ignore
+    }
 
     try {
       const r = await fetch('/api/mypage/crops', {
@@ -819,6 +1002,8 @@ export default function UserIntroPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: loggedInUser.email || 'CloudBae@naver.com',
+          crop_plan_id: newPlanId,
+          request_no: newReqDisplayNo,
           farmland_id: reqForm.farmland_id || 'LAND-CB-01',
           sido: reqForm.sido,
           sigungu: reqForm.sigungu,
@@ -2780,15 +2965,15 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 우측: 일정 상세 열기/접기 액션 버튼 */}
-                        <div className="lg:w-auto shrink-0 flex items-center justify-end">
+                        {/* 우측: 일정 상세 열기/접기 + 삭제 액션 버튼 */}
+                        <div className="lg:w-auto shrink-0 flex items-center justify-end gap-2">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleCropAccordion();
                             }}
-                            className={`w-full lg:w-auto px-4 py-2.5 rounded-xl font-extrabold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                            className={`flex-1 lg:flex-none px-4 py-2.5 rounded-xl font-extrabold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
                               isExpanded
                                 ? 'bg-emerald-600 text-white shadow-2xs'
                                 : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-800'
@@ -2800,6 +2985,16 @@ export default function UserIntroPage() {
                                 isExpanded ? 'rotate-90' : ''
                               }`}
                             />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                            title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
+                            className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-extrabold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>삭제</span>
                           </button>
                         </div>
                       </div>
@@ -6089,7 +6284,7 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 우측: 세부보기 버튼 + 일정확인 버튼 */}
+                        {/* 우측: 세부보기 버튼 + 일정확인 버튼 + 삭제 버튼 */}
                         <div className="flex items-center justify-end gap-2 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-100">
                           <button
                             type="button"
@@ -6105,7 +6300,7 @@ export default function UserIntroPage() {
                                 });
                               }
                             }}
-                            className={`px-4 py-2.5 rounded-xl border font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                            className={`px-3.5 py-2.5 rounded-xl border font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
                               isDetailSelected
                                 ? 'bg-slate-900 text-white border-slate-900'
                                 : 'bg-white hover:bg-emerald-50 text-slate-800 border-slate-300 hover:border-emerald-400'
@@ -6122,10 +6317,20 @@ export default function UserIntroPage() {
                               setActiveMenu('재배일정 확인');
                               setMobileScheduleStep('detail');
                             }}
-                            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
                           >
                             <span>일정확인</span>
                             <ChevronRight className="w-4 h-4" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                            title="해당 재배일정 요청 및 연관된 일정·추천제품 데이터 모두 삭제"
+                            className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>삭제</span>
                           </button>
                         </div>
                       </div>
@@ -8894,15 +9099,14 @@ export default function UserIntroPage() {
                           >
                             생육 진행율 ({crop.progress_pct}%) 확인 ›
                           </button>
-                          {crop.crop_plan_id && myCropPlans.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCropPlan(crop.crop_plan_id)}
-                              className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition"
-                            >
-                              삭제
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                            className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition inline-flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>삭제</span>
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -9018,15 +9222,14 @@ export default function UserIntroPage() {
                           48주 타임라인 · 농자재 구매 ›
                         </button>
 
-                        {crop.crop_plan_id && myCropPlans.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCropPlan(crop.crop_plan_id)}
-                            className="px-2.5 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold cursor-pointer"
-                          >
-                            삭제
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                          className="px-2.5 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>삭제</span>
+                        </button>
                       </div>
                     </div>
                   ))}

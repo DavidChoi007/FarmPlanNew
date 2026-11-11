@@ -718,12 +718,104 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true, ...mp });
     }
 
-    if (p === '/api/mypage/crops/delete' && method === 'POST') {
-      const { crop_plan_id } = parseBody(init);
+    const cascadeDeleteScheduleData = (params: {
+      crop_plan_id?: string;
+      request_no?: string;
+      display_request_no?: string;
+    }) => {
       const mp = (snap.mypage = snap.mypage || {});
-      mp.cropPlans = (mp.cropPlans || []).filter((cp: any) => cp.crop_plan_id !== crop_plan_id);
+      const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
+      const matchedCropPlan = (mp.cropPlans || []).find(
+        (cp: any) =>
+          (params.crop_plan_id && cp.crop_plan_id === params.crop_plan_id) ||
+          (params.request_no && cp.request_no === params.request_no)
+      );
+      const targetReqNos = Array.from(
+        new Set(
+          [
+            params.request_no,
+            params.display_request_no,
+            matchedCropPlan?.request_no,
+          ].filter(Boolean)
+        )
+      ) as string[];
+      const targetPlanIds = Array.from(
+        new Set([params.crop_plan_id, matchedCropPlan?.crop_plan_id].filter(Boolean))
+      ) as string[];
+
+      // 1. 마이페이지 재배작물 플랜 리스트 삭제
+      mp.cropPlans = (mp.cropPlans || []).filter(
+        (cp: any) =>
+          !targetPlanIds.includes(cp.crop_plan_id) && !targetReqNos.includes(cp.request_no)
+      );
       persistMyPage(mp);
-      return jsonResponse({ ok: true, ...mp });
+
+      // 2. 재배일정 요청 리스트 삭제
+      sr.items = (sr.items || []).filter(
+        (r: any) =>
+          !targetReqNos.includes(r.request_no) && !targetPlanIds.includes(r.crop_plan_id)
+      );
+      sr.total = sr.items.length;
+
+      // 3. 재배일정 제공(scheduleProvision) 내 요청 목록 삭제
+      if (snap.scheduleProvision && Array.isArray(snap.scheduleProvision.allRequests)) {
+        snap.scheduleProvision.allRequests = snap.scheduleProvision.allRequests.filter(
+          (r: any) => !targetReqNos.includes(r.request_no)
+        );
+      }
+
+      // 4. 재배이력(histories) 내 요청 및 이력 로그 삭제
+      if (snap.histories) {
+        if (Array.isArray(snap.histories.requests)) {
+          snap.histories.requests = snap.histories.requests.filter(
+            (r: any) => !targetReqNos.includes(r.request_id) && !targetReqNos.includes(r.request_no)
+          );
+        }
+        if (Array.isArray(snap.histories.logs)) {
+          snap.histories.logs = snap.histories.logs.filter(
+            (l: any) => !targetReqNos.includes(l.request_id)
+          );
+        }
+      }
+
+      // 5. localStorage 내 연관 추천 제품·추천 근거 DB 및 커스텀 일정 데이터 삭제 + 영구 삭제 키 기록
+      try {
+        const recDbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
+        const recDb = JSON.parse(localStorage.getItem(recDbKey) || '{}');
+        [...targetReqNos, ...targetPlanIds].forEach((k) => {
+          delete recDb[k];
+        });
+        localStorage.setItem(recDbKey, JSON.stringify(recDb));
+
+        const customKey = 'hanfarm_custom_schedule_items_v1';
+        const customDb = JSON.parse(localStorage.getItem(customKey) || '{}');
+        [...targetReqNos, ...targetPlanIds].forEach((k) => {
+          delete customDb[k];
+        });
+        localStorage.setItem(customKey, JSON.stringify(customDb));
+
+        const delKey = 'hanfarm_deleted_schedule_keys_v1';
+        const prevDeleted: string[] = JSON.parse(localStorage.getItem(delKey) || '[]');
+        const nextDeleted = Array.from(
+          new Set([...prevDeleted, ...targetReqNos, ...targetPlanIds])
+        );
+        localStorage.setItem(delKey, JSON.stringify(nextDeleted));
+      } catch {
+        // ignore storage errors
+      }
+
+      return { mp, targetReqNos, targetPlanIds };
+    };
+
+    if (p === '/api/mypage/crops/delete' && method === 'POST') {
+      const body = parseBody(init);
+      const { mp, targetReqNos, targetPlanIds } = cascadeDeleteScheduleData(body);
+      return jsonResponse({
+        ok: true,
+        deleted_request_nos: targetReqNos,
+        deleted_crop_plan_ids: targetPlanIds,
+        ...mp,
+      });
     }
 
     if (p === '/api/mypage/orders' && method === 'POST') {
@@ -768,11 +860,13 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true, item: body });
     }
     if (p === '/api/member-schedule-requests/delete' && method === 'POST') {
-      const { request_no } = parseBody(init);
-      const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
-      sr.items = (sr.items || []).filter((r: any) => r.request_no !== request_no);
-      sr.total = sr.items.length;
-      return jsonResponse({ ok: true });
+      const body = parseBody(init);
+      const { targetReqNos, targetPlanIds } = cascadeDeleteScheduleData(body);
+      return jsonResponse({
+        ok: true,
+        deleted_request_nos: targetReqNos,
+        deleted_crop_plan_ids: targetPlanIds,
+      });
     }
 
     if (p === '/api/schedule-provision') {

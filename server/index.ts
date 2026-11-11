@@ -5131,15 +5131,92 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/member-schedule-requests/delete' && req.method === 'POST') {
-      const { request_no } = await readJsonBody(req);
-      db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(request_no);
-      db.prepare('DELETE FROM member_crop_plan WHERE request_no = ? AND LOWER(email) = LOWER(?)').run(
-        request_no,
-        'CloudBae@naver.com'
+      const body = await readJsonBody(req);
+      const reqNoInput = String(body.request_no || '').trim();
+      const cropPlanIdInput = String(body.crop_plan_id || '').trim();
+      const displayReqNoInput = String(body.display_request_no || '').trim();
+
+      // crop_plan_id만 전달된 경우 연결된 request_no 조회
+      let resolvedReqNo = reqNoInput;
+      if (!resolvedReqNo && cropPlanIdInput) {
+        const planRow = db
+          .prepare('SELECT request_no FROM member_crop_plan WHERE crop_plan_id = ?')
+          .get(cropPlanIdInput) as { request_no?: string } | undefined;
+        if (planRow?.request_no) {
+          resolvedReqNo = planRow.request_no;
+        }
+      }
+
+      const targetReqNos = Array.from(
+        new Set([resolvedReqNo, reqNoInput, displayReqNoInput].filter(Boolean))
       );
-      await supabaseRestDelete('member_schedule_request', `request_no=eq.${encodeURIComponent(request_no)}`);
-      await supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(request_no)}`);
-      sendJson(res, { ok: true });
+
+      for (const rNo of targetReqNos) {
+        // 1. 재배일정 요청 마스터 테이블 삭제
+        db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+        // 2. 회원 작물재배 플랜 리스트 테이블 삭제
+        db.prepare('DELETE FROM member_crop_plan WHERE request_no = ?').run(rNo);
+        // 3. 연관된 생육과정별 커스텀 일정 및 맞춤 자재 명세(materials_json) 데이터 삭제
+        try {
+          db.prepare('DELETE FROM schedule_provision_custom_item WHERE request_no = ?').run(rNo);
+        } catch {
+          // 테이블 미생성 시 무시
+        }
+        // 4. 연관된 생육과정별 추천 제품(1종)·평수 계산 수량·개조식 추천근거 로그 데이터 삭제
+        try {
+          db.prepare('DELETE FROM schedule_stage_recommendation_log WHERE request_no = ?').run(rNo);
+        } catch {
+          // 테이블 미생성 시 무시
+        }
+        // 5. 연관된 생육단계/작업 수행 이력 로그 및 관제 요청 데이터 삭제
+        try {
+          db.prepare('DELETE FROM cultivation_history_log WHERE request_id = ?').run(rNo);
+          db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+
+        await supabaseRestDelete(
+          'member_schedule_request',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`);
+        await supabaseRestDelete(
+          'schedule_provision_custom_item',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete(
+          'schedule_stage_recommendation_log',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete(
+          'cultivation_history_log',
+          `request_id=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+      }
+
+      if (cropPlanIdInput) {
+        db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(cropPlanIdInput);
+        await supabaseRestDelete(
+          'member_crop_plan',
+          `crop_plan_id=eq.${encodeURIComponent(cropPlanIdInput)}`
+        );
+      }
+
+      sendJson(res, {
+        ok: true,
+        deleted_request_nos: targetReqNos,
+        deleted_crop_plan_id: cropPlanIdInput || null,
+        deleted_tables: [
+          'member_schedule_request',
+          'member_crop_plan',
+          'schedule_provision_custom_item',
+          'schedule_stage_recommendation_log',
+          'cultivation_history_log',
+          'schedule_request',
+        ],
+      });
       return;
     }
 
@@ -9266,11 +9343,66 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/mypage/crops/delete' && req.method === 'POST') {
-      const { email, crop_plan_id } = await readJsonBody(req);
-      db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(crop_plan_id);
-      await supabaseRestDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(crop_plan_id)}`);
+      const { email, crop_plan_id, request_no, display_request_no } = await readJsonBody(req);
+      const existingPlan = crop_plan_id
+        ? (db
+            .prepare('SELECT request_no FROM member_crop_plan WHERE crop_plan_id = ?')
+            .get(crop_plan_id) as { request_no?: string } | undefined)
+        : undefined;
+      const targetReqNos = Array.from(
+        new Set([request_no, display_request_no, existingPlan?.request_no].filter(Boolean))
+      );
+
+      if (crop_plan_id) {
+        db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(crop_plan_id);
+        await supabaseRestDelete(
+          'member_crop_plan',
+          `crop_plan_id=eq.${encodeURIComponent(crop_plan_id)}`
+        );
+      }
+
+      for (const rNo of targetReqNos) {
+        db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+        db.prepare('DELETE FROM member_crop_plan WHERE request_no = ?').run(rNo);
+        try {
+          db.prepare('DELETE FROM schedule_provision_custom_item WHERE request_no = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+        try {
+          db.prepare('DELETE FROM schedule_stage_recommendation_log WHERE request_no = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+        try {
+          db.prepare('DELETE FROM cultivation_history_log WHERE request_id = ?').run(rNo);
+          db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+
+        await supabaseRestDelete(
+          'member_schedule_request',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`);
+        await supabaseRestDelete(
+          'schedule_provision_custom_item',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete(
+          'schedule_stage_recommendation_log',
+          `request_no=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete(
+          'cultivation_history_log',
+          `request_id=eq.${encodeURIComponent(rNo)}`
+        );
+        await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+      }
+
       const payload = buildMemberMyPagePayload(email || 'CloudBae@naver.com');
-      sendJson(res, { ok: true, ...payload });
+      sendJson(res, { ok: true, deleted_request_nos: targetReqNos, ...payload });
       return;
     }
 
