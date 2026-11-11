@@ -11,6 +11,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
@@ -37,23 +38,41 @@ public class MainActivity extends Activity {
 
         Window window = getWindow();
         if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
             window.setStatusBarColor(Color.parseColor("#059669"));
             window.setNavigationBarColor(Color.parseColor("#FFFFFF"));
         }
 
-        FrameLayout root = new FrameLayout(this);
+        final FrameLayout root = new FrameLayout(this);
         root.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
-        root.setBackgroundColor(Color.WHITE);
+        root.setBackgroundColor(Color.parseColor("#059669"));
+        root.setFitsSystemWindows(true);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+            root.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+                @Override
+                public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                    int topInset = insets.getSystemWindowInsetTop();
+                    int bottomInset = insets.getSystemWindowInsetBottom();
+                    int leftInset = insets.getSystemWindowInsetLeft();
+                    int rightInset = insets.getSystemWindowInsetRight();
+                    v.setPadding(leftInset, topInset, rightInset, bottomInset);
+                    return insets.consumeSystemWindowInsets();
+                }
+            });
+        }
 
         webView = new WebView(this);
         webView.setLayoutParams(new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        webView.setBackgroundColor(Color.WHITE);
 
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         FrameLayout.LayoutParams pbParams = new FrameLayout.LayoutParams(
@@ -76,6 +95,10 @@ public class MainActivity extends Activity {
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        String defaultUa = settings.getUserAgentString();
+        if (defaultUa != null && !defaultUa.contains("FarmPlanSafeInset/1")) {
+            settings.setUserAgentString(defaultUa + " FarmPlanApp/1.0.2 FarmPlanSafeInset/1");
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }

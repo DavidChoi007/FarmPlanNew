@@ -2215,21 +2215,44 @@ export default function UserIntroPage() {
     )
   );
 
+  // 안드로이드 APK(WebView) 환경에서 시스템 상태표시줄(시계·배터리 영역) 및 하단 내비게이션 바와 겹치지 않도록 안전 여백 감지
+  const isLegacyAndroidWebView =
+    typeof navigator !== 'undefined' &&
+    /Android/i.test(navigator.userAgent) &&
+    (/;\s*wv\)/i.test(navigator.userAgent) || /Version\/\d+\.\d+\s+Chrome/i.test(navigator.userAgent)) &&
+    !/FarmPlanSafeInset/i.test(navigator.userAgent);
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col">
+    <div
+      className={`min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col break-keep ${
+        isLegacyAndroidWebView ? 'pb-12' : ''
+      }`}
+      style={{
+        paddingBottom: isLegacyAndroidWebView
+          ? 'max(48px, env(safe-area-inset-bottom, 0px))'
+          : 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
-      <header className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_3px_rgba(15,23,42,0.03)]">
-        <div className="max-w-[1600px] w-full mx-auto px-3.5 sm:px-10 h-16 sm:h-20 flex items-center justify-between gap-2.5 sm:gap-4">
+      <header
+        className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_3px_rgba(15,23,42,0.03)]"
+        style={{
+          paddingTop: isLegacyAndroidWebView
+            ? 'max(34px, env(safe-area-inset-top, 34px))'
+            : 'env(safe-area-inset-top, 0px)',
+        }}
+      >
+        <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-10 h-14 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
           {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 7대 가로 메뉴 */}
-          <div className="flex items-center gap-2.5 sm:gap-6 lg:gap-12 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-6 lg:gap-12 min-w-0">
             {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 */}
             <button
               type="button"
               onClick={() => setIsMobileGnbDrawerOpen(true)}
               aria-label="전체 메뉴 열기"
-              className="lg:hidden inline-flex items-center gap-2 px-3 py-2.5 min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-xs cursor-pointer transition shrink-0"
+              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-2 min-h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
             >
-              <span className="flex flex-col gap-1 w-4" aria-hidden="true">
+              <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
                 <span className="block h-0.5 w-full bg-white rounded-full" />
                 <span className="block h-0.5 w-full bg-white rounded-full" />
                 <span className="block h-0.5 w-full bg-white rounded-full" />
@@ -2240,23 +2263,23 @@ export default function UserIntroPage() {
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="flex items-center gap-2 sm:gap-2.5 shrink-0 cursor-pointer group text-left"
+              className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:bg-emerald-500 transition">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:bg-emerald-500 transition shrink-0">
                 <Sprout className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <span className="font-extrabold text-lg sm:text-2xl tracking-tight text-slate-900 block leading-none">
+                <span className="font-extrabold text-base sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
                   FarmPlan
                 </span>
-                <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline">
+                <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline whitespace-nowrap">
                   나의 맞춤형 재배관리
                 </span>
               </div>
             </button>
 
-            {/* 모바일 상단 현재 선택 메뉴 배지 */}
-            <span className="lg:hidden px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold truncate max-w-[110px] sm:max-w-[160px]">
+            {/* 태블릿(md) 상단 현재 선택 메뉴 배지 (모바일 소형 화면에서는 로고 잘림 방지를 위해 숨김) */}
+            <span className="hidden md:inline-flex lg:hidden px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold whitespace-nowrap truncate max-w-[140px]">
               {activeMenu}
             </span>
 
@@ -2297,19 +2320,19 @@ export default function UserIntroPage() {
                     setActiveMenu('마이페이지');
                     setMyPageTab('FARMLAND');
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 transition cursor-pointer shadow-2xs"
+                  className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
-                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold">
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0">
                     {loggedInUser.name.slice(0, 1)}
                   </span>
-                  <span className="font-extrabold text-emerald-950">
+                  <span className="font-extrabold text-emerald-950 whitespace-nowrap">
                     {loggedInUser.name} 님
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그아웃
                 </button>
@@ -2324,7 +2347,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('LOGIN');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그인
                 </button>
@@ -2337,7 +2360,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   회원가입
                 </button>
@@ -2345,7 +2368,7 @@ export default function UserIntroPage() {
             )}
             <Link
               to="/admin"
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs transition"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
             >
               <span>관리자</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -2366,6 +2389,14 @@ export default function UserIntroPage() {
         className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-white shadow-2xl border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
           isMobileGnbDrawerOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{
+          paddingTop: isLegacyAndroidWebView
+            ? 'max(34px, env(safe-area-inset-top, 34px))'
+            : 'env(safe-area-inset-top, 0px)',
+          paddingBottom: isLegacyAndroidWebView
+            ? 'max(48px, env(safe-area-inset-bottom, 0px))'
+            : 'env(safe-area-inset-bottom, 0px)',
+        }}
       >
         {/* 드로어 상단 헤더 */}
         <div className="px-4 py-4 bg-[#E9F7F1] border-b border-emerald-200 flex items-center justify-between gap-2 shrink-0">
@@ -2533,30 +2564,31 @@ export default function UserIntroPage() {
             </section>
 
             {/* MODULE 3: 소프트 민트 히어로 모듈 & 4대 핵심 기능 카드 */}
-            <section className="rounded-3xl bg-[#E9F7F1] border border-emerald-200/80 p-5 sm:p-9 space-y-7 shadow-2xs">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-center">
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-emerald-200 text-emerald-800 text-xs font-extrabold">
-                    <span>
+            <section className="rounded-3xl bg-[#E9F7F1] border border-emerald-200/80 p-4 sm:p-9 space-y-6 sm:space-y-7 shadow-2xs">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-7 items-center">
+                <div className="lg:col-span-7 space-y-3.5 sm:space-y-4 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/85 border border-emerald-200 text-emerald-800 text-[11px] sm:text-xs font-extrabold whitespace-nowrap tracking-tight max-w-full overflow-hidden text-ellipsis">
+                    <span className="truncate">
                       {loggedInUser.isLoggedIn
                         ? `🌱 ${loggedInUser.name} 회원님 맞춤 영농 브리핑`
                         : '🌱 지역 기후·토양검정 빅데이터 기반 맞춤형 영농 브리핑'}
                     </span>
                   </div>
-                  <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug">
-                    내 농지에 꼭 맞는 맞춤형
-                    <br />
-                    재배일정 서비스, <span className="text-emerald-700">FarmPlan</span>
+                  <h1 className="text-[20px] sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug break-keep">
+                    <span className="block whitespace-nowrap">내 농지에 꼭 맞는 맞춤형</span>
+                    <span className="block whitespace-nowrap">
+                      재배일정 서비스, <span className="text-emerald-700">FarmPlan</span>
+                    </span>
                   </h1>
-                  <p className="text-slate-700 text-sm sm:text-base leading-relaxed max-w-2xl font-medium">
+                  <p className="text-slate-700 text-[13px] sm:text-base leading-relaxed max-w-2xl font-medium break-keep">
                     지역 기후(최저·최고 한계온도 회피 및 적정온도 분석)와 토양검정 데이터에 따라
                     내 농지에 맞는 맞춤 작물 생육과정별 단일 추천 진행일과 비료·영양제·병해충관리제 처방을 제안해 드립니다.
                   </p>
-                  <div className="flex flex-wrap items-center gap-3 pt-1">
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1">
                     <button
                       type="button"
                       onClick={() => setActiveMenu('재배일정 요청')}
-                      className="px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm sm:text-base shadow-sm transition cursor-pointer"
+                      className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-base whitespace-nowrap shadow-sm transition cursor-pointer"
                     >
                       재배일정 요청하기
                     </button>
@@ -2566,7 +2598,7 @@ export default function UserIntroPage() {
                         setActiveMenu('재배일정 확인');
                         setMobileScheduleStep('list');
                       }}
-                      className="px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm sm:text-base transition cursor-pointer"
+                      className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs sm:text-base whitespace-nowrap transition cursor-pointer"
                     >
                       {loggedInUser.isLoggedIn
                         ? `나의 재배일정 확인 (${cloudBaeCropList.length}건)`
@@ -2576,39 +2608,41 @@ export default function UserIntroPage() {
                 </div>
 
                 {/* 우측: 충청북도 충주시 단월동 · 가을배추(불암3호) 추천 진행일 요약 카드 */}
-                <div className="lg:col-span-5">
-                  <div className="bg-white rounded-2xl p-5 sm:p-6 border border-emerald-100 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-1.5">
+                <div className="lg:col-span-5 min-w-0">
+                  <div className="bg-white rounded-2xl p-4 sm:p-6 border border-emerald-100 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="font-extrabold text-slate-900 text-xs sm:text-base flex items-center gap-1.5 min-w-0">
                         <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>충청북도 충주시 단월동 · 가을배추(불암3호)</span>
+                        <span className="whitespace-nowrap truncate">
+                          충청북도 충주시 단월동 · 가을배추(불암3호)
+                        </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold shrink-0">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] sm:text-xs font-bold whitespace-nowrap shrink-0">
                         {loggedInUser.isLoggedIn ? `${loggedInUser.name} 농장` : '단월동 표준 포전'}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 border-y border-slate-100 py-3.5">
-                      <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs sm:text-sm">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 border-y border-slate-100 py-3">
+                      <span className="px-2.5 sm:px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs sm:text-sm whitespace-nowrap">
                         18~20℃ 적온
                       </span>
-                      <span className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                      <span className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
                         2026-08-25 (화) 정식
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1">
-                          <CloudSun className="w-3.5 h-3.5 text-emerald-600" />
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-700">
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
+                          <CloudSun className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           날씨 상쾌
                         </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1">
-                          <Droplets className="w-3.5 h-3.5 text-sky-600" />
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
+                          <Droplets className="w-3.5 h-3.5 text-sky-600 shrink-0" />
                           토양pH 6.2
                         </span>
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1">
-                          <FlaskConical className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
+                          <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                           정식비료 함량
                         </span>
                       </div>
@@ -2619,7 +2653,7 @@ export default function UserIntroPage() {
                           setActiveMenu('재배일정 확인');
                           setMobileScheduleStep('detail');
                         }}
-                        className="text-xs font-extrabold text-emerald-700 hover:text-emerald-600 inline-flex items-center gap-0.5 cursor-pointer"
+                        className="text-xs font-extrabold text-emerald-700 hover:text-emerald-600 inline-flex items-center gap-0.5 whitespace-nowrap cursor-pointer"
                       >
                         <span>내 일정 확인</span>
                         <ChevronRight className="w-4 h-4" />
@@ -2831,20 +2865,20 @@ export default function UserIntroPage() {
               className="block bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
                     <Sprout className="w-5 h-5" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
-                        {loggedInUser.isLoggedIn ? `${loggedInUser.name} (${loggedInUser.email}) 님의 내 작물재배 리스트` : '표준 작물재배 일정 리스트'} ({cloudBaeCropList.length}건)
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 whitespace-nowrap truncate">
+                        {loggedInUser.isLoggedIn ? `${loggedInUser.name} 님의 내 작물재배 리스트` : '표준 작물재배 일정 리스트'} ({cloudBaeCropList.length}건)
                       </h2>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold whitespace-nowrap shrink-0">
                         회원 맞춤형 재배관리
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 break-keep mt-0.5">
                       조회할 재배 작물을 터치(클릭)하면 기상·오늘 할 일·3가지 일정 보기 및 생육과정 세부 일정이 표시됩니다.
                     </p>
                   </div>
@@ -2853,7 +2887,7 @@ export default function UserIntroPage() {
                 <button
                   type="button"
                   onClick={() => setActiveMenu('재배일정 요청')}
-                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 font-bold text-xs sm:text-sm transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 font-bold text-xs sm:text-sm whitespace-nowrap transition cursor-pointer shrink-0"
                 >
                   + 새 재배일정 요청
                 </button>
@@ -6115,8 +6149,8 @@ export default function UserIntroPage() {
                         총 {cloudBaeCropList.length}건 요청 완료
                       </span>
                     </div>
-                    <h2 className="text-lg sm:text-2xl font-extrabold text-slate-900 mt-1">
-                      지금까지 요청한 내 재배일정 요청 리스트 ({cloudBaeCropList.length}건)
+                    <h2 className="text-sm sm:text-2xl font-extrabold text-slate-900 mt-1 whitespace-nowrap truncate">
+                      요청한 내 재배일정 리스트 ({cloudBaeCropList.length}건)
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                       해당 아이디로 요청하여 산출된 맞춤형 재배일정 내역입니다. 우측 <strong>[재배일정 요청]</strong> 버튼을 누르면 새로운 모달리스 폼에서 추가 재배일정을 요청할 수 있습니다.

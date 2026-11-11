@@ -3,5 +3,6 @@
     <style name="Theme.FarmPlan" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">#059669</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:fitsSystemWindows">true</item>
     </style>
 </resources>
