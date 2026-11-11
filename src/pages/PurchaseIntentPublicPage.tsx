@@ -34,7 +34,8 @@ const DEFAULT_TEMPLATE = {
 
 function normalizeIntentTemplate(raw: any): typeof DEFAULT_TEMPLATE {
   if (!raw || typeof raw !== 'object') return DEFAULT_TEMPLATE;
-  const src = raw.template && typeof raw.template === 'object' ? raw.template : raw;
+  const srcRaw = raw.template && typeof raw.template === 'object' ? raw.template : raw;
+  const { _synced_to_sb, updated_at, ...src } = srcRaw || {};
   const rawRecipient = String(src.recipientName || '').trim();
   const recipientName =
     !rawRecipient || rawRecipient === '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중'
@@ -63,15 +64,13 @@ export default function PurchaseIntentPublicPage() {
   const today = new Date();
   const [tpl, setTpl] = useState<typeof DEFAULT_TEMPLATE>(() => {
     try {
+      const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
+      if (saved) return normalizeIntentTemplate(JSON.parse(saved));
       const params = new URLSearchParams(window.location.search);
       const urlCfg = decodeSharePayload(params.get('cfg'));
       if (urlCfg) {
-        const normalized = normalizeIntentTemplate(urlCfg);
-        localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(normalized));
-        return normalized;
+        return normalizeIntentTemplate(urlCfg);
       }
-      const saved = localStorage.getItem('hanfarm_purchase_intent_template_v1');
-      if (saved) return normalizeIntentTemplate(JSON.parse(saved));
     } catch {
       // ignore
     }
@@ -90,22 +89,41 @@ export default function PurchaseIntentPublicPage() {
     setMetaContent('meta[name="twitter:title"]', '구매 및 구독 의향서');
     setMetaContent('meta[name="twitter:description"]', '구매 및 구독 의향서');
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('cfg')) return;
-    fetch('/api/purchase-intents')
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.template) {
-          const merged = normalizeIntentTemplate(res.template);
-          setTpl(merged);
-          try {
-            localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(merged));
-          } catch {
-            // ignore
+    const syncFromDb = () => {
+      fetch('/api/purchase-intents')
+        .then((r) => r.json())
+        .then((res) => {
+          if (res?.template) {
+            const merged = normalizeIntentTemplate(res.template);
+            setTpl(merged);
+            setForm((prev) => {
+              const validServices = prev.desiredServices.filter((s) =>
+                merged.serviceOptions.includes(s)
+              );
+              const validFinalIntents = prev.finalIntents.filter((f) =>
+                merged.finalIntentOptions.includes(f)
+              );
+              return {
+                ...prev,
+                desiredServices:
+                  validServices.length > 0
+                    ? validServices
+                    : [merged.serviceOptions[1] || merged.serviceOptions[0] || '맞춤형 재배일정'],
+                monthlyWtp: merged.priceOptions.includes(prev.monthlyWtp)
+                  ? prev.monthlyWtp
+                  : merged.priceOptions[1] || merged.priceOptions[0] || '월 10,000원',
+                finalIntents:
+                  validFinalIntents.length > 0 ? validFinalIntents : [...merged.finalIntentOptions],
+              };
+            });
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    };
+
+    syncFromDb();
+    window.addEventListener('focus', syncFromDb);
+    return () => window.removeEventListener('focus', syncFromDb);
   }, []);
 
   const [form, setForm] = useState({
@@ -207,14 +225,6 @@ export default function PurchaseIntentPublicPage() {
       agreed_privacy: form.agreedPrivacySeparate,
       created_at: new Date().toISOString().slice(0, 16).replace('T', ' '),
     };
-    try {
-      const savedRaw = localStorage.getItem('hanfarm_purchase_intents_v1');
-      const existing = savedRaw ? JSON.parse(savedRaw) : [];
-      const safeExisting = Array.isArray(existing) ? existing : [];
-      localStorage.setItem('hanfarm_purchase_intents_v1', JSON.stringify([newEntry, ...safeExisting]));
-    } catch {
-      // ignore storage errors
-    }
     try {
       await fetch('/api/purchase-intents/entry', {
         method: 'POST',

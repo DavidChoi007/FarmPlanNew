@@ -555,6 +555,8 @@ async function syncAgroMaterialSchemaToSupabase() {
     await syncTableToSupabase('schedule_provision_custom_item', 'request_no,item_id');
     await syncTableToSupabase('survey_form', 'survey_id');
     await syncTableToSupabase('survey_response', 'response_id');
+    await syncTableToSupabase('purchase_intent_config', 'config_id');
+    await syncTableToSupabase('purchase_intent_entry', 'intent_id');
     await syncTableToSupabase('agro_recommendation_policy', 'policy_id');
     await syncTableToSupabase('agro_stage_mapping_rule', 'rule_id');
     await syncTableToSupabase('agro_recommendation_history', 'rec_id');
@@ -9780,13 +9782,68 @@ const server = http.createServer(async (req, res) => {
 
     // 10. 구매의향서 양식(내용) 및 접수 현황 조회·수정·삭제 API
     if (pathname === '/api/purchase-intents' && req.method === 'GET') {
+      try {
+        const [remoteCfg, remoteEntries] = await Promise.all([
+          supabaseRestSelect('purchase_intent_config'),
+          supabaseRestSelect('purchase_intent_entry'),
+        ]);
+        if (Array.isArray(remoteCfg) && remoteCfg.length > 0) {
+          const rc = remoteCfg[0];
+          const localCfg = db
+            .prepare("SELECT template_json, updated_at FROM purchase_intent_config WHERE config_id = 'DEFAULT'")
+            .get() as { template_json?: string; updated_at?: string } | undefined;
+          const localTime = String(localCfg?.updated_at || '');
+          const remoteTime = String(rc?.updated_at || '');
+          if (!localCfg || remoteTime >= localTime) {
+            db.prepare(`
+              INSERT OR REPLACE INTO purchase_intent_config (config_id, template_json, updated_at)
+              VALUES ('DEFAULT', ?, ?)
+            `).run(String(rc.template_json || '{}'), remoteTime);
+          } else if (localCfg?.template_json) {
+            await supabaseRestUpsert(
+              'purchase_intent_config',
+              [{ config_id: 'DEFAULT', template_json: localCfg.template_json, updated_at: localTime }],
+              'config_id'
+            );
+          }
+        }
+        if (Array.isArray(remoteEntries) && remoteEntries.length > 0) {
+          const insStmt = db.prepare(`
+            INSERT OR REPLACE INTO purchase_intent_entry (
+              intent_id, applicant_name, contact, main_crops, desired_services_json,
+              monthly_wtp, final_intents_json, written_date, agreed_final, agreed_privacy, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const re of remoteEntries) {
+            insStmt.run(
+              String(re.intent_id || ''),
+              String(re.applicant_name || ''),
+              String(re.contact || ''),
+              String(re.main_crops || ''),
+              String(re.desired_services_json || '[]'),
+              String(re.monthly_wtp || '월 10,000원'),
+              String(re.final_intents_json || '[]'),
+              String(re.written_date || '2026-11-09'),
+              Number(re.agreed_final === 0 || re.agreed_final === false ? 0 : 1),
+              Number(re.agreed_privacy === 0 || re.agreed_privacy === false ? 0 : 1),
+              String(re.created_at || '')
+            );
+          }
+        }
+      } catch {
+        // ignore network errors
+      }
+
       const cfgRow = db
-        .prepare("SELECT template_json FROM purchase_intent_config WHERE config_id = 'DEFAULT'")
-        .get() as { template_json?: string } | undefined;
+        .prepare("SELECT template_json, updated_at FROM purchase_intent_config WHERE config_id = 'DEFAULT'")
+        .get() as { template_json?: string; updated_at?: string } | undefined;
       let template = null;
       if (cfgRow?.template_json) {
         try {
-          template = JSON.parse(cfgRow.template_json);
+          template = {
+            ...JSON.parse(cfgRow.template_json),
+            updated_at: cfgRow.updated_at || '',
+          };
         } catch {
           template = null;
         }
@@ -9826,12 +9883,19 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/purchase-intents/template' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const templateObj = body.template || body;
-      const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      const { _synced_to_sb, ...cleanTpl } = templateObj || {};
+      const payloadJson = JSON.stringify({ ...cleanTpl, updated_at: nowStr });
       db.prepare(`
         INSERT OR REPLACE INTO purchase_intent_config (config_id, template_json, updated_at)
         VALUES ('DEFAULT', ?, ?)
-      `).run(JSON.stringify(templateObj), nowStr);
-      sendJson(res, { ok: true, template: templateObj, updatedAt: nowStr });
+      `).run(payloadJson, nowStr);
+      await supabaseRestUpsert(
+        'purchase_intent_config',
+        [{ config_id: 'DEFAULT', template_json: payloadJson, updated_at: nowStr }],
+        'config_id'
+      ).catch(() => {});
+      sendJson(res, { ok: true, template: { ...cleanTpl, updated_at: nowStr }, updatedAt: nowStr });
       return;
     }
 
@@ -9847,7 +9911,9 @@ const server = http.createServer(async (req, res) => {
       const writtenDate = String(body.written_date || '2026-11-09').trim();
       const agreedFinal = body.agreed_final === false ? 0 : 1;
       const agreedPrivacy = body.agreed_privacy === false ? 0 : 1;
-      const createdAt = String(body.created_at || new Date().toISOString().slice(0, 16).replace('T', ' ')).trim();
+      const createdAt = String(
+        body.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 16).replace('T', ' ')
+      ).trim();
 
       db.prepare(`
         INSERT OR REPLACE INTO purchase_intent_entry (
@@ -9867,6 +9933,25 @@ const server = http.createServer(async (req, res) => {
         agreedPrivacy,
         createdAt
       );
+      await supabaseRestUpsert(
+        'purchase_intent_entry',
+        [
+          {
+            intent_id: intentId,
+            applicant_name: applicantName,
+            contact,
+            main_crops: mainCrops,
+            desired_services_json: JSON.stringify(desiredServices),
+            monthly_wtp: monthlyWtp,
+            final_intents_json: JSON.stringify(finalIntents),
+            written_date: writtenDate,
+            agreed_final: agreedFinal,
+            agreed_privacy: agreedPrivacy,
+            created_at: createdAt,
+          },
+        ],
+        'intent_id'
+      ).catch(() => {});
       sendJson(res, { ok: true, intent_id: intentId });
       return;
     }
@@ -9876,6 +9961,10 @@ const server = http.createServer(async (req, res) => {
       const intentId = String(body.intent_id || '').trim();
       if (intentId) {
         db.prepare('DELETE FROM purchase_intent_entry WHERE intent_id = ?').run(intentId);
+        await supabaseRestDelete(
+          'purchase_intent_entry',
+          `intent_id=eq.${encodeURIComponent(intentId)}`
+        ).catch(() => {});
       }
       sendJson(res, { ok: true });
       return;

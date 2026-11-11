@@ -3512,7 +3512,8 @@ export default function AdminDashboardPage() {
   };
 
   const normalizePurchaseIntentTemplate = (raw: any) => {
-    const merged = { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...(raw || {}) };
+    const { _synced_to_sb, updated_at, ...cleanRaw } = raw || {};
+    const merged = { ...DEFAULT_PURCHASE_INTENT_TEMPLATE, ...cleanRaw };
     if (merged.recipientName === '한팜(HANFARM) 맞춤형 재배관리 플랫폼 귀중') {
       merged.recipientName = '한팜(HANFARM) 재배컨설팅 플랫폼 귀중';
     }
@@ -3530,24 +3531,12 @@ export default function AdminDashboardPage() {
     return 'https://farmplan-new.vercel.app';
   };
 
-  const buildCompactPurchaseIntentSharePath = (tpl: any, forExternalShare = false) => {
+  const buildCompactPurchaseIntentSharePath = (_tpl: any, forExternalShare = false) => {
     const prefix = forExternalShare ? getExternalShareBaseUrl() : getBasePath();
     const base = `${prefix}/purchase-intent/`;
     const params = new URLSearchParams();
     if (forExternalShare) {
       params.set('og', '20261110');
-    }
-    if (tpl && typeof tpl === 'object') {
-      const diff: Record<string, any> = {};
-      for (const [k, defVal] of Object.entries(DEFAULT_PURCHASE_INTENT_TEMPLATE)) {
-        const curVal = tpl[k];
-        if (curVal !== undefined && JSON.stringify(curVal) !== JSON.stringify(defVal)) {
-          diff[k] = curVal;
-        }
-      }
-      if (Object.keys(diff).length > 0) {
-        params.set('cfg', encodeSharePayload(diff));
-      }
     }
     const qsStr = params.toString();
     return qsStr ? `${base}?${qsStr}` : base;
@@ -3712,26 +3701,10 @@ export default function AdminDashboardPage() {
         if (res?.template) {
           const merged = normalizePurchaseIntentTemplate(res.template);
           setPurchaseIntentTemplate(merged);
-          setIntentTemplateDraft(merged);
-          try {
-            localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(merged));
-          } catch {
-            // ignore
-          }
+          setIntentTemplateDraft((prev) => (isEditingIntentTemplate ? prev : merged));
         }
-        if (Array.isArray(res?.entries) && res.entries.length > 0) {
-          setPurchaseIntentEntries((prev) => {
-            const seen = new Set<string>();
-            const combined: any[] = [];
-            for (const item of [...res.entries, ...prev]) {
-              const id = String(item?.intent_id || '');
-              if (id && !seen.has(id)) {
-                seen.add(id);
-                combined.push(item);
-              }
-            }
-            return combined;
-          });
+        if (Array.isArray(res?.entries)) {
+          setPurchaseIntentEntries(res.entries);
         }
       })
       .catch(() => {});
@@ -3745,7 +3718,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const handleSyncExternalSubmissions = () => {
       loadSurveyManagementData();
-      loadPurchaseIntentsData();
+      if (!isEditingIntentTemplate && !isEditingSelectedIntentDoc && !editingIntentEntryId) {
+        loadPurchaseIntentsData();
+      }
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -3760,7 +3735,15 @@ export default function AdminDashboardPage() {
       window.removeEventListener('focus', handleSyncExternalSubmissions);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [selectedSurveyUnitId, surveyAgeFilter, surveyScaleFilter, surveyKeyword]);
+  }, [
+    selectedSurveyUnitId,
+    surveyAgeFilter,
+    surveyScaleFilter,
+    surveyKeyword,
+    isEditingIntentTemplate,
+    isEditingSelectedIntentDoc,
+    editingIntentEntryId,
+  ]);
 
   const handleStartEditIntentTemplate = () => {
     setIntentTemplateDraft({ ...purchaseIntentTemplate });
@@ -3786,37 +3769,24 @@ export default function AdminDashboardPage() {
     setPurchaseIntentTemplate(cleaned);
     setIntentTemplateDraft(cleaned);
     setIsEditingIntentTemplate(false);
-    try {
-      localStorage.setItem('hanfarm_purchase_intent_template_v1', JSON.stringify(cleaned));
-    } catch {
-      // ignore
-    }
     await fetch('/api/purchase-intents/template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template: cleaned }),
     }).catch(() => {});
-    showToast('구매의향서 양식(문구 및 선택 항목) 수정사항이 저장되었습니다.');
+    showToast('구매의향서 양식(문구 및 선택 항목) 수정사항이 DB에 저장되었습니다.');
   };
 
   const handleResetIntentTemplate = async () => {
     setPurchaseIntentTemplate(DEFAULT_PURCHASE_INTENT_TEMPLATE);
     setIntentTemplateDraft(DEFAULT_PURCHASE_INTENT_TEMPLATE);
     setIsEditingIntentTemplate(false);
-    try {
-      localStorage.setItem(
-        'hanfarm_purchase_intent_template_v1',
-        JSON.stringify(DEFAULT_PURCHASE_INTENT_TEMPLATE)
-      );
-    } catch {
-      // ignore
-    }
     await fetch('/api/purchase-intents/template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template: DEFAULT_PURCHASE_INTENT_TEMPLATE }),
     }).catch(() => {});
-    showToast('구매의향서 양식이 기본 표준 문구로 복원되었습니다.');
+    showToast('구매의향서 양식이 기본 표준 문구로 복원되어 DB에 저장되었습니다.');
   };
 
   const handleLoadEntryIntoIntentForm = (entry: any) => {

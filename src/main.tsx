@@ -1384,6 +1384,62 @@ if (typeof window !== 'undefined') {
       return jsonResponse(snap.agroRecModule || {});
     }
 
+    const SB_URL = 'https://eaycjzvtlstijkucmbau.supabase.co';
+    const SB_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheWNqenZ0bHN0aWprdWNtYmF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzkxMjcwNSwiZXhwIjoyMTA5NDg4NzA1fQ.2MkDiCld3tG2rTNi3XVtIkRh9I96r06H5w_mo1IEwP4';
+    const getKstNowStr = () =>
+      new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+
+    const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
+      try {
+        const r = await origFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+          method: 'GET',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+        });
+        if (!r.ok) return null;
+        const data = await r.json();
+        return Array.isArray(data) ? data : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
+      try {
+        await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+          method: 'POST',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // ignore network errors
+      }
+    };
+
+    const sbDelete = async (table: string, filterQuery: string) => {
+      try {
+        await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
+          method: 'DELETE',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+          },
+        });
+      } catch {
+        // ignore network errors
+      }
+    };
+
     // 6. 설문조사 관리 (외부 /survey 참여 응답 수집 · 양식 수정 · 실시간 통계 산출 · Supabase 클라우드 실시간 동기화)
     if (
       p === '/api/surveys' ||
@@ -1395,61 +1451,6 @@ if (typeof window !== 'undefined') {
     ) {
       const FORMS_KEY = 'hanfarm_surveys_forms_v1';
       const RESPS_KEY = 'hanfarm_surveys_responses_v1';
-      const SB_URL = 'https://eaycjzvtlstijkucmbau.supabase.co';
-      const SB_KEY =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheWNqenZ0bHN0aWprdWNtYmF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzkxMjcwNSwiZXhwIjoyMTA5NDg4NzA1fQ.2MkDiCld3tG2rTNi3XVtIkRh9I96r06H5w_mo1IEwP4';
-      const getKstNowStr = () =>
-        new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-
-      const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
-        try {
-          const r = await origFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
-            method: 'GET',
-            headers: {
-              apikey: SB_KEY,
-              Authorization: `Bearer ${SB_KEY}`,
-              Accept: 'application/json',
-            },
-            cache: 'no-store',
-          });
-          if (!r.ok) return null;
-          const data = await r.json();
-          return Array.isArray(data) ? data : null;
-        } catch {
-          return null;
-        }
-      };
-
-      const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
-        try {
-          await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
-            method: 'POST',
-            headers: {
-              apikey: SB_KEY,
-              Authorization: `Bearer ${SB_KEY}`,
-              'Content-Type': 'application/json',
-              Prefer: 'resolution=merge-duplicates,return=minimal',
-            },
-            body: JSON.stringify(payload),
-          });
-        } catch {
-          // ignore network errors
-        }
-      };
-
-      const sbDelete = async (table: string, filterQuery: string) => {
-        try {
-          await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
-            method: 'DELETE',
-            headers: {
-              apikey: SB_KEY,
-              Authorization: `Bearer ${SB_KEY}`,
-            },
-          });
-        } catch {
-          // ignore network errors
-        }
-      };
 
       const normalizeFormItem = (raw: any) => {
         if (!raw || typeof raw !== 'object') return raw;
@@ -1938,29 +1939,229 @@ if (typeof window !== 'undefined') {
       });
     }
 
-    // 7. 구매의향서 관리 API
+    // 7. 구매의향서 관리 API (Supabase purchase_intent_config / purchase_intent_entry 양방향 실시간 동기화)
     const INTENT_TPL_KEY = 'hanfarm_purchase_intent_template_v1';
     const INTENT_ENTRIES_KEY = 'hanfarm_purchase_intents_v1';
+    const INTENT_DELETED_KEY = 'hanfarm_purchase_intents_deleted_v1';
+
+    const normalizeIntentEntry = (raw: any) => {
+      if (!raw || typeof raw !== 'object') return raw;
+      let desiredServices = Array.isArray(raw.desired_services) ? raw.desired_services : [];
+      if (
+        desiredServices.length === 0 &&
+        typeof raw.desired_services_json === 'string' &&
+        raw.desired_services_json.trim()
+      ) {
+        try {
+          const parsed = JSON.parse(raw.desired_services_json);
+          if (Array.isArray(parsed)) desiredServices = parsed;
+        } catch {
+          // ignore
+        }
+      }
+      let finalIntents = Array.isArray(raw.final_intents) ? raw.final_intents : [];
+      if (
+        finalIntents.length === 0 &&
+        typeof raw.final_intents_json === 'string' &&
+        raw.final_intents_json.trim()
+      ) {
+        try {
+          const parsed = JSON.parse(raw.final_intents_json);
+          if (Array.isArray(parsed)) finalIntents = parsed;
+        } catch {
+          // ignore
+        }
+      }
+      return {
+        intent_id: String(raw.intent_id || '').trim(),
+        applicant_name: String(raw.applicant_name || '').trim(),
+        contact: String(raw.contact || '').trim(),
+        main_crops: String(raw.main_crops || '').trim(),
+        desired_services: desiredServices,
+        monthly_wtp: String(raw.monthly_wtp || '월 10,000원').trim(),
+        final_intents: finalIntents,
+        written_date: String(raw.written_date || '2026-11-09').trim(),
+        agreed_final: raw.agreed_final === false || raw.agreed_final === 0 ? false : true,
+        agreed_privacy: raw.agreed_privacy === false || raw.agreed_privacy === 0 ? false : true,
+        created_at: String(raw.created_at || getKstNowStr().slice(0, 16)).trim(),
+        _synced_to_sb: Boolean(raw._synced_to_sb),
+      };
+    };
+
+    const toSupabaseIntentEntryRow = (entry: any) => {
+      const norm = normalizeIntentEntry(entry);
+      return {
+        intent_id: norm.intent_id,
+        applicant_name: norm.applicant_name,
+        contact: norm.contact,
+        main_crops: norm.main_crops,
+        desired_services_json: JSON.stringify(norm.desired_services || []),
+        monthly_wtp: norm.monthly_wtp,
+        final_intents_json: JSON.stringify(norm.final_intents || []),
+        written_date: norm.written_date,
+        agreed_final: norm.agreed_final ? 1 : 0,
+        agreed_privacy: norm.agreed_privacy ? 1 : 0,
+        created_at: norm.created_at,
+      };
+    };
 
     if (p === '/api/purchase-intents') {
-      let template = null;
-      let entries = null;
+      let template: any = null;
+      let entries: any[] | null = null;
+      let deletedIds: string[] = [];
       try {
         const rawTpl = localStorage.getItem(INTENT_TPL_KEY);
         if (rawTpl) template = JSON.parse(rawTpl);
-        const rawEntries = localStorage.getItem(INTENT_ENTRIES_KEY);
-        if (rawEntries) entries = JSON.parse(rawEntries);
       } catch {
         // ignore
       }
+      try {
+        const rawEntries = localStorage.getItem(INTENT_ENTRIES_KEY);
+        if (rawEntries) {
+          const parsed = JSON.parse(rawEntries);
+          if (Array.isArray(parsed)) entries = parsed.map(normalizeIntentEntry);
+        }
+      } catch {
+        // ignore
+      }
+      try {
+        const rawDeleted = localStorage.getItem(INTENT_DELETED_KEY);
+        if (rawDeleted) {
+          const parsedDel = JSON.parse(rawDeleted);
+          if (Array.isArray(parsedDel)) deletedIds = parsedDel.map((x) => String(x));
+        }
+      } catch {
+        // ignore
+      }
+
+      try {
+        const [remoteCfgRows, remoteEntryRows] = await Promise.all([
+          sbSelect('purchase_intent_config', 'select=*&config_id=eq.DEFAULT'),
+          sbSelect('purchase_intent_entry', 'select=*&order=intent_id.desc'),
+        ]);
+
+        if (Array.isArray(remoteCfgRows) && remoteCfgRows.length > 0) {
+          const cfgRow = remoteCfgRows[0];
+          let remoteTpl: any = null;
+          try {
+            remoteTpl = cfgRow?.template_json ? JSON.parse(cfgRow.template_json) : null;
+          } catch {
+            remoteTpl = null;
+          }
+          const remoteUpdatedAt = String(cfgRow?.updated_at || '2026-11-09 22:28:31');
+          if (remoteTpl) {
+            const stripMeta = (obj: any) => {
+              if (!obj || typeof obj !== 'object') return {};
+              const { updated_at, _synced_to_sb, ...rest } = obj;
+              return rest;
+            };
+            const localTime = String(template?.updated_at || '');
+            const isUnsyncedLocalMod =
+              template &&
+              !template._synced_to_sb &&
+              JSON.stringify(stripMeta(template)) !== JSON.stringify(stripMeta(remoteTpl));
+            if (template && (localTime > remoteUpdatedAt || (remoteUpdatedAt === '2026-11-09 22:28:31' && isUnsyncedLocalMod))) {
+              const nowStr = localTime > remoteUpdatedAt ? localTime : getKstNowStr();
+              const syncedTpl = { ...stripMeta(template), updated_at: nowStr, _synced_to_sb: true };
+              template = syncedTpl;
+              localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(syncedTpl));
+              await sbUpsert(
+                'purchase_intent_config',
+                {
+                  config_id: 'DEFAULT',
+                  template_json: JSON.stringify(stripMeta(syncedTpl)),
+                  updated_at: nowStr,
+                },
+                'config_id'
+              );
+            } else {
+              const syncedRemote = { ...stripMeta(remoteTpl), updated_at: remoteUpdatedAt, _synced_to_sb: true };
+              template = syncedRemote;
+              localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(syncedRemote));
+            }
+          }
+        } else if (template) {
+          const nowStr = String(template.updated_at || getKstNowStr());
+          const { _synced_to_sb, ...cleanTpl } = template;
+          await sbUpsert(
+            'purchase_intent_config',
+            {
+              config_id: 'DEFAULT',
+              template_json: JSON.stringify(cleanTpl),
+              updated_at: nowStr,
+            },
+            'config_id'
+          );
+          template = { ...cleanTpl, updated_at: nowStr, _synced_to_sb: true };
+          localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(template));
+        }
+
+        if (Array.isArray(remoteEntryRows)) {
+          const deletedSet = new Set(deletedIds);
+          const remoteMap = new Map<string, any>();
+          for (const rr of remoteEntryRows) {
+            const norm = normalizeIntentEntry({ ...rr, _synced_to_sb: true });
+            if (norm.intent_id) remoteMap.set(norm.intent_id, norm);
+          }
+          for (const delId of deletedSet) {
+            if (remoteMap.has(delId)) {
+              remoteMap.delete(delId);
+              await sbDelete('purchase_intent_entry', `intent_id=eq.${encodeURIComponent(delId)}`);
+            }
+          }
+          if (Array.isArray(entries)) {
+            const stripEntryMeta = (e: any) => {
+              const { _synced_to_sb, ...rest } = normalizeIntentEntry(e);
+              return rest;
+            };
+            for (const le of entries) {
+              if (!le?.intent_id || deletedSet.has(le.intent_id)) continue;
+              const existingRemote = remoteMap.get(le.intent_id);
+              if (!existingRemote && !le._synced_to_sb) {
+                const syncedLe = { ...normalizeIntentEntry(le), _synced_to_sb: true };
+                remoteMap.set(le.intent_id, syncedLe);
+                await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(syncedLe), 'intent_id');
+              } else if (
+                existingRemote &&
+                !le._synced_to_sb &&
+                JSON.stringify(stripEntryMeta(le)) !== JSON.stringify(stripEntryMeta(existingRemote))
+              ) {
+                const syncedLe = { ...normalizeIntentEntry(le), _synced_to_sb: true };
+                remoteMap.set(le.intent_id, syncedLe);
+                await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(syncedLe), 'intent_id');
+              }
+            }
+          }
+          entries = Array.from(remoteMap.values()).sort((a, b) =>
+            String(b.intent_id || '').localeCompare(String(a.intent_id || ''))
+          );
+          localStorage.setItem(INTENT_ENTRIES_KEY, JSON.stringify(entries));
+        }
+      } catch {
+        // ignore network errors and fall back to localStorage
+      }
+
       return jsonResponse({ ok: true, template, entries });
     }
 
     if (p === '/api/purchase-intents/template') {
       try {
         const body = parseBody(init);
-        const tpl = body.template || body;
-        localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(tpl));
+        const rawTpl = body.template || body;
+        const { _synced_to_sb, ...cleanTpl } = rawTpl || {};
+        const nowStr = getKstNowStr();
+        const savedTpl = { ...cleanTpl, updated_at: nowStr, _synced_to_sb: true };
+        localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(savedTpl));
+        await sbUpsert(
+          'purchase_intent_config',
+          {
+            config_id: 'DEFAULT',
+            template_json: JSON.stringify({ ...cleanTpl, updated_at: nowStr }),
+            updated_at: nowStr,
+          },
+          'config_id'
+        );
+        return jsonResponse({ ok: true, template: savedTpl, updatedAt: nowStr });
       } catch {
         // ignore
       }
@@ -1970,12 +2171,33 @@ if (typeof window !== 'undefined') {
     if (p === '/api/purchase-intents/entry') {
       try {
         const body = parseBody(init);
+        const normEntry = {
+          ...normalizeIntentEntry({
+            ...body,
+            intent_id: body.intent_id || `LOI-2026-${Date.now().toString().slice(-4)}`,
+          }),
+          _synced_to_sb: true,
+        };
         const rawEntries = localStorage.getItem(INTENT_ENTRIES_KEY);
         const list: any[] = rawEntries ? JSON.parse(rawEntries) : [];
-        const idx = list.findIndex((x) => x.intent_id === body.intent_id);
-        if (idx >= 0) list[idx] = { ...list[idx], ...body };
-        else list.unshift(body);
+        const idx = list.findIndex((x) => x.intent_id === normEntry.intent_id);
+        if (idx >= 0) list[idx] = { ...list[idx], ...normEntry };
+        else list.unshift(normEntry);
         localStorage.setItem(INTENT_ENTRIES_KEY, JSON.stringify(list));
+        try {
+          const rawDeleted = localStorage.getItem(INTENT_DELETED_KEY);
+          if (rawDeleted) {
+            const delList: string[] = JSON.parse(rawDeleted);
+            localStorage.setItem(
+              INTENT_DELETED_KEY,
+              JSON.stringify(delList.filter((id) => id !== normEntry.intent_id))
+            );
+          }
+        } catch {
+          // ignore
+        }
+        await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(normEntry), 'intent_id');
+        return jsonResponse({ ok: true, intent_id: normEntry.intent_id, entry: normEntry });
       } catch {
         // ignore
       }
@@ -1985,12 +2207,26 @@ if (typeof window !== 'undefined') {
     if (p === '/api/purchase-intents/entry/delete') {
       try {
         const { intent_id } = parseBody(init);
+        const targetId = String(intent_id || '').trim();
         const rawEntries = localStorage.getItem(INTENT_ENTRIES_KEY);
         const list: any[] = rawEntries ? JSON.parse(rawEntries) : [];
         localStorage.setItem(
           INTENT_ENTRIES_KEY,
-          JSON.stringify(list.filter((x) => x.intent_id !== intent_id))
+          JSON.stringify(list.filter((x) => x.intent_id !== targetId))
         );
+        if (targetId) {
+          try {
+            const rawDeleted = localStorage.getItem(INTENT_DELETED_KEY);
+            const delList: string[] = rawDeleted ? JSON.parse(rawDeleted) : [];
+            if (!delList.includes(targetId)) {
+              delList.push(targetId);
+              localStorage.setItem(INTENT_DELETED_KEY, JSON.stringify(delList));
+            }
+          } catch {
+            // ignore
+          }
+          await sbDelete('purchase_intent_entry', `intent_id=eq.${encodeURIComponent(targetId)}`);
+        }
       } catch {
         // ignore
       }
