@@ -2924,63 +2924,223 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 예정된 농작업 */}
+                              {/* 오늘 처리할 일정 이후에 진행될 일정 (예정된 농작업 심플 리스트 & 선택 시 관련 정보 + 추천상품 1개 인라인 표시) */}
                               <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                  <h4 className="text-lg font-extrabold text-slate-900">
-                                    예정된 농작업
-                                  </h4>
-                                  <button
-                                    type="button"
-                                    onClick={() => setScheduleViewMode('timeline')}
-                                    className="text-xs font-semibold text-slate-500 hover:text-emerald-700 cursor-pointer"
-                                  >
-                                    전체 일정
-                                  </button>
+                                  <div>
+                                    <h4 className="text-lg font-extrabold text-slate-900">
+                                      예정된 농작업 (이후 진행 일정)
+                                    </h4>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                      항목을 선택하면 상세 생육정보와 맞춤 추천상품(1종)이 표시됩니다.
+                                    </p>
+                                  </div>
+                                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold shrink-0">
+                                    총 {(provisionData.scheduleItems || []).length}개 공정
+                                  </span>
                                 </div>
 
-                                <div className="space-y-2.5">
-                                  {(provisionData.scheduleItems || [])
-                                    .slice(-4, -1)
-                                    .map((item: any) => {
-                                      const cleanName = String(item.sub_item_name || '')
-                                        .replace(/\s*\([^)]*\)/g, '')
-                                        .trim();
-                                      const shortMd = item.start_date
-                                        ? `${item.start_date.slice(5, 7)}/${item.start_date.slice(8, 10)}`
-                                        : '-';
-                                      const isSelected = selectedStageItem?.item_id === item.item_id;
-                                      return (
+                                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                                  {(provisionData.scheduleItems || []).map((item: any, idx: number) => {
+                                    const cleanName = String(item.sub_item_name || '')
+                                      .replace(/\s*\([^)]*\)/g, '')
+                                      .trim();
+                                    const shortMd = item.start_date
+                                      ? `${item.start_date.slice(5, 7)}/${item.start_date.slice(8, 10)}`
+                                      : '-';
+                                    const isSelected = selectedStageItem?.item_id === item.item_id;
+                                    const topMat = [...(item.materials || [])].sort(
+                                      (a: any, b: any) =>
+                                        Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                                    )[0];
+                                    const stageId =
+                                      item.stage_group_code ||
+                                      item.stage_group_id ||
+                                      item.stage_group_name ||
+                                      'STG-1';
+                                    const matCode =
+                                      topMat?.material_id || topMat?.product_name || 'MAT-1';
+                                    const selKey = `${stageId}__${item.item_id || ''}__${matCode}`;
+                                    const areaPyeongVal = Number(
+                                      provisionData.activeRequest?.area_pyeong ||
+                                        crop.area_pyeong ||
+                                        300
+                                    );
+                                    const defaultQty = topMat
+                                      ? parseRecommendedQuantity(topMat, areaPyeongVal)
+                                      : 1;
+                                    const isChecked =
+                                      (purchaseSelectionMap[selKey]?.checked ?? true) === true;
+
+                                    return (
+                                      <div key={`mob-up-${item.item_id || idx}`} className="bg-white">
+                                        {/* 심플 리스트 행 */}
                                         <div
-                                          key={`mob-up-${item.item_id}`}
                                           onClick={() => {
-                                            handleSelectStageItem(item);
-                                            setDetailModalPos({ x: 0, y: 0 });
-                                            setClickedProvisionItem(item);
+                                            if (isSelected) {
+                                              setSelectedStageItem(null);
+                                            } else {
+                                              handleSelectStageItem(item);
+                                            }
                                           }}
-                                          className={`py-2 px-1 rounded-2xl flex items-center justify-between gap-3 transition cursor-pointer ${
-                                            isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50'
+                                          className={`p-3 flex items-center justify-between gap-3 transition cursor-pointer ${
+                                            isSelected
+                                              ? 'bg-emerald-50/80'
+                                              : 'hover:bg-slate-50'
                                           }`}
                                         >
                                           <div className="flex items-center gap-3 min-w-0">
-                                            <span className="px-3.5 py-2.5 rounded-2xl bg-[#F4F6F8] font-extrabold text-sm text-slate-900 shrink-0">
+                                            <span
+                                              className={`px-3 py-2 rounded-xl font-mono font-extrabold text-xs shrink-0 ${
+                                                isSelected
+                                                  ? 'bg-emerald-600 text-white'
+                                                  : 'bg-[#F4F6F8] text-slate-900'
+                                              }`}
+                                            >
                                               {shortMd}
                                             </span>
                                             <div className="min-w-0">
-                                              <div className="font-extrabold text-sm text-slate-900 truncate">
-                                                {cleanName}
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="font-extrabold text-sm text-slate-900 truncate">
+                                                  {cleanName}
+                                                </span>
+                                                {item.stage_group_name && (
+                                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
+                                                    {item.stage_group_name}
+                                                  </span>
+                                                )}
                                               </div>
                                               <div className="text-xs text-slate-500 truncate mt-0.5">
                                                 {item.work_content ||
                                                   item.work_description ||
-                                                  '결구·기온·품질 확인 후 진행'}
+                                                  '생육상태 및 기온 확인 후 진행'}
                                               </div>
                                             </div>
                                           </div>
-                                          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                          <ChevronRight
+                                            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                                              isSelected
+                                                ? 'rotate-90 text-emerald-700'
+                                                : 'text-slate-400'
+                                            }`}
+                                          />
                                         </div>
-                                      );
-                                    })}
+
+                                        {/* 리스트 항목 선택 시 열리는 관련 정보 + 생육과정별 추천상품 1개 (제품이미지 + 제품명 + 선택된 체크박스) */}
+                                        {isSelected && (
+                                          <div className="px-3.5 pb-3.5 pt-2 bg-emerald-50/40 border-t border-emerald-100 space-y-3">
+                                            {/* 1. 관련된 생육과정 상세 정보 */}
+                                            <div className="rounded-xl bg-white border border-emerald-200/80 p-3 space-y-2">
+                                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-extrabold">
+                                                  {item.stage_group_name || '생육공정'} ·{' '}
+                                                  {item.process_code || `SCH-0${idx + 1}`}
+                                                </span>
+                                                <span className="font-mono text-xs font-extrabold text-emerald-700">
+                                                  추천 진행일: {formatYmdWithWeekday(item.start_date)}
+                                                </span>
+                                              </div>
+
+                                              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                                                <div className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                                                  <span className="text-slate-500 font-semibold">목표 적산온도</span>
+                                                  <span className="font-mono font-extrabold text-slate-800">
+                                                    PGDD {item.target_pgdd || 0}℃
+                                                  </span>
+                                                </div>
+                                                <div className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                                                  <span className="text-slate-500 font-semibold">예상 평균기온</span>
+                                                  <span className="font-mono font-extrabold text-emerald-700">
+                                                    {item.recommended_day_climate?.temp_avg ??
+                                                      item.climate_stats?.avg_temp ??
+                                                      18.5}
+                                                    ℃
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              <div className="text-xs text-slate-700 leading-relaxed bg-slate-50/80 rounded-lg p-2.5 border border-slate-100">
+                                                <div className="font-extrabold text-slate-900 mb-0.5">
+                                                  📋 핵심 작업내용
+                                                </div>
+                                                <div>
+                                                  {item.work_content ||
+                                                    item.work_description ||
+                                                    '토양 수분 및 생육 상태를 점검하고 적정량을 살포합니다.'}
+                                                </div>
+                                                {(item.climate_rule || item.usage_tip) && (
+                                                  <div className="mt-1.5 pt-1.5 border-t border-slate-200/70 text-[11px] text-emerald-800 font-medium">
+                                                    💡 {item.climate_rule || item.usage_tip}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* 2. 해당 생육과정별 추천상품 1개 (체크박스 선택된 상태 + 제품이미지 + 제품명) */}
+                                            {topMat && (
+                                              <div className="rounded-xl bg-white border-2 border-emerald-500/80 p-3 shadow-2xs space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <span className="text-[11px] font-extrabold text-emerald-800 flex items-center gap-1">
+                                                    <Package className="w-3.5 h-3.5 text-emerald-600" />
+                                                    해당 생육과정 맞춤 추천상품 (1종)
+                                                  </span>
+                                                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                                                    추천점수 {topMat.match_score || 95}점
+                                                  </span>
+                                                </div>
+
+                                                <label
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="flex items-center gap-3 cursor-pointer select-none pt-0.5"
+                                                >
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() =>
+                                                      handleToggleMaterialCheck(selKey, defaultQty)
+                                                    }
+                                                    className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                                  />
+                                                  <img
+                                                    src={
+                                                      topMat.thumbnail_url ||
+                                                      '/api/agro-materials/image/FERT-PRD-01/thumb'
+                                                    }
+                                                    alt={topMat.product_name}
+                                                    className="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
+                                                  />
+                                                  <div className="min-w-0 flex-1">
+                                                    <div className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
+                                                      {topMat.product_name}
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                                      {topMat.core_Spec ||
+                                                        topMat.core_spec ||
+                                                        topMat.material_category_name ||
+                                                        '맞춤 농자재'}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                                      <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold">
+                                                        {areaPyeongVal.toLocaleString()}평 기준 권장{' '}
+                                                        {defaultQty}
+                                                        {topMat.unit_label || '개'}
+                                                      </span>
+                                                      <span className="font-mono text-xs font-extrabold text-slate-900">
+                                                        {Number(
+                                                          topMat.unit_price || 15000
+                                                        ).toLocaleString()}
+                                                        원
+                                                      </span>
+                                                    </div>
+                                                  </div>
+                                                </label>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             </section>
@@ -3042,8 +3202,6 @@ export default function UserIntroPage() {
                                             key={`mob-tl-${item.item_id}`}
                                             onClick={() => {
                                               handleSelectStageItem(item);
-                                              setDetailModalPos({ x: 0, y: 0 });
-                                              setClickedProvisionItem(item);
                                             }}
                                             className={`flex items-start gap-3.5 rounded-xl p-1.5 transition cursor-pointer ${
                                               isSelected
@@ -3146,8 +3304,6 @@ export default function UserIntroPage() {
                                           onClick={() => {
                                             if (cell.items[0]) {
                                               handleSelectStageItem(cell.items[0]);
-                                              setDetailModalPos({ x: 0, y: 0 });
-                                              setClickedProvisionItem(cell.items[0]);
                                             }
                                           }}
                                           className={`h-11 rounded-xl flex flex-col items-center justify-center text-sm font-semibold transition cursor-pointer ${
@@ -3262,8 +3418,6 @@ export default function UserIntroPage() {
                                                     type="button"
                                                     onClick={() => {
                                                       handleSelectStageItem(it);
-                                                      setDetailModalPos({ x: 0, y: 0 });
-                                                      setClickedProvisionItem(it);
                                                     }}
                                                     className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
                                                       isSel
@@ -3287,52 +3441,111 @@ export default function UserIntroPage() {
                                 </div>
                               )}
 
-                              {/* 모바일 하단: 선택한 생육과정 추천 진행일 조정 및 세부보기 바로가기 */}
-                              {detailItem && (
-                                <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs font-extrabold text-emerald-900">
-                                      선택 공정: {String(detailItem.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setDetailModalPos({ x: 0, y: 0 });
-                                        setClickedProvisionItem(detailItem);
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold cursor-pointer"
-                                    >
-                                      세부 정보 · 추천근거 보기 ›
-                                    </button>
+                              {/* 모바일 하단: 선택한 생육과정 관련 정보 + 추천상품 1종(이미지·상품명·체크박스) + 추천 진행일 조정 */}
+                              {detailItem && (() => {
+                                const dTopMat = [...(detailItem.materials || [])].sort(
+                                  (a: any, b: any) =>
+                                    Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                                )[0];
+                                const dStageId =
+                                  detailItem.stage_group_code ||
+                                  detailItem.stage_group_id ||
+                                  detailItem.stage_group_name ||
+                                  'STG-1';
+                                const dMatCode =
+                                  dTopMat?.material_id || dTopMat?.product_name || 'MAT-1';
+                                const dSelKey = `${dStageId}__${detailItem.item_id || ''}__${dMatCode}`;
+                                const dAreaPyeong = Number(
+                                  provisionData.activeRequest?.area_pyeong ||
+                                    crop.area_pyeong ||
+                                    300
+                                );
+                                const dDefaultQty = dTopMat
+                                  ? parseRecommendedQuantity(dTopMat, dAreaPyeong)
+                                  : 1;
+                                const dIsChecked =
+                                  (purchaseSelectionMap[dSelKey]?.checked ?? true) === true;
+
+                                return (
+                                  <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-extrabold text-emerald-900">
+                                        선택 공정:{' '}
+                                        {String(detailItem.sub_item_name || '')
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim()}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-[10px] font-extrabold">
+                                        PGDD {detailItem.target_pgdd || 0}℃
+                                      </span>
+                                    </div>
+
+                                    <div className="text-xs text-slate-700 bg-white/90 rounded-xl p-2.5 border border-emerald-200/70 leading-relaxed">
+                                      {detailItem.work_content ||
+                                        detailItem.work_description ||
+                                        '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
+                                    </div>
+
+                                    {dTopMat && (
+                                      <label className="rounded-xl bg-white border border-emerald-300 p-2.5 flex items-center gap-3 cursor-pointer select-none">
+                                        <input
+                                          type="checkbox"
+                                          checked={dIsChecked}
+                                          onChange={() =>
+                                            handleToggleMaterialCheck(dSelKey, dDefaultQty)
+                                          }
+                                          className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                        />
+                                        <img
+                                          src={
+                                            dTopMat.thumbnail_url ||
+                                            '/api/agro-materials/image/FERT-PRD-01/thumb'
+                                          }
+                                          alt={dTopMat.product_name}
+                                          className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="font-extrabold text-xs text-slate-900 truncate">
+                                            {dTopMat.product_name}
+                                          </div>
+                                          <div className="text-[11px] text-emerald-800 font-bold mt-0.5">
+                                            권장 {dDefaultQty}
+                                            {dTopMat.unit_label || '개'} ·{' '}
+                                            {Number(dTopMat.unit_price || 15000).toLocaleString()}원
+                                          </div>
+                                        </div>
+                                      </label>
+                                    )}
+
+                                    <div className="flex items-center justify-between gap-2">
+                                      <input
+                                        type="date"
+                                        value={curStart}
+                                        onChange={(e) =>
+                                          setEditDetailForm((prev: any) => ({
+                                            ...prev,
+                                            start_date: e.target.value,
+                                          }))
+                                        }
+                                        className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                      />
+                                      <span className="font-mono font-extrabold text-xs text-emerald-900">
+                                        {formatYmdWithWeekday(curStart)}
+                                      </span>
+                                    </div>
+                                    {cascadeDeltaDays !== 0 && (
+                                      <button
+                                        type="button"
+                                        disabled={isSavingDetailItem}
+                                        onClick={handleSaveUserScheduleCascade}
+                                        className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs cursor-pointer"
+                                      >
+                                        ✅ 새 일정 승인 및 후속 {subsequentItems.length}개 공정 반영
+                                      </button>
+                                    )}
                                   </div>
-                                  <div className="flex items-center justify-between gap-2">
-                                    <input
-                                      type="date"
-                                      value={curStart}
-                                      onChange={(e) =>
-                                        setEditDetailForm((prev: any) => ({
-                                          ...prev,
-                                          start_date: e.target.value,
-                                        }))
-                                      }
-                                      className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
-                                    />
-                                    <span className="font-mono font-extrabold text-xs text-emerald-900">
-                                      {formatYmdWithWeekday(curStart)}
-                                    </span>
-                                  </div>
-                                  {cascadeDeltaDays !== 0 && (
-                                    <button
-                                      type="button"
-                                      disabled={isSavingDetailItem}
-                                      onClick={handleSaveUserScheduleCascade}
-                                      className="w-full py-2.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-xs cursor-pointer"
-                                    >
-                                      ✅ 새 일정 승인 및 후속 {subsequentItems.length}개 공정 반영
-                                    </button>
-                                  )}
-                                </div>
-                              )}
+                                );
+                              })()}
                             </section>
                           </div>
 
