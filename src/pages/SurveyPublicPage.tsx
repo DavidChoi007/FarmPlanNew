@@ -364,6 +364,22 @@ export default function SurveyPublicPage() {
       .replace(/\s*\(복수\s*선택\s*가능\)/g, '')
       .trim();
 
+  const renderTextWithSmallerParens = (
+    text: string,
+    parenClassName = 'text-[13px] sm:text-sm font-semibold'
+  ) => {
+    const parts = String(text || '').split(/(\([^)]*\))/g);
+    return parts.map((part, idx) =>
+      part.startsWith('(') && part.endsWith(')') ? (
+        <span key={idx} className={parenClassName}>
+          {part}
+        </span>
+      ) : (
+        <React.Fragment key={idx}>{part}</React.Fragment>
+      )
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSurveyClosed) {
@@ -613,7 +629,9 @@ export default function SurveyPublicPage() {
             <div>
               <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
                 <User className="w-4 h-4 text-emerald-700 shrink-0" />
-                성명 또는 닉네임(필수)
+                <span>
+                  {renderTextWithSmallerParens('성명 또는 닉네임(필수)', 'text-xs sm:text-sm font-bold')}
+                </span>
               </label>
               <input
                 type="text"
@@ -628,7 +646,9 @@ export default function SurveyPublicPage() {
             <div>
               <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
                 <Phone className="w-4 h-4 text-emerald-700 shrink-0" />
-                연락처 (선택)
+                <span>
+                  {renderTextWithSmallerParens('연락처 (선택)', 'text-xs sm:text-sm font-bold')}
+                </span>
               </label>
               <input
                 type="tel"
@@ -644,7 +664,9 @@ export default function SurveyPublicPage() {
             <div className="flex items-center justify-between gap-2 mb-1.5">
               <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 whitespace-nowrap">
                 <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                주요 재배 지역 (필수)
+                <span>
+                  {renderTextWithSmallerParens('주요 재배 지역 (필수)', 'text-xs sm:text-sm font-bold')}
+                </span>
               </label>
               {respondentRegion && (
                 <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-sm font-extrabold whitespace-nowrap overflow-hidden text-ellipsis">
@@ -754,7 +776,7 @@ export default function SurveyPublicPage() {
                 <div className="space-y-2">
                   <h3 className="text-[18px] sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
                     <span>
-                      {q.number}. {cleanedQuestion}
+                      {q.number}. {renderTextWithSmallerParens(cleanedQuestion, 'text-sm sm:text-base font-bold')}
                     </span>
                     <span
                       className={`inline-flex items-center align-middle ml-2 px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-extrabold whitespace-nowrap ${
@@ -801,7 +823,9 @@ export default function SurveyPublicPage() {
                         >
                           {isChecked && '✓'}
                         </span>
-                        <span className="leading-snug break-keep">{opt}</span>
+                        <span className="leading-snug break-keep">
+                          {renderTextWithSmallerParens(opt, 'text-[13px] sm:text-sm font-semibold')}
+                        </span>
                       </button>
                     );
                   })}

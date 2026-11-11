@@ -26854,7 +26854,7 @@ export default function AdminDashboardPage() {
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
-                              성명 또는 닉네임(필수)
+                              성명 또는 닉네임<span className="text-xs sm:text-sm font-bold">(필수)</span>
                             </label>
                             <input
                               type="text"
@@ -26872,7 +26872,7 @@ export default function AdminDashboardPage() {
                           </div>
                           <div>
                             <label className="block text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
-                              연락처 (선택)
+                              연락처 <span className="text-xs sm:text-sm font-bold">(선택)</span>
                             </label>
                             <input
                               type="text"
@@ -26892,7 +26892,10 @@ export default function AdminDashboardPage() {
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-1.5">
                             <label className="text-[16px] sm:text-lg font-extrabold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                              <MapPin className="w-4 h-4 text-emerald-700 shrink-0" /> 주요 재배 지역 (필수)
+                              <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                              <span>
+                                주요 재배 지역 <span className="text-xs sm:text-sm font-bold">(필수)</span>
+                              </span>
                             </label>
                             {newSurveyRespForm.respondent_region && (
                               <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-sm font-extrabold whitespace-nowrap">
@@ -27007,7 +27010,16 @@ export default function AdminDashboardPage() {
                                 <div className="space-y-2">
                                   <h3 className="text-[18px] sm:text-xl font-extrabold text-slate-900 leading-snug break-keep">
                                     <span>
-                                      {q.number}. {cleanQ}
+                                      {q.number}.{' '}
+                                      {cleanQ.split(/(\([^)]*\))/g).map((part, idx) =>
+                                        part.startsWith('(') && part.endsWith(')') ? (
+                                          <span key={idx} className="text-sm sm:text-base font-bold">
+                                            {part}
+                                          </span>
+                                        ) : (
+                                          <React.Fragment key={idx}>{part}</React.Fragment>
+                                        )
+                                      )}
                                     </span>
                                     <span
                                       className={`inline-flex items-center align-middle ml-2 px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-extrabold whitespace-nowrap ${
@@ -27067,7 +27079,19 @@ export default function AdminDashboardPage() {
                                         >
                                           {isSelected && '✓'}
                                         </span>
-                                        <span className="leading-snug break-keep">{opt}</span>
+                                        <span className="leading-snug break-keep">
+                                          {String(opt)
+                                            .split(/(\([^)]*\))/g)
+                                            .map((part, idx) =>
+                                              part.startsWith('(') && part.endsWith(')') ? (
+                                                <span key={idx} className="text-[13px] sm:text-sm font-semibold">
+                                                  {part}
+                                                </span>
+                                              ) : (
+                                                <React.Fragment key={idx}>{part}</React.Fragment>
+                                              )
+                                            )}
+                                        </span>
                                       </button>
                                     );
                                   })}
