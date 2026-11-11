@@ -527,7 +527,7 @@ export default function UserIntroPage() {
     };
   }, [isDraggingReqDetailModal]);
 
-  const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '비료', '영양제', '병해충관리제', '마이페이지'];
+  const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '비료', '영양제', '병해충관리제', '씨', '모종', '마이페이지'];
 
   // CloudBae@naver.com (배철민) 회원의 전체 등록 재배작물 리스트 (관리자 페이지의 재배일정 요청 9건 & 제공 일정 데이터와 1:1 매칭)
   const defaultCloudBaeCropList = [
@@ -1566,6 +1566,8 @@ export default function UserIntroPage() {
     fertilizerCategories: Array<{ code: string; name: string; desc: string; main_type?: string }>;
     nutrientCategories: Array<{ code: string; name: string; desc: string }>;
     pesticideCategories: Array<{ code: string; name: string; desc: string }>;
+    seedCategories: Array<{ code: string; name: string; desc: string }>;
+    seedlingCategories: Array<{ code: string; name: string; desc: string }>;
   }>({
     items: [],
     total: 0,
@@ -1594,13 +1596,29 @@ export default function UserIntroPage() {
       { code: 'CAT-PST-MOTH', name: '나방·벼룩잎벌레 종합살충제', desc: '생육 초기~결구기에 잎과 생장점을 가해하는 파밤나방·배추좀나방·담배거세미나방·벼룩잎벌레를 동시 방제하는 살충제' },
       { code: 'CAT-PST-ECO', name: '친환경 유기농업자재 (PLS 수확전 방제)', desc: '님(Neem)·유칼립투스·계피 등 식물유래 천연추출물 기반으로 수확 임박기 PLS 잔류농약 걱정 없이 사용하는 유기농업자재 공시 제품' },
     ],
+    seedCategories: [
+      { code: 'CAT-SEED-LEAF', name: '엽채류 종자 (배추·상추·시금치·양배추)', desc: '가을·봄·월동배추, 시금치, 상추, 양배추 등 엽채류 F1 코팅종자 및 재래종 씨앗' },
+      { code: 'CAT-SEED-ROOT', name: '근채류 종자 (무·당근·우엉·비트)', desc: '김장무, 알타리무(총각무), 봄·가을 당근, 우엉 등 근채류 정밀 선별 종자' },
+      { code: 'CAT-SEED-FRUIT', name: '과채류 종자 (고추·오이·토마토·호박)', desc: '복합내병성 고추, 백다다기오이, 대추방울토마토, 애호박 등 고품질 과채류 종자' },
+      { code: 'CAT-SEED-ALLIUM', name: '양념·구근류 종자 (대파·양파·부추)', desc: '교배종 외대파, 중만생종 저장양파, 다수확 부추 등 양념채소 전문 종자' },
+      { code: 'CAT-SEED-GRAIN', name: '두류·특작 종자 (찰옥수수·콩·참깨·들깨)', desc: '초당·찰옥수수, 대원콩·서리태, 수지참깨·들깨 등 식량·특용작물 보급종 및 육종 종자' },
+    ],
+    seedlingCategories: [
+      { code: 'CAT-SDL-LEAF', name: '배추·양배추·쌈채류 모종', desc: '105구·128구 트레이에서 뿌리돌림과 외기 순화(Hardening)를 완료한 배추·양배추·브로콜리·상추 우량 프러그묘' },
+      { code: 'CAT-SDL-FRUIT', name: '고추·토마토·가지·오이 과채 모종', desc: '탄저병·칼라병(TSWV)·역병 복합내병성 고추 모종 및 토마토·오이·가지·호박 포트 육묘 모종' },
+      { code: 'CAT-SDL-HERB', name: '대파·양파·쪽파·부추 양념 모종', desc: '200구·288구 트레이 육묘 대파·양파 모종 및 조기 정식용 쪽파·부추 영양묘' },
+      { code: 'CAT-SDL-ROOT', name: '고구마순·씨감자·마늘 영양번식 모종', desc: '무병 조직배양 고구마순(꿀고구마·호박고구마), 정부 보급종 씨감자(수미·두백), 종구용 마늘·생강' },
+      { code: 'CAT-SDL-SPEC', name: '접목묘·특수작물 모종 (딸기·수박·참외)', desc: '토양 전염성 덩굴쪼김병·역병 저항성 대목에 접목한 수박·참외·오이·토마토 전문 접목묘 및 설향 딸기 우량묘' },
+    ],
   });
 
   const getUserAgroCategoryFromMenu = (
-    menuName: UserMenu
-  ): 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE' => {
+    menuName: string
+  ): 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE' | 'SEED' | 'SEEDLING' => {
     if (menuName === '영양제') return 'NUTRIENT';
     if (menuName === '병해충관리제') return 'PESTICIDE';
+    if (menuName === '씨') return 'SEED';
+    if (menuName === '모종') return 'SEEDLING';
     return 'FERTILIZER';
   };
 
@@ -1634,6 +1652,8 @@ export default function UserIntroPage() {
         fertilizerCategories: res.fertilizerCategories || prev.fertilizerCategories,
         nutrientCategories: res.nutrientCategories || prev.nutrientCategories,
         pesticideCategories: res.pesticideCategories || prev.pesticideCategories,
+        seedCategories: res.seedCategories || prev.seedCategories,
+        seedlingCategories: res.seedlingCategories || prev.seedlingCategories,
       }));
     } catch {
       // ignore
@@ -1874,14 +1894,22 @@ export default function UserIntroPage() {
   }, [selectedRequestNo]);
 
   useEffect(() => {
-    if (activeMenu === '비료' || activeMenu === '영양제' || activeMenu === '병해충관리제') {
+    if (
+      activeMenu === '비료' ||
+      activeMenu === '영양제' ||
+      activeMenu === '병해충관리제' ||
+      activeMenu === '씨' ||
+      activeMenu === '모종'
+    ) {
       const cat = getUserAgroCategoryFromMenu(activeMenu);
+      setUserAgroMainTypeFilter('ALL');
       setUserAgroSubTypeFilter('ALL');
       setUserAgroOrganicFilter('ALL');
       setUserAgroKeyword('');
       setSelectedUserAgroDetail(null);
       executeUserAgroMaterialSearch({
         category: cat,
+        main_type: 'ALL',
         sub_type: 'ALL',
         is_organic: 'ALL',
         q: '',
@@ -2490,6 +2518,18 @@ export default function UserIntroPage() {
               desc: 'PLS 안전기준 · 작용기작 교호살포 약제',
               badge: '농자재',
               icon: ShieldAlert,
+            },
+            {
+              menu: '씨',
+              desc: '발아율 · 내병성 보증 우량 코팅종자 · 씨앗',
+              badge: '종자',
+              icon: Package,
+            },
+            {
+              menu: '모종',
+              desc: '트레이 규격 · 접목/실생 · 외기순화 건묘 모종',
+              badge: '육묘',
+              icon: Sprout,
             },
             {
               menu: '마이페이지',
@@ -6864,10 +6904,14 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [탭 4~6: 비료 / 영양제 / 병해충관리제 (관리자 페이지 등록 농자재 DB + 다중 검색 필터 + 전체 리스트 출력)] ==================== */}
-        {(activeMenu === '비료' || activeMenu === '영양제' || activeMenu === '병해충관리제') && (
+        {/* ==================== [탭 4~8: 비료 / 영양제 / 병해충관리제 / 씨 / 모종 (관리자 페이지 등록 농자재 DB + 다중 검색 필터 + 전체 리스트 출력)] ==================== */}
+        {(activeMenu === '비료' ||
+          activeMenu === '영양제' ||
+          activeMenu === '병해충관리제' ||
+          activeMenu === '씨' ||
+          activeMenu === '모종') && (
           <div className="space-y-6">
-            {/* 비료 / 영양제 / 병해충관리제 페이지별 맞춤형 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
+            {/* 비료 / 영양제 / 병해충관리제 / 씨 / 모종 페이지별 맞춤형 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
             <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
               <div className="relative w-full">
                 <img
@@ -6876,7 +6920,11 @@ export default function UserIntroPage() {
                       ? '/images/user-fertilizer-3d-banner.jpg?v=20261109'
                       : activeMenu === '영양제'
                       ? '/images/user-nutrient-3d-banner.jpg?v=20261109'
-                      : '/images/user-pesticide-3d-banner.jpg?v=20261109'
+                      : activeMenu === '병해충관리제'
+                      ? '/images/user-pesticide-3d-banner.jpg?v=20261109'
+                      : activeMenu === '씨'
+                      ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
+                      : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
                   }
                   alt={`${activeMenu} 페이지 전용 3D 농부 캐릭터 와이드 배너`}
                   className="w-full h-auto min-h-[140px] object-cover object-center block"
@@ -6913,7 +6961,7 @@ export default function UserIntroPage() {
               </div>
             )}
 
-            {/* 상단 서브메뉴 3종 빠른 전환 바 (비료 / 영양제 / 병해충관리제) */}
+            {/* 상단 서브메뉴 5종 빠른 전환 바 (비료 / 영양제 / 병해충관리제 / 씨 / 모종) */}
             <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
@@ -6926,14 +6974,30 @@ export default function UserIntroPage() {
                         ? '비료 (FERTILIZER) 전문 판매점 전체 제품 리스트'
                         : activeMenu === '영양제'
                         ? '영양제 (NUTRIENT) 전문 판매점 전체 제품 리스트'
-                        : '병해충관리제 (PESTICIDE) 전문 판매점 전체 제품 리스트'}
+                        : activeMenu === '병해충관리제'
+                        ? '병해충관리제 (PESTICIDE) 전문 판매점 전체 제품 리스트'
+                        : activeMenu === '씨'
+                        ? '씨 (SEED) 전문 종자 판매점 전체 제품 리스트'
+                        : '모종 (SEEDLING) 전문 육묘 판매점 전체 제품 리스트'}
                     </span>
                     <span className="px-3 py-0.5 rounded-full text-xs sm:text-sm bg-emerald-600 text-white font-extrabold">
                       총 {userAgroResult.total}개 제품
                     </span>
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    관리자 페이지에 등록된 <strong>구분 카테고리</strong>, <strong>주요 영양소 첨가비(N·P·K·칼슘·고토·붕소·규산·유황·유기물)</strong>, <strong>100평당 권장 처방량</strong> 및 <strong>상세 이미지(총 6종)</strong>를 모두 확인하고 검색할 수 있습니다.
+                    {activeMenu === '씨' ? (
+                      <>
+                        관리자 페이지에 등록된 <strong>종자 분류 카테고리</strong>, <strong>립수·포장단위·발아율 보증(%)·발아 적온(℃)·코팅처리·파종적기·수확소요일수·내병성·품종신고번호</strong> 및 <strong>실제 종자 상품 이미지</strong>를 확인하고 검색할 수 있습니다.
+                      </>
+                    ) : activeMenu === '모종' ? (
+                      <>
+                        관리자 페이지에 등록된 <strong>모종 분류 카테고리</strong>, <strong>트레이 규격(구수/본수)·육묘일수(묘령)·접목여부·재식거리·외기순화 상태·내병성·안전배송 규격</strong> 및 <strong>실제 모종 상품 이미지</strong>를 확인하고 검색할 수 있습니다.
+                      </>
+                    ) : (
+                      <>
+                        관리자 페이지에 등록된 <strong>구분 카테고리</strong>, <strong>주요 영양소 첨가비(N·P·K·칼슘·고토·붕소·규산·유황·유기물)</strong>, <strong>100평당 권장 처방량</strong> 및 <strong>상세 이미지(총 6종)</strong>를 모두 확인하고 검색할 수 있습니다.
+                      </>
+                    )}
                   </p>
                 </div>
 
@@ -6974,6 +7038,30 @@ export default function UserIntroPage() {
                     <ShieldAlert className="w-4 h-4" />
                     병해충관리제 (PESTICIDE)
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('씨')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+                      activeMenu === '씨'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    씨 (SEED)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('모종')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
+                      activeMenu === '모종'
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Sprout className="w-4 h-4" />
+                    모종 (SEEDLING)
+                  </button>
                 </div>
               </div>
 
@@ -6987,11 +7075,15 @@ export default function UserIntroPage() {
                         ? '비료 전문점 제품'
                         : activeMenu === '영양제'
                         ? '영양제 제품'
-                        : '병해충관리제 제품'}{' '}
+                        : activeMenu === '병해충관리제'
+                        ? '병해충관리제 제품'
+                        : activeMenu === '씨'
+                        ? '씨 (종자) 제품'
+                        : '모종 (육묘) 제품'}{' '}
                       다중 검색 필터
                     </span>
                     <span className="text-xs text-slate-600 font-semibold">
-                      구분 카테고리 · 친환경 구분 · 제조사 · 제품명 · 주요 영양소 첨가비 · 핵심 효능으로 실시간 검색합니다.
+                      구분 카테고리 · 친환경 구분 · 제조사 · 제품명 · 주요 스펙 · 핵심 특성으로 실시간 검색합니다.
                     </span>
                   </div>
                   <button
@@ -7047,7 +7139,11 @@ export default function UserIntroPage() {
                         ? '② 비료 세부 카테고리 (Sub-Type)'
                         : activeMenu === '영양제'
                         ? '① 영양제 구분 카테고리 (Sub-Type)'
-                        : '① 병해충관리제 구분 카테고리 (Sub-Type)'}
+                        : activeMenu === '병해충관리제'
+                        ? '① 병해충관리제 구분 카테고리 (Sub-Type)'
+                        : activeMenu === '씨'
+                        ? '① 씨 (종자) 구분 카테고리 (Sub-Type)'
+                        : '① 모종 (육묘) 구분 카테고리 (Sub-Type)'}
                     </label>
                     <select
                       value={userAgroSubTypeFilter}
@@ -7068,7 +7164,11 @@ export default function UserIntroPage() {
                           )
                         : activeMenu === '영양제'
                         ? userAgroResult.nutrientCategories
-                        : userAgroResult.pesticideCategories
+                        : activeMenu === '병해충관리제'
+                        ? userAgroResult.pesticideCategories
+                        : activeMenu === '씨'
+                        ? userAgroResult.seedCategories
+                        : userAgroResult.seedlingCategories
                       ).map((catItem: any) => (
                         <option key={catItem.code} value={catItem.name}>
                           {activeMenu === '비료'
@@ -7104,6 +7204,8 @@ export default function UserIntroPage() {
                     <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
                       {activeMenu === '비료'
                         ? '④ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'
+                        : activeMenu === '씨' || activeMenu === '모종'
+                        ? '③ 품종명 · 종묘사/육묘장 · 내병성 · 규격 검색'
                         : '③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'}
                     </label>
                     <form
@@ -7124,7 +7226,11 @@ export default function UserIntroPage() {
                               ? '예: 슈퍼원예복합, 엔케이, 단한번, 고토석회, 유박, 대유, 남해화학, 누보...'
                               : activeMenu === '영양제'
                               ? '예: 칼슘, 붕소, 발근, 비대, 아미노산, 냉해, 광합성, 미량요소...'
-                              : '예: 무름병, 노균병, 진딧물, 나방, 뿌리혹병, 제초제, 친환경...'
+                              : activeMenu === '병해충관리제'
+                              ? '예: 무름병, 노균병, 진딧물, 나방, 뿌리혹병, 제초제, 친환경...'
+                              : activeMenu === '씨'
+                              ? '예: 불암3호, 포항초, 청치마, 코팅종자, 무사마귀병, 농우바이오, 아시아종묘...'
+                              : '예: 불암3호 모종, 칼라탄 고추모종, 105구, 접목묘, 베니하루카, 씨감자...'
                           }
                           className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900 placeholder-slate-400"
                         />
@@ -7160,7 +7266,11 @@ export default function UserIntroPage() {
                     ? userAgroResult.fertilizerCategories
                     : activeMenu === '영양제'
                     ? userAgroResult.nutrientCategories
-                    : userAgroResult.pesticideCategories
+                    : activeMenu === '병해충관리제'
+                    ? userAgroResult.pesticideCategories
+                    : activeMenu === '씨'
+                    ? userAgroResult.seedCategories
+                    : userAgroResult.seedlingCategories
                   ).map((catItem: any) => (
                     <button
                       key={catItem.code}
@@ -7202,7 +7312,11 @@ export default function UserIntroPage() {
                             ? '비료 전문 판매점 등록 제품 리스트'
                             : activeMenu === '영양제'
                             ? '영양제 전문 판매점 등록 제품 리스트'
-                            : '병해충관리제 전문 판매점 등록 제품 리스트'}
+                            : activeMenu === '병해충관리제'
+                            ? '병해충관리제 전문 판매점 등록 제품 리스트'
+                            : activeMenu === '씨'
+                            ? '씨 (종자) 전문 판매점 등록 제품 리스트'
+                            : '모종 (육묘) 전문 판매점 등록 제품 리스트'}
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 font-extrabold">
                           검색결과 {totalItems}개 제품
@@ -7367,7 +7481,11 @@ export default function UserIntroPage() {
                                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                                     <span className="font-extrabold text-emerald-900">
-                                      {item.material_category === 'PESTICIDE'
+                                      {item.material_category === 'SEED'
+                                        ? '종자 핵심 스펙 (발아율·적온·립수):'
+                                        : item.material_category === 'SEEDLING'
+                                        ? '모종 핵심 스펙 (트레이·묘령·육묘방식):'
+                                        : item.material_category === 'PESTICIDE'
                                         ? '유효성분·작용기작:'
                                         : item.material_category === 'NUTRIENT'
                                         ? '생리활성·기능성분:'
@@ -7377,13 +7495,76 @@ export default function UserIntroPage() {
                                         `N ${item.n_pct ?? 0}% · P ${item.p_pct ?? 0}% · K ${item.k_pct ?? 0}%`}
                                     </span>
                                     <span className="text-[11px] font-bold text-slate-600">
-                                      100평 처방:{' '}
+                                      {item.material_category === 'SEED'
+                                        ? '100평 파종량:'
+                                        : item.material_category === 'SEEDLING'
+                                        ? '100평 정식량:'
+                                        : '100평 처방:'}{' '}
                                       <strong className="text-emerald-700">
                                         {item.dosage_per_100pyeong}
                                       </strong>
                                     </span>
                                   </div>
-                                  {item.material_category === 'PESTICIDE' ? (
+                                  {item.material_category === 'SEED' ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-extrabold">
+                                        립수·규격: {item.seed_count_spec || item.unit_spec || '2,000립'}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-extrabold">
+                                        발아율: {item.germination_rate_pct || '85% 이상'}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                                        발아적온: {item.germination_temp_spec || '18~25℃'}
+                                      </span>
+                                      {item.seed_coating_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
+                                          코팅·소독: {item.seed_coating_spec}
+                                        </span>
+                                      )}
+                                      {item.sowing_period_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold">
+                                          파종적기: {item.sowing_period_spec}
+                                        </span>
+                                      )}
+                                      {item.days_to_harvest_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 font-bold">
+                                          숙기: {item.days_to_harvest_spec}
+                                        </span>
+                                      )}
+                                      {item.disease_resistance_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-bold">
+                                          내병성: {item.disease_resistance_spec}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : item.material_category === 'SEEDLING' ? (
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-extrabold">
+                                        트레이 규격: {item.plug_tray_spec || item.unit_spec || '105구 트레이'}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-900 font-extrabold">
+                                        묘령·본엽: {item.seedling_age_spec || '본엽 4~5매 A급 건묘'}
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">
+                                        육묘방식: {item.grafting_type_spec || '실생 프러그묘'}
+                                      </span>
+                                      {item.planting_distance_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">
+                                          재식거리: {item.planting_distance_spec}
+                                        </span>
+                                      )}
+                                      {item.hardening_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-900 font-bold">
+                                          외기순화: {item.hardening_spec}
+                                        </span>
+                                      )}
+                                      {item.disease_resistance_spec && (
+                                        <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-bold">
+                                          내병성: {item.disease_resistance_spec}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : item.material_category === 'PESTICIDE' ? (
                                     <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                                       <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-extrabold">
                                         유효성분: {item.active_ingredient || item.nutrient_ratio_summary || '복합 유효성분'}
@@ -7845,8 +8026,164 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 품목 구분별 핵심 유효성분 / 생리활성성분 / 보증성분 상세 테이블 */}
-                        {selectedUserAgroDetail.material_category === 'PESTICIDE' ? (
+                        {/* 품목 구분별 핵심 유효성분 / 생리활성성분 / 보증성분 / 종자·모종 상세 테이블 */}
+                        {selectedUserAgroDetail.material_category === 'SEED' ? (
+                          <div className="bg-emerald-50/70 p-4 rounded-2xl border border-emerald-200 space-y-2.5">
+                            <div className="font-extrabold text-emerald-950 text-sm flex items-center justify-between">
+                              <span>씨(종자) 전문 쇼핑몰 표준 품질보증 스펙 · 재배작형 기준</span>
+                              <span className="text-[11px] font-bold text-emerald-700">
+                                종자산업법 품질표시 및 품종신고 기준
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-emerald-900 bg-white px-3 py-2 rounded-xl border border-emerald-200">
+                              {selectedUserAgroDetail.nutrient_ratio_summary ||
+                                `${selectedUserAgroDetail.seed_count_spec || ''} · 발아율 ${
+                                  selectedUserAgroDetail.germination_rate_pct || '85% 이상'
+                                } · 발아적온 ${selectedUserAgroDetail.germination_temp_spec || '18~25℃'}`}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  립수 · 포장단위 규격
+                                </div>
+                                <div className="font-extrabold text-emerald-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.seed_count_spec ||
+                                    selectedUserAgroDetail.unit_spec ||
+                                    '2,000립 / 1봉'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  발아율 보증 (%) · 발아 적온 (℃)
+                                </div>
+                                <div className="font-extrabold text-sky-800 text-xs mt-0.5">
+                                  발아율 {selectedUserAgroDetail.germination_rate_pct || '85% 이상'} · 적온{' '}
+                                  {selectedUserAgroDetail.germination_temp_spec || '18~25℃'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  종자 소독 · 코팅 처리
+                                </div>
+                                <div className="font-extrabold text-purple-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.seed_coating_spec || '필름코팅 / 약제소독필'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  품종 생산·수입 판매신고번호
+                                </div>
+                                <div className="font-extrabold text-slate-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.variety_reg_no || '국립종자원 신고품종'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  파종 적기 · 재배 작형
+                                </div>
+                                <div className="font-extrabold text-teal-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.sowing_period_spec || '작형별 적기 파종'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  수확 소요일수 (숙기)
+                                </div>
+                                <div className="font-extrabold text-amber-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.days_to_harvest_spec || '파종/정식 후 65~75일'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-emerald-200 sm:col-span-2">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  내병성 · 품종 핵심 특성
+                                </div>
+                                <div className="font-extrabold text-rose-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.disease_resistance_spec ||
+                                    selectedUserAgroDetail.target_nutrient_or_pest}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedUserAgroDetail.material_category === 'SEEDLING' ? (
+                          <div className="bg-teal-50/70 p-4 rounded-2xl border border-teal-200 space-y-2.5">
+                            <div className="font-extrabold text-teal-950 text-sm flex items-center justify-between">
+                              <span>모종(육묘) 전문 쇼핑몰 표준 규격 · 정식 재배 기준</span>
+                              <span className="text-[11px] font-bold text-teal-700">
+                                전문 육묘장 건묘 출하 품질 기준
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-teal-900 bg-white px-3 py-2 rounded-xl border border-teal-200">
+                              {selectedUserAgroDetail.nutrient_ratio_summary ||
+                                `${selectedUserAgroDetail.plug_tray_spec || ''} · ${
+                                  selectedUserAgroDetail.seedling_age_spec || ''
+                                } · ${selectedUserAgroDetail.grafting_type_spec || ''}`}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-left">
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  트레이 규격 (구수 / 본수)
+                                </div>
+                                <div className="font-extrabold text-emerald-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.plug_tray_spec ||
+                                    selectedUserAgroDetail.unit_spec ||
+                                    '105구 트레이'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  육묘 일수 · 묘령 (본엽 매수)
+                                </div>
+                                <div className="font-extrabold text-sky-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.seedling_age_spec || '본엽 4~5매 A급 건묘'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  접목 여부 · 육묘 방식
+                                </div>
+                                <div className="font-extrabold text-purple-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.grafting_type_spec || '실생 프러그묘'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  권장 재식 거리 (주간 × 이랑)
+                                </div>
+                                <div className="font-extrabold text-amber-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.planting_distance_spec ||
+                                    '이랑 60~70cm × 주간 35~40cm'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  외기 순화 (Hardening) · 뿌리돌림 상태
+                                </div>
+                                <div className="font-extrabold text-teal-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.hardening_spec ||
+                                    '출하 전 노지 순화 및 뿌리돌림 완료'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  안전 배송 포장 규격
+                                </div>
+                                <div className="font-extrabold text-slate-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.shipping_pack_spec ||
+                                    '모종 전용 숨구멍 고정 박스 안전배송'}
+                                </div>
+                              </div>
+                              <div className="bg-white p-2.5 rounded-xl border border-teal-200 sm:col-span-2">
+                                <div className="text-[10px] text-slate-500 font-bold">
+                                  내병성 · 품종 핵심 특성
+                                </div>
+                                <div className="font-extrabold text-rose-800 text-xs mt-0.5">
+                                  {selectedUserAgroDetail.disease_resistance_spec ||
+                                    selectedUserAgroDetail.target_nutrient_or_pest}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : selectedUserAgroDetail.material_category === 'PESTICIDE' ? (
                           <div className="bg-rose-50/70 p-4 rounded-2xl border border-rose-200 space-y-2.5">
                             <div className="font-extrabold text-rose-950 text-sm flex items-center justify-between">
                               <span>병해충관리제 유효성분 · 작용기작 · PLS 안전사용기준</span>

@@ -73,7 +73,15 @@ if (typeof window !== 'undefined') {
             const savedOv = localStorage.getItem(OVERVIEW_STORAGE_KEY);
             if (savedOv && data?.overview) {
               const parsedOv = JSON.parse(savedOv);
+              const defaultSeedCodes = data.overview.seedCategoryCodes;
+              const defaultSeedlingCodes = data.overview.seedlingCategoryCodes;
               data.overview = { ...data.overview, ...parsedOv };
+              if (!Array.isArray(data.overview.seedCategoryCodes) || data.overview.seedCategoryCodes.length === 0) {
+                data.overview.seedCategoryCodes = defaultSeedCodes || [];
+              }
+              if (!Array.isArray(data.overview.seedlingCategoryCodes) || data.overview.seedlingCategoryCodes.length === 0) {
+                data.overview.seedlingCategoryCodes = defaultSeedlingCodes || [];
+              }
             }
           } catch {
             // ignore
@@ -203,6 +211,10 @@ if (typeof window !== 'undefined') {
           ? snap.nutrient
           : cat === 'PESTICIDE'
           ? snap.pesticide
+          : cat === 'SEED'
+          ? snap.seed
+          : cat === 'SEEDLING'
+          ? snap.seedling
           : snap.fertilizer;
       const allItems: any[] = Array.isArray(src?.allItems) ? src.allItems : Array.isArray(src?.items) ? src.items : [];
       const filtered = allItems.filter((it) => {
@@ -250,6 +262,10 @@ if (typeof window !== 'undefined') {
           ? snap.nutrient
           : cat === 'PESTICIDE'
           ? snap.pesticide
+          : cat === 'SEED'
+          ? snap.seed
+          : cat === 'SEEDLING'
+          ? snap.seedling
           : snap.fertilizer;
       if (src) {
         const list: any[] = Array.isArray(src.allItems) ? src.allItems : Array.isArray(src.items) ? src.items : [];
@@ -264,7 +280,7 @@ if (typeof window !== 'undefined') {
 
     if (p === '/api/agro-materials/delete' && method === 'POST') {
       const { material_id } = parseBody(init);
-      for (const src of [snap.fertilizer, snap.nutrient, snap.pesticide]) {
+      for (const src of [snap.fertilizer, snap.nutrient, snap.pesticide, snap.seed, snap.seedling]) {
         if (src && Array.isArray(src.allItems)) {
           src.allItems = src.allItems.filter((x: any) => x.material_id !== material_id);
           src.items = src.allItems;
@@ -512,6 +528,68 @@ if (typeof window !== 'undefined') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
       ov.pesticideCategoryCodes = (ov.pesticideCategoryCodes || []).filter(
+        (c: any) => c.category_code !== category_code
+      );
+      persistOverview(ov);
+      return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seed-category-codes' && method === 'POST') {
+      const body = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      const list: any[] = Array.isArray(ov.seedCategoryCodes) ? [...ov.seedCategoryCodes] : [];
+      const idx = list.findIndex((c) => c.category_code === body.category_code);
+      const item = {
+        ...(idx >= 0 ? list[idx] : {}),
+        ...body,
+        sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+      };
+      if (idx >= 0) list[idx] = item;
+      else list.push(item);
+      ov.seedCategoryCodes = list;
+      if (snap.seed) {
+        snap.seed.fertilizerCategories = list;
+        snap.seed.seedCategories = list;
+      }
+      persistOverview(ov);
+      return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seed-category-codes/delete' && method === 'POST') {
+      const { category_code } = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      ov.seedCategoryCodes = (ov.seedCategoryCodes || []).filter(
+        (c: any) => c.category_code !== category_code
+      );
+      persistOverview(ov);
+      return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seedling-category-codes' && method === 'POST') {
+      const body = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      const list: any[] = Array.isArray(ov.seedlingCategoryCodes) ? [...ov.seedlingCategoryCodes] : [];
+      const idx = list.findIndex((c) => c.category_code === body.category_code);
+      const item = {
+        ...(idx >= 0 ? list[idx] : {}),
+        ...body,
+        sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+      };
+      if (idx >= 0) list[idx] = item;
+      else list.push(item);
+      ov.seedlingCategoryCodes = list;
+      if (snap.seedling) {
+        snap.seedling.fertilizerCategories = list;
+        snap.seedling.seedlingCategories = list;
+      }
+      persistOverview(ov);
+      return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seedling-category-codes/delete' && method === 'POST') {
+      const { category_code } = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      ov.seedlingCategoryCodes = (ov.seedlingCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
       persistOverview(ov);

@@ -1,21 +1,21 @@
 export interface FertilizerProductRecord {
   material_id: string;
   product_code: string; // 판매점 제품코드 (예: 30001000011)
-  material_category: string; // 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE'
+  material_category: string; // 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE' | 'SEED' | 'SEEDLING'
   main_type?: string; // 비료 구분 카테고리 ('천연비료' | '화학비료')
-  sub_type: string; // 비료 세부 카테고리명
-  category_code: string; // 비료 세부 카테고리 코드
-  manufacturer: string; // 제조사/브랜드 (예: 대유, 남해화학(주))
+  sub_type: string; // 세부 카테고리명
+  category_code: string; // 세부 카테고리 코드
+  manufacturer: string; // 제조사/브랜드/육묘장 (예: 아시아종묘, 농우바이오, 팜한농)
   product_name: string;
-  formulation_type: string; // 제형 (입상, 코팅입상, 완효성입상, 무분진입상, 펠릿형)
+  formulation_type: string; // 제형 / 종자처리 / 육묘트레이 형태
   is_organic: number;
-  organic_label: string; // 유기농 여부 표기 (예: (유기농) / (비유기농))
-  weight_spec: string; // 무게 (예: 20Kg, 3Kg)
-  volume_spec: string; // 부피 (예: 0ml, 500ml)
-  origin_country: string; // 원산지 (예: 대한민국(국산))
-  contact_phone: string; // 연락처 (예: 1588-2026)
+  organic_label: string; // 유기농/무농약/인증 표기
+  weight_spec: string; // 무게 / 종자 중량
+  volume_spec: string; // 부피 / 립수 / 구수
+  origin_country: string; // 원산지 / 채종지 / 육묘산지
+  contact_phone: string; // 연락처
   target_nutrient_or_pest: string;
-  nutrient_ratio_summary: string; // 주요 영양소 첨가비 요약
+  nutrient_ratio_summary: string; // 주요 영양소 첨가비 / 종자·모종 핵심 스펙 요약
   n_pct: number;
   p_pct: number;
   k_pct: number;
@@ -40,6 +40,22 @@ export interface FertilizerProductRecord {
   detail_image_3: string;
   detail_image_4: string;
   description_banner_url: string;
+  // 씨(SEED) 쇼핑몰 표준 전용 등록 항목
+  seed_count_spec?: string; // 립수 · 포장단위 (예: 2,000립 / 약 7g / 1봉)
+  germination_rate_pct?: string; // 발아율 보증 (%) (예: 85% 이상)
+  germination_temp_spec?: string; // 발아 적온 (℃) (예: 20~25℃)
+  seed_coating_spec?: string; // 종자 소독·코팅 처리 (예: 필름코팅 / 약제소독필)
+  sowing_period_spec?: string; // 파종 적기 · 재배 작형 (예: 가을재배 8월 상순~중순)
+  days_to_harvest_spec?: string; // 수확 소요일수 / 숙기 (예: 정식 후 65~70일)
+  disease_resistance_spec?: string; // 내병성 · 품종 핵심 특성 (예: 무사마귀병(CR) 저항성)
+  variety_reg_no?: string; // 품종 생산·수입 판매신고번호 (예: 제04-0018-2025-1호)
+  // 모종(SEEDLING) 쇼핑몰 표준 전용 등록 항목
+  plug_tray_spec?: string; // 트레이 규격 · 구수/본수 (예: 128구 트레이 1판 / 50구 연결포트)
+  seedling_age_spec?: string; // 육묘 일수 · 묘령/본엽 수 (예: 파종 후 25~28일 · 본엽 4~5매)
+  grafting_type_spec?: string; // 접목 여부 · 육묘 방식 (예: 실생 프러그묘 / 병해저항성 대목 접목묘)
+  planting_distance_spec?: string; // 재식 거리 주간 × 이랑 (예: 이랑 65cm × 주간 40cm)
+  hardening_spec?: string; // 외기 순화 · 뿌리돌림 상태 (예: 노지 자외선·야간 저온 순화 완료 · 뿌리돌림 A급)
+  shipping_pack_spec?: string; // 안전 배송 포장 규격 (예: 모종 전용 숨구멍 고정 박스)
 }
 
 export const FERTILIZER_MAIN_TYPES = ['천연비료', '화학비료'] as const;
@@ -566,6 +582,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
   })),
 ];
 
+
 export const NUTRIENT_CATEGORIES = [
   {
     code: 'CAT-NUT-PHOTO',
@@ -624,6 +641,62 @@ export const PESTICIDE_CATEGORIES = [
     code: 'CAT-PST-ECO',
     name: '친환경 유기농업자재 (PLS 수확전 방제)',
     desc: '님(Neem)·유칼립투스·계피 등 식물유래 천연추출물 기반으로 수확 임박기 PLS 잔류농약 걱정 없이 사용하는 유기농업자재 공시 제품',
+  },
+];
+
+export const SEED_CATEGORIES = [
+  {
+    code: 'CAT-SEED-LEAF',
+    name: '엽채류 종자 (배추·상추·시금치·양배추)',
+    desc: '가을김장배추·봄배추·청치마/적축면상추·시금치 등 발아율 85% 이상 보증 및 무사마귀병(CR)·노균병 저항성 코팅 종자',
+  },
+  {
+    code: 'CAT-SEED-ROOT',
+    name: '근채류 종자 (무·당근·우엉·비트)',
+    desc: '가을김장무·총각무·중원당근 등 근비대성·치밀도·내추대성이 우수한 코팅/필름소독 근채류 전문 종자',
+  },
+  {
+    code: 'CAT-SEED-FRUIT',
+    name: '과채류 종자 (고추·오이·토마토·호박)',
+    desc: '탄저병·칼라병(TSWV)·역병 복합내병계 고추 및 다수확 백다다기오이·방울토마토·애호박 F1 교잡종 종자',
+  },
+  {
+    code: 'CAT-SEED-ALLIUM',
+    name: '양념·구근류 종자 (대파·양파·부추)',
+    desc: '내서성·내한성이 강하고 연백부 길이와 잎 줄기 탄력이 뛰어난 교배종 대파·중만생종 양파·다수확 부추 종자',
+  },
+  {
+    code: 'CAT-SEED-GRAIN',
+    name: '두류·특작 종자 (찰옥수수·콩·참깨·들깨)',
+    desc: '당도와 찰기가 뛰어난 대학찰/미백2호 찰옥수수, 대립 서리태/백태 콩, 다수확 참깨·들깨 등 식량·특작 정선 종자',
+  },
+];
+
+export const SEEDLING_CATEGORIES = [
+  {
+    code: 'CAT-SDL-LEAF',
+    name: '배추·양배추·쌈채류 모종',
+    desc: '128구·105구 규격 트레이에서 25~30일간 본엽 4~5매로 튼튼하게 키워 노지 자외선·외기 순화까지 마친 A급 엽채류 프러그 모종',
+  },
+  {
+    code: 'CAT-SDL-FRUIT',
+    name: '고추·토마토·가지·오이 과채 모종',
+    desc: '50구·72구 포트에서 45~75일간 육묘한 탄저병·칼라병 복합내병성 고추 모종 및 대목 접목 토마토·오이·가지 우량 모종',
+  },
+  {
+    code: 'CAT-SDL-HERB',
+    name: '대파·양파·쪽파·부추 양념 모종',
+    desc: '200구·288구 트레이 육묘 대파·양파 건묘 및 뿌리 활착력이 뛰어난 삼동파·영양부추·쪽파 종구/포트 모종',
+  },
+  {
+    code: 'CAT-SDL-ROOT',
+    name: '고구마순·씨감자·마늘 영양번식 모종',
+    desc: '조직배양 무병묘(바이러스 프리)에서 채취한 꿀고구마·밤고구마 우량 조직배양순 및 보증 씨감자·종구',
+  },
+  {
+    code: 'CAT-SDL-SPEC',
+    name: '접목묘·특수작물 모종 (딸기·수박·참외)',
+    desc: '농촌진흥청 품종보호 등록 설향·사철딸기 포트묘 및 덩굴쪼김병 저항성 대목 접목 수박·참외 전문 육묘장 출하 모종',
   },
 ];
 
@@ -1082,6 +1155,7 @@ export const INITIAL_NUTRIENT_PRODUCTS: FertilizerProductRecord[] = [
     description_banner_url: `/api/agro-materials/image/${x.id}/desc`,
   })),
 ];
+
 
 export const INITIAL_PESTICIDE_PRODUCTS: FertilizerProductRecord[] = [
   {
@@ -1551,6 +1625,469 @@ export const INITIAL_PESTICIDE_PRODUCTS: FertilizerProductRecord[] = [
     description_banner_url: `/api/agro-materials/image/${x.id}/desc`,
   })),
 ];
+
+export const INITIAL_SEED_PRODUCTS: FertilizerProductRecord[] = [
+  {
+    id: 'MAT-SEED-01', code: '30004000001', sub: '엽채류 종자 (배추·상추·시금치·양배추)', catCode: 'CAT-SEED-LEAF',
+    brand: '농우바이오', name: '불암3호 가을김장배추 종자 (무사마귀병 CR 저항성 · 황금색 속잎 대통배추) 2,000립',
+    form: '필름코팅 종자 (소독필 · Pelleted/Film)', org: 0, orgLbl: '(보증종자·F1교잡)', w: '7g', vol: '2,000립',
+    origin: '대한민국 (국내 채종 · 품종보호)', phone: '031-218-1100',
+    target: '가을 김장배추 표준 품종 · 중肋이 얇고 엽수가 많으며 노란 속잎과 고소한 맛이 일품인 CR 내병계 배추',
+    ratio: '립수: 2,000립(약 7g) | 보증발아율: 85% 이상 | 발아적온: 20~25℃ | 숙기: 정식 후 65~70일 | CR 무사마귀병 저항성',
+    dosage: '100평당 정식 주수 약 900~1,100주 (여유 육묘 포함 1봉 2,000립으로 약 150~180평 파종 가능)', spec: '2,000립 (약 7g) / 1봉',
+    retail: 18000, unit: 15000, stage: '육묘 파종 (정식 25일 전 · 8월 상순) 또는 본밭 직파 (PRC-07)',
+    trigger: '평균기온 22~25℃ 도달 시 파종 적기 (30℃ 이상 고온기 육묘 시 차광·환기 필수)',
+    seed_count_spec: '2,000립 (약 7g / 1봉)', germination_rate_pct: '85% 이상 (공식발아보증)', germination_temp_spec: '20~25℃ (최저 8℃ ~ 최고 32℃)',
+    seed_coating_spec: '티람·메탈락실 필름코팅 소독필', sowing_period_spec: '가을작형 파종 7월 하순~8월 중순 / 정식 8월 하순~9월 초',
+    days_to_harvest_spec: '정식 후 65~70일 (적산온도 PGDD 약 1,032℃·일)',
+    disease_resistance_spec: '무사마귀병(뿌리혹병 CR) 강저항성 · 바이러스 및 노균병 중강 내병성 · 결구력 우수',
+    variety_reg_no: '품종생산·수입판매신고 제04-0018-2024-1호',
+    thumb: '/images/fertilizers/MAT-SEED-01-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-02', code: '30004000002', sub: '엽채류 종자 (배추·상추·시금치·양배추)', catCode: 'CAT-SEED-LEAF',
+    brand: '(주)팜한농 (흥농씨앗)', name: '휘파람골드 가을배추 종자 (뿌리혹병·노균병 복합내병성 · 고구중 김장배추) 2,000립',
+    form: '기능성 필름코팅 종자', org: 0, orgLbl: '(보증종자·복합내병)', w: '7.5g', vol: '2,000립',
+    origin: '대한민국 (전북 김제 채종)', phone: '1644-0901',
+    target: '결구 내부가 진한 노란색이고 수분 함량이 적당해 김장 후 물러짐이 적은 고품질 복합내병계 가을배추',
+    ratio: '립수: 2,000립 | 보증발아율: 85% 이상 | 발아적온: 20~24℃ | 숙기: 정식 후 65일 내외 | CR+노균병 복합내병성',
+    dosage: '100평당 1,000주 기준 1봉(2,000립)으로 150평 육묘 가능', spec: '2,000립 / 1봉',
+    retail: 19500, unit: 16500, stage: '128구 육묘 트레이 파종 및 본밭 직파 (PRC-07)',
+    trigger: '중부 8월 상순 · 남부 8월 중하순 파종 적기',
+    seed_count_spec: '2,000립 (약 7.5g / 1봉)', germination_rate_pct: '85% 이상', germination_temp_spec: '20~24℃',
+    seed_coating_spec: '친환경 기능성 필름코팅 (발아균일 처리)', sowing_period_spec: '가을김장작형 8월 상순~중순 파종',
+    days_to_harvest_spec: '정식 후 65일 내외',
+    disease_resistance_spec: '뿌리혹병(CR) 및 가을 노균병 복합 내병성 · 저온기 결구력 탁월',
+    variety_reg_no: '제01-0102-2024-5호',
+    thumb: '/images/fertilizers/MAT-SEED-02-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-03', code: '30004000003', sub: '엽채류 종자 (배추·상추·시금치·양배추)', catCode: 'CAT-SEED-LEAF',
+    brand: '아시아종묘(주)', name: '원기청치마 상추 종자 (고온기 추대 늦은 다수확 청치마 상추) 5,000립',
+    form: '나종자 정선 (Clean Seed)', org: 0, orgLbl: '(보증종자·추대만생)', w: '6g', vol: '5,000립',
+    origin: '대한민국 (국내산)', phone: '02-443-4303',
+    target: '잎이 두껍고 윤기가 나며 봄·여름·가을 장기간 수확해도 꽃대(추대)가 늦게 올라오는 고품질 청치마상추',
+    ratio: '립수: 약 5,000립(6g) | 보증발아율: 80% 이상 | 발아적온: 15~20℃ | 수확: 정식 후 25~30일 연속 수확',
+    dosage: '100평당 육묘 파종 시 1~2봉 (약 3,500~4,000주 식재)', spec: '6g (약 5,000립) / 1봉',
+    retail: 6000, unit: 4800, stage: '연중 육묘 파종 및 본밭 줄뿌림 직파 (PRC-07)',
+    trigger: '일평균기온 15~20℃ 최적 발아 (25℃ 이상 고온기에는 냉장 최아 처리 후 파종 권장)',
+    seed_count_spec: '약 5,000립 (6g / 1봉)', germination_rate_pct: '80% 이상', germination_temp_spec: '15~20℃ (고온기 휴면타파 필요)',
+    seed_coating_spec: '무처리 정선종자 (친환경 재배 가능)', sowing_period_spec: '봄·가을 노지 및 시설 연중 파종 (3월~10월)',
+    days_to_harvest_spec: '파종 후 40~45일 (정식 후 20~25일부터 하엽 수확)',
+    disease_resistance_spec: '만추대성(꽃대 발생 지연) · 잎끝마름(팁번) 및 무름병에 강함',
+    variety_reg_no: '제08-0045-2023-2호',
+    thumb: '/images/fertilizers/MAT-SEED-03-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-04', code: '30004000004', sub: '엽채류 종자 (배추·상추·시금치·양배추)', catCode: 'CAT-SEED-LEAF',
+    brand: '농우바이오', name: '남해초(포항초형) 재래종 시금치 종자 (내한성 극강 · 고당도 겨울 시금치) 1L (약 400g)',
+    form: '정선 소독 종자', org: 0, orgLbl: '(대용량·월동시금치)', w: '400g', vol: '1L (약 35,000립)',
+    origin: '대한민국 (경북·경남 채종)', phone: '031-218-1100',
+    target: '뿌리 부위가 붉고 당도가 매우 높으며 영하의 겨울 추위에도 얼어 죽지 않는 가을·월동 노지 시금치 전문 품종',
+    ratio: '용량: 1L(약 400g / 35,000립) | 보증발아율: 75% 이상 | 발아적온: 15~20℃ | 숙기: 파종 후 50~70일',
+    dosage: '100평당 줄뿌림(조파) 3~4L (약 1.2~1.6kg)', spec: '1L (약 400g) / 1봉',
+    retail: 14500, unit: 12000, stage: '본밭 두둑 줄뿌림(조파) 또는 산파 (PRC-07)',
+    trigger: '9월 상순~11월 중순 평균기온 15~20℃ 하강기 파종 적기 (파종 전 24시간 침종 시 발아 균일)',
+    seed_count_spec: '1L 대용량 (약 400g / 약 35,000립)', germination_rate_pct: '75% 이상', germination_temp_spec: '15~20℃ (4℃ 저온에서도 발아 가능)',
+    seed_coating_spec: '종자 표면 정선 마찰처리 (발아촉진)', sowing_period_spec: '가을·월동 재배 9월 상순 ~ 11월 중순',
+    days_to_harvest_spec: '가을수확 파종 후 45~55일 / 월동수확 70~90일',
+    disease_resistance_spec: '내한성(추위 견딤) 극강 · 노균병 R1~R7 저항성 · 분주력 및 당도 우수',
+    variety_reg_no: '제04-0211-2023-3호',
+    thumb: '/images/fertilizers/MAT-SEED-04-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-05', code: '30004000005', sub: '근채류 종자 (무·당근·우엉·비트)', catCode: 'CAT-SEED-ROOT',
+    brand: '(주)팜한농', name: '관동여름·가을 김장무 종자 (청수 궁중무 · 바람들이 늦고 치밀한 육질) 1,200립',
+    form: '필름코팅 종자', org: 0, orgLbl: '(보증종자·F1교잡)', w: '14g', vol: '1,200립',
+    origin: '대한민국 (국내산)', phone: '1644-0901',
+    target: '무청이 튼튼하고 무 상단 청색부가 선명하며 장기 저장 시에도 바람들이(스펀지 현상)가 없는 최고급 김장무',
+    ratio: '립수: 1,200립(약 14g) | 보증발아율: 85% 이상 | 발아적온: 20~25℃ | 숙기: 파종 후 60~65일',
+    dosage: '100평당 약 2,000~2,500립 직파 (1구당 2립 점파 후 1본 솎음 · 약 2봉 소요)', spec: '1,200립 / 1봉',
+    retail: 13500, unit: 11200, stage: '본밭 두둑 점뿌림(점파) 직파 (PRC-07)',
+    trigger: '8월 중하순~9월 상순 일평균기온 23℃ 전후 토양 수분이 적당할 때 직파',
+    seed_count_spec: '1,200립 (약 14g / 1봉)', germination_rate_pct: '85% 이상', germination_temp_spec: '20~25℃',
+    seed_coating_spec: '적색 필름코팅 소독필', sowing_period_spec: '가을김장무 8월 중순 ~ 9월 상순 직파',
+    days_to_harvest_spec: '파종 후 60~65일 (근중 1.3~1.5kg)',
+    disease_resistance_spec: '바이러스병·무름병·위황병에 강하며 열근(갈라짐) 및 바람들이 극소',
+    variety_reg_no: '제01-0089-2024-2호',
+    thumb: '/images/fertilizers/MAT-SEED-05-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-06', code: '30004000006', sub: '근채류 종자 (무·당근·우엉·비트)', catCode: 'CAT-SEED-ROOT',
+    brand: '아시아종묘(주)', name: '신흑전5촌 당근 종자 (착색·근비대 균일 · 코팅 씨앗으로 파종 편리) 2,500립',
+    form: '펠릿코팅 종자 (Pelleted Seed)', org: 0, orgLbl: '(펠릿코팅·고당도)', w: '18g', vol: '2,500립',
+    origin: '대한민국 / 칠레 채종', phone: '02-443-4303',
+    target: '어깨 부위까지 진한 주홍색으로 착색되고 심부(코어)가 가늘어 식미와 저장성이 뛰어난 봄·가을 겸용 5촌 당근',
+    ratio: '립수: 2,500립(펠릿코팅) | 보증발아율: 80% 이상 | 발아적온: 18~25℃ | 숙기: 파종 후 95~105일',
+    dosage: '100평당 약 8,000~10,000립 (3~4봉 점파 또는 줄뿌림)', spec: '2,500립 (코팅종자) / 1봉',
+    retail: 9500, unit: 7900, stage: '본밭 두둑 줄뿌림·점파 직파 (PRC-07)',
+    trigger: '파종 후 발아까지 7~10일간 토양 표면이 마르지 않도록 수분 유지 필수',
+    seed_count_spec: '2,500립 (펠릿코팅 / 1봉)', germination_rate_pct: '80% 이상', germination_temp_spec: '18~25℃',
+    seed_coating_spec: '구형 펠릿코팅 (단립 파종기 호환)', sowing_period_spec: '봄파종 3월 하순~4월 중순 / 가을파종 7월 중순~8월 상순',
+    days_to_harvest_spec: '파종 후 95~105일',
+    disease_resistance_spec: '겹무늬병·검은잎마름병 내병성 · 열근 및 기형근 발생 적음',
+    variety_reg_no: '제08-0114-2023-1호',
+    thumb: '/images/fertilizers/MAT-SEED-06-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-07', code: '30004000007', sub: '과채류 종자 (고추·오이·토마토·호박)', catCode: 'CAT-SEED-FRUIT',
+    brand: '농우바이오', name: '칼라탄 패왕 고추 종자 (탄저병·칼라병 TSWV·역병 3대 복합내병계 대과종) 500립',
+    form: '필름코팅 종자', org: 0, orgLbl: '(보증종자·3대복합내병)', w: '3.5g', vol: '500립',
+    origin: '대한민국 (국내산)', phone: '031-218-1100',
+    target: '고추 농사의 최대 난적인 탄저병·토마토반점위조바이러스(칼라병)·역병에 모두 강한 고건과율 다수확 대과종 고추',
+    ratio: '립수: 500립 | 보증발아율: 85% 이상 | 발아적온: 28~30℃ | 육묘일수: 70~80일 | PR+IR 탄저·칼라·역병 내병성',
+    dosage: '100평당 정식 주수 약 700~800주 (500립 2봉 육묘 권장)', spec: '500립 / 1봉',
+    retail: 45000, unit: 38500, stage: '온상 육묘 파종 (2월 상중순 파종 → 5월 상순 본밭 정식)',
+    trigger: '발아적온 28~30℃ 전열온상 또는 발아기에서 최아 후 육묘 트레이 파종',
+    seed_count_spec: '500립 (약 3.5g / 1봉)', germination_rate_pct: '85% 이상', germination_temp_spec: '28~30℃ (야간 20℃ 이상 유지)',
+    seed_coating_spec: '고기능성 살균 필름코팅', sowing_period_spec: '노지작형 파종 1월 하순~2월 중순 / 정식 5월 상순',
+    days_to_harvest_spec: '정식 후 65~75일부터 붉은 고추 연속 수확',
+    disease_resistance_spec: '탄저병(IR)·칼라병(TSWV)·역병(PR)·모자이크바이러스(TMV) 복합내병계 · 매운맛 중강',
+    variety_reg_no: '제04-0092-2025-1호',
+    thumb: '/images/fertilizers/MAT-SEED-07-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-08', code: '30004000008', sub: '과채류 종자 (고추·오이·토마토·호박)', catCode: 'CAT-SEED-FRUIT',
+    brand: '(주)팜한농', name: '백봉다다기 오이 종자 (노균병·흰가루병 내병성 · 절성 높은 다수확 백다다기) 500립',
+    form: '필름코팅 종자', org: 0, orgLbl: '(보증종자·F1교잡)', w: '14g', vol: '500립',
+    origin: '대한민국 (국내산)', phone: '1644-0901',
+    target: '마디마다 암꽃 착생률(절성)이 높고 과형 반듯함이 뛰어나며 노균병·흰가루병에 강한 노지·시설 겸용 백다다기오이',
+    ratio: '립수: 500립 | 보증발아율: 85% 이상 | 발아적온: 25~28℃ | 수확: 정식 후 35~40일 초수확',
+    dosage: '100평당 정식 주수 약 600~700주 (500립 1.5~2봉 소요)', spec: '500립 / 1봉',
+    retail: 34000, unit: 28900, stage: '포트 육묘 파종 (정식 25~30일 전 파종)',
+    trigger: '지온 15℃ 이상, 기온 25~28℃ 확보 시 파종',
+    seed_count_spec: '500립 (약 14g / 1봉)', germination_rate_pct: '85% 이상', germination_temp_spec: '25~28℃',
+    seed_coating_spec: '청색 필름코팅 소독필', sowing_period_spec: '봄·가을 시설 및 여름 노지 억제재배 (3월~8월)',
+    days_to_harvest_spec: '정식 후 35~40일 (과장 21~23cm)',
+    disease_resistance_spec: '노균병·흰가루병·바이러스(ZYMV) 복합 내병성 · 곡과(휜오이) 발생 적음',
+    variety_reg_no: '제01-0155-2024-3호',
+    thumb: '/images/fertilizers/MAT-SEED-08-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-09', code: '30004000009', sub: '양념·구근류 종자 (대파·양파·부추)', catCode: 'CAT-SEED-ALLIUM',
+    brand: '농우바이오', name: '명품외대 대파 종자 (연백부 길고 순백색 · 내서성·내한성 겸비 F1 교배종) 20ml (약 4,500립)',
+    form: '필름코팅 정선종자', org: 0, orgLbl: '(보증종자·F1교배 대파)', w: '10g', vol: '20ml (약 4,500립)',
+    origin: '대한민국 (국내산)', phone: '031-218-1100',
+    target: '분얼(가지치기)되지 않는 외대성 교배종 대파로 여름 고온기 무름병에 강하고 겨울철 잎 끝 마름이 적어 상품성이 탁월함',
+    ratio: '립수: 20ml(약 4,500립) | 보증발아율: 80% 이상 | 발아적온: 15~22℃ | 숙기: 정식 후 100~120일',
+    dosage: '100평당 약 8,000~10,000본 정식 (200구 트레이 육묘 시 2~3봉 소요)', spec: '20ml (약 4,500립) / 1캔(봉)',
+    retail: 22000, unit: 18500, stage: '200구·288구 트레이 육묘 파종 또는 묘상 줄뿌림 (PRC-07)',
+    trigger: '봄파종(2~4월) 및 가을파종(8~9월) 일평균기온 15~22℃ 적온기 파종',
+    seed_count_spec: '20ml (약 4,500립 / 1봉)', germination_rate_pct: '80% 이상', germination_temp_spec: '15~22℃',
+    seed_coating_spec: '필름코팅 소독필 (진균성 입고병 예방)', sowing_period_spec: '봄파종 2월 하순~4월 / 가을파종 8월 하순~9월 중순',
+    days_to_harvest_spec: '정식 후 100~120일 (연백부 길이 40~45cm)',
+    disease_resistance_spec: '노균병·검은무늬병·녹병 저항성 우수 · 고온기 잎 꺾임 및 추대 지연',
+    variety_reg_no: '제04-0312-2024-1호',
+    thumb: '/images/fertilizers/MAT-SEED-09-thumb.jpg'
+  },
+  {
+    id: 'MAT-SEED-10', code: '30004000010', sub: '두류·특작 종자 (찰옥수수·콩·참깨·들깨)', catCode: 'CAT-SEED-GRAIN',
+    brand: '충북농업기술원 / 정선종자', name: '대학찰 골드 찰옥수수 종자 (껍질이 얇고 쫀득한 고당도 백색 찰옥수수) 200g (약 1,000립)',
+    form: '소독 정선종자', org: 0, orgLbl: '(보증종자·국산찰옥수수)', w: '200g', vol: '약 1,000립',
+    origin: '대한민국 (충북 괴산·제천 채종)', phone: '1588-2026',
+    target: '알껍질(과피)이 매우 얇아 치아에 끼지 않고 식어도 딱딱해지지 않는 대한민국 대표 프리미엄 백색 찰옥수수',
+    ratio: '중량: 200g(약 1,000립) | 보증발아율: 85% 이상 | 발아적온: 20~28℃ | 수확: 파종 후 85~90일 (출사 후 24~26일)',
+    dosage: '100평당 정식 주수 약 1,100~1,300주 (1구 1~2립 파종 시 1~2봉 소요)', spec: '200g (약 1,000립) / 1봉',
+    retail: 16500, unit: 13800, stage: '본밭 비닐멀칭 직파 또는 72구·105구 트레이 15일 단기육묘 (PRC-07)',
+    trigger: '늦서리 우려가 없는 4월 상순~7월 상순 지온 14℃ 이상 도달 시 파종',
+    seed_count_spec: '200g (약 1,000립 / 1봉)', germination_rate_pct: '85% 이상', germination_temp_spec: '20~28℃ (최저 지온 12℃ 이상)',
+    seed_coating_spec: '종자소독제 분의·코팅 처리필', sowing_period_spec: '봄~여름 단계별 파종 4월 상순 ~ 7월 상순',
+    days_to_harvest_spec: '파종 후 85~90일 (수염 나온 후 25일 전후 적기 수확)',
+    disease_resistance_spec: '깨씨무늬병·깜부기병 내병성 및 쓰러짐(도복)에 강한 중장간형',
+    variety_reg_no: '품종보호 제06-0012-2023-1호',
+    thumb: '/images/fertilizers/MAT-SEED-10-thumb.jpg'
+  },
+].map((x) => ({
+  material_id: x.id,
+  product_code: x.code,
+  material_category: 'SEED',
+  sub_type: x.sub,
+  category_code: x.catCode,
+  manufacturer: x.brand,
+  product_name: x.name,
+  formulation_type: x.form,
+  is_organic: x.org,
+  organic_label: x.orgLbl,
+  weight_spec: x.w,
+  volume_spec: x.vol,
+  origin_country: x.origin,
+  contact_phone: x.phone,
+  target_nutrient_or_pest: x.target,
+  nutrient_ratio_summary: x.ratio,
+  n_pct: 0,
+  p_pct: 0,
+  k_pct: 0,
+  ca_pct: 0,
+  mg_pct: 0,
+  b_pct: 0,
+  sio2_pct: 0,
+  s_pct: 0,
+  om_pct: 0,
+  dosage_per_100pyeong: x.dosage,
+  unit_spec: x.spec,
+  retail_price: x.retail,
+  unit_price: x.unit,
+  discount_rate: Number((((x.retail - x.unit) / x.retail) * 100).toFixed(1)),
+  reward_points: Math.round(x.unit * 0.02),
+  stock_status: '발아율보증 · 당일출고',
+  usage_stage: x.stage,
+  weather_trigger: x.trigger,
+  thumbnail_url: x.thumb,
+  detail_image_1: `/api/agro-materials/image/${x.id}/detail1`,
+  detail_image_2: `/api/agro-materials/image/${x.id}/detail2`,
+  detail_image_3: `/api/agro-materials/image/${x.id}/detail3`,
+  detail_image_4: `/api/agro-materials/image/${x.id}/detail4`,
+  description_banner_url: `/api/agro-materials/image/${x.id}/desc`,
+  seed_count_spec: x.seed_count_spec,
+  germination_rate_pct: x.germination_rate_pct,
+  germination_temp_spec: x.germination_temp_spec,
+  seed_coating_spec: x.seed_coating_spec,
+  sowing_period_spec: x.sowing_period_spec,
+  days_to_harvest_spec: x.days_to_harvest_spec,
+  disease_resistance_spec: x.disease_resistance_spec,
+  variety_reg_no: x.variety_reg_no,
+}));
+
+export const INITIAL_SEEDLING_PRODUCTS: FertilizerProductRecord[] = [
+  {
+    id: 'MAT-SDL-01', code: '30005000001', sub: '배추·양배추·쌈채류 모종', catCode: 'CAT-SDL-LEAF',
+    brand: '한팜스마트육묘장 (농우 불암3호 원종)', name: '가을김장배추 불암3호 A급 건묘 모종 (CR 무사마귀병 내병계 · 외기순화 완료) 128구 1판',
+    form: '128구 프러그 트레이묘 (Plug Seedling)', org: 0, orgLbl: '(A급건묘·외기순화필)', w: '2.8Kg', vol: '128구 (실출하 120주 이상 보증)',
+    origin: '대한민국 (충북 충주·괴산 전문육묘장)', phone: '1588-2026',
+    target: '정식 직후 몸살 없이 3~5일 내 새 뿌리가 내리도록 뿌리돌림(상토 결속)과 노지 자외선·야간 저온 순화를 완벽히 마친 가을배추 모종',
+    ratio: '규격: 128구 트레이 1판 | 묘령: 파종 후 25~28일 (본엽 4~5매) | 재식거리: 이랑 65cm × 주간 35~40cm | CR 내병성',
+    dosage: '100평당 약 900~1,050주 정식 (128구 트레이 기준 8~9판 소요)', spec: '128구 트레이 / 1판 (약 120~125주)',
+    retail: 16000, unit: 13500, stage: '본밭 정식 단계 (PRC-08 · 정식 전 충분한 관수 및 묘판 침지 후 이식)',
+    trigger: '8월 하순~9월 중순 일평균기온 20~24℃ · 흐린 날 오후 또는 해질 무렵 정식 시 활착률 99%',
+    plug_tray_spec: '128구 규격 트레이 1판 (유효 건묘 120주 이상 보증)',
+    seedling_age_spec: '파종 후 25~28일 육묘 · 본엽 4~5매 · 초장 12~14cm 짱짱한 건묘',
+    grafting_type_spec: '실생 전용상토 프러그묘 (뿌리혹병·잘록병 예방 관주 완료)',
+    planting_distance_spec: '이랑 너비 60~65cm × 포기 간격(주간) 35~40cm (1줄 또는 2줄 식재)',
+    hardening_spec: '출하 5일 전부터 차광망 제거 후 노지 직사광선 및 야간 외기 순화 완료 · 흰색 세근 뿌리돌림 A급',
+    disease_resistance_spec: '무사마귀병(뿌리혹병 CR) 저항성 원종 사용 · 바이러스 매개충 사전 방제필',
+    shipping_pack_spec: '모종 전용 숨구멍 골판지 하드박스 + 트레이 흔들림 방지 고정핀 안심포장',
+    thumb: '/images/fertilizers/MAT-SDL-01-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-02', code: '30005000002', sub: '접목묘·특수작물 모종 (딸기·수박·참외)', catCode: 'CAT-SDL-SPEC',
+    brand: '성스팜 전문육묘장 (농촌진흥청 품종보호)', name: '사철딸기·설향 명품 딸기 모종 5포트 세트 (관부 10mm 이상 우량 포트묘)',
+    form: '9cm 연질포트 우량묘 (5포트 세트)', org: 0, orgLbl: '(품종보호·무병우량묘)', w: '1.5Kg', vol: '5포트 (1세트)',
+    origin: '대한민국 (충남 논산·전북 익산 정식등록육묘장)', phone: '1588-2026',
+    target: '관부(크라운) 두께 10mm 이상의 화아분화가 완료된 무병 우량 딸기 포트묘로 정식 후 빠른 착과와 고당도 수확 보장',
+    ratio: '규격: 9cm 포트 × 5개입 | 묘령: 런너 채묘 후 60일 육묘 (본엽 4~5매, 크라운 10mm↑) | 재식거리: 주간 20~25cm',
+    dosage: '100평당 약 3,500~4,000주 (소규모 텃밭·고설베드 맞춤형 5포트 묶음 구성)', spec: '9cm 포트 5개 / 1세트',
+    retail: 15000, unit: 12500, stage: '가을·봄 본밭 두둑 또는 고설베드 정식 (관부가 흙에 묻히지 않게 천식)',
+    trigger: '정식 시 관부(생장점) 절반이 지면 위로 노출되도록 심고 정식 직후 7일간 충분한 점적 관수 필수',
+    plug_tray_spec: '9cm 독립 포트묘 5개 1세트',
+    seedling_age_spec: '런너 자묘 육묘 60일 · 관부(크라운) 직경 10~12mm · 화아분화 완료묘',
+    grafting_type_spec: '바이러스 프리(무병) 원모주 자묘 포트육묘',
+    planting_distance_spec: '이랑 100~120cm (2줄) × 주간 20~25cm',
+    hardening_spec: '저온 단일 화아분화 처리 및 뿌리분 100% 완숙 결속',
+    disease_resistance_spec: '탄저병·시들음병·흰가루병 사전 예방관리 완료 · 농촌진흥청 통상실시권 정식 계약',
+    shipping_pack_spec: '포트별 개별 홀더 캡 고정 + 통기성 전용 안전박스 당일발송',
+    thumb: '/images/fertilizers/MAT-SDL-02-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-03', code: '30005000003', sub: '배추·양배추·쌈채류 모종', catCode: 'CAT-SDL-LEAF',
+    brand: '초록프러그육묘장', name: '모듬 쌈채소·적상추·청상추·로메인 혼합 모종 트레이 (6종 구성) 105구 1판',
+    form: '105구 프러그 트레이묘', org: 0, orgLbl: '(무농약상토육묘)', w: '2.5Kg', vol: '105구 1판 (6종 혼합)',
+    origin: '대한민국 (경기 이천·여주 육묘장)', phone: '1588-2026',
+    target: '청치마·적축면·꽃상추·적로메인·청로메인·버터헤드 6가지 인기 쌈채소를 한 판에 구성하여 정식 2주 후부터 바로 수확하는 실속 모종',
+    ratio: '규격: 105구 트레이 1판 | 묘령: 파종 후 22~25일 (본엽 4매) | 재식거리: 이랑 90cm(3~4줄) × 주간 20cm',
+    dosage: '100평당 약 3,500주 (105구 트레이 35판 / 텃밭 5~10평당 1~2판 적합)', spec: '105구 트레이 / 1판',
+    retail: 15000, unit: 12000, stage: '본밭 비닐멀칭 정식 (PRC-08)',
+    trigger: '봄(3월 하순~6월) 및 가을(8월 하순~10월) 기온 15~22℃ 선선한 시기 정식 시 즉시 활착',
+    plug_tray_spec: '105구 트레이 1판 (청상추·적상추·로메인 등 6종 혼합)',
+    seedling_age_spec: '파종 후 22~25일 · 본엽 4~5매 · 도장 없는 단단한 엽육',
+    grafting_type_spec: '친환경 피트모스·펄라이트 상토 실생 프러그묘',
+    planting_distance_spec: '주간 20cm × 열간 20cm (두둑 폭 90~100cm 기준 3~4줄 식재)',
+    hardening_spec: '하우스 측면 개방 자연광 순화 및 치밀한 뿌리분 형성',
+    disease_resistance_spec: '만추대성(꽃대 지연) 품종 선발 · 무름병·팁번 강내성',
+    shipping_pack_spec: '트레이 전용 맞춤 박스 수평 고정 포장',
+    thumb: '/images/fertilizers/MAT-SDL-03-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-04', code: '30005000004', sub: '배추·양배추·쌈채류 모종', catCode: 'CAT-SDL-LEAF',
+    brand: '한팜스마트육묘장', name: '달콤 양배추·브로콜리 포트 모종 (결구력 우수 · 내한성 품종) 72구 1판',
+    form: '72구 대립 프러그묘', org: 0, orgLbl: '(A급건묘·대립포트)', w: '2.9Kg', vol: '72구 1판',
+    origin: '대한민국 (강원 평창·충북 제천)', phone: '1588-2026',
+    target: '72구 넓은 상토 용적에서 키워 줄기가 굵고 뿌리 활력이 뛰어나 본밭 정식 후 결구 비대가 빠른 양배추 전문 모종',
+    ratio: '규격: 72구 트레이 1판 | 묘령: 파종 후 28~32일 (본엽 5~6매) | 재식거리: 이랑 60cm × 주간 40cm',
+    dosage: '100평당 약 1,000~1,100주 (72구 트레이 14~15판 소요)', spec: '72구 트레이 / 1판',
+    retail: 16500, unit: 13800, stage: '봄(4월)·가을(8월 하순) 본밭 정식 (PRC-08)',
+    trigger: '정식 후 초기 배추좀나방·벼룩잎벌레 예방 및 칼슘·붕소 엽면시비 병행 시 고품질 결구',
+    plug_tray_spec: '72구 대립 트레이 1판 (상토량 충분)',
+    seedling_age_spec: '파종 후 28~32일 · 본엽 5~6매 · 줄기 목질화 전 건묘',
+    grafting_type_spec: '실생 72구 프러그묘',
+    planting_distance_spec: '이랑 60cm × 주간 35~40cm',
+    hardening_spec: '고랭지 주야간 일교차 외기 순화 완료 · 뿌리돌림 최상',
+    disease_resistance_spec: '검은썩음병(흑부병) 및 위황병 저항성 품종',
+    shipping_pack_spec: '72구 트레이 전용 충격흡수 안전박스',
+    thumb: '/images/fertilizers/MAT-SDL-04-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-05', code: '30005000005', sub: '고추·토마토·가지·오이 과채 모종', catCode: 'CAT-SDL-FRUIT',
+    brand: '명품과채육묘장', name: '칼라탄 복합내병성 고추 모종 (탄저병·칼라병·역병 저항성 · 첫꽃 개화 직전 대묘) 50구 1판',
+    form: '50구 대형 연결포트묘', org: 0, orgLbl: '(복합내병·장기육묘)', w: '3.8Kg', vol: '50구 1판 (50주)',
+    origin: '대한민국 (경북 안동·영양 육묘장)', phone: '1588-2026',
+    target: '75일간 온상에서 충분한 일조와 마디 관리를 거쳐 첫 방아다리(분지)가 형성된 굵고 단단한 복합내병계 고추 대묘',
+    ratio: '규격: 50구 대형 연결포트 1판 | 묘령: 파종 후 70~75일 (본엽 10~12매, 방아다리 형성) | 재식거리: 이랑 100cm × 주간 40cm',
+    dosage: '100평당 약 700~800주 정식 (50구 포트 기준 14~16판 소요)', spec: '50구 연결포트 / 1판 (50주)',
+    retail: 28000, unit: 23500, stage: '늦서리 종료 후 본밭 정식 (5월 상순 · 지온 15℃ 이상)',
+    trigger: '기온 15℃ 이상 맑고 바람 없는 날 포트 흙 높이 그대로 얕게 심기(천식) 필수',
+    plug_tray_spec: '50구 대형 연결포트 1판 (포트당 상토 75ml 대용량)',
+    seedling_age_spec: '파종 후 70~75일 장기육묘 · 본엽 10~12매 · 제1분지(방아다리) 꽃봉오리 형성묘',
+    grafting_type_spec: '복합내병계(탄저·칼라·역병) 원종 50구 대묘',
+    planting_distance_spec: '외줄 재배 이랑 90~100cm × 주간 35~45cm',
+    hardening_spec: '정식 10일 전부터 야간 13℃ 저온 및 직사광선 외기 순화로 냉해 저항성 확보',
+    disease_resistance_spec: '탄저병·칼라병(TSWV)·역병·CMV 복합내병성 · 초기 총채벌레·진딧물 방제 출하',
+    shipping_pack_spec: '장초장 과채묘 전용 50cm 하이박스 직립 고정 포장',
+    thumb: '/images/fertilizers/MAT-SDL-05-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-06', code: '30005000006', sub: '고추·토마토·가지·오이 과채 모종', catCode: 'CAT-SDL-FRUIT',
+    brand: '명품과채육묘장', name: '허니옐로우·대추방울토마토 접목 모종 (청고병·시들음병 저항성 대목 접목묘) 40구 1판',
+    form: '40구 포트 접목묘 (Grafted Seedling)', org: 0, orgLbl: '(전문접목묘·고당도)', w: '3.6Kg', vol: '40구 1판 (40주)',
+    origin: '대한민국 (충남 부여·논산 육묘장)', phone: '1588-2026',
+    target: '토양 전염성 청고병(풋마름병)과 시들음병에 강한 전용 대목에 접목하여 수확기까지 초세가 꺾이지 않는 고당도 방울토마토 접목묘',
+    ratio: '규격: 40구 트레이 1판 | 묘령: 50~55일 육묘 (제1화방 화뢰 출현) | 육묘방식: 병해저항성 대목 튜브접목묘',
+    dosage: '100평당 약 700~900주 (40구 트레이 18~22판 소요)', spec: '40구 트레이 / 1판 (40주)',
+    retail: 36000, unit: 31000, stage: '시설하우스(3~4월) 및 노지(5월 초) 본밭 정식',
+    trigger: '접목 부위(클립 자국)가 땅에 묻히지 않도록 지상부 위로 노출시켜 정식',
+    plug_tray_spec: '40구 대립 포트 1판 (40주)',
+    seedling_age_spec: '파종·접목 후 50~55일 · 본엽 7~8매 · 제1화방 꽃봉오리 출현기',
+    grafting_type_spec: '청고병·시들음병·선충 저항성 대목 튜브접목묘 (활착 완료)',
+    planting_distance_spec: '이랑 120cm (2줄) × 주간 40~45cm',
+    hardening_spec: '접목 활착실 순화 후 2주간 강광·통풍 경화 처리 완료',
+    disease_resistance_spec: '풋마름병(청고병)·후자리움 시들음병·황화잎말림바이러스(TYLCV) 복합 내병성',
+    shipping_pack_spec: '접목부 보호 지지대 및 과채 전용 하드박스 안전 배송',
+    thumb: '/images/fertilizers/MAT-SDL-06-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-07', code: '30005000007', sub: '대파·양파·쪽파·부추 양념 모종', catCode: 'CAT-SDL-HERB',
+    brand: '남도양념육묘장', name: '삼동파·명품외대 대파 모종 (노지 월동 가능 · 연백부 굵고 향이 진한 대파 건묘) 200구 1판',
+    form: '200구 대파 전용 트레이묘', org: 0, orgLbl: '(A급건묘·전용상토)', w: '2.4Kg', vol: '200구 1판 (약 400~500본)',
+    origin: '대한민국 (전남 진도·신안 육묘장)', phone: '1588-2026',
+    target: '1구당 2~3립 파종으로 45~55일간 잎 줄기를 짱짱하게 키운 대파 모종으로 정식기 기계이식 및 수작업 골심기에 모두 최적화된 우량묘',
+    ratio: '규격: 200구 트레이 1판(구당 2~3본, 총 450본 내외) | 묘령: 50일 육묘 | 재식거리: 골간 75~85cm × 주간 5~7cm',
+    dosage: '100평당 약 8,000~10,000본 (200구 트레이 18~22판 소요)', spec: '200구 트레이 / 1판 (약 450본)',
+    retail: 14000, unit: 11500, stage: '봄(4~5월) 및 가을(9~10월) 본밭 깊은 골 정식 (PRC-08)',
+    trigger: '정식 후 활착이 끝나면 생육에 맞춰 2~3회 북주기(배토)를 실시하여 연백부 길이 확보',
+    plug_tray_spec: '200구 대파 전용 직립 트레이 1판 (구당 2~3본 합식, 총 450본 내외)',
+    seedling_age_spec: '파종 후 50~55일 육묘 · 초장 25~30cm (출하 전 적정 절엽 정리) · 줄기 굵기 4~5mm',
+    grafting_type_spec: '실생 집단육묘 프러그묘 (기계 정식기 호환)',
+    planting_distance_spec: '이랑(골) 간격 75~85cm × 포기 간격 5~7cm',
+    hardening_spec: '해풍·일조 순화 및 상토 뿌리 감김 우수하여 뽑힘성 탁월',
+    disease_resistance_spec: '노균병·녹병·고자리파리 사전 방제 처리필 · 내한성 월동 우수',
+    shipping_pack_spec: '대파 트레이 전용 통기성 박스 포장',
+    thumb: '/images/fertilizers/MAT-SDL-07-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-08', code: '30005000008', sub: '대파·양파·쪽파·부추 양념 모종', catCode: 'CAT-SDL-HERB',
+    brand: '초록프러그육묘장', name: '다수확 영양부추·솔부추 숙근 포트 모종 (한번 심으면 매년 5~6회 수확 다년생) 6포트 세트',
+    form: '10cm 중대형 포트 숙근묘 (6포트)', org: 1, orgLbl: '(무농약·다년생숙근)', w: '2.2Kg', vol: '10cm 포트 6개 (포트당 15~20촉)',
+    origin: '대한민국 (경기 양평·포천)', phone: '1588-2026',
+    target: '뿌리 왕성한 숙근(묵은 뿌리) 부추 포트묘로 심은 첫해부터 바로 베어 먹을 수 있고 노지 월동하여 수년간 계속 수확하는 고효율 모종',
+    ratio: '규격: 10cm 포트 × 6개 세트(포트당 15~20촉 분주 가능) | 묘령: 1년생 숙근묘 | 재식거리: 이랑 80cm × 주간 15~20cm',
+    dosage: '100평당 약 3,500~4,000포기 (텃밭·농가 보식 및 단지 조성용)', spec: '10cm 숙근포트 6개 / 1세트',
+    retail: 16000, unit: 13200, stage: '봄(3~6월)~가을(8~10월) 본밭 정식',
+    trigger: '정식 후 25~30일 간격으로 지제부 2~3cm 위를 베어 수확 후 추비(웃거름) 시비',
+    plug_tray_spec: '10cm 숙근 포트 6개입 세트 (포트당 15~20촉 밀식 구성)',
+    seedling_age_spec: '1년 이상 키운 숙근(왕성한 종근 형성) 완숙묘',
+    grafting_type_spec: '무농약 상토 분주·숙근 포트묘',
+    planting_distance_spec: '이랑 80~90cm (3~4줄) × 포기 간격 15~20cm',
+    hardening_spec: '노지 월동 경화 완료 · 이식 몸살 없이 100% 활착',
+    disease_resistance_spec: '잿빛곰팡이병·잎마름병 강내성 및 겨울 영하 20℃ 노지 월동',
+    shipping_pack_spec: '6구 포트 홀더 트레이 + 수분 유지 패킹 박스',
+    thumb: '/images/fertilizers/MAT-SDL-08-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-09', code: '30005000009', sub: '고구마순·씨감자·마늘 영양번식 모종', catCode: 'CAT-SDL-ROOT',
+    brand: '해남무병조직배양육묘장', name: '베니하루카(꿀고구마)·소담미 바이러스 프리 무병 고구마순 모종 100본 1단',
+    form: '조직배양 증식 채취순 (7~8마디 우량순)', org: 0, orgLbl: '(조직배양무병묘)', w: '1.8Kg', vol: '100본 (1단)',
+    origin: '대한민국 (전남 해남·영암 조직배양육묘장)', phone: '1588-2026',
+    target: '바이러스에 감염되지 않은 조직배양 기본묘에서 채취한 1세대 우량 고구마순으로 일반 묘 대비 수확량 30% 증수 및 매끈한 외관 구현',
+    ratio: '규격: 1단 100본(길이 25~30cm, 7~8마디 건묘) | 품종: 베니하루카(꿀고구마) | 재식거리: 이랑 75cm × 주간 20~25cm',
+    dosage: '100평당 약 1,400~1,600본 정식 (100본 기준 15~16단 소요)', spec: '100본 / 1단',
+    retail: 19000, unit: 15800, stage: '봄 본밭 두둑 수평심기·개량수평심기 정식 (4월 하순 ~ 6월 중순)',
+    trigger: '고구마순 수령 후 그늘에서 1~2일 순화(예비 발근 유도) 후 생장점 2~3잎만 노출시켜 수평 삽식',
+    plug_tray_spec: '우량 채취순 100본 1단 묶음 (마디수 7~8마디, 길이 25~30cm)',
+    seedling_age_spec: '조직배양 씨고구마 온상 육묘 40일 채취 1번~2번 정단묘',
+    grafting_type_spec: '농촌진흥청 보급 바이러스 프리(Virus-Free) 조직배양 증식묘',
+    planting_distance_spec: '이랑 너비 70~75cm × 주간 20~25cm (수평심기 기준 3~4마디 토양 매립)',
+    hardening_spec: '채취 직전 칼륨·칼슘 경화 처리로 줄기 마디가 굵고 발근력 최상',
+    disease_resistance_spec: '덩굴쪼김병·바이러스 퇴화 현상 없음 · 껍질 색택 선홍색 및 전분 당화율 우수',
+    shipping_pack_spec: '절단면 보습 처리 + 고구마순 전용 통풍 타공 박스 당일수확 출하',
+    thumb: '/images/fertilizers/MAT-SDL-09-thumb.jpg'
+  },
+  {
+    id: 'MAT-SDL-10', code: '30005000010', sub: '접목묘·특수작물 모종 (딸기·수박·참외)', catCode: 'CAT-SDL-SPEC',
+    brand: '성주·고령접목육묘장', name: '고당도 산딸기·베리류 및 박과대목 접목 특작 포트 모종 (뿌리활착 완숙묘) 24구 1판',
+    form: '24구 대용량 포트 완숙묘', org: 0, orgLbl: '(특수작물·완숙포트묘)', w: '3.4Kg', vol: '24구 1판 (24주)',
+    origin: '대한민국 (경북 성주·경남 밀양)', phone: '1588-2026',
+    target: '뿌리 목질부와 신초 눈이 충실하게 형성된 특작 베리·과채류 24구 대용량 포트 모종으로 정식 첫해부터 빠른 활착과 결실 보장',
+    ratio: '규격: 24구 대형 포트 1판(24주) | 묘령: 90일 완숙 포트묘 | 재식거리: 이랑 120~150cm × 주간 50~80cm',
+    dosage: '100평당 약 300~500주 정식 (24구 트레이 13~20판 소요)', spec: '24구 대용량 포트 / 1판 (24주)',
+    retail: 32000, unit: 27500, stage: '봄·가을 본밭 두둑 또는 대형 화분 정식',
+    trigger: '배수가 잘되는 사양토 두둑에 유기질 퇴비를 충분히 시용한 후 뿌리분이 깨지지 않게 정식',
+    plug_tray_spec: '24구 대용량 포트 트레이 1판 (포트당 상토 180ml)',
+    seedling_age_spec: '90일 장기 포트 육묘 · 신초 3~4본 발생 및 뿌리분 완숙',
+    grafting_type_spec: '무병 조직배양·삽목 및 전용대목 포트 육묘',
+    planting_distance_spec: '이랑 120~150cm × 주간 50~80cm',
+    hardening_spec: '노지 일조·풍압 완전 순화 완료 · 정식 몸살 없음',
+    disease_resistance_spec: '뿌리썩음병·역병 저항성 강함 · 내한성 및 내서성 우수',
+    shipping_pack_spec: '24구 대형 트레이 전용 안전 칸막이 박스 포장',
+    thumb: '/images/fertilizers/MAT-SDL-10-thumb.jpg'
+  },
+].map((x) => ({
+  material_id: x.id,
+  product_code: x.code,
+  material_category: 'SEEDLING',
+  sub_type: x.sub,
+  category_code: x.catCode,
+  manufacturer: x.brand,
+  product_name: x.name,
+  formulation_type: x.form,
+  is_organic: x.org,
+  organic_label: x.orgLbl,
+  weight_spec: x.w,
+  volume_spec: x.vol,
+  origin_country: x.origin,
+  contact_phone: x.phone,
+  target_nutrient_or_pest: x.target,
+  nutrient_ratio_summary: x.ratio,
+  n_pct: 0,
+  p_pct: 0,
+  k_pct: 0,
+  ca_pct: 0,
+  mg_pct: 0,
+  b_pct: 0,
+  sio2_pct: 0,
+  s_pct: 0,
+  om_pct: 0,
+  dosage_per_100pyeong: x.dosage,
+  unit_spec: x.spec,
+  retail_price: x.retail,
+  unit_price: x.unit,
+  discount_rate: Number((((x.retail - x.unit) / x.retail) * 100).toFixed(1)),
+  reward_points: Math.round(x.unit * 0.02),
+  stock_status: 'A급건묘 · 안전포장출고',
+  usage_stage: x.stage,
+  weather_trigger: x.trigger,
+  thumbnail_url: x.thumb,
+  detail_image_1: `/api/agro-materials/image/${x.id}/detail1`,
+  detail_image_2: `/api/agro-materials/image/${x.id}/detail2`,
+  detail_image_3: `/api/agro-materials/image/${x.id}/detail3`,
+  detail_image_4: `/api/agro-materials/image/${x.id}/detail4`,
+  description_banner_url: `/api/agro-materials/image/${x.id}/desc`,
+  plug_tray_spec: x.plug_tray_spec,
+  seedling_age_spec: x.seedling_age_spec,
+  grafting_type_spec: x.grafting_type_spec,
+  planting_distance_spec: x.planting_distance_spec,
+  hardening_spec: x.hardening_spec,
+  disease_resistance_spec: x.disease_resistance_spec,
+  shipping_pack_spec: x.shipping_pack_spec,
+}));
 
 function escapeXml(str: string): string {
   return String(str || '')

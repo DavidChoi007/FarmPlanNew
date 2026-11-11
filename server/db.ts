@@ -8,9 +8,13 @@ import {
   FERTILIZER_CATEGORIES,
   NUTRIENT_CATEGORIES,
   PESTICIDE_CATEGORIES,
+  SEED_CATEGORIES,
+  SEEDLING_CATEGORIES,
   INITIAL_FERTILIZER_PRODUCTS,
   INITIAL_NUTRIENT_PRODUCTS,
   INITIAL_PESTICIDE_PRODUCTS,
+  INITIAL_SEED_PRODUCTS,
+  INITIAL_SEEDLING_PRODUCTS,
   resolveFertilizerMainType,
 } from './fertilizerProductAssets.ts';
 
@@ -171,6 +175,22 @@ export function initDatabase() {
 
     -- 6-0-C. 병해충관리제 기초 코드 테이블 (pesticide_category_code)
     CREATE TABLE IF NOT EXISTS pesticide_category_code (
+      category_code TEXT PRIMARY KEY,
+      category_name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      sort_order INTEGER DEFAULT 1
+    );
+
+    -- 6-0-D. 씨(종자) 기초 코드 테이블 (seed_category_code)
+    CREATE TABLE IF NOT EXISTS seed_category_code (
+      category_code TEXT PRIMARY KEY,
+      category_name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      sort_order INTEGER DEFAULT 1
+    );
+
+    -- 6-0-E. 모종(육묘) 기초 코드 테이블 (seedling_category_code)
+    CREATE TABLE IF NOT EXISTS seedling_category_code (
       category_code TEXT PRIMARY KEY,
       category_name TEXT NOT NULL,
       description TEXT DEFAULT '',
@@ -551,6 +571,8 @@ export function initDatabase() {
   ensureFertilizerCategoryCodes();
   ensureNutrientCategoryCodes();
   ensurePesticideCategoryCodes();
+  ensureSeedCategoryCodes();
+  ensureSeedlingCategoryCodes();
   ensureAgroMaterials();
   ensurePaymentBankAccounts();
   ensureCropGrowthProcessPlans();
@@ -624,6 +646,32 @@ function ensurePesticideCategoryCodes() {
       VALUES (?, ?, ?, ?)
     `);
     PESTICIDE_CATEGORIES.forEach((cat, idx) => {
+      ins.run(cat.code, cat.name, cat.desc, idx + 1);
+    });
+  }
+}
+
+function ensureSeedCategoryCodes() {
+  const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM seed_category_code').get() as { cnt: number }).cnt;
+  if (existingCount < SEED_CATEGORIES.length) {
+    const ins = db.prepare(`
+      INSERT OR IGNORE INTO seed_category_code (category_code, category_name, description, sort_order)
+      VALUES (?, ?, ?, ?)
+    `);
+    SEED_CATEGORIES.forEach((cat, idx) => {
+      ins.run(cat.code, cat.name, cat.desc, idx + 1);
+    });
+  }
+}
+
+function ensureSeedlingCategoryCodes() {
+  const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM seedling_category_code').get() as { cnt: number }).cnt;
+  if (existingCount < SEEDLING_CATEGORIES.length) {
+    const ins = db.prepare(`
+      INSERT OR IGNORE INTO seedling_category_code (category_code, category_name, description, sort_order)
+      VALUES (?, ?, ?, ?)
+    `);
+    SEEDLING_CATEGORIES.forEach((cat, idx) => {
       ins.run(cat.code, cat.name, cat.desc, idx + 1);
     });
   }
@@ -1284,6 +1332,20 @@ function ensureAgroMaterials() {
     ['pesticide_reg_no', "TEXT DEFAULT ''"],
     ['safety_phi_days', "TEXT DEFAULT ''"],
     ['safety_max_count', "TEXT DEFAULT ''"],
+    ['seed_count_spec', "TEXT DEFAULT ''"],
+    ['germination_rate_pct', "TEXT DEFAULT ''"],
+    ['germination_temp_spec', "TEXT DEFAULT ''"],
+    ['seed_coating_spec', "TEXT DEFAULT ''"],
+    ['sowing_period_spec', "TEXT DEFAULT ''"],
+    ['days_to_harvest_spec', "TEXT DEFAULT ''"],
+    ['disease_resistance_spec', "TEXT DEFAULT ''"],
+    ['variety_reg_no', "TEXT DEFAULT ''"],
+    ['plug_tray_spec', "TEXT DEFAULT ''"],
+    ['seedling_age_spec', "TEXT DEFAULT ''"],
+    ['grafting_type_spec', "TEXT DEFAULT ''"],
+    ['planting_distance_spec', "TEXT DEFAULT ''"],
+    ['hardening_spec', "TEXT DEFAULT ''"],
+    ['shipping_pack_spec', "TEXT DEFAULT ''"],
   ];
   for (const [colName, colDef] of extraCols) {
     if (!existingCols.has(colName)) {
@@ -1305,14 +1367,19 @@ function ensureAgroMaterials() {
       usage_stage, weather_trigger,
       thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
       application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
-      stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count,
+      seed_count_spec, germination_rate_pct, germination_temp_spec, seed_coating_spec,
+      sowing_period_spec, days_to_harvest_spec, disease_resistance_spec, variety_reg_no,
+      plug_tray_spec, seedling_age_spec, grafting_type_spec, planting_distance_spec, hardening_spec, shipping_pack_spec
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const f of [
     ...INITIAL_FERTILIZER_PRODUCTS,
     ...INITIAL_NUTRIENT_PRODUCTS,
     ...INITIAL_PESTICIDE_PRODUCTS,
+    ...INITIAL_SEED_PRODUCTS,
+    ...INITIAL_SEEDLING_PRODUCTS,
   ]) {
     const cat = f.material_category;
     const isFert = cat === 'FERTILIZER';
@@ -1474,11 +1541,25 @@ function ensureAgroMaterials() {
       defaultMoaGroup,
       defaultPestRegNo,
       defaultSafetyPhi,
-      defaultSafetyMaxCount
+      defaultSafetyMaxCount,
+      f.seed_count_spec || '',
+      f.germination_rate_pct || '',
+      f.germination_temp_spec || '',
+      f.seed_coating_spec || '',
+      f.sowing_period_spec || '',
+      f.days_to_harvest_spec || '',
+      f.disease_resistance_spec || '',
+      f.variety_reg_no || '',
+      f.plug_tray_spec || '',
+      f.seedling_age_spec || '',
+      f.grafting_type_spec || '',
+      f.planting_distance_spec || '',
+      f.hardening_spec || '',
+      f.shipping_pack_spec || ''
     );
   }
 
-  // 비료/영양제/병해충관리제 분류 기초 코드 마스터와 상품의 sub_type 명칭 동기화
+  // 비료/영양제/병해충관리제/씨/모종 분류 기초 코드 마스터와 상품의 sub_type 명칭 동기화
   db.exec(`
     UPDATE agro_material
     SET sub_type = (
@@ -1516,7 +1597,33 @@ function ensureAgroMaterials() {
       AND EXISTS (
         SELECT 1
         FROM pesticide_category_code pc
-        WHERE pc.category_code = agro_material.category_code
+        WHERE nc_or_pc.category_code = agro_material.category_code
+      );
+  `.replace('nc_or_pc.category_code', 'pc.category_code') + `
+    UPDATE agro_material
+    SET sub_type = (
+      SELECT sc.category_name
+      FROM seed_category_code sc
+      WHERE sc.category_code = agro_material.category_code
+    )
+    WHERE material_category = 'SEED'
+      AND EXISTS (
+        SELECT 1
+        FROM seed_category_code sc
+        WHERE sc.category_code = agro_material.category_code
+      );
+
+    UPDATE agro_material
+    SET sub_type = (
+      SELECT sdc.category_name
+      FROM seedling_category_code sdc
+      WHERE sdc.category_code = agro_material.category_code
+    )
+    WHERE material_category = 'SEEDLING'
+      AND EXISTS (
+        SELECT 1
+        FROM seedling_category_code sdc
+        WHERE sdc.category_code = agro_material.category_code
       );
   `);
 

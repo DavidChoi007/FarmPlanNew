@@ -14,6 +14,8 @@ import {
   FERTILIZER_CATEGORIES,
   NUTRIENT_CATEGORIES,
   PESTICIDE_CATEGORIES,
+  SEED_CATEGORIES,
+  SEEDLING_CATEGORIES,
   renderFertilizerSvg,
   resolveFertilizerMainType,
 } from './fertilizerProductAssets.ts';
@@ -808,6 +810,18 @@ const server = http.createServer(async (req, res) => {
         FROM pesticide_category_code pc
         ORDER BY pc.sort_order ASC, pc.category_code ASC
       `).all();
+      const seedCategoryCodes = db.prepare(`
+        SELECT sc.*,
+               (SELECT COUNT(*) FROM agro_material am WHERE am.material_category = 'SEED' AND (am.category_code = sc.category_code OR am.sub_type = sc.category_name)) AS product_count
+        FROM seed_category_code sc
+        ORDER BY sc.sort_order ASC, sc.category_code ASC
+      `).all();
+      const seedlingCategoryCodes = db.prepare(`
+        SELECT sdc.*,
+               (SELECT COUNT(*) FROM agro_material am WHERE am.material_category = 'SEEDLING' AND (am.category_code = sdc.category_code OR am.sub_type = sdc.category_name)) AS product_count
+        FROM seedling_category_code sdc
+        ORDER BY sdc.sort_order ASC, sdc.category_code ASC
+      `).all();
       const requests = db.prepare(`
         SELECT r.*, g.group_name, c.crop_name, cv.cultivar_name, s.system_name, s.required_gdd, s.base_temp_tb
         FROM schedule_request r
@@ -856,6 +870,8 @@ const server = http.createServer(async (req, res) => {
       const fertStat = agroStatsRows.find((r) => r.material_category === 'FERTILIZER') || { cnt: 0, avg_price: 0, organic_cnt: 0 };
       const nutrStat = agroStatsRows.find((r) => r.material_category === 'NUTRIENT') || { cnt: 0, avg_price: 0, organic_cnt: 0 };
       const pestStat = agroStatsRows.find((r) => r.material_category === 'PESTICIDE') || { cnt: 0, avg_price: 0, organic_cnt: 0 };
+      const seedStat = agroStatsRows.find((r) => r.material_category === 'SEED') || { cnt: 0, avg_price: 0, organic_cnt: 0 };
+      const seedlingStat = agroStatsRows.find((r) => r.material_category === 'SEEDLING') || { cnt: 0, avg_price: 0, organic_cnt: 0 };
 
       const historyStat = db.prepare(`
         SELECT COUNT(*) as total_logs,
@@ -905,6 +921,8 @@ const server = http.createServer(async (req, res) => {
           fertilizerCategoryCodesCount: fertilizerCategoryCodes.length,
           nutrientCategoryCodesCount: nutrientCategoryCodes.length,
           pesticideCategoryCodesCount: pesticideCategoryCodes.length,
+          seedCategoryCodesCount: seedCategoryCodes.length,
+          seedlingCategoryCodesCount: seedlingCategoryCodes.length,
           totalBasicCodesCount:
             groups.length +
             crops.length +
@@ -912,7 +930,9 @@ const server = http.createServer(async (req, res) => {
             growthTypeCodes.length +
             fertilizerCategoryCodes.length +
             nutrientCategoryCodes.length +
-            pesticideCategoryCodes.length,
+            pesticideCategoryCodes.length +
+            seedCategoryCodes.length +
+            seedlingCategoryCodes.length,
         },
         cropManagement: {
           totalGroups: groups.length,
@@ -930,15 +950,28 @@ const server = http.createServer(async (req, res) => {
           withMaterialsCount: Number(growthPlansStat?.with_materials_cnt || 0),
         },
         agroMaterials: {
-          totalMaterials: Number(fertStat.cnt || 0) + Number(nutrStat.cnt || 0) + Number(pestStat.cnt || 0),
+          totalMaterials:
+            Number(fertStat.cnt || 0) +
+            Number(nutrStat.cnt || 0) +
+            Number(pestStat.cnt || 0) +
+            Number(seedStat.cnt || 0) +
+            Number(seedlingStat.cnt || 0),
           fertilizerCount: Number(fertStat.cnt || 0),
           fertilizerAvgPrice: Number(fertStat.avg_price || 0),
           nutrientCount: Number(nutrStat.cnt || 0),
           nutrientAvgPrice: Number(nutrStat.avg_price || 0),
           pesticideCount: Number(pestStat.cnt || 0),
           pesticideAvgPrice: Number(pestStat.avg_price || 0),
+          seedCount: Number(seedStat.cnt || 0),
+          seedAvgPrice: Number(seedStat.avg_price || 0),
+          seedlingCount: Number(seedlingStat.cnt || 0),
+          seedlingAvgPrice: Number(seedlingStat.avg_price || 0),
           organicCount:
-            Number(fertStat.organic_cnt || 0) + Number(nutrStat.organic_cnt || 0) + Number(pestStat.organic_cnt || 0),
+            Number(fertStat.organic_cnt || 0) +
+            Number(nutrStat.organic_cnt || 0) +
+            Number(pestStat.organic_cnt || 0) +
+            Number(seedStat.organic_cnt || 0) +
+            Number(seedlingStat.organic_cnt || 0),
         },
         historiesManagement: {
           totalControlSchedules: requests.length,
@@ -991,6 +1024,8 @@ const server = http.createServer(async (req, res) => {
         fertilizerCategoryCodes,
         nutrientCategoryCodes,
         pesticideCategoryCodes,
+        seedCategoryCodes,
+        seedlingCategoryCodes,
         requests,
         stations,
         models,
@@ -1472,6 +1507,120 @@ const server = http.createServer(async (req, res) => {
       const { category_code } = await readJsonBody(req);
       db.prepare('DELETE FROM pesticide_category_code WHERE category_code = ?').run(category_code);
       await supabaseRestDelete('pesticide_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      sendJson(res, { ok: true });
+      return;
+    }
+
+    // 2-7. 씨(종자) 기초 코드 (seed_category_code) 조회·등록·수정·삭제 API
+    if (pathname === '/api/seed-category-codes' && req.method === 'GET') {
+      const items = db.prepare(`
+        SELECT sc.*,
+               (SELECT COUNT(*) FROM agro_material am WHERE am.material_category = 'SEED' AND (am.category_code = sc.category_code OR am.sub_type = sc.category_name)) AS product_count
+        FROM seed_category_code sc
+        ORDER BY sc.sort_order ASC, sc.category_code ASC
+      `).all();
+      sendJson(res, { items });
+      return;
+    }
+
+    if (pathname === '/api/seed-category-codes' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const { category_code, category_name, description, sort_order } = body;
+      const prevRow = db
+        .prepare('SELECT category_name FROM seed_category_code WHERE category_code = ?')
+        .get(category_code) as { category_name: string } | undefined;
+
+      const rowData = {
+        category_code: String(category_code || '').trim(),
+        category_name: String(category_name || '').trim(),
+        description: String(description || '').trim(),
+        sort_order: Number(sort_order) || 1,
+      };
+      db.prepare(`
+        INSERT OR REPLACE INTO seed_category_code (category_code, category_name, description, sort_order)
+        VALUES (?, ?, ?, ?)
+      `).run(rowData.category_code, rowData.category_name, rowData.description, rowData.sort_order);
+
+      if (prevRow && prevRow.category_name && prevRow.category_name !== rowData.category_name) {
+        db.prepare(`
+          UPDATE agro_material
+          SET sub_type = ?
+          WHERE material_category = 'SEED' AND (category_code = ? OR sub_type = ?)
+        `).run(rowData.category_name, rowData.category_code, prevRow.category_name);
+      } else {
+        db.prepare(`
+          UPDATE agro_material
+          SET sub_type = ?
+          WHERE material_category = 'SEED' AND category_code = ?
+        `).run(rowData.category_name, rowData.category_code);
+      }
+
+      await supabaseRestUpsert('seed_category_code', rowData, 'category_code');
+      sendJson(res, { ok: true });
+      return;
+    }
+
+    if (pathname === '/api/seed-category-codes/delete' && req.method === 'POST') {
+      const { category_code } = await readJsonBody(req);
+      db.prepare('DELETE FROM seed_category_code WHERE category_code = ?').run(category_code);
+      await supabaseRestDelete('seed_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      sendJson(res, { ok: true });
+      return;
+    }
+
+    // 2-8. 모종(육묘) 기초 코드 (seedling_category_code) 조회·등록·수정·삭제 API
+    if (pathname === '/api/seedling-category-codes' && req.method === 'GET') {
+      const items = db.prepare(`
+        SELECT sdc.*,
+               (SELECT COUNT(*) FROM agro_material am WHERE am.material_category = 'SEEDLING' AND (am.category_code = sdc.category_code OR am.sub_type = sdc.category_name)) AS product_count
+        FROM seedling_category_code sdc
+        ORDER BY sdc.sort_order ASC, sdc.category_code ASC
+      `).all();
+      sendJson(res, { items });
+      return;
+    }
+
+    if (pathname === '/api/seedling-category-codes' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const { category_code, category_name, description, sort_order } = body;
+      const prevRow = db
+        .prepare('SELECT category_name FROM seedling_category_code WHERE category_code = ?')
+        .get(category_code) as { category_name: string } | undefined;
+
+      const rowData = {
+        category_code: String(category_code || '').trim(),
+        category_name: String(category_name || '').trim(),
+        description: String(description || '').trim(),
+        sort_order: Number(sort_order) || 1,
+      };
+      db.prepare(`
+        INSERT OR REPLACE INTO seedling_category_code (category_code, category_name, description, sort_order)
+        VALUES (?, ?, ?, ?)
+      `).run(rowData.category_code, rowData.category_name, rowData.description, rowData.sort_order);
+
+      if (prevRow && prevRow.category_name && prevRow.category_name !== rowData.category_name) {
+        db.prepare(`
+          UPDATE agro_material
+          SET sub_type = ?
+          WHERE material_category = 'SEEDLING' AND (category_code = ? OR sub_type = ?)
+        `).run(rowData.category_name, rowData.category_code, prevRow.category_name);
+      } else {
+        db.prepare(`
+          UPDATE agro_material
+          SET sub_type = ?
+          WHERE material_category = 'SEEDLING' AND category_code = ?
+        `).run(rowData.category_name, rowData.category_code);
+      }
+
+      await supabaseRestUpsert('seedling_category_code', rowData, 'category_code');
+      sendJson(res, { ok: true });
+      return;
+    }
+
+    if (pathname === '/api/seedling-category-codes/delete' && req.method === 'POST') {
+      const { category_code } = await readJsonBody(req);
+      db.prepare('DELETE FROM seedling_category_code WHERE category_code = ?').run(category_code);
+      await supabaseRestDelete('seedling_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       sendJson(res, { ok: true });
       return;
     }
@@ -2670,6 +2819,8 @@ const server = http.createServer(async (req, res) => {
             SUM(CASE WHEN material_category = 'FERTILIZER' THEN 1 ELSE 0 END) as fertilizer_count,
             SUM(CASE WHEN material_category = 'NUTRIENT' THEN 1 ELSE 0 END) as nutrient_count,
             SUM(CASE WHEN material_category = 'PESTICIDE' THEN 1 ELSE 0 END) as pesticide_count,
+            SUM(CASE WHEN material_category = 'SEED' THEN 1 ELSE 0 END) as seed_count,
+            SUM(CASE WHEN material_category = 'SEEDLING' THEN 1 ELSE 0 END) as seedling_count,
             SUM(CASE WHEN is_organic = 1 THEN 1 ELSE 0 END) as organic_count,
             ROUND(AVG(unit_price), 0) as avg_price
           FROM agro_material
@@ -2701,6 +2852,20 @@ const server = http.createServer(async (req, res) => {
         .all() as Array<{ code: string; name: string; desc: string; sort_order: number }>;
       const resolvedPestCategories = dbPestCats.length > 0 ? dbPestCats : PESTICIDE_CATEGORIES;
 
+      const dbSeedCats = db
+        .prepare(
+          'SELECT category_code as code, category_name as name, description as desc, sort_order FROM seed_category_code ORDER BY sort_order ASC, category_code ASC'
+        )
+        .all() as Array<{ code: string; name: string; desc: string; sort_order: number }>;
+      const resolvedSeedCategories = dbSeedCats.length > 0 ? dbSeedCats : SEED_CATEGORIES;
+
+      const dbSeedlingCats = db
+        .prepare(
+          'SELECT category_code as code, category_name as name, description as desc, sort_order FROM seedling_category_code ORDER BY sort_order ASC, category_code ASC'
+        )
+        .all() as Array<{ code: string; name: string; desc: string; sort_order: number }>;
+      const resolvedSeedlingCategories = dbSeedlingCats.length > 0 ? dbSeedlingCats : SEEDLING_CATEGORIES;
+
       const subTypes =
         category === 'FERTILIZER'
           ? resolvedFertCategories.map((c) => c.name)
@@ -2708,6 +2873,10 @@ const server = http.createServer(async (req, res) => {
           ? resolvedNutrCategories.map((c) => c.name)
           : category === 'PESTICIDE'
           ? resolvedPestCategories.map((c) => c.name)
+          : category === 'SEED'
+          ? resolvedSeedCategories.map((c) => c.name)
+          : category === 'SEEDLING'
+          ? resolvedSeedlingCategories.map((c) => c.name)
           : db
               .prepare(
                 category && category !== 'ALL'
@@ -2737,9 +2906,15 @@ const server = http.createServer(async (req, res) => {
             ? resolvedNutrCategories
             : category === 'PESTICIDE'
             ? resolvedPestCategories
+            : category === 'SEED'
+            ? resolvedSeedCategories
+            : category === 'SEEDLING'
+            ? resolvedSeedlingCategories
             : resolvedFertCategories,
         nutrientCategories: resolvedNutrCategories,
         pesticideCategories: resolvedPestCategories,
+        seedCategories: resolvedSeedCategories,
+        seedlingCategories: resolvedSeedlingCategories,
       });
       return;
     }
@@ -2747,7 +2922,16 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/agro-materials/save' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const cat = (body.material_category || 'FERTILIZER').trim();
-      const prefix = cat === 'NUTRIENT' ? 'MAT-NUTR-' : cat === 'PESTICIDE' ? 'MAT-PEST-' : 'FERT-PRD-';
+      const prefix =
+        cat === 'NUTRIENT'
+          ? 'MAT-NUTR-'
+          : cat === 'PESTICIDE'
+          ? 'MAT-PEST-'
+          : cat === 'SEED'
+          ? 'MAT-SEED-'
+          : cat === 'SEEDLING'
+          ? 'MAT-SDL-'
+          : 'FERT-PRD-';
       const material_id = (body.material_id || `${prefix}${String(Date.now()).slice(-2)}`).trim();
       const idEnc = encodeURIComponent(material_id);
 
@@ -2774,9 +2958,44 @@ const server = http.createServer(async (req, res) => {
       const safety_phi_days = (body.safety_phi_days || '').trim();
       const safety_max_count = (body.safety_max_count || '').trim();
 
+      const seed_count_spec = (body.seed_count_spec || '').trim();
+      const germination_rate_pct = (body.germination_rate_pct || '').trim();
+      const germination_temp_spec = (body.germination_temp_spec || '').trim();
+      const seed_coating_spec = (body.seed_coating_spec || '').trim();
+      const sowing_period_spec = (body.sowing_period_spec || '').trim();
+      const days_to_harvest_spec = (body.days_to_harvest_spec || '').trim();
+      const disease_resistance_spec = (body.disease_resistance_spec || '').trim();
+      const variety_reg_no = (body.variety_reg_no || '').trim();
+
+      const plug_tray_spec = (body.plug_tray_spec || '').trim();
+      const seedling_age_spec = (body.seedling_age_spec || '').trim();
+      const grafting_type_spec = (body.grafting_type_spec || '').trim();
+      const planting_distance_spec = (body.planting_distance_spec || '').trim();
+      const hardening_spec = (body.hardening_spec || '').trim();
+      const shipping_pack_spec = (body.shipping_pack_spec || '').trim();
+
       const autoSummary =
         (body.nutrient_ratio_summary || '').trim() ||
-        (cat === 'PESTICIDE'
+        (cat === 'SEED'
+          ? [
+              seed_count_spec ? `립수: ${seed_count_spec}` : '',
+              germination_rate_pct ? `발아율: ${germination_rate_pct}` : '',
+              germination_temp_spec ? `발아적온: ${germination_temp_spec}` : '',
+              days_to_harvest_spec ? `숙기: ${days_to_harvest_spec}` : '',
+              disease_resistance_spec || '',
+            ]
+              .filter(Boolean)
+              .join(' | ')
+          : cat === 'SEEDLING'
+          ? [
+              plug_tray_spec ? `규격: ${plug_tray_spec}` : '',
+              seedling_age_spec ? `묘령: ${seedling_age_spec}` : '',
+              planting_distance_spec ? `재식거리: ${planting_distance_spec}` : '',
+              grafting_type_spec || '',
+            ]
+              .filter(Boolean)
+              .join(' | ')
+          : cat === 'PESTICIDE'
           ? [
               active_ingredient || '유효성분 미입력',
               moa_group_code ? `작용기작 ${moa_group_code}` : '',
@@ -2828,6 +3047,10 @@ const server = http.createServer(async (req, res) => {
           ? '작물영양재'
           : cat === 'PESTICIDE'
           ? '살충·살균제'
+          : cat === 'SEED'
+          ? '엽채류 종자 (배추·상추·시금치·양배추)'
+          : cat === 'SEEDLING'
+          ? '배추·양배추·쌈채류 모종'
           : '복합비료')
       ).trim();
 
@@ -2890,6 +3113,20 @@ const server = http.createServer(async (req, res) => {
         pesticide_reg_no,
         safety_phi_days,
         safety_max_count,
+        seed_count_spec,
+        germination_rate_pct,
+        germination_temp_spec,
+        seed_coating_spec,
+        sowing_period_spec,
+        days_to_harvest_spec,
+        disease_resistance_spec,
+        variety_reg_no,
+        plug_tray_spec,
+        seedling_age_spec,
+        grafting_type_spec,
+        planting_distance_spec,
+        hardening_spec,
+        shipping_pack_spec,
       };
 
       db.prepare(`
@@ -2903,8 +3140,11 @@ const server = http.createServer(async (req, res) => {
           usage_stage, weather_trigger,
           thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
           application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
-          stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count,
+          seed_count_spec, germination_rate_pct, germination_temp_spec, seed_coating_spec,
+          sowing_period_spec, days_to_harvest_spec, disease_resistance_spec, variety_reg_no,
+          plug_tray_spec, seedling_age_spec, grafting_type_spec, planting_distance_spec, hardening_spec, shipping_pack_spec
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         fullRowData.material_id,
         fullRowData.product_code,
@@ -2958,7 +3198,21 @@ const server = http.createServer(async (req, res) => {
         fullRowData.moa_group_code,
         fullRowData.pesticide_reg_no,
         fullRowData.safety_phi_days,
-        fullRowData.safety_max_count
+        fullRowData.safety_max_count,
+        fullRowData.seed_count_spec,
+        fullRowData.germination_rate_pct,
+        fullRowData.germination_temp_spec,
+        fullRowData.seed_coating_spec,
+        fullRowData.sowing_period_spec,
+        fullRowData.days_to_harvest_spec,
+        fullRowData.disease_resistance_spec,
+        fullRowData.variety_reg_no,
+        fullRowData.plug_tray_spec,
+        fullRowData.seedling_age_spec,
+        fullRowData.grafting_type_spec,
+        fullRowData.planting_distance_spec,
+        fullRowData.hardening_spec,
+        fullRowData.shipping_pack_spec
       );
 
       // Supabase public.agro_material 테이블에도 동기화
