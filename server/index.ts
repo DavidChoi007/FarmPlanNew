@@ -15,6 +15,7 @@ import {
   NUTRIENT_CATEGORIES,
   PESTICIDE_CATEGORIES,
   renderFertilizerSvg,
+  resolveFertilizerMainType,
 } from './fertilizerProductAssets.ts';
 import {
   RECOMMENDATION_LOGIC_SPEC,
@@ -1313,35 +1314,37 @@ const server = http.createServer(async (req, res) => {
 
     if (pathname === '/api/fertilizer-category-codes' && req.method === 'POST') {
       const body = await readJsonBody(req);
-      const { category_code, category_name, description, sort_order } = body;
+      const { category_code, main_type, category_name, description, sort_order } = body;
       const prevRow = db
         .prepare('SELECT category_name FROM fertilizer_category_code WHERE category_code = ?')
         .get(category_code) as { category_name: string } | undefined;
 
+      const resolvedMain = resolveFertilizerMainType(category_name || category_code, main_type);
       const rowData = {
         category_code: String(category_code || '').trim(),
+        main_type: resolvedMain,
         category_name: String(category_name || '').trim(),
         description: String(description || '').trim(),
         sort_order: Number(sort_order) || 1,
       };
       db.prepare(`
-        INSERT OR REPLACE INTO fertilizer_category_code (category_code, category_name, description, sort_order)
-        VALUES (?, ?, ?, ?)
-      `).run(rowData.category_code, rowData.category_name, rowData.description, rowData.sort_order);
+        INSERT OR REPLACE INTO fertilizer_category_code (category_code, main_type, category_name, description, sort_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(rowData.category_code, rowData.main_type, rowData.category_name, rowData.description, rowData.sort_order);
 
-      // 비료 구분 코드의 카테고리명이 변경된 경우 연동된 비료(FERTILIZER) 상품의 sub_type도 즉시 동기화
+      // 비료 구분 코드의 카테고리명이 변경된 경우 연동된 비료(FERTILIZER) 상품의 main_type 및 sub_type도 즉시 동기화
       if (prevRow && prevRow.category_name && prevRow.category_name !== rowData.category_name) {
         db.prepare(`
           UPDATE agro_material
-          SET sub_type = ?
+          SET main_type = ?, sub_type = ?
           WHERE material_category = 'FERTILIZER' AND (category_code = ? OR sub_type = ?)
-        `).run(rowData.category_name, rowData.category_code, prevRow.category_name);
+        `).run(rowData.main_type, rowData.category_name, rowData.category_code, prevRow.category_name);
       } else {
         db.prepare(`
           UPDATE agro_material
-          SET sub_type = ?
-          WHERE material_category = 'FERTILIZER' AND category_code = ?
-        `).run(rowData.category_name, rowData.category_code);
+          SET main_type = ?, sub_type = ?
+          WHERE material_category = 'FERTILIZER' AND (category_code = ? OR sub_type = ?)
+        `).run(rowData.main_type, rowData.category_name, rowData.category_code, rowData.category_name);
       }
 
       await supabaseRestUpsert('fertilizer_category_code', rowData, 'category_code');
@@ -2605,6 +2608,7 @@ const server = http.createServer(async (req, res) => {
     // 4-3. 농자재 상품 관리 (비료 FERTILIZER / 영양재 NUTRIENT / 병해충관리제 PESTICIDE) 조회·등록·수정·삭제 API (Supabase 실시간 연동)
     if (pathname === '/api/agro-materials' && req.method === 'GET') {
       const category = (parsedUrl.searchParams.get('category') || 'ALL').trim();
+      const mainType = (parsedUrl.searchParams.get('main_type') || 'ALL').trim();
       const subType = (parsedUrl.searchParams.get('sub_type') || 'ALL').trim();
       const isOrganic = (parsedUrl.searchParams.get('is_organic') || 'ALL').trim();
       const q = (parsedUrl.searchParams.get('q') || '').trim();
@@ -2618,6 +2622,16 @@ const server = http.createServer(async (req, res) => {
       if (category && category !== 'ALL') {
         whereClauses.push('material_category = ?');
         params.push(category);
+      }
+      if (mainType && mainType !== 'ALL') {
+        if (mainType === '천연비료') {
+          whereClauses.push("(main_type = '천연비료' OR sub_type IN ('유기질·퇴비', '토양개량·칼슘비료'))");
+        } else if (mainType === '화학비료') {
+          whereClauses.push("(main_type = '화학비료' OR (main_type IS NULL OR main_type = '') AND sub_type NOT IN ('유기질·퇴비', '토양개량·칼슘비료'))");
+        } else {
+          whereClauses.push('main_type = ?');
+          params.push(mainType);
+        }
       }
       if (subType && subType !== 'ALL') {
         whereClauses.push('(sub_type = ? OR category_code = ?)');
@@ -2665,10 +2679,13 @@ const server = http.createServer(async (req, res) => {
 
       const dbFertCats = db
         .prepare(
-          'SELECT category_code as code, category_name as name, description as desc, sort_order FROM fertilizer_category_code ORDER BY sort_order ASC, category_code ASC'
+          'SELECT category_code as code, main_type, category_name as name, description as desc, sort_order FROM fertilizer_category_code ORDER BY sort_order ASC, category_code ASC'
         )
-        .all() as Array<{ code: string; name: string; desc: string; sort_order: number }>;
-      const resolvedFertCategories = dbFertCats.length > 0 ? dbFertCats : FERTILIZER_CATEGORIES;
+        .all() as Array<{ code: string; main_type?: string; name: string; desc: string; sort_order: number }>;
+      const resolvedFertCategories = (dbFertCats.length > 0 ? dbFertCats : FERTILIZER_CATEGORIES).map((c) => ({
+        ...c,
+        main_type: resolveFertilizerMainType(c.name || c.code, c.main_type),
+      }));
 
       const dbNutrCats = db
         .prepare(
@@ -2805,18 +2822,24 @@ const server = http.createServer(async (req, res) => {
           ? 1
           : 0;
 
+      const resolvedSubType = (
+        body.sub_type ||
+        (cat === 'NUTRIENT'
+          ? '작물영양재'
+          : cat === 'PESTICIDE'
+          ? '살충·살균제'
+          : '복합비료')
+      ).trim();
+
       const fullRowData = {
         material_id,
         product_code: (body.product_code || '30001000012').trim(),
         material_category: cat,
-        sub_type: (
-          body.sub_type ||
-          (cat === 'NUTRIENT'
-            ? '작물영양재'
-            : cat === 'PESTICIDE'
-            ? '살충·살균제'
-            : '복합비료 (원예·기비전용)')
-        ).trim(),
+        main_type:
+          cat === 'FERTILIZER'
+            ? resolveFertilizerMainType(resolvedSubType || body.category_code, body.main_type)
+            : (body.main_type || '').trim(),
+        sub_type: resolvedSubType,
         category_code: (body.category_code || 'CAT-NPK-COMP').trim(),
         manufacturer: (body.manufacturer || '대유').trim(),
         product_name: (body.product_name || '신규 비료 상품').trim(),
@@ -2871,7 +2894,7 @@ const server = http.createServer(async (req, res) => {
 
       db.prepare(`
         INSERT OR REPLACE INTO agro_material (
-          material_id, product_code, material_category, sub_type, category_code, manufacturer,
+          material_id, product_code, material_category, main_type, sub_type, category_code, manufacturer,
           product_name, formulation_type, is_organic, organic_label,
           weight_spec, volume_spec, origin_country, contact_phone,
           target_nutrient_or_pest, nutrient_ratio_summary,
@@ -2881,11 +2904,12 @@ const server = http.createServer(async (req, res) => {
           thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
           application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
           stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         fullRowData.material_id,
         fullRowData.product_code,
         fullRowData.material_category,
+        fullRowData.main_type,
         fullRowData.sub_type,
         fullRowData.category_code,
         fullRowData.manufacturer,

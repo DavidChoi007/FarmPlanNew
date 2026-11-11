@@ -1528,6 +1528,7 @@ export default function UserIntroPage() {
   // ==================== 유저 페이지: 비료 / 영양제 / 병해충관리제 (관리자 페이지 등록 농자재 DB + 다중 검색 필터 + 20개씩 페이징 연동) ====================
   const USER_AGRO_PAGE_SIZE = 20;
   const [userAgroPage, setUserAgroPage] = useState<number>(1);
+  const [userAgroMainTypeFilter, setUserAgroMainTypeFilter] = useState<string>('ALL');
   const [userAgroSubTypeFilter, setUserAgroSubTypeFilter] = useState<string>('ALL');
   const [userAgroOrganicFilter, setUserAgroOrganicFilter] = useState<string>('ALL');
   const [userAgroKeyword, setUserAgroKeyword] = useState<string>('');
@@ -1535,12 +1536,34 @@ export default function UserIntroPage() {
   const [selectedUserAgroDetail, setSelectedUserAgroDetail] = useState<any | null>(null);
   const [activeUserAgroGalleryImg, setActiveUserAgroGalleryImg] = useState<string>('');
   const [userAgroOrderToast, setUserAgroOrderToast] = useState<string>('');
+
+  const resolveFertilizerMainType = (
+    subTypeOrCode?: string | null,
+    explicitMainType?: string | null
+  ): '천연비료' | '화학비료' => {
+    const m = String(explicitMainType || '').trim();
+    if (m === '천연비료' || m === '화학비료') return m;
+    const s = String(subTypeOrCode || '').trim();
+    if (
+      s.includes('유기질') ||
+      s.includes('퇴비') ||
+      s.includes('토양개량') ||
+      s.includes('칼슘') ||
+      s.includes('규산') ||
+      s === 'CAT-ORG-COMP' ||
+      s === 'CAT-SOIL-CALC'
+    ) {
+      return '천연비료';
+    }
+    return '화학비료';
+  };
+
   const [userAgroResult, setUserAgroResult] = useState<{
     items: any[];
     total: number;
     summary: any;
     subTypes: string[];
-    fertilizerCategories: Array<{ code: string; name: string; desc: string }>;
+    fertilizerCategories: Array<{ code: string; name: string; desc: string; main_type?: string }>;
     nutrientCategories: Array<{ code: string; name: string; desc: string }>;
     pesticideCategories: Array<{ code: string; name: string; desc: string }>;
   }>({
@@ -1549,12 +1572,12 @@ export default function UserIntroPage() {
     summary: null,
     subTypes: [],
     fertilizerCategories: [
-      { code: 'CAT-NPK-COMP', name: '복합비료', desc: '질소·인산·칼륨 3요소에 고토·붕소·칼슘을 복합 처방한 본밭 밑거름 표준 비료 (원예·기비전용)' },
-      { code: 'CAT-NK-TOP', name: '웃거름비료', desc: '초기 활착 이후 생육 중기·결구기·비대기에 빠르게 흡수되는 속효성 NK 추비 비료 (NK추비전용)' },
-      { code: 'CAT-CRF-SLOW', name: '완효성비료', desc: '온도·수분에 따라 60~100일간 양분이 서서히 용출되어 웃거름 노동력을 절감하는 코팅 비료 (코팅지효성)' },
-      { code: 'CAT-SOIL-CALC', name: '토양개량·칼슘비료', desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)' },
-      { code: 'CAT-ORG-COMP', name: '유기질·퇴비', desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)' },
-      { code: 'CAT-SINGLE-K', name: '단비·칼륨전용비료', desc: '토양검정 결과 특정 부족 성분(칼륨·질소·인산)을 정밀 보충하기 위한 맞춤형 단비 (황산가리·요소)' },
+      { code: 'CAT-ORG-COMP', name: '유기질·퇴비', desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)', main_type: '천연비료' },
+      { code: 'CAT-SOIL-CALC', name: '토양개량·칼슘비료', desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)', main_type: '천연비료' },
+      { code: 'CAT-NPK-COMP', name: '복합비료', desc: '질소·인산·칼륨 3요소에 고토·붕소·칼슘을 복합 처방한 본밭 밑거름 표준 비료 (원예·기비전용)', main_type: '화학비료' },
+      { code: 'CAT-NK-TOP', name: '웃거름비료', desc: '초기 활착 이후 생육 중기·결구기·비대기에 빠르게 흡수되는 속효성 NK 추비 비료 (NK추비전용)', main_type: '화학비료' },
+      { code: 'CAT-CRF-SLOW', name: '완효성비료', desc: '온도·수분에 따라 60~100일간 양분이 서서히 용출되어 웃거름 노동력을 절감하는 코팅 비료 (코팅지효성)', main_type: '화학비료' },
+      { code: 'CAT-SINGLE-K', name: '단비·칼륨전용비료', desc: '토양검정 결과 특정 부족 성분(칼륨·질소·인산)을 정밀 보충하기 위한 맞춤형 단비 (황산가리·요소)', main_type: '화학비료' },
     ],
     nutrientCategories: [
       { code: 'CAT-NUT-PHOTO', name: '광합성·냉해/스트레스 회복 영양재', desc: '일조량 부족·장마·저온 냉해·고온 위조 등 이상기후 스트레스 발생 시 광합성 효율과 수세를 급속 회복시키는 기능성 영양재' },
@@ -1583,6 +1606,7 @@ export default function UserIntroPage() {
 
   const executeUserAgroMaterialSearch = async (override?: {
     category?: string;
+    main_type?: string;
     sub_type?: string;
     is_organic?: string;
     q?: string;
@@ -1595,6 +1619,7 @@ export default function UserIntroPage() {
       setUserAgroPage(nextPage);
       const params = new URLSearchParams({
         category: cat,
+        main_type: override?.main_type ?? userAgroMainTypeFilter,
         sub_type: override?.sub_type ?? userAgroSubTypeFilter,
         is_organic: override?.is_organic ?? userAgroOrganicFilter,
         q: (override?.q ?? userAgroKeyword).trim(),
@@ -6973,11 +6998,13 @@ export default function UserIntroPage() {
                     type="button"
                     onClick={() => {
                       const cat = getUserAgroCategoryFromMenu(activeMenu);
+                      setUserAgroMainTypeFilter('ALL');
                       setUserAgroSubTypeFilter('ALL');
                       setUserAgroOrganicFilter('ALL');
                       setUserAgroKeyword('');
                       executeUserAgroMaterialSearch({
                         category: cat,
+                        main_type: 'ALL',
                         sub_type: 'ALL',
                         is_organic: 'ALL',
                         q: '',
@@ -6991,11 +7018,33 @@ export default function UserIntroPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-12 gap-3 text-xs">
-                  {/* ① 구분 카테고리 (Sub-Type) */}
-                  <div className="sm:col-span-3">
+                  {activeMenu === '비료' && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-extrabold text-emerald-900 mb-1">
+                        ① 비료 구분 카테고리 (Main-Type)
+                      </label>
+                      <select
+                        value={userAgroMainTypeFilter}
+                        onChange={(e) => {
+                          const nextMain = e.target.value;
+                          setUserAgroMainTypeFilter(nextMain);
+                          setUserAgroSubTypeFilter('ALL');
+                          executeUserAgroMaterialSearch({ main_type: nextMain, sub_type: 'ALL' });
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl bg-white border border-emerald-400 font-extrabold text-slate-900"
+                      >
+                        <option value="ALL">전체 (천연 + 화학)</option>
+                        <option value="천연비료">천연비료</option>
+                        <option value="화학비료">화학비료</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* 세부 카테고리 (Sub-Type) */}
+                  <div className={activeMenu === '비료' ? 'sm:col-span-3' : 'sm:col-span-3'}>
                     <label className="block text-[11px] font-extrabold text-emerald-900 mb-1">
                       {activeMenu === '비료'
-                        ? '① 비료 구분 카테고리 (Sub-Type)'
+                        ? '② 비료 세부 카테고리 (Sub-Type)'
                         : activeMenu === '영양제'
                         ? '① 영양제 구분 카테고리 (Sub-Type)'
                         : '① 병해충관리제 구분 카테고리 (Sub-Type)'}
@@ -7009,24 +7058,31 @@ export default function UserIntroPage() {
                       }}
                       className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
                     >
-                      <option value="ALL">전체 구분 카테고리</option>
+                      <option value="ALL">전체 세부 카테고리</option>
                       {(activeMenu === '비료'
-                        ? userAgroResult.fertilizerCategories
+                        ? userAgroResult.fertilizerCategories.filter((catItem: any) =>
+                            userAgroMainTypeFilter === 'ALL'
+                              ? true
+                              : resolveFertilizerMainType(catItem.name || catItem.code, catItem.main_type) ===
+                                userAgroMainTypeFilter
+                          )
                         : activeMenu === '영양제'
                         ? userAgroResult.nutrientCategories
                         : userAgroResult.pesticideCategories
                       ).map((catItem: any) => (
                         <option key={catItem.code} value={catItem.name}>
-                          {catItem.name}
+                          {activeMenu === '비료'
+                            ? `[${resolveFertilizerMainType(catItem.name || catItem.code, catItem.main_type)}] ${catItem.name}`
+                            : catItem.name}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  {/* ② 친환경·유기농자재 구분 */}
-                  <div className="sm:col-span-3">
+                  {/* 친환경·유기농자재 구분 */}
+                  <div className={activeMenu === '비료' ? 'sm:col-span-2' : 'sm:col-span-3'}>
                     <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                      ② 친환경·유기농자재 구분
+                      {activeMenu === '비료' ? '③ 친환경·유기농 구분' : '② 친환경·유기농자재 구분'}
                     </label>
                     <select
                       value={userAgroOrganicFilter}
@@ -7043,10 +7099,12 @@ export default function UserIntroPage() {
                     </select>
                   </div>
 
-                  {/* ③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색 */}
-                  <div className="sm:col-span-6">
+                  {/* 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색 */}
+                  <div className={activeMenu === '비료' ? 'sm:col-span-5' : 'sm:col-span-6'}>
                     <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                      ③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색
+                      {activeMenu === '비료'
+                        ? '④ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'
+                        : '③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'}
                     </label>
                     <form
                       onSubmit={(e) => {
@@ -7260,6 +7318,17 @@ export default function UserIntroPage() {
                                   <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-300 font-mono font-bold text-[11px]">
                                     제품코드: {item.product_code || '30001000012'}
                                   </span>
+                                  {(item.material_category === 'FERTILIZER' || activeMenu === '비료') && (
+                                    <span
+                                      className={`px-2 py-0.5 rounded-md font-extrabold text-[11px] border ${
+                                        resolveFertilizerMainType(item.sub_type, item.main_type) === '천연비료'
+                                          ? 'bg-amber-50 border-amber-300 text-amber-900'
+                                          : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                                      }`}
+                                    >
+                                      {resolveFertilizerMainType(item.sub_type, item.main_type)}
+                                    </span>
+                                  )}
                                   <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-extrabold text-[11px]">
                                     {item.sub_type}
                                   </span>

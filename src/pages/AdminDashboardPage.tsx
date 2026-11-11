@@ -265,6 +265,7 @@ export default function AdminDashboardPage() {
   const [fertilizerCatModalMode, setFertilizerCatModalMode] = useState<'create' | 'edit'>('create');
   const [fertilizerCatForm, setFertilizerCatForm] = useState({
     category_code: 'CAT-',
+    main_type: '화학비료',
     category_name: '',
     description: '',
     sort_order: 7,
@@ -1739,16 +1740,39 @@ export default function AdminDashboardPage() {
   // ==================== 농자재 상품 관리 (서브메뉴: 비료 / 영양재 / 병해충관리제, 1페이지 20개 페이징) 상태 및 핸들러 ====================
   const AGRO_PAGE_SIZE = 20;
   const [agroPage, setAgroPage] = useState<number>(1);
+  const [agroMainTypeFilter, setAgroMainTypeFilter] = useState<string>('ALL');
   const [agroSubTypeFilter, setAgroSubTypeFilter] = useState<string>('ALL');
   const [agroOrganicFilter, setAgroOrganicFilter] = useState<string>('ALL');
   const [agroKeyword, setAgroKeyword] = useState<string>('');
   const [isAgroLoading, setIsAgroLoading] = useState<boolean>(false);
+
+  const resolveFertilizerMainType = (
+    subTypeOrCode?: string | null,
+    explicitMainType?: string | null
+  ): '천연비료' | '화학비료' => {
+    const m = String(explicitMainType || '').trim();
+    if (m === '천연비료' || m === '화학비료') return m;
+    const s = String(subTypeOrCode || '').trim();
+    if (
+      s.includes('유기질') ||
+      s.includes('퇴비') ||
+      s.includes('토양개량') ||
+      s.includes('칼슘') ||
+      s.includes('규산') ||
+      s === 'CAT-ORG-COMP' ||
+      s === 'CAT-SOIL-CALC'
+    ) {
+      return '천연비료';
+    }
+    return '화학비료';
+  };
+
   const [agroResult, setAgroResult] = useState<{
     items: any[];
     total: number;
     summary: any;
     subTypes: string[];
-    fertilizerCategories?: Array<{ code: string; name: string; desc: string }>;
+    fertilizerCategories?: Array<{ code: string; name: string; desc: string; main_type?: string }>;
     nutrientCategories?: Array<{ code: string; name: string; desc: string }>;
     pesticideCategories?: Array<{ code: string; name: string; desc: string }>;
   }>({
@@ -1757,12 +1781,12 @@ export default function AdminDashboardPage() {
     summary: null,
     subTypes: [],
     fertilizerCategories: [
-      { code: 'CAT-NPK-COMP', name: '복합비료', desc: '질소·인산·칼륨 3요소에 고토·붕소·칼슘을 복합 처방한 본밭 밑거름 표준 비료 (원예·기비전용)' },
-      { code: 'CAT-NK-TOP', name: '웃거름비료', desc: '초기 활착 이후 생육 중기·결구기·비대기에 빠르게 흡수되는 속효성 NK 추비 비료 (NK추비전용)' },
-      { code: 'CAT-CRF-SLOW', name: '완효성비료', desc: '온도·수분에 따라 60~100일간 양분이 서서히 용출되어 웃거름 노동력을 절감하는 코팅 비료 (코팅지효성)' },
-      { code: 'CAT-SOIL-CALC', name: '토양개량·칼슘비료', desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)' },
-      { code: 'CAT-ORG-COMP', name: '유기질·퇴비', desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)' },
-      { code: 'CAT-SINGLE-K', name: '단비·칼륨전용비료', desc: '토양검정 결과 특정 부족 성분(칼륨·질소·인산)을 정밀 보충하기 위한 맞춤형 단비 (황산가리·요소)' },
+      { code: 'CAT-ORG-COMP', name: '유기질·퇴비', desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)', main_type: '천연비료' },
+      { code: 'CAT-SOIL-CALC', name: '토양개량·칼슘비료', desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)', main_type: '천연비료' },
+      { code: 'CAT-NPK-COMP', name: '복합비료', desc: '질소·인산·칼륨 3요소에 고토·붕소·칼슘을 복합 처방한 본밭 밑거름 표준 비료 (원예·기비전용)', main_type: '화학비료' },
+      { code: 'CAT-NK-TOP', name: '웃거름비료', desc: '초기 활착 이후 생육 중기·결구기·비대기에 빠르게 흡수되는 속효성 NK 추비 비료 (NK추비전용)', main_type: '화학비료' },
+      { code: 'CAT-CRF-SLOW', name: '완효성비료', desc: '온도·수분에 따라 60~100일간 양분이 서서히 용출되어 웃거름 노동력을 절감하는 코팅 비료 (코팅지효성)', main_type: '화학비료' },
+      { code: 'CAT-SINGLE-K', name: '단비·칼륨전용비료', desc: '토양검정 결과 특정 부족 성분(칼륨·질소·인산)을 정밀 보충하기 위한 맞춤형 단비 (황산가리·요소)', main_type: '화학비료' },
     ],
     nutrientCategories: [
       { code: 'CAT-NUT-PHOTO', name: '광합성·냉해/스트레스 회복 영양재', desc: '일조량 부족·장마·저온 냉해·고온 위조 등 이상기후 스트레스 발생 시 광합성 효율과 수세를 급속 회복시키는 기능성 영양재' },
@@ -1782,16 +1806,21 @@ export default function AdminDashboardPage() {
   });
 
   // 기초 코드 관리(비료 분류 기초 코드 / 영양제 기초 코드 / 병해충관리제) <-> 농자재 상품 관리 select box 양방향 동기화 마스터 리스트
-  const resolvedFertilizerCategoryCodes =
+  const resolvedFertilizerCategoryCodes = (
     Array.isArray(overview?.fertilizerCategoryCodes) && overview.fertilizerCategoryCodes.length > 0
       ? overview.fertilizerCategoryCodes
       : (agroResult.fertilizerCategories || []).map((c, idx) => ({
           category_code: c.code,
+          main_type: resolveFertilizerMainType(c.name || c.code, c.main_type),
           category_name: c.name,
           description: c.desc,
           sort_order: idx + 1,
           product_count: 1,
-        }));
+        }))
+  ).map((fc: any) => ({
+    ...fc,
+    main_type: resolveFertilizerMainType(fc.category_name || fc.sub_type_name || fc.category_code, fc.main_type),
+  }));
 
   const resolvedNutrientCategoryCodes =
     Array.isArray(overview?.nutrientCategoryCodes) && overview.nutrientCategoryCodes.length > 0
@@ -1822,6 +1851,7 @@ export default function AdminDashboardPage() {
     material_id: 'FERT-PRD-06',
     product_code: '30001000012',
     material_category: 'FERTILIZER',
+    main_type: '화학비료',
     sub_type: '복합비료',
     category_code: 'CAT-NPK-COMP',
     manufacturer: '대유',
@@ -1922,11 +1952,21 @@ export default function AdminDashboardPage() {
       (fc: any) => fc.category_name === defaultSubType || fc.category_code === defaultSubType
     );
 
+    const resolvedSubType = matchedBasicCat ? matchedBasicCat.category_name : defaultSubType;
+    const resolvedMainType =
+      cat === 'FERTILIZER'
+        ? resolveFertilizerMainType(
+            resolvedSubType,
+            matchedBasicCat?.main_type || (agroMainTypeFilter !== 'ALL' ? agroMainTypeFilter : undefined)
+          )
+        : '';
+
     setAgroForm({
       material_id: newId,
       product_code: newProductCode,
       material_category: cat,
-      sub_type: matchedBasicCat ? matchedBasicCat.category_name : defaultSubType,
+      main_type: resolvedMainType,
+      sub_type: resolvedSubType,
       category_code: matchedBasicCat
         ? matchedBasicCat.category_code
         : cat === 'NUTRIENT'
@@ -2054,6 +2094,7 @@ export default function AdminDashboardPage() {
 
   const executeAgroMaterialSearch = async (override?: {
     category?: string;
+    main_type?: string;
     sub_type?: string;
     is_organic?: string;
     q?: string;
@@ -2066,6 +2107,7 @@ export default function AdminDashboardPage() {
       setAgroPage(nextPage);
       const params = new URLSearchParams({
         category: cat,
+        main_type: override?.main_type ?? agroMainTypeFilter,
         sub_type: override?.sub_type ?? agroSubTypeFilter,
         is_organic: override?.is_organic ?? agroOrganicFilter,
         q: (override?.q ?? agroKeyword).trim(),
@@ -11961,6 +12003,7 @@ export default function AdminDashboardPage() {
                       const nextOrder = resolvedFertilizerCategoryCodes.length + 1;
                       setFertilizerCatForm({
                         category_code: `CAT-FERT-0${nextOrder}`,
+                        main_type: '화학비료',
                         category_name: '',
                         description: '',
                         sort_order: nextOrder,
@@ -11981,7 +12024,8 @@ export default function AdminDashboardPage() {
                       <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
                         <th className="py-3.5 px-4 font-bold w-16 whitespace-nowrap">순서</th>
                         <th className="py-3.5 px-4 font-bold w-40 whitespace-nowrap">비료 구분 코드</th>
-                        <th className="py-3.5 px-4 font-bold w-64 whitespace-nowrap">비료 구분 카테고리명 (코드명)</th>
+                        <th className="py-3.5 px-4 font-bold w-40 whitespace-nowrap">비료 구분 카테고리 (Main-Type)</th>
+                        <th className="py-3.5 px-4 font-bold w-60 whitespace-nowrap">비료 세부 카테고리명 (Sub-Type)</th>
                         <th className="py-3.5 px-4 font-bold">설명 (주요 성분 · 용도 기준)</th>
                         <th className="py-3.5 px-4 font-bold w-36 whitespace-nowrap">연동 비료 상품 수</th>
                         <th className="py-3.5 px-4 font-bold text-right w-40 whitespace-nowrap">관리 (수정 / 삭제)</th>
@@ -11994,18 +12038,31 @@ export default function AdminDashboardPage() {
                           const q = fertilizerCatSearch.toLowerCase();
                           return (
                             String(fc.category_code || '').toLowerCase().includes(q) ||
+                            String(fc.main_type || '').toLowerCase().includes(q) ||
                             String(fc.category_name || '').toLowerCase().includes(q) ||
                             String(fc.description || '').toLowerCase().includes(q)
                           );
                         })
                         .map((fc: any) => {
                           const prodCount = Number(fc.product_count) || 0;
+                          const mainType = resolveFertilizerMainType(fc.category_name || fc.category_code, fc.main_type);
                           return (
                             <tr key={fc.category_code} className="hover:bg-slate-50 transition">
                               <td className="py-3.5 px-4 font-bold text-slate-500">#{fc.sort_order}</td>
                               <td className="py-3.5 px-4 font-mono font-bold text-teal-700 whitespace-nowrap">
                                 <span className="px-2 py-1 rounded-md bg-teal-50 border border-teal-200 text-teal-800">
                                   {fc.category_code}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span
+                                  className={`px-2.5 py-1 rounded-lg font-extrabold text-xs inline-flex items-center gap-1 border ${
+                                    mainType === '천연비료'
+                                      ? 'bg-amber-50 border-amber-300 text-amber-900'
+                                      : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                                  }`}
+                                >
+                                  {mainType}
                                 </span>
                               </td>
                               <td className="py-3.5 px-4 whitespace-nowrap">
@@ -12023,9 +12080,11 @@ export default function AdminDashboardPage() {
                                   onClick={() => {
                                     setActiveTab('agro_fertilizer');
                                     setTimeout(() => {
+                                      setAgroMainTypeFilter(mainType);
                                       setAgroSubTypeFilter(fc.category_name);
                                       executeAgroMaterialSearch({
                                         category: 'FERTILIZER',
+                                        main_type: mainType,
                                         sub_type: fc.category_name,
                                       });
                                     }, 50);
@@ -12043,6 +12102,7 @@ export default function AdminDashboardPage() {
                                     onClick={() => {
                                       setFertilizerCatForm({
                                         category_code: fc.category_code,
+                                        main_type: mainType,
                                         category_name: fc.category_name,
                                         description: fc.description || '',
                                         sort_order: fc.sort_order || 1,
@@ -12096,7 +12156,7 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <form onSubmit={handleSaveFertilizerCategoryCode} className="p-6 space-y-4 text-xs">
-                      <div className="grid sm:grid-cols-3 gap-4">
+                      <div className="grid sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block font-bold text-slate-800 mb-1.5">
                             ① 비료 구분 코드
@@ -12115,7 +12175,23 @@ export default function AdminDashboardPage() {
 
                         <div>
                           <label className="block font-bold text-emerald-800 mb-1.5">
-                            ② 비료 구분 카테고리명
+                            ② 비료 구분 카테고리 (Main-Type)
+                          </label>
+                          <select
+                            value={fertilizerCatForm.main_type || '화학비료'}
+                            onChange={(e) =>
+                              setFertilizerCatForm({ ...fertilizerCatForm, main_type: e.target.value })
+                            }
+                            className="w-full px-3 py-2.5 rounded-xl bg-white border border-emerald-400 font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          >
+                            <option value="천연비료">천연비료</option>
+                            <option value="화학비료">화학비료</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-emerald-800 mb-1.5">
+                            ③ 비료 세부 카테고리명 (Sub-Type)
                           </label>
                           <input
                             type="text"
@@ -12131,7 +12207,7 @@ export default function AdminDashboardPage() {
 
                         <div>
                           <label className="block font-bold text-slate-800 mb-1.5">
-                            ③ 정렬 순서
+                            ④ 정렬 순서
                           </label>
                           <input
                             type="number"
@@ -12149,7 +12225,7 @@ export default function AdminDashboardPage() {
 
                       <div>
                         <label className="block font-bold text-slate-800 mb-1.5">
-                          ④ 상세 설명 (비료 구분 카테고리의 주요 성분 및 시비 용도 설명)
+                          ⑤ 상세 설명 (비료 세부 카테고리의 주요 성분 및 시비 용도 설명)
                         </label>
                         <textarea
                           rows={3}
@@ -15812,11 +15888,13 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setAgroMainTypeFilter('ALL');
                       setAgroSubTypeFilter('ALL');
                       setAgroOrganicFilter('ALL');
                       setAgroKeyword('');
                       executeAgroMaterialSearch({
                         category: getAgroCategoryFromTab(activeTab),
+                        main_type: 'ALL',
                         sub_type: 'ALL',
                         is_organic: 'ALL',
                         q: '',
@@ -15830,10 +15908,32 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="grid sm:grid-cols-12 gap-3 text-xs pt-1">
-                  <div className="sm:col-span-3">
+                  {activeTab === 'agro_fertilizer' && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-bold text-emerald-800 mb-1">
+                        ① 비료 구분 카테고리 (Main-Type)
+                      </label>
+                      <select
+                        value={agroMainTypeFilter}
+                        onChange={(e) => {
+                          const nextMain = e.target.value;
+                          setAgroMainTypeFilter(nextMain);
+                          setAgroSubTypeFilter('ALL');
+                          executeAgroMaterialSearch({ main_type: nextMain, sub_type: 'ALL' });
+                        }}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-emerald-400 font-extrabold text-slate-900"
+                      >
+                        <option value="ALL">전체 (천연 + 화학)</option>
+                        <option value="천연비료">천연비료</option>
+                        <option value="화학비료">화학비료</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className={activeTab === 'agro_fertilizer' ? 'sm:col-span-3' : 'sm:col-span-3'}>
                     <label className="block text-[11px] font-bold text-emerald-800 mb-1">
                       {activeTab === 'agro_fertilizer'
-                        ? '① 비료 구분 카테고리 (Sub-Type)'
+                        ? '② 비료 세부 카테고리 (Sub-Type)'
                         : activeTab === 'agro_nutrient'
                         ? '① 영양제 구분 카테고리 (Sub-Type)'
                         : '① 병해충관리제 구분 카테고리 (Sub-Type)'}
@@ -15847,23 +15947,27 @@ export default function AdminDashboardPage() {
                       }}
                       className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900"
                     >
-                      <option value="ALL">전체 구분 카테고리</option>
+                      <option value="ALL">전체 세부 카테고리</option>
                       {(activeTab === 'agro_fertilizer'
-                        ? resolvedFertilizerCategoryCodes
+                        ? resolvedFertilizerCategoryCodes.filter((catItem: any) =>
+                            agroMainTypeFilter === 'ALL' ? true : catItem.main_type === agroMainTypeFilter
+                          )
                         : activeTab === 'agro_nutrient'
                         ? resolvedNutrientCategoryCodes
                         : resolvedPesticideCategoryCodes
                       ).map((catItem: any) => (
                         <option key={catItem.category_code} value={catItem.category_name}>
-                          {catItem.category_name}
+                          {activeTab === 'agro_fertilizer'
+                            ? `[${catItem.main_type}] ${catItem.category_name}`
+                            : catItem.category_name}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="sm:col-span-3">
+                  <div className={activeTab === 'agro_fertilizer' ? 'sm:col-span-2' : 'sm:col-span-3'}>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      ② 친환경·유기농자재 구분
+                      {activeTab === 'agro_fertilizer' ? '③ 친환경·유기농 구분' : '② 친환경·유기농자재 구분'}
                     </label>
                     <select
                       value={agroOrganicFilter}
@@ -15880,9 +15984,11 @@ export default function AdminDashboardPage() {
                     </select>
                   </div>
 
-                  <div className="sm:col-span-6">
+                  <div className={activeTab === 'agro_fertilizer' ? 'sm:col-span-5' : 'sm:col-span-6'}>
                     <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      ③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색
+                      {activeTab === 'agro_fertilizer'
+                        ? '④ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'
+                        : '③ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'}
                     </label>
                     <form
                       onSubmit={(e) => {
@@ -16020,6 +16126,17 @@ export default function AdminDashboardPage() {
                                     <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-800 border border-slate-300 font-mono font-bold text-[11px]">
                                       제품코드: {item.product_code || '30001000012'}
                                     </span>
+                                    {(item.material_category === 'FERTILIZER' || activeTab === 'agro_fertilizer') && (
+                                      <span
+                                        className={`px-2 py-0.5 rounded-md font-extrabold text-[11px] border ${
+                                          resolveFertilizerMainType(item.sub_type, item.main_type) === '천연비료'
+                                            ? 'bg-amber-50 border-amber-300 text-amber-900'
+                                            : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+                                        }`}
+                                      >
+                                        {resolveFertilizerMainType(item.sub_type, item.main_type)}
+                                      </span>
+                                    )}
                                     <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-extrabold text-[11px]">
                                       {item.sub_type}
                                     </span>
@@ -16229,7 +16346,10 @@ export default function AdminDashboardPage() {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        setAgroForm({ ...item });
+                                        setAgroForm({
+                                          ...item,
+                                          main_type: resolveFertilizerMainType(item.sub_type, item.main_type),
+                                        });
                                         setAgroFormMode('edit');
                                         setIsAgroFormModalOpen(true);
                                       }}
@@ -16426,6 +16546,18 @@ export default function AdminDashboardPage() {
                         <div className="lg:col-span-7 space-y-4">
                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
                             <div className="flex flex-wrap items-center gap-2">
+                              {selectedAgroDetail.material_category === 'FERTILIZER' && (
+                                <span
+                                  className={`px-2.5 py-1 rounded-lg font-extrabold border ${
+                                    resolveFertilizerMainType(selectedAgroDetail.sub_type, selectedAgroDetail.main_type) ===
+                                    '천연비료'
+                                      ? 'bg-amber-100 border-amber-300 text-amber-950'
+                                      : 'bg-indigo-100 border-indigo-300 text-indigo-950'
+                                  }`}
+                                >
+                                  {resolveFertilizerMainType(selectedAgroDetail.sub_type, selectedAgroDetail.main_type)}
+                                </span>
+                              )}
                               <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-extrabold">
                                 {selectedAgroDetail.sub_type}
                               </span>
@@ -17059,6 +17191,7 @@ export default function AdminDashboardPage() {
                                   ...agroForm,
                                   product_code: '30001000012',
                                   material_category: 'FERTILIZER',
+                                  main_type: '천연비료',
                                   sub_type:
                                     (overview?.fertilizerCategoryCodes || []).find(
                                       (fc: any) => fc.category_code === 'CAT-ORG-COMP'
@@ -17134,7 +17267,7 @@ export default function AdminDashboardPage() {
                             ? '병해충관리제 구분 카테고리'
                             : agroForm.material_category === 'NUTRIENT'
                             ? '영양제 구분 카테고리'
-                            : '비료 구분 카테고리'}{' '}
+                            : '비료 구분 카테고리 (Main-Type) · 비료 세부 카테고리 (Sub-Type)'}{' '}
                           · 제품 기본 스펙(제조사/제품코드/인증구분/규격) 및 가격/할인/포인트
                         </div>
 
@@ -17145,8 +17278,9 @@ export default function AdminDashboardPage() {
                               value={agroForm.material_category}
                               onChange={(e) => {
                                 const nextCat = e.target.value;
-                                const defaultFert =
-                                  resolvedFertilizerCategoryCodes[0]?.category_name || '복합비료';
+                                const defaultFertObj = resolvedFertilizerCategoryCodes[0];
+                                const defaultFert = defaultFertObj?.category_name || '복합비료';
+                                const defaultFertMain = resolveFertilizerMainType(defaultFert, defaultFertObj?.main_type);
                                 const defaultNutr =
                                   resolvedNutrientCategoryCodes[0]?.category_name ||
                                   '광합성·냉해/스트레스 회복 영양재';
@@ -17154,7 +17288,7 @@ export default function AdminDashboardPage() {
                                   resolvedPesticideCategoryCodes[0]?.category_name ||
                                   '제초제 (고랑·헛골 비선택성/토양처리)';
                                 const defaultFertCode =
-                                  resolvedFertilizerCategoryCodes[0]?.category_code || 'CAT-NPK-COMP';
+                                  defaultFertObj?.category_code || 'CAT-NPK-COMP';
                                 const defaultNutrCode =
                                   resolvedNutrientCategoryCodes[0]?.category_code || 'CAT-NUT-PHOTO';
                                 const defaultPestCode =
@@ -17162,6 +17296,7 @@ export default function AdminDashboardPage() {
                                 setAgroForm({
                                   ...agroForm,
                                   material_category: nextCat,
+                                  main_type: nextCat === 'FERTILIZER' ? defaultFertMain : '',
                                   sub_type:
                                     nextCat === 'NUTRIENT'
                                       ? defaultNutr
@@ -17217,7 +17352,38 @@ export default function AdminDashboardPage() {
                               required
                             />
                           </div>
-                          <div className="sm:col-span-2">
+
+                          {agroForm.material_category === 'FERTILIZER' && (
+                            <div>
+                              <label className="block font-bold text-emerald-800 mb-1">
+                                비료 구분 카테고리 (Main-Type)
+                              </label>
+                              <select
+                                value={resolveFertilizerMainType(agroForm.sub_type, agroForm.main_type)}
+                                onChange={(e) => {
+                                  const nextMain = e.target.value as '천연비료' | '화학비료';
+                                  const matchingSubs = resolvedFertilizerCategoryCodes.filter(
+                                    (fc: any) =>
+                                      resolveFertilizerMainType(fc.category_name || fc.category_code, fc.main_type) ===
+                                      nextMain
+                                  );
+                                  const firstMatching = matchingSubs[0];
+                                  setAgroForm({
+                                    ...agroForm,
+                                    main_type: nextMain,
+                                    sub_type: firstMatching ? firstMatching.category_name : agroForm.sub_type,
+                                    category_code: firstMatching ? firstMatching.category_code : agroForm.category_code,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-emerald-400 font-extrabold text-slate-900"
+                              >
+                                <option value="천연비료">천연비료</option>
+                                <option value="화학비료">화학비료</option>
+                              </select>
+                            </div>
+                          )}
+
+                          <div className={agroForm.material_category === 'FERTILIZER' ? 'sm:col-span-1' : 'sm:col-span-2'}>
                             <label className="block font-bold text-emerald-800 mb-1">
                               {agroForm.material_category === 'NUTRIENT'
                                 ? '영양제 세부 카테고리 (Sub-Type)'
@@ -17240,6 +17406,10 @@ export default function AdminDashboardPage() {
                                 );
                                 setAgroForm({
                                   ...agroForm,
+                                  main_type:
+                                    agroForm.material_category === 'FERTILIZER'
+                                      ? resolveFertilizerMainType(selectedName, matched?.main_type)
+                                      : agroForm.main_type,
                                   sub_type: selectedName,
                                   category_code: matched ? matched.category_code : agroForm.category_code,
                                 });
@@ -17250,7 +17420,13 @@ export default function AdminDashboardPage() {
                                 ? resolvedNutrientCategoryCodes
                                 : agroForm.material_category === 'PESTICIDE'
                                 ? resolvedPesticideCategoryCodes
-                                : resolvedFertilizerCategoryCodes
+                                : resolvedFertilizerCategoryCodes.filter(
+                                    (catItem: any) =>
+                                      resolveFertilizerMainType(
+                                        catItem.category_name || catItem.category_code,
+                                        catItem.main_type
+                                      ) === resolveFertilizerMainType(agroForm.sub_type, agroForm.main_type)
+                                  )
                               ).map((catItem: any) => (
                                 <option key={catItem.category_code} value={catItem.category_name}>
                                   {catItem.category_name}

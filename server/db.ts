@@ -11,6 +11,7 @@ import {
   INITIAL_FERTILIZER_PRODUCTS,
   INITIAL_NUTRIENT_PRODUCTS,
   INITIAL_PESTICIDE_PRODUCTS,
+  resolveFertilizerMainType,
 } from './fertilizerProductAssets.ts';
 
 const dataDir = path.resolve(process.cwd(), 'data');
@@ -154,6 +155,7 @@ export function initDatabase() {
     -- 6-0. 비료 분류 기초 코드 테이블 (fertilizer_category_code)
     CREATE TABLE IF NOT EXISTS fertilizer_category_code (
       category_code TEXT PRIMARY KEY,
+      main_type TEXT DEFAULT '화학비료',
       category_name TEXT NOT NULL,
       description TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 1
@@ -557,34 +559,47 @@ export function initDatabase() {
 }
 
 function ensureFertilizerCategoryCodes() {
+  const existingCols = new Set(
+    (db.prepare('PRAGMA table_info(fertilizer_category_code)').all() as Array<{ name: string }>).map(
+      (c) => c.name
+    )
+  );
+  if (!existingCols.has('main_type')) {
+    db.exec("ALTER TABLE fertilizer_category_code ADD COLUMN main_type TEXT DEFAULT '화학비료'");
+  }
+
   db.prepare("DELETE FROM fertilizer_category_code WHERE category_code = 'CAT-FERT-07' AND category_name = 'TEST'").run();
   const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM fertilizer_category_code').get() as { cnt: number }).cnt;
   if (existingCount < FERTILIZER_CATEGORIES.length) {
     const ins = db.prepare(`
-      INSERT OR IGNORE INTO fertilizer_category_code (category_code, category_name, description, sort_order)
-      VALUES (?, ?, ?, ?)
+      INSERT OR IGNORE INTO fertilizer_category_code (category_code, main_type, category_name, description, sort_order)
+      VALUES (?, ?, ?, ?, ?)
     `);
     FERTILIZER_CATEGORIES.forEach((cat, idx) => {
-      ins.run(cat.code, cat.name, cat.desc, idx + 1);
+      ins.run(cat.code, cat.main_type || resolveFertilizerMainType(cat.name), cat.name, cat.desc, idx + 1);
     });
   }
 
-  // 기존 category_name 에 괄호 '(...)' 가 포함된 항목은 괄호 내용을 description 끝에 덧붙이고 category_name 에서는 제거
+  // 기존 category_name 에 괄호 '(...)' 가 포함된 항목은 괄호 내용을 description 끝에 덧붙이고 category_name 에서는 제거 + main_type 보정
   const rows = db
-    .prepare('SELECT category_code, category_name, description FROM fertilizer_category_code')
-    .all() as Array<{ category_code: string; category_name: string; description: string }>;
+    .prepare('SELECT category_code, main_type, category_name, description FROM fertilizer_category_code')
+    .all() as Array<{ category_code: string; main_type?: string; category_name: string; description: string }>;
   const upd = db.prepare(
-    'UPDATE fertilizer_category_code SET category_name = ?, description = ? WHERE category_code = ?'
+    'UPDATE fertilizer_category_code SET main_type = ?, category_name = ?, description = ?, sort_order = ? WHERE category_code = ?'
   );
   for (const r of rows) {
     const m = String(r.category_name || '').match(/^([^(]+)\s*(\([^)]+\))\s*$/);
-    if (m) {
-      const cleanName = m[1].trim();
-      const parenPart = m[2].trim();
-      const curDesc = String(r.description || '').trim();
-      const nextDesc = curDesc.includes(parenPart) ? curDesc : `${curDesc} ${parenPart}`.trim();
-      upd.run(cleanName, nextDesc, r.category_code);
-    }
+    const cleanName = m ? m[1].trim() : String(r.category_name || '').trim();
+    const parenPart = m ? m[2].trim() : '';
+    const curDesc = String(r.description || '').trim();
+    const nextDesc = parenPart && !curDesc.includes(parenPart) ? `${curDesc} ${parenPart}`.trim() : curDesc;
+    const matchedSeedIdx = FERTILIZER_CATEGORIES.findIndex((c) => c.code === r.category_code);
+    const resolvedMain = resolveFertilizerMainType(
+      cleanName || r.category_code,
+      matchedSeedIdx >= 0 ? FERTILIZER_CATEGORIES[matchedSeedIdx].main_type : r.main_type
+    );
+    const nextSortOrder = matchedSeedIdx >= 0 ? matchedSeedIdx + 1 : 99;
+    upd.run(resolvedMain, cleanName, nextDesc, nextSortOrder, r.category_code);
   }
 }
 
@@ -1232,6 +1247,7 @@ function ensureAgroMaterials() {
     (db.prepare('PRAGMA table_info(agro_material)').all() as Array<{ name: string }>).map((c) => c.name)
   );
   const extraCols: Array<[string, string]> = [
+    ['main_type', "TEXT DEFAULT ''"],
     ['product_code', "TEXT DEFAULT '30001000011'"],
     ['category_code', "TEXT DEFAULT 'CAT-NPK-COMP'"],
     ['manufacturer', "TEXT DEFAULT '대유'"],
@@ -1280,7 +1296,7 @@ function ensureAgroMaterials() {
 
   const upsertFert = db.prepare(`
     INSERT OR REPLACE INTO agro_material (
-      material_id, product_code, material_category, sub_type, category_code, manufacturer,
+      material_id, product_code, material_category, main_type, sub_type, category_code, manufacturer,
       product_name, formulation_type, is_organic, organic_label,
       weight_spec, volume_spec, origin_country, contact_phone,
       target_nutrient_or_pest, nutrient_ratio_summary,
@@ -1290,7 +1306,7 @@ function ensureAgroMaterials() {
       thumbnail_url, detail_image_1, detail_image_2, detail_image_3, detail_image_4, description_banner_url,
       application_method, release_duration, amino_acid_pct, seaweed_humic_pct, chelate_micro_summary,
       stress_target, dilution_ratio, active_ingredient, moa_group_code, pesticide_reg_no, safety_phi_days, safety_max_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const f of [
@@ -1409,6 +1425,7 @@ function ensureAgroMaterials() {
       f.material_id,
       f.product_code,
       f.material_category,
+      isFert ? resolveFertilizerMainType(f.sub_type, f.main_type) : '',
       f.sub_type,
       f.category_code,
       f.manufacturer,

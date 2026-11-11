@@ -2,8 +2,9 @@ export interface FertilizerProductRecord {
   material_id: string;
   product_code: string; // 판매점 제품코드 (예: 30001000011)
   material_category: string; // 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE'
-  sub_type: string; // 비료 구분 카테고리명
-  category_code: string; // 비료 구분 카테고리 코드
+  main_type?: string; // 비료 구분 카테고리 ('천연비료' | '화학비료')
+  sub_type: string; // 비료 세부 카테고리명
+  category_code: string; // 비료 세부 카테고리 코드
   manufacturer: string; // 제조사/브랜드 (예: 대유, 남해화학(주))
   product_name: string;
   formulation_type: string; // 제형 (입상, 코팅입상, 완효성입상, 무분진입상, 펠릿형)
@@ -41,34 +42,63 @@ export interface FertilizerProductRecord {
   description_banner_url: string;
 }
 
+export const FERTILIZER_MAIN_TYPES = ['천연비료', '화학비료'] as const;
+export type FertilizerMainType = (typeof FERTILIZER_MAIN_TYPES)[number];
+
+export function resolveFertilizerMainType(
+  subTypeOrCode?: string | null,
+  explicitMainType?: string | null
+): FertilizerMainType {
+  const m = String(explicitMainType || '').trim();
+  if (m === '천연비료' || m === '화학비료') return m;
+  const s = String(subTypeOrCode || '').trim();
+  if (
+    s.includes('유기질') ||
+    s.includes('퇴비') ||
+    s.includes('토양개량') ||
+    s.includes('칼슘비료') ||
+    s === 'CAT-ORG-COMP' ||
+    s === 'CAT-SOIL-CALC'
+  ) {
+    return '천연비료';
+  }
+  return '화학비료';
+}
+
 export const FERTILIZER_CATEGORIES = [
   {
+    code: 'CAT-ORG-COMP',
+    main_type: '천연비료',
+    name: '유기질·퇴비',
+    desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)',
+  },
+  {
+    code: 'CAT-SOIL-CALC',
+    main_type: '천연비료',
+    name: '토양개량·칼슘비료',
+    desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)',
+  },
+  {
     code: 'CAT-NPK-COMP',
+    main_type: '화학비료',
     name: '복합비료',
     desc: '질소·인산·칼륨 3요소에 고토·붕소·칼슘을 복합 처방한 본밭 밑거름 표준 비료 (원예·기비전용)',
   },
   {
     code: 'CAT-NK-TOP',
+    main_type: '화학비료',
     name: '웃거름비료',
     desc: '초기 활착 이후 생육 중기·결구기·비대기에 빠르게 흡수되는 속효성 NK 추비 비료 (NK추비전용)',
   },
   {
     code: 'CAT-CRF-SLOW',
+    main_type: '화학비료',
     name: '완효성비료',
     desc: '온도·수분에 따라 60~100일간 양분이 서서히 용출되어 웃거름 노동력을 절감하는 코팅 비료 (코팅지효성)',
   },
   {
-    code: 'CAT-SOIL-CALC',
-    name: '토양개량·칼슘비료',
-    desc: '산성토양(pH) 교정, 석회·고토·규산 보충 및 배추 무사마귀병·칼슘결핍 예방 비료 (산도교정)',
-  },
-  {
-    code: 'CAT-ORG-COMP',
-    name: '유기질·퇴비',
-    desc: '토양 유기물(OM) 함량 증진, 떼알구조 형성 및 미생물 활성화를 위한 발효 유박·퇴비 (부산물비료)',
-  },
-  {
     code: 'CAT-SINGLE-K',
+    main_type: '화학비료',
     name: '단비·칼륨전용비료',
     desc: '토양검정 결과 특정 부족 성분(칼륨·질소·인산)을 정밀 보충하기 위한 맞춤형 단비 (황산가리·요소)',
   },
@@ -79,6 +109,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: 'FERT-PRD-01',
     product_code: '30001000011',
     material_category: 'FERTILIZER',
+    main_type: '화학비료',
     sub_type: '복합비료',
     category_code: 'CAT-NPK-COMP',
     manufacturer: '남해화학(주)',
@@ -121,6 +152,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: 'FERT-PRD-02',
     product_code: '30001000012',
     material_category: 'FERTILIZER',
+    main_type: '화학비료',
     sub_type: '웃거름비료',
     category_code: 'CAT-NK-TOP',
     manufacturer: '(주)누보',
@@ -163,6 +195,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: 'FERT-PRD-03',
     product_code: '30001000013',
     material_category: 'FERTILIZER',
+    main_type: '화학비료',
     sub_type: '완효성비료',
     category_code: 'CAT-CRF-SLOW',
     manufacturer: '(주)조비',
@@ -205,6 +238,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: 'FERT-PRD-04',
     product_code: '30001000014',
     material_category: 'FERTILIZER',
+    main_type: '천연비료',
     sub_type: '토양개량·칼슘비료',
     category_code: 'CAT-SOIL-CALC',
     manufacturer: '(주)풍농',
@@ -247,6 +281,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: 'FERT-PRD-05',
     product_code: '30001000015',
     material_category: 'FERTILIZER',
+    main_type: '천연비료',
     sub_type: '유기질·퇴비',
     category_code: 'CAT-ORG-COMP',
     manufacturer: '상록유기농산',
@@ -490,6 +525,7 @@ export const INITIAL_FERTILIZER_PRODUCTS: FertilizerProductRecord[] = [
     material_id: x.id,
     product_code: x.code,
     material_category: 'FERTILIZER',
+    main_type: resolveFertilizerMainType(x.sub),
     sub_type: x.sub,
     category_code: x.catCode,
     manufacturer: x.brand,

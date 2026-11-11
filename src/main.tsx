@@ -41,6 +41,27 @@ if (typeof window !== 'undefined') {
   const MYPAGE_STORAGE_KEY = 'hanfarm_static_mypage_v1';
   const MEMBERS_STORAGE_KEY = 'hanfarm_static_members_v1';
 
+  const resolveFertilizerMainType = (
+    subTypeOrCode?: string | null,
+    explicitMainType?: string | null
+  ): '천연비료' | '화학비료' => {
+    const m = String(explicitMainType || '').trim();
+    if (m === '천연비료' || m === '화학비료') return m;
+    const s = String(subTypeOrCode || '').trim();
+    if (
+      s.includes('유기질') ||
+      s.includes('퇴비') ||
+      s.includes('토양개량') ||
+      s.includes('칼슘') ||
+      s.includes('규산') ||
+      s === 'CAT-ORG-COMP' ||
+      s === 'CAT-SOIL-CALC'
+    ) {
+      return '천연비료';
+    }
+    return '화학비료';
+  };
+
   const getSnapshot = () => {
     if (!snapshotPromise) {
       const base = getBasePath();
@@ -65,6 +86,62 @@ if (typeof window !== 'undefined') {
             }
           } catch {
             // ignore
+          }
+          if (data?.overview && Array.isArray(data.overview.fertilizerCategoryCodes)) {
+            const defaultOrder: Record<string, number> = {
+              'CAT-ORG-COMP': 1,
+              'CAT-SOIL-CALC': 2,
+              'CAT-NPK-COMP': 3,
+              'CAT-NK-TOP': 4,
+              'CAT-CRF-SLOW': 5,
+              'CAT-SINGLE-K': 6,
+            };
+            data.overview.fertilizerCategoryCodes = data.overview.fertilizerCategoryCodes
+              .map((c: any) => {
+                const key = c.category_code || c.code;
+                const label = c.sub_type_name || c.category_name || c.name || key;
+                return {
+                  ...c,
+                  main_type: resolveFertilizerMainType(label, c.main_type),
+                  sort_order: defaultOrder[key] ?? Number(c.sort_order || 99),
+                };
+              })
+              .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+          }
+          if (data?.fertilizer) {
+            if (Array.isArray(data.fertilizer.fertilizerCategories)) {
+              const defaultOrder: Record<string, number> = {
+                'CAT-ORG-COMP': 1,
+                'CAT-SOIL-CALC': 2,
+                'CAT-NPK-COMP': 3,
+                'CAT-NK-TOP': 4,
+                'CAT-CRF-SLOW': 5,
+                'CAT-SINGLE-K': 6,
+              };
+              data.fertilizer.fertilizerCategories = data.fertilizer.fertilizerCategories
+                .map((c: any) => {
+                  const key = c.category_code || c.code;
+                  const label = c.sub_type_name || c.category_name || c.name || key;
+                  return {
+                    ...c,
+                    main_type: resolveFertilizerMainType(label, undefined),
+                    sort_order: defaultOrder[key] ?? Number(c.sort_order || 99),
+                  };
+                })
+                .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+            }
+            if (Array.isArray(data.fertilizer.allItems)) {
+              data.fertilizer.allItems = data.fertilizer.allItems.map((it: any) => ({
+                ...it,
+                main_type: resolveFertilizerMainType(it.sub_type || it.sub_type_name || it.sub_type_code, it.main_type),
+              }));
+            }
+            if (Array.isArray(data.fertilizer.items)) {
+              data.fertilizer.items = data.fertilizer.items.map((it: any) => ({
+                ...it,
+                main_type: resolveFertilizerMainType(it.sub_type || it.sub_type_name || it.sub_type_code, it.main_type),
+              }));
+            }
           }
           rewriteStaticAssets();
           return data;
@@ -114,6 +191,7 @@ if (typeof window !== 'undefined') {
     // 1. 농자재 상품 조회·저장·삭제
     if (p === '/api/agro-materials') {
       const cat = (u.searchParams.get('category') || 'FERTILIZER').toUpperCase();
+      const mainType = (u.searchParams.get('main_type') || u.searchParams.get('mainType') || '').trim();
       const subType = (u.searchParams.get('subType') || u.searchParams.get('sub_type') || '').trim();
       const isOrganicParam = u.searchParams.get('is_organic') ?? u.searchParams.get('organicOnly') ?? 'ALL';
       const q = (u.searchParams.get('q') || '').trim().toLowerCase();
@@ -128,6 +206,10 @@ if (typeof window !== 'undefined') {
           : snap.fertilizer;
       const allItems: any[] = Array.isArray(src?.allItems) ? src.allItems : Array.isArray(src?.items) ? src.items : [];
       const filtered = allItems.filter((it) => {
+        if (cat === 'FERTILIZER' && mainType && mainType !== 'ALL') {
+          const itemMain = resolveFertilizerMainType(it.sub_type || it.sub_type_name || it.sub_type_code, it.main_type);
+          if (itemMain !== mainType) return false;
+        }
         if (subType && subType !== 'ALL' && it.sub_type !== subType && it.sub_type_name !== subType) return false;
         if (isOrganicParam === '1' || isOrganicParam === 'true') {
           if (Number(it.is_organic) !== 1) return false;
@@ -135,7 +217,7 @@ if (typeof window !== 'undefined') {
           if (Number(it.is_organic) !== 0) return false;
         }
         if (q) {
-          const hay = `${it.product_name || ''} ${it.manufacturer || ''} ${it.material_id || ''} ${it.sub_type || ''} ${it.sub_type_name || ''} ${it.target_crops || ''} ${it.target_nutrient_or_pest || ''} ${it.key_effect || ''}`.toLowerCase();
+          const hay = `${it.product_name || ''} ${it.manufacturer || ''} ${it.material_id || ''} ${it.main_type || ''} ${it.sub_type || ''} ${it.sub_type_name || ''} ${it.target_crops || ''} ${it.target_nutrient_or_pest || ''} ${it.key_effect || ''}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -160,6 +242,9 @@ if (typeof window !== 'undefined') {
     if (p === '/api/agro-materials/save' && method === 'POST') {
       const body = parseBody(init);
       const cat = String(body.material_category || 'FERTILIZER').toUpperCase();
+      if (cat === 'FERTILIZER') {
+        body.main_type = resolveFertilizerMainType(body.sub_type || body.sub_type_code, body.main_type);
+      }
       const src =
         cat === 'NUTRIENT'
           ? snap.nutrient
@@ -356,11 +441,15 @@ if (typeof window !== 'undefined') {
       const item = {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
+        main_type: resolveFertilizerMainType(body.sub_type_name || body.category_code, body.main_type),
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.fertilizerCategoryCodes = list;
+      if (snap.fertilizer) {
+        snap.fertilizer.fertilizerCategories = list;
+      }
       persistOverview(ov);
       return jsonResponse({ ok: true });
     }
