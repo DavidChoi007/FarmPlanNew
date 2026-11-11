@@ -2828,56 +2828,6 @@ export default function UserIntroPage() {
                                 <Bell className="w-5 h-5 text-slate-500" />
                               </div>
 
-                              {/* 내 재배작물 요약 그레이 박스 */}
-                              <div className="rounded-2xl bg-[#F4F6F8] p-4 space-y-3.5">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="font-bold text-slate-500">내 재배작물</span>
-                                  <span className="px-3 py-1 rounded-full bg-slate-200/80 text-slate-700 font-bold text-[11px]">
-                                    {crop.badge}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-3.5">
-                                  <div
-                                    className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs overflow-hidden`}
-                                  >
-                                    <Sprout className="w-9 h-9" />
-                                    <span className="text-[11px] font-extrabold mt-0.5">
-                                      {crop.crop_short}
-                                    </span>
-                                  </div>
-                                  <div className="min-w-0">
-                                    <h4 className="text-xl font-extrabold text-slate-900 tracking-tight truncate">
-                                      {crop.crop_short || crop.crop_title}
-                                    </h4>
-                                    <p className="text-sm font-semibold text-slate-700 mt-0.5 truncate">
-                                      {crop.region} · {crop.area_pyeong}평
-                                    </p>
-                                    <p className="text-xs text-slate-500 font-medium mt-1">
-                                      {crop.planting_label}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-1.5 pt-1">
-                                  <div className="flex items-center justify-between text-xs">
-                                    <span className="font-extrabold text-slate-900">재배 진행상태</span>
-                                    <span className="font-semibold text-slate-500">
-                                      {crop.status_text || '생육 확인 필요'}
-                                    </span>
-                                  </div>
-                                  <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                                    <div
-                                      style={{ width: `${crop.progress_pct}%` }}
-                                      className="h-full rounded-full bg-[#22A559] transition-all"
-                                    />
-                                  </div>
-                                  <p className="text-xs text-slate-500 leading-relaxed pt-0.5">
-                                    적산온도(PGDD) 및 현장 생육 기록을 기준으로 산출된 진행 상태입니다.
-                                  </p>
-                                </div>
-                              </div>
-
                               {/* 기온 · 강수 · 다음 작업 3열 미니 카드 */}
                               <div className="grid grid-cols-3 gap-2.5">
                                 <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
