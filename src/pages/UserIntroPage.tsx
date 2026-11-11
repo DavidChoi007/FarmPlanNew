@@ -4564,182 +4564,136 @@ export default function UserIntroPage() {
                                             </div>
                                           </div>
 
-                                          <div className="p-3 sm:p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          <div className="p-3 sm:p-4 space-y-2">
                                             {sb.materials.map((mat: any) => {
                                               const itemState = purchaseSelectionMap[mat.selKey] || {
                                                 checked: true,
                                                 qty: mat.defaultQty,
                                               };
                                               const itemSubtotal = mat.unit_price * itemState.qty;
+                                              const simpleTraitInfo =
+                                                mat.category_spec_badge ||
+                                                mat.nutrient_ratio_summary ||
+                                                `${mat.sub_type} · ${mat.manufacturer} · 포장단위 ${mat.unit_spec}`;
+                                              const procInfo = mat.subProcesses?.[0];
 
                                               return (
                                                 <div
                                                   key={mat.selKey}
-                                                  className={`rounded-xl border p-3 sm:p-3.5 transition flex flex-col justify-between gap-3 ${
+                                                  className={`rounded-xl border px-3.5 py-2.5 transition flex flex-col lg:flex-row lg:items-center justify-between gap-3 ${
                                                     itemState.checked
                                                       ? 'border-emerald-300 bg-emerald-50/20 shadow-2xs'
                                                       : 'border-slate-200 bg-slate-50/50 opacity-75'
                                                   }`}
                                                 >
-                                                  <div className="flex items-start gap-3">
+                                                  {/* 좌측: 체크박스 + 생육과정 구분 + 제품 썸네일 + 제품 제목 및 간단한 특성 정보 (한 줄에 1개 구성) */}
+                                                  <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <input
                                                       type="checkbox"
                                                       checked={itemState.checked}
                                                       onChange={() =>
                                                         handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
                                                       }
-                                                      className="mt-1 w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                                      className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
                                                     />
+
+                                                    {/* 생육과정 구분 배지 */}
+                                                    <div className="w-36 sm:w-44 shrink-0">
+                                                      <span
+                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-extrabold truncate max-w-full ${accent.tagBg}`}
+                                                      >
+                                                        <span className="truncate">
+                                                          {procInfo?.name || mat.sub_item_name || sb.stageName}
+                                                        </span>
+                                                      </span>
+                                                      {procInfo?.start_date && (
+                                                        <div className="text-[10px] font-mono text-slate-500 font-semibold mt-0.5 pl-1">
+                                                          추천일: {procInfo.start_date.slice(5).replace('-', '/')}
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* 제품 썸네일 */}
                                                     <img
                                                       src={mat.thumbnail_url}
                                                       alt={mat.product_name}
                                                       onClick={() =>
                                                         handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
                                                       }
-                                                      className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-white shrink-0 cursor-pointer"
+                                                      className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0 cursor-pointer"
                                                     />
-                                                    <div className="min-w-0 flex-1 space-y-1">
-                                                      <div className="flex items-center gap-1.5 flex-wrap">
+
+                                                    {/* 농자재 제품 제목 + 간단한 특성 정보 */}
+                                                    <div className="min-w-0 flex-1">
+                                                      <div className="flex items-center gap-2 flex-wrap">
                                                         <span
-                                                          className={`px-2 py-0.5 rounded border text-[10px] font-extrabold ${accent.tagBg}`}
+                                                          onClick={() =>
+                                                            handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
+                                                          }
+                                                          className="font-extrabold text-slate-900 text-xs sm:text-sm leading-snug cursor-pointer hover:text-emerald-700 truncate"
                                                         >
+                                                          {mat.product_name}
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
                                                           {mat.sub_type}
                                                         </span>
-                                                        <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[10px] font-bold">
-                                                          {mat.manufacturer}
-                                                        </span>
-                                                        {mat.match_score && (
-                                                          <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
-                                                            최고 추천점수 1종 ({mat.match_score}점 · 1위)
-                                                          </span>
-                                                        )}
-                                                        <span className="px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-extrabold">
-                                                          필요 수량: {mat.defaultQty}
+                                                        <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold shrink-0">
+                                                          권장 {mat.defaultQty}
                                                           {mat.unit_label || '개'} ({mat.unit_spec})
                                                         </span>
                                                       </div>
-
-                                                      <div
-                                                        onClick={() =>
-                                                          handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
-                                                        }
-                                                        className="font-extrabold text-slate-900 text-xs sm:text-sm leading-snug cursor-pointer hover:text-emerald-700"
-                                                      >
-                                                        {mat.product_name}
-                                                      </div>
-
-                                                      <div className="flex items-center gap-1 flex-wrap pt-0.5">
-                                                        {mat.subProcesses.map((sp: any, pIdx: number) => (
-                                                          <span
-                                                            key={`${mat.selKey}-proc-${pIdx}`}
-                                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold"
-                                                          >
-                                                            <span>
-                                                              생육과정: {sp.name}
-                                                              {sp.process_code ? ` (${sp.process_code})` : ''}
-                                                            </span>
-                                                            {sp.start_date && (
-                                                              <span className="text-slate-500">
-                                                                ({sp.start_date.slice(5).replace('-', '/')})
-                                                              </span>
-                                                            )}
-                                                          </span>
-                                                        ))}
-                                                      </div>
-
-                                                      {(mat.category_spec_badge || mat.nutrient_ratio_summary) && (
-                                                        <div className="text-[11px] font-semibold text-indigo-800 bg-indigo-50/70 border border-indigo-100 rounded-lg px-2 py-1 mt-1 leading-snug">
-                                                          {mat.category_spec_badge || mat.nutrient_ratio_summary}
-                                                        </div>
-                                                      )}
-
-                                                      <div className="text-[11px] font-bold text-emerald-800 bg-emerald-50/90 border border-emerald-200 rounded-lg px-2.5 py-1.5 mt-1 space-y-0.5">
-                                                        <div>
-                                                          📐 {mat.recommended_for_area}
-                                                        </div>
-                                                        {mat.quantity_calc_formula && (
-                                                          <div className="text-[10px] font-semibold text-emerald-700">
-                                                            산출식: {mat.quantity_calc_formula}
-                                                          </div>
-                                                        )}
-                                                      </div>
-
-                                                      <div className="text-[11px] text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-2 mt-1 leading-relaxed space-y-1">
-                                                        <div className="font-extrabold text-emerald-900 text-[10px] flex items-center justify-between gap-1 border-b border-slate-100 pb-1">
-                                                          <span>📋 생육과정별 최고점 1종 추천 근거 (개조식)</span>
-                                                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold">
-                                                            DB저장 완료
-                                                          </span>
-                                                        </div>
-                                                        <ul className="space-y-1 text-[11px] text-slate-700">
-                                                          {(Array.isArray(mat.rationale_bullets) &&
-                                                          mat.rationale_bullets.length > 0
-                                                            ? mat.rationale_bullets
-                                                            : buildStageRationaleBullets(
-                                                                mat,
-                                                                mat.sub_item_name || sb.stageName,
-                                                                areaPyeong
-                                                              )
-                                                          ).map((bLine: string, bIdx: number) => (
-                                                            <li
-                                                              key={`${mat.selKey}-bul-${bIdx}`}
-                                                              className="leading-snug font-medium text-slate-700"
-                                                            >
-                                                              {bLine.startsWith('•') ? bLine : `• ${bLine}`}
-                                                            </li>
-                                                          ))}
-                                                        </ul>
+                                                      <div className="text-xs text-slate-600 font-medium truncate mt-0.5">
+                                                        {simpleTraitInfo}
                                                       </div>
                                                     </div>
                                                   </div>
 
-                                                  <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-200/80">
-                                                    <div className="text-xs text-slate-600 font-semibold">
+                                                  {/* 우측: 단가 · 수량 조절 · 합계금액 */}
+                                                  <div className="flex items-center justify-end gap-3 shrink-0 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-200/70">
+                                                    <div className="text-xs text-slate-500 font-semibold">
                                                       단가{' '}
                                                       <span className="font-bold text-slate-800">
                                                         {mat.unit_price.toLocaleString()}원
                                                       </span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-3">
-                                                      <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
-                                                        <button
-                                                          type="button"
-                                                          onClick={() =>
-                                                            handleChangeMaterialQty(
-                                                              mat.selKey,
-                                                              mat.defaultQty,
-                                                              -1
-                                                            )
-                                                          }
-                                                          className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                                          title="수량 감소"
-                                                        >
-                                                          <Minus className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <span className="px-2.5 text-xs font-extrabold text-slate-900 min-w-[2rem] text-center">
-                                                          {itemState.qty}
-                                                        </span>
-                                                        <button
-                                                          type="button"
-                                                          onClick={() =>
-                                                            handleChangeMaterialQty(
-                                                              mat.selKey,
-                                                              mat.defaultQty,
-                                                              1
-                                                            )
-                                                          }
-                                                          className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                                          title="수량 증가"
-                                                        >
-                                                          <Plus className="w-3.5 h-3.5" />
-                                                        </button>
-                                                      </div>
+                                                    <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          handleChangeMaterialQty(
+                                                            mat.selKey,
+                                                            mat.defaultQty,
+                                                            -1
+                                                          )
+                                                        }
+                                                        className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                                        title="수량 감소"
+                                                      >
+                                                        <Minus className="w-3.5 h-3.5" />
+                                                      </button>
+                                                      <span className="px-2.5 text-xs font-extrabold text-slate-900 min-w-[2rem] text-center">
+                                                        {itemState.qty}
+                                                      </span>
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          handleChangeMaterialQty(
+                                                            mat.selKey,
+                                                            mat.defaultQty,
+                                                            1
+                                                          )
+                                                        }
+                                                        className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                                        title="수량 증가"
+                                                      >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                      </button>
+                                                    </div>
 
-                                                      <div className="text-right min-w-[5.5rem]">
-                                                        <div className="text-xs sm:text-sm font-extrabold text-emerald-800">
-                                                          {itemSubtotal.toLocaleString()}원
-                                                        </div>
+                                                    <div className="text-right min-w-[5.5rem]">
+                                                      <div className="text-xs sm:text-sm font-extrabold text-emerald-800">
+                                                        {itemSubtotal.toLocaleString()}원
                                                       </div>
                                                     </div>
                                                   </div>
