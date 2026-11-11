@@ -105,9 +105,9 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
   {
     id: 'q7',
     number: 7,
-    question: '병해충 사진 진단 서비스까지 추가된다면 이용하시겠습니까?',
+    question: 'AI 병해충 진단 서비스까지 추가된다면 이용하시겠습니까?',
     subtitle:
-      '작물 사진을 촬영하면 병해충을 자동으로 진단하고 알맞은 관리 및 방제 방법을 안내하는 서비스입니다.',
+      '작물 사진을 촬영하면 AI가 병해충을 진단하고 적절한 관리 및 방제 방법을 안내하는 서비스입니다.',
     type: 'single',
     options: ['① 반드시 이용', '② 이용할 의향 있음', '③ 잘 모르겠음', '④ 이용 의향 없음'],
   },
@@ -115,7 +115,7 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
     id: 'q8',
     number: 8,
     question:
-      '맞춤형 재배일정과 병해충 진단이 모두 포함된 서비스에 월 얼마까지 지불할 의향이 있으십니까?',
+      '맞춤형 재배일정과 AI 병해충 진단이 모두 포함된 서비스에 월 얼마까지 지불할 의향이 있으십니까?',
     subtitle: '',
     type: 'single',
     options: [
@@ -130,7 +130,7 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
     id: 'q9',
     number: 9,
     question:
-      '재배일정에 맞춰 필요한 농자재를 추천하고 주문·배송까지 제공한다면 이용하시겠습니까?',
+      '재배일정에 맞춰 필요한 농자재를 추천하고 온라인 주문·배송까지 제공한다면 이용하시겠습니까?',
     subtitle: '',
     type: 'single',
     options: ['① 적극 이용', '② 필요할 때 이용', '③ 이용하지 않음'],
@@ -140,21 +140,42 @@ const FALLBACK_QUESTIONS: SurveyQuestion[] = [
 export default function SurveyPublicPage() {
   const normalizedPath = normalizeAppPath(window.location.pathname);
   const pathParts = normalizedPath.split('/').filter(Boolean);
-  const urlSurveyId = pathParts[1] || 'SURV-HANFARM-2026';
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlSurveyId = pathParts[1] || urlParams.get('survey_id') || 'SURV-HANFARM-2026';
 
-  const [surveyMeta, setSurveyMeta] = useState<any>({
-    survey_id: urlSurveyId,
-    title: '한팜 맞춤형 재배관리 서비스 수요조사',
-    greeting_text: '안녕하세요, 농업인 여러분.',
-    intro_text:
-      '한팜은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 병해충 진단 서비스를 개발하고 있습니다.',
-    duration_text:
-      '본 설문은 서비스 개발과 적정 이용료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.',
-    notice_text:
-      '※ 본 설문은 맞춤형 재배일정과 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.',
-    footer_title: '설문에 참여해 주셔서 감사합니다.',
-    footer_sub: '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.',
-    questions: FALLBACK_QUESTIONS,
+  const [surveyMeta, setSurveyMeta] = useState<any>(() => {
+    try {
+      const rawForms = localStorage.getItem('hanfarm_surveys_forms_v1');
+      const forms = rawForms ? JSON.parse(rawForms) : [];
+      const localMatch = Array.isArray(forms)
+        ? forms.find((f: any) => f.survey_id === urlSurveyId) || forms[0]
+        : null;
+      if (localMatch && typeof localMatch === 'object') {
+        return {
+          ...localMatch,
+          questions:
+            Array.isArray(localMatch.questions) && localMatch.questions.length > 0
+              ? localMatch.questions
+              : FALLBACK_QUESTIONS,
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      survey_id: urlSurveyId,
+      title: '한팜 맞춤형 재배관리 및 AI 진단 서비스 수요조사',
+      greeting_text: '안녕하세요.',
+      intro_text:
+        '한팜(HANFARM)은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 AI 병해충 진단 서비스를 개발하고 있습니다.',
+      duration_text:
+        '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.',
+      notice_text:
+        '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.',
+      footer_title: '설문에 참여해 주셔서 감사합니다.',
+      footer_sub: '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.',
+      questions: FALLBACK_QUESTIONS,
+    };
   });
 
   const [respondentName, setRespondentName] = useState('');
@@ -223,55 +244,76 @@ export default function SurveyPublicPage() {
     setMetaContent('meta[name="twitter:title"]', '재배컨설팅 서비스 설문조사');
     setMetaContent('meta[name="twitter:description"]', '재배컨설팅 서비스 설문조사');
 
-    const params = new URLSearchParams(window.location.search);
-    const sharedCfg = decodeSharePayload(params.get('cfg'));
-    if (sharedCfg && typeof sharedCfg === 'object') {
-      let resolvedQuestions = FALLBACK_QUESTIONS;
-      if (Array.isArray(sharedCfg.questions) && sharedCfg.questions.length > 0) {
-        resolvedQuestions = sharedCfg.questions;
-      } else if (sharedCfg.qDiff && typeof sharedCfg.qDiff === 'object') {
-        resolvedQuestions = FALLBACK_QUESTIONS.map((q, idx) =>
-          sharedCfg.qDiff[idx] ? { ...q, ...sharedCfg.qDiff[idx] } : q
-        );
-      }
-      const nextSurvey = {
-        ...sharedCfg,
-        questions: resolvedQuestions,
-      };
-      setSurveyMeta((prev: any) => ({ ...prev, ...nextSurvey }));
-      try {
-        const rawForms = localStorage.getItem('hanfarm_surveys_forms_v1');
-        const forms = rawForms ? JSON.parse(rawForms) : [];
-        const sId = nextSurvey.survey_id || urlSurveyId;
-        const idx = Array.isArray(forms) ? forms.findIndex((f: any) => f.survey_id === sId) : -1;
-        if (idx >= 0) {
-          forms[idx] = { ...forms[idx], ...nextSurvey, survey_id: sId };
-          localStorage.setItem('hanfarm_surveys_forms_v1', JSON.stringify(forms));
-        } else {
-          localStorage.setItem(
-            'hanfarm_surveys_forms_v1',
-            JSON.stringify([{ ...nextSurvey, survey_id: sId }, ...(Array.isArray(forms) ? forms : [])])
+    const fetchLatestSurvey = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const sharedCfg = decodeSharePayload(params.get('cfg'));
+      let cfgSurvey: any = null;
+      if (sharedCfg && typeof sharedCfg === 'object') {
+        let resolvedQuestions: SurveyQuestion[] | null = null;
+        if (Array.isArray(sharedCfg.questions) && sharedCfg.questions.length > 0) {
+          resolvedQuestions = sharedCfg.questions;
+        } else if (sharedCfg.qDiff && typeof sharedCfg.qDiff === 'object') {
+          resolvedQuestions = FALLBACK_QUESTIONS.map((q, idx) =>
+            sharedCfg.qDiff[idx] ? { ...q, ...sharedCfg.qDiff[idx] } : q
           );
         }
-      } catch {
-        // ignore
+        cfgSurvey = {
+          ...sharedCfg,
+          ...(resolvedQuestions ? { questions: resolvedQuestions } : {}),
+        };
       }
-    } else {
-      fetch(`/api/surveys/public?survey_id=${encodeURIComponent(urlSurveyId)}`)
-        .then((r) => r.json())
-        .then((res) => {
-          if (res?.ok && res.survey) {
-            setSurveyMeta({
-              ...res.survey,
-              questions:
-                Array.isArray(res.survey.questions) && res.survey.questions.length > 0
-                  ? res.survey.questions
-                  : FALLBACK_QUESTIONS,
-            });
-          }
-        })
-        .catch(() => {});
-    }
+
+      try {
+        const res = await fetch(
+          `/api/surveys/public?survey_id=${encodeURIComponent(urlSurveyId)}&_t=${Date.now()}`,
+          { cache: 'no-store' }
+        ).then((r) => r.json());
+        if (res?.ok && res.survey) {
+          const srv = res.survey;
+          const srvTime = String(srv.updated_at || '');
+          const cfgTime = String(cfgSurvey?.updated_at || '');
+          const useCfg = Boolean(cfgSurvey && cfgTime && cfgTime > srvTime);
+          const merged = useCfg ? { ...srv, ...cfgSurvey } : srv;
+          setSurveyMeta({
+            ...merged,
+            questions:
+              Array.isArray(merged.questions) && merged.questions.length > 0
+                ? merged.questions
+                : FALLBACK_QUESTIONS,
+          });
+          return;
+        }
+      } catch {
+        // fallback below
+      }
+
+      if (cfgSurvey) {
+        setSurveyMeta((prev: any) => ({
+          ...prev,
+          ...cfgSurvey,
+          questions:
+            Array.isArray(cfgSurvey.questions) && cfgSurvey.questions.length > 0
+              ? cfgSurvey.questions
+              : prev.questions || FALLBACK_QUESTIONS,
+        }));
+      }
+    };
+
+    fetchLatestSurvey();
+
+    const onFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestSurvey();
+      }
+    };
+    const onStorageChange = (e: StorageEvent) => {
+      if (!e.key || e.key === 'hanfarm_surveys_forms_v1') {
+        fetchLatestSurvey();
+      }
+    };
+    window.addEventListener('focus', onFocusOrVisible);
+    document.addEventListener('visibilitychange', onFocusOrVisible);
+    window.addEventListener('storage', onStorageChange);
 
     fetch('/api/addresses/meta')
       .then((r) => r.json())
@@ -287,6 +329,12 @@ export default function SurveyPublicPage() {
         }
       })
       .catch(() => {});
+
+    return () => {
+      window.removeEventListener('focus', onFocusOrVisible);
+      document.removeEventListener('visibilitychange', onFocusOrVisible);
+      window.removeEventListener('storage', onStorageChange);
+    };
   }, [urlSurveyId]);
 
   const isSurveyClosed = Number(surveyMeta.is_active ?? 1) === 0;

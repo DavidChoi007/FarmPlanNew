@@ -3111,11 +3111,14 @@ export default function AdminDashboardPage() {
         age: override?.age ?? surveyAgeFilter,
         scale: override?.scale ?? surveyScaleFilter,
         q: (override?.q ?? surveyKeyword).trim(),
+        _t: String(Date.now()),
       });
-      const res = await fetch(`/api/surveys?${params.toString()}`).then((r) => r.json());
+      const res = await fetch(`/api/surveys?${params.toString()}`, { cache: 'no-store' }).then((r) =>
+        r.json()
+      );
       if (res?.ok) {
         setSurveyData(res);
-        if (res.activeSurvey) {
+        if (res.activeSurvey && !isSurveyFormModalOpen) {
           setSurveyEditForm({
             ...res.activeSurvey,
             questions:
@@ -3245,8 +3248,15 @@ export default function AdminDashboardPage() {
     setIsSurveyFormModalOpen(true);
   };
 
-  const handleSaveSurveyForm = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveSurveyForm = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof (e as any).preventDefault === 'function') {
+      (e as any).preventDefault();
+    }
+    try {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } catch {
+      // ignore
+    }
     const cleanedQuestions = (Array.isArray(surveyEditForm.questions) ? surveyEditForm.questions : []).map(
       (q: any, idx: number) => {
         const opts = (Array.isArray(q.options) ? q.options : [])
@@ -3264,37 +3274,58 @@ export default function AdminDashboardPage() {
         };
       }
     );
+    const nowKst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const payload = {
       ...surveyEditForm,
+      survey_id: String(surveyEditForm.survey_id || 'SURV-HANFARM-2026').trim(),
+      is_active: surveyEditForm.is_active === undefined ? 1 : Number(surveyEditForm.is_active) ? 1 : 0,
+      updated_at: nowKst,
       questions: cleanedQuestions,
+      questions_json: JSON.stringify(cleanedQuestions),
     };
+    try {
+      const FORMS_KEY = 'hanfarm_surveys_forms_v1';
+      const rawForms = localStorage.getItem(FORMS_KEY);
+      const localForms = rawForms ? JSON.parse(rawForms) : [];
+      const nextForms = Array.isArray(localForms) ? [...localForms] : [];
+      const lIdx = nextForms.findIndex((f: any) => f.survey_id === payload.survey_id);
+      if (lIdx >= 0) {
+        nextForms[lIdx] = { ...nextForms[lIdx], ...payload };
+      } else {
+        nextForms.unshift(payload);
+      }
+      localStorage.setItem(FORMS_KEY, JSON.stringify(nextForms));
+    } catch {
+      // ignore
+    }
     const res = await fetch('/api/surveys/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).then((r) => r.json());
     if (res?.ok) {
-      setSurveyEditForm(payload);
+      const savedSurvey = res.survey ? { ...payload, ...res.survey, questions: cleanedQuestions } : payload;
+      setSurveyEditForm(savedSurvey);
       setSurveyData((prev: any) => {
         const prevForms = Array.isArray(prev?.forms) ? [...prev.forms] : [];
-        const fIdx = prevForms.findIndex((f: any) => f.survey_id === payload.survey_id);
+        const fIdx = prevForms.findIndex((f: any) => f.survey_id === savedSurvey.survey_id);
         if (fIdx >= 0) {
-          prevForms[fIdx] = { ...prevForms[fIdx], ...payload };
+          prevForms[fIdx] = { ...prevForms[fIdx], ...savedSurvey };
         } else {
-          prevForms.unshift({ ...payload, response_count: 0 });
+          prevForms.unshift({ ...savedSurvey, response_count: 0 });
         }
         return {
           ...prev,
           forms: prevForms,
           activeSurvey:
-            !prev?.activeSurvey || prev.activeSurvey.survey_id === payload.survey_id
-              ? { ...(prev?.activeSurvey || {}), ...payload }
+            !prev?.activeSurvey || prev.activeSurvey.survey_id === savedSurvey.survey_id
+              ? { ...(prev?.activeSurvey || {}), ...savedSurvey }
               : prev.activeSurvey,
         };
       });
-      showToast(`설문조사 [${payload.title}] 문항 및 양식 저장 완료`);
+      showToast(`설문조사 [${savedSurvey.title}] 문항 및 양식 저장 완료 (PC·모바일 즉시 동기화)`);
       setIsSurveyFormModalOpen(false);
-      await loadSurveyManagementData({ survey_id: payload.survey_id });
+      await loadSurveyManagementData({ survey_id: savedSurvey.survey_id });
     }
   };
 
@@ -3523,35 +3554,8 @@ export default function AdminDashboardPage() {
     }
     if (surveyObj && typeof surveyObj === 'object') {
       const sId = surveyObj.survey_id || 'SURV-HANFARM-2026';
-      const diff: Record<string, any> = {};
-      if (surveyObj.title && surveyObj.title !== '한팜 맞춤형 재배관리 서비스 수요조사') {
-        diff.title = surveyObj.title;
-      }
-      if (Number(surveyObj.is_active ?? 1) === 0) {
-        diff.is_active = 0;
-      }
-      const qs = Array.isArray(surveyObj.questions) ? surveyObj.questions : [];
-      if (qs.length > 0 && JSON.stringify(qs) !== JSON.stringify(DEFAULT_SURVEY_QUESTIONS_DEF)) {
-        if (qs.length !== DEFAULT_SURVEY_QUESTIONS_DEF.length) {
-          diff.questions = qs;
-        } else {
-          const qDiff: Record<number, any> = {};
-          qs.forEach((q: any, idx: number) => {
-            const defQ = DEFAULT_SURVEY_QUESTIONS_DEF[idx];
-            if (JSON.stringify(q) !== JSON.stringify(defQ)) {
-              qDiff[idx] = q;
-            }
-          });
-          if (Object.keys(qDiff).length > 0) {
-            diff.qDiff = qDiff;
-          }
-        }
-      }
       if (sId !== 'SURV-HANFARM-2026') {
         params.set('survey_id', sId);
-      }
-      if (Object.keys(diff).length > 0) {
-        params.set('cfg', encodeSharePayload(diff));
       }
     }
     const qsStr = params.toString();
@@ -3561,12 +3565,30 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (activeTab === 'survey_management') {
       document.title = '재배컨설팅 서비스 설문조사';
+      const onRefresh = () => {
+        if (document.visibilityState === 'visible' && !isSurveyFormModalOpen) {
+          loadSurveyManagementData();
+        }
+      };
+      const onStorage = (e: StorageEvent) => {
+        if ((!e.key || e.key === 'hanfarm_surveys_forms_v1') && !isSurveyFormModalOpen) {
+          loadSurveyManagementData();
+        }
+      };
+      window.addEventListener('focus', onRefresh);
+      document.addEventListener('visibilitychange', onRefresh);
+      window.addEventListener('storage', onStorage);
+      return () => {
+        window.removeEventListener('focus', onRefresh);
+        document.removeEventListener('visibilitychange', onRefresh);
+        window.removeEventListener('storage', onStorage);
+      };
     } else if (activeTab === 'purchase_intent_content' || activeTab === 'purchase_intent_status') {
       document.title = '구매 및 구독 의향서';
     } else {
       document.title = 'FarmPlan — 맞춤형 농작물 재배 일정 공급 서비스';
     }
-  }, [activeTab]);
+  }, [activeTab, isSurveyFormModalOpen]);
 
   const [purchaseIntentTemplate, setPurchaseIntentTemplate] = useState<typeof DEFAULT_PURCHASE_INTENT_TEMPLATE>(() => {
     try {
@@ -26488,12 +26510,40 @@ export default function AdminDashboardPage() {
                                     {idx + 1}
                                   </span>
                                 </td>
-                                <td className="py-4 px-5 w-[46%] min-w-[380px]">
+                                <td className="py-4 px-5 w-[46%] min-w-[260px] sm:min-w-[380px]">
                                   <div className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
                                     <span>{fItem.title}</span>
                                   </div>
                                   <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
                                     {fItem.intro_text}
+                                  </div>
+                                  <div
+                                    className="mt-2.5 flex flex-wrap items-center gap-1.5 md:hidden"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditSurveyFormModal(fItem)}
+                                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-2xs cursor-pointer"
+                                    >
+                                      설문수정
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        window.open(sharePath, '_blank', 'noopener,noreferrer');
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-2xs cursor-pointer"
+                                    >
+                                      설문조사 이동
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => openSurveyStatsModal(fItem.survey_id)}
+                                      className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-extrabold text-xs shadow-2xs cursor-pointer"
+                                    >
+                                      통계분석
+                                    </button>
                                   </div>
                                 </td>
                                 <td
@@ -27708,29 +27758,39 @@ export default function AdminDashboardPage() {
               {isSurveyFormModalOpen && (
                 <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
                   <div className="bg-white rounded-2xl border-2 border-emerald-700/40 shadow-2xl max-w-4xl w-full overflow-hidden">
-                    <div className="bg-emerald-950 text-white px-6 py-4 flex items-center justify-between">
-                      <div>
+                    <div className="bg-emerald-950 text-white px-4 sm:px-6 py-4 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
                           {surveyFormModalMode === 'create'
                             ? 'New Survey Unit Registration'
                             : 'Survey Template & Questions Editor'}
                         </span>
-                        <h3 className="text-base font-extrabold mt-0.5">
+                        <h3 className="text-sm sm:text-base font-extrabold mt-0.5 truncate">
                           {surveyFormModalMode === 'create'
                             ? '새 설문조사 등록 (배포 URL · 안내문 · 문항 구성)'
                             : '설문조사 제목 · 안내문 · 문항 설정 수정'}
                         </h3>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsSurveyFormModalOpen(false)}
-                        className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
-                      >
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleSaveSurveyForm(e)}
+                          className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold flex items-center gap-1 shadow-sm cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>저장</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsSurveyFormModalOpen(false)}
+                          className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
-                    <form onSubmit={handleSaveSurveyForm} className="p-6 space-y-4 text-xs max-h-[82vh] overflow-y-auto">
+                    <form onSubmit={handleSaveSurveyForm} className="p-4 sm:p-6 space-y-4 text-xs max-h-[82vh] overflow-y-auto">
                       <div className="grid sm:grid-cols-12 gap-3">
                         <div className="sm:col-span-2">
                           <label className="block font-bold text-slate-800 mb-1">번호</label>
@@ -28044,7 +28104,7 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                      <div className="sticky bottom-0 z-10 bg-white pt-3 pb-1 border-t border-slate-200 flex items-center justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setIsSurveyFormModalOpen(false)}

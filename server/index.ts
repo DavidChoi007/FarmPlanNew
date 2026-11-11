@@ -8725,6 +8725,43 @@ const server = http.createServer(async (req, res) => {
     }
 
     // ==================== 15. 설문조사 관리 (URL 배포형 한팜 수요조사 양식 · 참여 응답 수집 · 문항별 통계 API) ====================
+    if ((pathname === '/api/surveys/public' || pathname === '/api/surveys') && req.method === 'GET') {
+      try {
+        const remoteForms = await supabaseRestSelect('survey_form', 'select=*&order=updated_at.desc');
+        if (Array.isArray(remoteForms) && remoteForms.length > 0) {
+          const upsertStmt = db.prepare(`
+            INSERT OR REPLACE INTO survey_form (
+              survey_id, title, greeting_text, intro_text, duration_text, notice_text,
+              footer_title, footer_sub, questions_json, is_active, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const rf of remoteForms) {
+            if (!rf?.survey_id) continue;
+            const localRow = db
+              .prepare('SELECT updated_at FROM survey_form WHERE survey_id = ?')
+              .get(rf.survey_id) as { updated_at?: string } | undefined;
+            if (!localRow || String(rf.updated_at || '') >= String(localRow.updated_at || '')) {
+              upsertStmt.run(
+                rf.survey_id,
+                rf.title || '한팜 맞춤형 재배관리 서비스 수요조사',
+                rf.greeting_text || '안녕하세요.',
+                rf.intro_text || '',
+                rf.duration_text || '',
+                rf.notice_text || '',
+                rf.footer_title || '설문에 참여해 주셔서 감사합니다.',
+                rf.footer_sub || '',
+                rf.questions_json || JSON.stringify(DEFAULT_HANFARM_SURVEY_QUESTIONS),
+                rf.is_active === undefined ? 1 : Number(rf.is_active) ? 1 : 0,
+                rf.updated_at || '2026-11-09 22:28:31'
+              );
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     if (pathname === '/api/surveys/public' && req.method === 'GET') {
       const surveyId = (parsedUrl.searchParams.get('survey_id') || 'SURV-HANFARM-2026').trim();
       let formRow = db

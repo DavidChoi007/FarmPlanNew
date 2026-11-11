@@ -1384,7 +1384,7 @@ if (typeof window !== 'undefined') {
       return jsonResponse(snap.agroRecModule || {});
     }
 
-    // 6. 설문조사 관리 (외부 /survey 참여 응답 수집 · 양식 수정 · 실시간 통계 산출)
+    // 6. 설문조사 관리 (외부 /survey 참여 응답 수집 · 양식 수정 · 실시간 통계 산출 · Supabase 클라우드 실시간 동기화)
     if (
       p === '/api/surveys' ||
       p === '/api/surveys/public' ||
@@ -1395,20 +1395,186 @@ if (typeof window !== 'undefined') {
     ) {
       const FORMS_KEY = 'hanfarm_surveys_forms_v1';
       const RESPS_KEY = 'hanfarm_surveys_responses_v1';
+      const SB_URL = 'https://eaycjzvtlstijkucmbau.supabase.co';
+      const SB_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheWNqenZ0bHN0aWprdWNtYmF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzkxMjcwNSwiZXhwIjoyMTA5NDg4NzA1fQ.2MkDiCld3tG2rTNi3XVtIkRh9I96r06H5w_mo1IEwP4';
+      const getKstNowStr = () =>
+        new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+
+      const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
+        try {
+          const r = await rawFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+            method: 'GET',
+            headers: {
+              apikey: SB_KEY,
+              Authorization: `Bearer ${SB_KEY}`,
+              Accept: 'application/json',
+            },
+            cache: 'no-store',
+          });
+          if (!r.ok) return null;
+          const data = await r.json();
+          return Array.isArray(data) ? data : null;
+        } catch {
+          return null;
+        }
+      };
+
+      const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
+        try {
+          await rawFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+            method: 'POST',
+            headers: {
+              apikey: SB_KEY,
+              Authorization: `Bearer ${SB_KEY}`,
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=minimal',
+            },
+            body: JSON.stringify(payload),
+          });
+        } catch {
+          // ignore network errors
+        }
+      };
+
+      const sbDelete = async (table: string, filterQuery: string) => {
+        try {
+          await rawFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
+            method: 'DELETE',
+            headers: {
+              apikey: SB_KEY,
+              Authorization: `Bearer ${SB_KEY}`,
+            },
+          });
+        } catch {
+          // ignore network errors
+        }
+      };
+
+      const normalizeFormItem = (raw: any) => {
+        if (!raw || typeof raw !== 'object') return raw;
+        let questions = Array.isArray(raw.questions) && raw.questions.length > 0 ? raw.questions : [];
+        if (questions.length === 0 && typeof raw.questions_json === 'string' && raw.questions_json.trim()) {
+          try {
+            const parsed = JSON.parse(raw.questions_json);
+            if (Array.isArray(parsed)) questions = parsed;
+          } catch {
+            // ignore
+          }
+        }
+        return {
+          ...raw,
+          survey_id: String(raw.survey_id || 'SURV-HANFARM-2026').trim(),
+          title: String(raw.title || '한팜 맞춤형 재배관리 서비스 수요조사').trim(),
+          greeting_text: String(raw.greeting_text || '안녕하세요.').trim(),
+          intro_text: String(
+            raw.intro_text ||
+              '한팜(HANFARM)은 농업인이 보다 쉽고 효율적으로 작물을 재배할 수 있도록 맞춤형 재배일정 및 AI 병해충 진단 서비스를 개발하고 있습니다.'
+          ).trim(),
+          duration_text: String(
+            raw.duration_text ||
+              '본 설문은 서비스 개발과 적정 구독료 설정을 위한 조사이며, 약 2~3분 정도 소요됩니다.'
+          ).trim(),
+          notice_text: String(
+            raw.notice_text ||
+              '※ 본 설문은 맞춤형 재배일정과 AI 병해충 진단이 실제 농작업에 활용할 수 있을 만큼 충분한 정확도와 신뢰성을 갖추었다는 가정하에 응답해 주시기 바랍니다.'
+          ).trim(),
+          footer_title: String(raw.footer_title || '설문에 참여해 주셔서 감사합니다.').trim(),
+          footer_sub: String(
+            raw.footer_sub ||
+              '본 설문 결과는 한팜의 서비스 개발 및 사업성 검토를 위한 목적으로 활용됩니다.'
+          ).trim(),
+          is_active: raw.is_active === undefined ? 1 : Number(raw.is_active) ? 1 : 0,
+          updated_at: String(raw.updated_at || '2026-11-09 22:28:31'),
+          questions,
+          questions_json: JSON.stringify(questions),
+        };
+      };
+
+      const toSupabaseFormRow = (form: any) => {
+        const norm = normalizeFormItem(form);
+        return {
+          survey_id: norm.survey_id,
+          title: norm.title,
+          greeting_text: norm.greeting_text,
+          intro_text: norm.intro_text,
+          duration_text: norm.duration_text,
+          notice_text: norm.notice_text,
+          footer_title: norm.footer_title,
+          footer_sub: norm.footer_sub,
+          questions_json: norm.questions_json,
+          is_active: norm.is_active,
+          updated_at: norm.updated_at,
+        };
+      };
+
+      const normalizeRespItem = (raw: any) => {
+        if (!raw || typeof raw !== 'object') return raw;
+        let q3Crops = Array.isArray(raw.q3_crops) ? raw.q3_crops : [];
+        if (q3Crops.length === 0 && typeof raw.q3_crops_json === 'string' && raw.q3_crops_json.trim()) {
+          try {
+            const parsed = JSON.parse(raw.q3_crops_json);
+            if (Array.isArray(parsed)) q3Crops = parsed;
+          } catch {
+            // ignore
+          }
+        }
+        let answersMap = raw.answers_map && typeof raw.answers_map === 'object' ? raw.answers_map : {};
+        if (Object.keys(answersMap).length === 0 && typeof raw.answers_json === 'string' && raw.answers_json.trim()) {
+          try {
+            const parsed = JSON.parse(raw.answers_json);
+            if (parsed && typeof parsed === 'object') answersMap = parsed;
+          } catch {
+            // ignore
+          }
+        }
+        return {
+          ...raw,
+          q3_crops: q3Crops,
+          q3_crops_json: JSON.stringify(q3Crops),
+          answers_map: answersMap,
+          answers_json: JSON.stringify(answersMap),
+        };
+      };
+
+      const toSupabaseRespRow = (resp: any) => {
+        const norm = normalizeRespItem(resp);
+        return {
+          response_id: String(norm.response_id || ''),
+          survey_id: String(norm.survey_id || 'SURV-HANFARM-2026'),
+          respondent_name: String(norm.respondent_name || '익명 농업인'),
+          respondent_region: String(norm.respondent_region || ''),
+          respondent_contact: String(norm.respondent_contact || ''),
+          q1_age: String(norm.q1_age || ''),
+          q2_scale: String(norm.q2_scale || ''),
+          q3_crops_json: norm.q3_crops_json,
+          q3_other_text: String(norm.q3_other_text || ''),
+          q4_difficulty: String(norm.q4_difficulty || ''),
+          q5_schedule_intent: String(norm.q5_schedule_intent || ''),
+          q6_schedule_wtp: String(norm.q6_schedule_wtp || ''),
+          q7_ai_pest_intent: String(norm.q7_ai_pest_intent || ''),
+          q8_bundle_wtp: String(norm.q8_bundle_wtp || ''),
+          q9_commerce_intent: String(norm.q9_commerce_intent || ''),
+          answers_json: norm.answers_json,
+          submitted_at: String(norm.submitted_at || getKstNowStr()),
+        };
+      };
+
       const baseSurveys = snap.surveys || { forms: [], responses: [] };
       let forms: any[] = [];
       let responses: any[] = [];
       try {
         const rawForms = localStorage.getItem(FORMS_KEY);
         const parsedForms = rawForms ? JSON.parse(rawForms) : null;
-        forms =
+        forms = (
           Array.isArray(parsedForms) && parsedForms.length > 0
             ? parsedForms
             : Array.isArray(baseSurveys.forms)
             ? [...baseSurveys.forms]
-            : [];
+            : []
+        ).map(normalizeFormItem);
       } catch {
-        forms = Array.isArray(baseSurveys.forms) ? [...baseSurveys.forms] : [];
+        forms = (Array.isArray(baseSurveys.forms) ? [...baseSurveys.forms] : []).map(normalizeFormItem);
       }
       try {
         const rawResps = localStorage.getItem(RESPS_KEY);
@@ -1421,30 +1587,34 @@ if (typeof window !== 'undefined') {
             const id = String(item?.response_id || '');
             if (id && !seen.has(id)) {
               seen.add(id);
-              responses.push(item);
+              responses.push(normalizeRespItem(item));
             }
           }
         } else {
-          responses = Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : [];
+          responses = (Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : []).map(
+            normalizeRespItem
+          );
         }
       } catch {
-        responses = Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : [];
+        responses = (Array.isArray(baseSurveys.responses) ? [...baseSurveys.responses] : []).map(
+          normalizeRespItem
+        );
       }
 
       if (p === '/api/surveys/save') {
         try {
           const body = parseBody(init);
           const surveyId = String(body.survey_id || 'SURV-HANFARM-2026').trim();
-          const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
+          const nowStr = getKstNowStr();
           const idx = forms.findIndex((f) => f.survey_id === surveyId);
-          const nextForm = {
+          const nextForm = normalizeFormItem({
             ...(idx >= 0 ? forms[idx] : {}),
             ...body,
             survey_id: surveyId,
             is_active: body.is_active === undefined ? 1 : Number(body.is_active) ? 1 : 0,
             updated_at: nowStr,
             questions: Array.isArray(body.questions) ? body.questions : idx >= 0 ? forms[idx].questions : [],
-          };
+          });
           if (idx >= 0) {
             forms[idx] = nextForm;
           } else {
@@ -1455,6 +1625,7 @@ if (typeof window !== 'undefined') {
             snap.surveys.forms = forms;
             snap.surveys.activeSurvey = nextForm;
           }
+          await sbUpsert('survey_form', toSupabaseFormRow(nextForm), 'survey_id');
           return jsonResponse({ ok: true, survey_id: surveyId, survey: nextForm });
         } catch {
           return jsonResponse({ ok: true });
@@ -1469,6 +1640,10 @@ if (typeof window !== 'undefined') {
           responses = responses.filter((r) => r.survey_id !== targetId);
           localStorage.setItem(FORMS_KEY, JSON.stringify(forms));
           localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
+          if (targetId) {
+            await sbDelete('survey_response', `survey_id=eq.${encodeURIComponent(targetId)}`);
+            await sbDelete('survey_form', `survey_id=eq.${encodeURIComponent(targetId)}`);
+          }
         } catch {
           // ignore
         }
@@ -1477,14 +1652,14 @@ if (typeof window !== 'undefined') {
 
       if (p === '/api/surveys/submit') {
         const nextSeq = responses.length + 1;
-        const todayYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const todayYmd = getKstNowStr().slice(0, 10).replace(/-/g, '');
         let respId = `RESP-${todayYmd}-${String(nextSeq).padStart(3, '0')}`;
         try {
           const body = parseBody(init);
           if (body.response_id) respId = String(body.response_id).trim();
           const surveyId = String(body.survey_id || 'SURV-HANFARM-2026').trim();
-          const nowStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
-          const newResp = {
+          const nowStr = getKstNowStr();
+          const newResp = normalizeRespItem({
             response_id: respId,
             survey_id: surveyId,
             respondent_name: String(body.respondent_name || '익명 농업인').trim() || '익명 농업인',
@@ -1502,12 +1677,13 @@ if (typeof window !== 'undefined') {
             q9_commerce_intent: body.q9_commerce_intent || '',
             answers_map: body.answers_map || {},
             submitted_at: nowStr,
-          };
+          });
           responses = [newResp, ...responses.filter((r) => r.response_id !== respId)];
           localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
           if (snap.surveys) {
             snap.surveys.responses = responses;
           }
+          await sbUpsert('survey_response', toSupabaseRespRow(newResp), 'response_id');
         } catch {
           // ignore
         }
@@ -1523,10 +1699,83 @@ if (typeof window !== 'undefined') {
           if (snap.surveys) {
             snap.surveys.responses = responses;
           }
+          if (targetRespId) {
+            await sbDelete('survey_response', `response_id=eq.${encodeURIComponent(targetRespId)}`);
+          }
         } catch {
           // ignore
         }
         return jsonResponse({ ok: true });
+      }
+
+      // GET 요청 (/api/surveys 또는 /api/surveys/public) 시 Supabase 클라우드 DB와 localStorage 양방향 최신 동기화
+      try {
+        const [remoteFormsRaw, remoteRespsRaw] = await Promise.all([
+          sbSelect('survey_form', 'select=*&order=updated_at.desc'),
+          sbSelect('survey_response', 'select=*&order=submitted_at.desc'),
+        ]);
+        if (Array.isArray(remoteFormsRaw) && remoteFormsRaw.length > 0) {
+          const remoteForms = remoteFormsRaw.map(normalizeFormItem);
+          const mergedMap = new Map<string, any>();
+          for (const rf of remoteForms) {
+            mergedMap.set(rf.survey_id, rf);
+          }
+          for (const lf of forms) {
+            const rf = mergedMap.get(lf.survey_id);
+            if (!rf) {
+              mergedMap.set(lf.survey_id, lf);
+              sbUpsert('survey_form', toSupabaseFormRow(lf), 'survey_id');
+            } else {
+              const localTime = String(lf.updated_at || '');
+              const remoteTime = String(rf.updated_at || '');
+              const isRemoteInitialSeed = remoteTime === '2026-11-09 22:28:31';
+              const isLocalContentModified =
+                lf.title !== rf.title ||
+                lf.greeting_text !== rf.greeting_text ||
+                lf.intro_text !== rf.intro_text ||
+                lf.duration_text !== rf.duration_text ||
+                lf.notice_text !== rf.notice_text ||
+                lf.footer_title !== rf.footer_title ||
+                lf.footer_sub !== rf.footer_sub ||
+                Number(lf.is_active) !== Number(rf.is_active) ||
+                lf.questions_json !== rf.questions_json;
+              if (localTime > remoteTime || (isRemoteInitialSeed && isLocalContentModified)) {
+                const syncedLocal =
+                  localTime <= remoteTime ? { ...lf, updated_at: getKstNowStr() } : lf;
+                mergedMap.set(lf.survey_id, syncedLocal);
+                sbUpsert('survey_form', toSupabaseFormRow(syncedLocal), 'survey_id');
+              } else {
+                mergedMap.set(lf.survey_id, rf);
+              }
+            }
+          }
+          forms = Array.from(mergedMap.values());
+          localStorage.setItem(FORMS_KEY, JSON.stringify(forms));
+          if (snap.surveys) {
+            snap.surveys.forms = forms;
+            snap.surveys.activeSurvey = forms[0];
+          }
+        }
+        if (Array.isArray(remoteRespsRaw)) {
+          const remoteResps = remoteRespsRaw.map(normalizeRespItem);
+          const respMap = new Map<string, any>();
+          for (const rr of remoteResps) {
+            if (rr.response_id) respMap.set(rr.response_id, rr);
+          }
+          for (const lr of responses) {
+            if (lr.response_id && !respMap.has(lr.response_id)) {
+              respMap.set(lr.response_id, lr);
+              sbUpsert('survey_response', toSupabaseRespRow(lr), 'response_id');
+            }
+          }
+          responses = Array.from(respMap.values());
+          localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
+          if (snap.surveys) {
+            snap.surveys.responses = responses;
+          }
+        }
+      } catch {
+        // ignore network errors and fall back to localStorage
       }
 
       if (p === '/api/surveys/public') {
