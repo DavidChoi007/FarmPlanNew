@@ -1403,7 +1403,7 @@ if (typeof window !== 'undefined') {
 
       const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
         try {
-          const r = await rawFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+          const r = await origFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
             method: 'GET',
             headers: {
               apikey: SB_KEY,
@@ -1422,7 +1422,7 @@ if (typeof window !== 'undefined') {
 
       const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
         try {
-          await rawFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+          await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
             method: 'POST',
             headers: {
               apikey: SB_KEY,
@@ -1439,7 +1439,7 @@ if (typeof window !== 'undefined') {
 
       const sbDelete = async (table: string, filterQuery: string) => {
         try {
-          await rawFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
+          await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
             method: 'DELETE',
             headers: {
               apikey: SB_KEY,
