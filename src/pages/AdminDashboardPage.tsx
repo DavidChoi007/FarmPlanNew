@@ -3380,6 +3380,10 @@ export default function AdminDashboardPage() {
       window.alert('마감된 설문조사에는 더 이상 참여할 수 없습니다.');
       return;
     }
+    if (!String(newSurveyRespForm.respondent_name || '').trim()) {
+      window.alert('참여자 기본 정보의 [성명 또는 닉네임(필수)] 항목을 입력해 주세요.');
+      return;
+    }
     if (!Array.isArray(newSurveyRespForm.q3_crops) || newSurveyRespForm.q3_crops.length === 0) {
       window.alert('3번 문항(주로 재배하는 작물)을 최소 1개 이상 선택해 주세요.');
       return;
@@ -26833,20 +26837,20 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* 참여자 정보 입력란 (선택) */}
+                      {/* 참여자 정보 입력란 */}
                       <div className="bg-white rounded-3xl border-2 border-slate-200 p-5 sm:p-7 shadow-xs space-y-4">
                         <div className="border-b border-slate-200 pb-3 space-y-1">
                           <div className="text-lg sm:text-xl font-extrabold text-slate-900 whitespace-nowrap">
-                            참여자 기본 정보 (선택 입력)
+                            참여자 기본 정보
                           </div>
                           <div className="text-[15px] sm:text-base text-slate-600 whitespace-nowrap">
-                            미입력 시 익명 접수 · 경품 및 안내용
+                            설문 참여 확인 · 경품 및 안내용
                           </div>
                         </div>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
-                              성함 또는 농장명 (선택)
+                              성명 또는 닉네임(필수)
                             </label>
                             <input
                               type="text"
@@ -26857,7 +26861,8 @@ export default function AdminDashboardPage() {
                                   respondent_name: e.target.value,
                                 })
                               }
-                              placeholder="예: 홍길동 농가"
+                              placeholder="예: 홍길동"
+                              required
                               className="w-full px-4 py-3 rounded-xl bg-slate-50 border-2 border-slate-300 font-bold text-[17px] sm:text-lg text-slate-900"
                             />
                           </div>

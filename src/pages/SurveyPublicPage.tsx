@@ -370,6 +370,10 @@ export default function SurveyPublicPage() {
       setErrorMsg('마감된 설문조사에는 더 이상 참여할 수 없습니다.');
       return;
     }
+    if (!respondentName.trim()) {
+      setErrorMsg('참여자 기본 정보의 [성명 또는 닉네임(필수)] 항목을 입력해 주세요.');
+      return;
+    }
     for (const q of questions) {
       if (q.type === 'multiple') {
         if (q3Selected.length === 0) {
@@ -590,14 +594,14 @@ export default function SurveyPublicPage() {
           </div>
         </div>
 
-        {/* 참여자 기본 정보 카드 (선택 입력) */}
+        {/* 참여자 기본 정보 카드 */}
         <div className="bg-white rounded-3xl border-2 border-slate-200 p-4 sm:p-7 shadow-xs space-y-4">
           <div className="border-b border-slate-200 pb-3 space-y-1">
             <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 whitespace-nowrap">
-              참여자 기본 정보 (선택 입력)
+              참여자 기본 정보
             </h2>
             <p className="text-[15px] sm:text-base text-slate-600 whitespace-nowrap">
-              미입력 시 익명 접수 · 경품 및 안내용
+              설문 참여 확인 · 경품 및 안내용
             </p>
           </div>
 
@@ -605,13 +609,14 @@ export default function SurveyPublicPage() {
             <div>
               <label className="flex items-center gap-1.5 text-[16px] sm:text-lg font-extrabold text-slate-800 mb-1.5 whitespace-nowrap">
                 <User className="w-4 h-4 text-emerald-700 shrink-0" />
-                성함 또는 농장명 (선택)
+                성명 또는 닉네임(필수)
               </label>
               <input
                 type="text"
                 value={respondentName}
                 onChange={(e) => setRespondentName(e.target.value)}
-                placeholder="예: 홍길동 농가"
+                placeholder="예: 홍길동"
+                required
                 className="w-full px-4 py-3 rounded-xl bg-slate-50 focus:bg-white border-2 border-slate-300 focus:border-emerald-600 font-bold text-[17px] sm:text-lg text-slate-900 focus:outline-none"
               />
             </div>
