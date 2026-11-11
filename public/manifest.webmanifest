@@ -1,7 +1,7 @@
 {
-  "name": "한팜 (FarmPlan) — 맞춤형 재배관리 플랫폼",
-  "short_name": "한팜",
-  "description": "한팜(HANFARM) 맞춤형 농작물 재배 일정 및 농자재 추천 플랫폼",
+  "name": "팜플랜(한팜)",
+  "short_name": "팜플랜(한팜)",
+  "description": "팜플랜(한팜) 맞춤형 농작물 재배 일정 및 농자재 추천 플랫폼",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
