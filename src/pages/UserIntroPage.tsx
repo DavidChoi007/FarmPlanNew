@@ -2464,21 +2464,21 @@ export default function UserIntroPage() {
 
     return (
       <>
-        {/* ==================== [모바일 전용: 농작물 구매와 동일한 상단 고정 화이트 플로팅 2분할 폴더/카드 탭] ==================== */}
+        {/* ==================== [모바일 전용: 초슬림 상단 고정 화이트 플로팅 2분할 폴더/카드 탭] ==================== */}
         <div
-          className={`lg:hidden sticky z-20 -mx-4 -mt-5 px-3.5 pt-3 pb-2.5 bg-[#F4F6F5]/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_4px_12px_rgba(15,23,42,0.04)] space-y-2.5 ${
+          className={`lg:hidden sticky z-20 -mx-4 -mt-5 px-3 pt-1.5 pb-1.5 bg-[#F4F6F5]/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.04)] space-y-1.5 ${
             isLegacyAndroidWebView
               ? 'top-[calc(max(34px,env(safe-area-inset-top,34px))+3.8rem)] sm:top-[calc(max(34px,env(safe-area-inset-top,34px))+5.3rem)]'
               : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)]'
           }`}
         >
-          {/* 상단 타이틀 & 빠른 일정 요청 버튼 */}
+          {/* 상단 타이틀 & 빠른 일정 요청 버튼 (컴팩트 높이) */}
           <div className="flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-[17px] font-black tracking-tight text-slate-900 leading-none">
                 재배일정
               </h2>
-              <span className="px-2.5 py-1 rounded-full bg-[#DDF5E8] text-[12px] font-extrabold text-[#11643C] leading-none">
+              <span className="px-2 py-0.5 rounded-full bg-[#DDF5E8] text-[11px] font-extrabold text-[#11643C] leading-none">
                 총 {cloudBaeCropList.length}건
               </span>
             </div>
@@ -2489,23 +2489,23 @@ export default function UserIntroPage() {
                 setScheduleReqModalPos({ x: 0, y: 0 });
                 setIsScheduleReqModelessOpen(true);
               }}
-              className="px-3 py-1.5 rounded-full bg-[#0F5328] hover:bg-[#146C34] text-white text-[12px] font-extrabold shadow-xs transition cursor-pointer inline-flex items-center gap-1"
+              className="px-2.5 py-1 rounded-full bg-[#0F5328] hover:bg-[#146C34] text-white text-[11px] font-extrabold shadow-2xs transition cursor-pointer inline-flex items-center gap-1 leading-none"
             >
-              <FileEdit className="w-3.5 h-3.5" />
+              <FileEdit className="w-3 h-3" />
               <span>+ 일정 요청</span>
             </button>
           </div>
 
-          {/* 일체형 화이트 플로팅 카드 (재배일정 요청 / 재배일정 확인 좌측 정렬 컴팩트 탭) */}
-          <div className="bg-white rounded-[26px] p-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.07)] border border-slate-200/85">
-            <div className="flex items-stretch justify-start gap-2">
+          {/* 일체형 화이트 플로팅 카드 (재배일정 요청 / 재배일정 확인 좌측 정렬 초슬림 탭) */}
+          <div className="bg-white rounded-2xl p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] border border-slate-200/85">
+            <div className="flex items-stretch justify-start gap-1.5">
               {[
                 {
                   key: '재배일정 요청' as const,
                   label: '재배일정 요청',
                   active: isRequestTab,
                   renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-7 h-7" fill="none">
+                    <svg viewBox="0 0 36 36" className="w-5 h-5 shrink-0" fill="none">
                       <rect
                         x="7"
                         y="6.5"
@@ -2515,12 +2515,12 @@ export default function UserIntroPage() {
                         fill={active ? '#ffffff' : '#E2E8F0'}
                         fillOpacity={active ? '0.2' : '0.65'}
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.1"
+                        strokeWidth="2.2"
                       />
                       <path
                         d="M11.5 13h9M11.5 17.5h6"
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2"
+                        strokeWidth="2.1"
                         strokeLinecap="round"
                       />
                       <circle
@@ -2529,12 +2529,12 @@ export default function UserIntroPage() {
                         r="5.5"
                         fill={active ? '#6EE7B7' : '#5BB89A'}
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="1.9"
+                        strokeWidth="2"
                       />
                       <path
                         d="M24.5 20.8v5.4M21.8 23.5h5.4"
                         stroke={active ? '#0F5328' : '#ffffff'}
-                        strokeWidth="2.2"
+                        strokeWidth="2.3"
                         strokeLinecap="round"
                       />
                     </svg>
@@ -2545,7 +2545,7 @@ export default function UserIntroPage() {
                   label: '재배일정 확인',
                   active: isCheckTab,
                   renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-7 h-7" fill="none">
+                    <svg viewBox="0 0 36 36" className="w-5 h-5 shrink-0" fill="none">
                       <rect
                         x="6.5"
                         y="8.5"
@@ -2555,12 +2555,12 @@ export default function UserIntroPage() {
                         fill={active ? '#ffffff' : '#E2E8F0'}
                         fillOpacity={active ? '0.2' : '0.65'}
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.1"
+                        strokeWidth="2.2"
                       />
                       <path
                         d="M6.5 14.5h23M12.5 5.5v5M23.5 5.5v5"
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.1"
+                        strokeWidth="2.2"
                         strokeLinecap="round"
                       />
                       <circle
@@ -2569,12 +2569,12 @@ export default function UserIntroPage() {
                         r="5.2"
                         fill={active ? '#6EE7B7' : '#5BB89A'}
                         stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="1.8"
+                        strokeWidth="1.9"
                       />
                       <path
                         d="M15.8 22l1.6 1.6 3.2-3.2"
                         stroke={active ? '#0F5328' : '#ffffff'}
-                        strokeWidth="2.1"
+                        strokeWidth="2.2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
@@ -2592,17 +2592,17 @@ export default function UserIntroPage() {
                     }
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`w-[32%] max-w-[116px] relative flex flex-col items-center justify-between py-2.5 px-1.5 rounded-[18px] transition-all duration-150 cursor-pointer shrink-0 ${
+                  className={`w-[32%] max-w-[118px] relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all duration-150 cursor-pointer shrink-0 ${
                     tab.active
-                      ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_6px_16px_rgba(15,83,40,0.25)]'
+                      ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_4px_12px_rgba(15,83,40,0.22)]'
                       : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  <div className="h-8 flex items-center justify-center mb-1">
+                  <div className="h-5 flex items-center justify-center mb-0.5">
                     {tab.renderIcon(tab.active)}
                   </div>
                   <span
-                    className={`min-h-[24px] flex items-center justify-center text-center tracking-tighter text-[14px] min-[390px]:text-[15px] sm:text-[16px] leading-none font-black whitespace-nowrap ${
+                    className={`flex items-center justify-center text-center tracking-tighter text-[13.5px] min-[390px]:text-[14.5px] sm:text-[15.5px] leading-tight font-black whitespace-nowrap ${
                       tab.active ? 'text-white' : 'text-slate-900'
                     }`}
                   >
@@ -2614,8 +2614,8 @@ export default function UserIntroPage() {
           </div>
         </div>
 
-        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 좌측 정렬 1/3 폭 폴더형 탭] ==================== */}
-        <div className="hidden lg:block space-y-6">
+        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 좌측 정렬 1/3 폭 초슬림 폴더형 탭] ==================== */}
+        <div className="hidden lg:block space-y-4">
           <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
             <div className="relative w-full">
               <img
@@ -2634,20 +2634,18 @@ export default function UserIntroPage() {
             </div>
           </section>
 
-          <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs">
-            <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 flex items-stretch justify-start gap-2.5">
+          <section className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
+            <div className="bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex items-stretch justify-start gap-2">
               {[
                 {
                   menu: '재배일정 요청' as const,
                   label: '재배일정 요청',
-                  desc: '신규 맞춤 재배일정 산출',
                   icon: FileEdit,
                   activeGrad: 'from-[#0F5328] to-teal-700',
                 },
                 {
                   menu: '재배일정 확인' as const,
                   label: '재배일정 확인',
-                  desc: '48주 생육 타임라인·할 일',
                   icon: Calendar,
                   activeGrad: 'from-[#0F5328] to-emerald-700',
                 },
@@ -2664,37 +2662,28 @@ export default function UserIntroPage() {
                         setMobileScheduleStep('list');
                       }
                     }}
-                    className={`w-[220px] xl:w-[240px] shrink-0 group relative rounded-xl px-4 py-3 text-left transition-all duration-200 cursor-pointer flex items-center gap-3 ${
+                    className={`w-[190px] xl:w-[210px] shrink-0 group relative rounded-lg px-3.5 py-2 text-left transition-all duration-150 cursor-pointer flex items-center gap-2.5 ${
                       isCurrentTab
-                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.01]`
+                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-sm`
                         : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
                     }`}
                   >
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition ${
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
                         isCurrentTab
-                          ? 'bg-white/20 text-white shadow-inner'
+                          ? 'bg-white/20 text-white'
                           : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
                       }`}
                     >
-                      <TabIcon className="w-5 h-5" />
+                      <TabIcon className="w-4 h-4" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div
-                        className={`text-base font-extrabold tracking-tight truncate ${
-                          isCurrentTab ? 'text-white' : 'text-slate-900'
-                        }`}
-                      >
-                        {tabItem.label}
-                      </div>
-                      <p
-                        className={`text-[11px] font-semibold truncate mt-0.5 ${
-                          isCurrentTab ? 'text-white/90' : 'text-slate-500'
-                        }`}
-                      >
-                        {tabItem.desc}
-                      </p>
-                    </div>
+                    <span
+                      className={`text-[15px] font-extrabold tracking-tight truncate ${
+                        isCurrentTab ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
+                      {tabItem.label}
+                    </span>
                   </button>
                 );
               })}
@@ -7363,18 +7352,18 @@ export default function UserIntroPage() {
               }`}
             >
               {/* 1. 상단 고정 영역: 모바일 타이틀 + 일체형 화이트 플로팅 5대 카테고리 카드 독 (항상 고정 노출) */}
-              <div className="shrink-0 px-3.5 pt-3 pb-2.5 bg-[#F4F6F5] z-10 space-y-2.5">
+              <div className="shrink-0 px-3 pt-1.5 pb-1.5 bg-[#F4F6F5] z-10 space-y-1.5">
                 {/* 상단 타이틀 & 전체보기·검색 버튼 */}
                 <div className="flex items-center justify-between gap-2 px-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-[17px] font-black tracking-tight text-slate-900 leading-none">
                       농작물 구매
                     </h2>
-                    <span className="px-2.5 py-1 rounded-full bg-[#DDF5E8] text-[12px] font-extrabold text-[#11643C] leading-none">
+                    <span className="px-2 py-0.5 rounded-full bg-[#DDF5E8] text-[11px] font-extrabold text-[#11643C] leading-none">
                       총 {userAgroResult.total}종
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => {
@@ -7393,7 +7382,7 @@ export default function UserIntroPage() {
                           .getElementById('mobile-agro-list-scroll')
                           ?.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-extrabold transition cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold transition cursor-pointer leading-none ${
                         mobileAgroCategoryTab === 'ALL'
                           ? 'bg-[#0F5328] text-white shadow-xs'
                           : 'bg-[#E9ECEB] hover:bg-slate-200 text-slate-700'
@@ -7405,26 +7394,26 @@ export default function UserIntroPage() {
                       type="button"
                       onClick={() => setShowMobileAgroSearch((prev) => !prev)}
                       aria-label="농작물 및 농자재 검색"
-                      className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
                         showMobileAgroSearch || userAgroKeyword.trim()
                           ? 'bg-[#0F5328] text-white shadow-xs'
                           : 'bg-[#E9ECEB] text-slate-800 hover:bg-slate-200'
                       }`}
                     >
-                      <Search className="w-4 h-4 stroke-[2.4]" />
+                      <Search className="w-3.5 h-3.5 stroke-[2.4]" />
                     </button>
                   </div>
                 </div>
 
-                {/* 2. 일체형 화이트 플로팅 카드 (5분할 카테고리 카드 + 하단 요약 바) */}
-                <div className="bg-white rounded-[26px] p-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.07)] border border-slate-200/85">
-                  <div className="grid grid-cols-5 gap-1.5">
+                {/* 2. 일체형 화이트 플로팅 카드 (5분할 카테고리 카드 - 최소 높이 슬림형) */}
+                <div className="bg-white rounded-2xl p-1.5 shadow-[0_6px_20px_rgba(15,23,42,0.06)] border border-slate-200/85">
+                  <div className="grid grid-cols-5 gap-1">
                     {[
                       {
                         key: 'FERTILIZER' as const,
                         label: '비료',
                         renderIcon: (active: boolean) => (
-                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                          <svg viewBox="0 0 36 36" className="w-5 h-5" fill="none">
                             {/* 플라스크 기포 */}
                             <circle cx="13" cy="6.5" r="1.3" fill={active ? '#A7F3D0' : '#4E9F86'} />
                             <circle cx="16.5" cy="4.8" r="1" fill={active ? '#ffffff' : '#334155'} />
@@ -7462,7 +7451,7 @@ export default function UserIntroPage() {
                         key: 'NUTRIENT' as const,
                         label: '영양제',
                         renderIcon: (active: boolean) => (
-                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                          <svg viewBox="0 0 36 36" className="w-5 h-5" fill="none">
                             {/* 큰 반짝임 별 */}
                             <path
                               d="M15 8l2.2 5.8L23 16l-5.8 2.2L15 24l-2.2-5.8L7 16l5.8-2.2L15 8z"
@@ -7495,7 +7484,7 @@ export default function UserIntroPage() {
                         key: 'PESTICIDE' as const,
                         label: '병해충방지제',
                         renderIcon: (active: boolean) => (
-                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                          <svg viewBox="0 0 36 36" className="w-5 h-5" fill="none">
                             <path
                               d="M18 6.5l9.5 3.8v7.2c0 6.4-4.1 11.4-9.5 13.5-5.4-2.1-9.5-7.1-9.5-13.5v-7.2L18 6.5z"
                               fill={active ? '#ffffff' : '#F8FAFC'}
@@ -7526,7 +7515,7 @@ export default function UserIntroPage() {
                         key: 'SEED' as const,
                         label: '씨',
                         renderIcon: (active: boolean) => (
-                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                          <svg viewBox="0 0 36 36" className="w-5 h-5" fill="none">
                             {/* 종자 봉투 */}
                             <rect
                               x="9"
@@ -7579,7 +7568,7 @@ export default function UserIntroPage() {
                         key: 'SEEDLING' as const,
                         label: '모종',
                         renderIcon: (active: boolean) => (
-                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                          <svg viewBox="0 0 36 36" className="w-5 h-5" fill="none">
                             {/* 줄기 */}
                             <path
                               d="M18 25V13"
@@ -7637,20 +7626,20 @@ export default function UserIntroPage() {
                               .getElementById('mobile-agro-list-scroll')
                               ?.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className={`relative flex flex-col items-center justify-between py-2.5 px-0.5 rounded-[18px] transition-all duration-150 cursor-pointer ${
+                          className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all duration-150 cursor-pointer ${
                             isActive
-                              ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_6px_16px_rgba(15,83,40,0.25)]'
+                              ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_4px_12px_rgba(15,83,40,0.22)]'
                               : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                           }`}
                         >
-                          <div className="h-9 flex items-center justify-center mb-1">
+                          <div className="h-5 flex items-center justify-center mb-0.5">
                             {tab.renderIcon(isActive)}
                           </div>
                           <span
-                            className={`min-h-[36px] flex flex-col items-center justify-center text-center tracking-tighter ${
+                            className={`min-h-[26px] flex flex-col items-center justify-center text-center tracking-tighter ${
                               tab.key === 'PESTICIDE'
-                                ? 'text-[14.5px] min-[390px]:text-[16px] sm:text-[17.5px] leading-[1.1]'
-                                : 'text-[16.5px] min-[390px]:text-[18px] sm:text-[19.5px] leading-none'
+                                ? 'text-[13px] min-[390px]:text-[14px] sm:text-[15.5px] leading-[1.02]'
+                                : 'text-[15px] min-[390px]:text-[16px] sm:text-[17.5px] leading-none'
                             } ${
                               isActive
                                 ? 'font-black text-white'
@@ -7998,9 +7987,9 @@ export default function UserIntroPage() {
               )}
 
               {/* 농작물 구매: 세련된 5대 카테고리 탭 바 (비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
-              <section className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
-                {/* 세련된 5분할 세그먼트 카테고리 탭 */}
-                <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 grid grid-cols-5 gap-2">
+              <section className="bg-white rounded-3xl border border-slate-200 p-3.5 shadow-xs space-y-3">
+                {/* 세련된 5분할 세그먼트 카테고리 탭 (최소 높이 슬림형) */}
+                <div className="bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 grid grid-cols-5 gap-1.5">
                   {[
                     {
                       menu: '비료',
@@ -8058,52 +8047,45 @@ export default function UserIntroPage() {
                         key={tabItem.menu}
                         type="button"
                         onClick={() => setActiveMenu(tabItem.menu)}
-                        className={`group relative rounded-xl px-4 py-3.5 text-left transition-all duration-200 cursor-pointer flex items-center gap-3.5 ${
+                        className={`group relative rounded-lg px-3 py-2 text-left transition-all duration-200 cursor-pointer flex items-center gap-2.5 ${
                           isCurrentTab
-                            ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.01]`
+                            ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-sm`
                             : 'bg-white/80 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
                         }`}
                       >
                         <div
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
                             isCurrentTab
                               ? 'bg-white/20 text-white shadow-inner'
                               : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
                           }`}
                         >
-                          <TabIcon className="w-5 h-5" />
+                          <TabIcon className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
                             <span
-                              className={`text-base font-extrabold tracking-tight truncate ${
+                              className={`text-sm font-extrabold tracking-tight truncate ${
                                 isCurrentTab ? 'text-white' : 'text-slate-900'
                               }`}
                             >
                               {tabItem.label}
                             </span>
                             <span
-                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider leading-none ${
                                 isCurrentTab ? 'bg-white/20 text-white' : tabItem.badgeCls
                               }`}
                             >
                               {tabItem.eng}
                             </span>
                           </div>
-                          <p
-                            className={`text-[11px] mt-0.5 truncate font-semibold ${
-                              isCurrentTab ? 'text-white/90' : 'text-slate-500'
-                            }`}
-                          >
-                            {tabItem.desc}
-                          </p>
                         </div>
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2.5">
                   <div>
                     <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
                       관리자 페이지 등록 농작물·농자재 DB 실시간 연동{loggedInUser.isLoggedIn ? ` · ${loggedInUser.name} 님 맞춤 처방` : ''}
