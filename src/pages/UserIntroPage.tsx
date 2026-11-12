@@ -7128,108 +7128,264 @@ export default function UserIntroPage() {
             <div
               className={`lg:hidden fixed inset-x-0 z-20 flex flex-col bg-[#F4F6F5] overflow-hidden ${
                 isLegacyAndroidWebView
-                  ? 'top-[calc(max(34px,env(safe-area-inset-top,34px))+3.8rem)] sm:top-[calc(max(34px,env(safe-area-inset-top,34px))+5.3rem)] bottom-[calc(max(14px,env(safe-area-inset-bottom,14px))+4rem)]'
-                  : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)] bottom-[calc(env(safe-area-inset-bottom,0px)+4rem)]'
+                  ? 'top-[calc(max(34px,env(safe-area-inset-top,34px))+3.8rem)] sm:top-[calc(max(34px,env(safe-area-inset-top,34px))+5.3rem)] bottom-[calc(max(14px,env(safe-area-inset-bottom,14px))+4.75rem)]'
+                  : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)] bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]'
               }`}
             >
-              {/* 1. 상단 고정 영역: 모바일 타이틀 + 5분할 폴더 탭 + 선택 카테고리 요약/검색바 (항상 고정 노출) */}
-              <div className="shrink-0 px-4 pt-3 pb-2.5 bg-[#F4F6F5] border-b border-slate-200/80 shadow-[0_4px_12px_rgba(15,23,42,0.04)] z-10 space-y-2.5">
-                <div className="space-y-0">
-                  {/* 상단 타이틀 & 검색 버튼 */}
-                  <div className="flex items-center justify-between gap-2 px-1 pb-2">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-[20px] font-black tracking-tight text-slate-900 leading-none">
-                        농작물 구매
-                      </h2>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 border border-emerald-300/80 text-[11px] font-extrabold text-emerald-900">
-                        총 {userAgroResult.total}종
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {mobileAgroCategoryTab !== 'ALL' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMobileAgroCategoryTab('ALL');
-                            setUserAgroMainTypeFilter('ALL');
-                            setUserAgroSubTypeFilter('ALL');
-                            setUserAgroOrganicFilter('ALL');
-                            executeUserAgroMaterialSearch({
-                              category: 'ALL',
-                              main_type: 'ALL',
-                              sub_type: 'ALL',
-                              is_organic: 'ALL',
-                              q: userAgroKeyword,
-                            });
-                            document
-                              .getElementById('mobile-agro-list-scroll')
-                              ?.scrollTo({ top: 0, behavior: 'smooth' });
-                          }}
-                          className="px-2.5 py-1.5 rounded-full bg-white border border-slate-300 text-[11px] font-extrabold text-slate-700 shadow-2xs cursor-pointer"
-                        >
-                          전체보기
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setShowMobileAgroSearch((prev) => !prev)}
-                        aria-label="농작물 및 농자재 검색"
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
-                          showMobileAgroSearch || userAgroKeyword.trim()
-                            ? 'bg-[#1B5E20] text-white shadow-xs'
-                            : 'bg-white border border-slate-200/90 text-slate-800 hover:bg-slate-100 shadow-2xs'
-                        }`}
-                      >
-                        <Search className="w-4 h-4 stroke-[2.4]" />
-                      </button>
-                    </div>
+              {/* 1. 상단 고정 영역: 모바일 타이틀 + 일체형 화이트 플로팅 5대 카테고리 카드 독 (항상 고정 노출) */}
+              <div className="shrink-0 px-3.5 pt-3 pb-2.5 bg-[#F4F6F5] z-10 space-y-2.5">
+                {/* 상단 타이틀 & 전체보기·검색 버튼 */}
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+                      농작물 구매
+                    </h2>
+                    <span className="px-2.5 py-1 rounded-full bg-[#DDF5E8] text-[12px] font-extrabold text-[#11643C] leading-none">
+                      총 {userAgroResult.total}종
+                    </span>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileAgroCategoryTab('ALL');
+                        setUserAgroMainTypeFilter('ALL');
+                        setUserAgroSubTypeFilter('ALL');
+                        setUserAgroOrganicFilter('ALL');
+                        executeUserAgroMaterialSearch({
+                          category: 'ALL',
+                          main_type: 'ALL',
+                          sub_type: 'ALL',
+                          is_organic: 'ALL',
+                          q: userAgroKeyword,
+                        });
+                        document
+                          .getElementById('mobile-agro-list-scroll')
+                          ?.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-[12px] font-extrabold transition cursor-pointer ${
+                        mobileAgroCategoryTab === 'ALL'
+                          ? 'bg-[#0F5328] text-white shadow-xs'
+                          : 'bg-[#E9ECEB] hover:bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      전체보기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowMobileAgroSearch((prev) => !prev)}
+                      aria-label="농작물 및 농자재 검색"
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
+                        showMobileAgroSearch || userAgroKeyword.trim()
+                          ? 'bg-[#0F5328] text-white shadow-xs'
+                          : 'bg-[#E9ECEB] text-slate-800 hover:bg-slate-200'
+                      }`}
+                    >
+                      <Search className="w-4 h-4 stroke-[2.4]" />
+                    </button>
+                  </div>
+                </div>
 
-                  {/* 2. 한 화면에 모두 들어오는 5분할 폴더 탭 바 (비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
-                  <div className="grid grid-cols-5 gap-1 px-1 pt-1 bg-[#E4EAE7] rounded-t-2xl border-t border-x border-slate-300/70">
+                {/* 2. 일체형 화이트 플로팅 카드 (5분할 카테고리 카드 + 하단 요약 바) */}
+                <div className="bg-white rounded-[26px] p-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.07)] border border-slate-200/85">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {[
                       {
                         key: 'FERTILIZER' as const,
                         label: '비료',
-                        icon: FlaskConical,
-                        topBarCls: 'bg-[#6E6235]',
-                        iconActiveCls: 'bg-[#6E6235]/12 text-[#5A4F28]',
-                        textActiveCls: 'text-[#4A401E]',
+                        renderIcon: (active: boolean) => (
+                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                            {/* 플라스크 기포 */}
+                            <circle cx="13" cy="6.5" r="1.3" fill={active ? '#A7F3D0' : '#4E9F86'} />
+                            <circle cx="16.5" cy="4.8" r="1" fill={active ? '#ffffff' : '#334155'} />
+                            {/* 삼각 플라스크 */}
+                            <path
+                              d="M11.5 9.5h5M12.8 9.5v4.2l-5.2 9.5a2 2 0 001.75 2.95h9.3a2 2 0 001.75-2.95l-5.2-9.5V9.5"
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M8.8 21.5h10.4l1.1 2.1a1 1 0 01-.88 1.48H8.58a1 1 0 01-.88-1.48l1.1-2.1z"
+                              fill={active ? '#4E9F86' : '#5BB89A'}
+                            />
+                            {/* 우측 비료 포대 */}
+                            <rect
+                              x="19.5"
+                              y="14.5"
+                              width="9.5"
+                              height="11.8"
+                              rx="2"
+                              fill={active ? '#ffffff' : '#F1F5F9'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.9"
+                            />
+                            <path
+                              d="M22.5 21.8c0-2.2 1.8-3.8 4-3.8 0 2.2-1.8 3.8-4 3.8z"
+                              fill={active ? '#0F5328' : '#4E9F86'}
+                            />
+                          </svg>
+                        ),
                       },
                       {
                         key: 'NUTRIENT' as const,
                         label: '영양제',
-                        icon: Sparkles,
-                        topBarCls: 'bg-[#2E7D78]',
-                        iconActiveCls: 'bg-[#2E7D78]/12 text-[#1F635E]',
-                        textActiveCls: 'text-[#18524E]',
+                        renderIcon: (active: boolean) => (
+                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                            {/* 큰 반짝임 별 */}
+                            <path
+                              d="M15 8l2.2 5.8L23 16l-5.8 2.2L15 24l-2.2-5.8L7 16l5.8-2.2L15 8z"
+                              fill={active ? '#A7F3D0' : '#94A3B8'}
+                              fillOpacity={active ? '0.35' : '0.35'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                            {/* 작은 반짝임 별 */}
+                            <path
+                              d="M24.5 6.5l1.1 2.9 2.9 1.1-2.9 1.1-1.1 2.9-1.1-2.9-2.9-1.1 2.9-1.1 1.1-2.9z"
+                              fill={active ? '#ffffff' : '#CBD5E1'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.7"
+                              strokeLinejoin="round"
+                            />
+                            {/* 영양 물방울 */}
+                            <path
+                              d="M25 18.2c0 0 4 4.5 4 7.1a4 4 0 01-8 0c0-2.6 4-7.1 4-7.1z"
+                              fill={active ? '#6EE7B7' : '#5BB89A'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        ),
                       },
                       {
                         key: 'PESTICIDE' as const,
                         label: '병해충방지제',
-                        icon: ShieldAlert,
-                        topBarCls: 'bg-[#E57368]',
-                        iconActiveCls: 'bg-[#E57368]/15 text-[#C6463B]',
-                        textActiveCls: 'text-[#B5382D]',
+                        renderIcon: (active: boolean) => (
+                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                            <path
+                              d="M18 6.5l9.5 3.8v7.2c0 6.4-4.1 11.4-9.5 13.5-5.4-2.1-9.5-7.1-9.5-13.5v-7.2L18 6.5z"
+                              fill={active ? '#ffffff' : '#F8FAFC'}
+                              fillOpacity={active ? '0.18' : '1'}
+                              stroke={active ? '#ffffff' : '#475569'}
+                              strokeWidth="2.1"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M18 7.5v11h8.5v-1c0-2.2 0-4.5 0-6.5L18 7.5z"
+                              fill={active ? '#6EE7B7' : '#64748B'}
+                              fillOpacity={active ? '0.75' : '0.65'}
+                            />
+                            <path
+                              d="M18 18.5H9.5c.4 4.8 3.8 9 8.5 11.2V18.5z"
+                              fill={active ? '#6EE7B7' : '#64748B'}
+                              fillOpacity={active ? '0.75' : '0.65'}
+                            />
+                            <path
+                              d="M18 7v23.5M9 18.5h18"
+                              stroke={active ? '#ffffff' : '#475569'}
+                              strokeWidth="1.9"
+                            />
+                          </svg>
+                        ),
                       },
                       {
                         key: 'SEED' as const,
                         label: '씨',
-                        icon: Package,
-                        topBarCls: 'bg-[#C88A2B]',
-                        iconActiveCls: 'bg-[#C88A2B]/15 text-[#9E6814]',
-                        textActiveCls: 'text-[#87570D]',
+                        renderIcon: (active: boolean) => (
+                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                            {/* 종자 봉투 */}
+                            <rect
+                              x="9"
+                              y="8"
+                              width="14"
+                              height="17.5"
+                              rx="2"
+                              fill={active ? '#ffffff' : '#E2E8F0'}
+                              fillOpacity={active ? '0.2' : '0.7'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                            />
+                            <path
+                              d="M9 11.8h14"
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.8"
+                            />
+                            {/* 봉투 안 씨앗 잎 */}
+                            <path
+                              d="M13.5 20.5c0-3.2 2.4-5.5 5.5-5.5 0 3.2-2.4 5.5-5.5 5.5z"
+                              fill={active ? '#6EE7B7' : '#5BB89A'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.7"
+                            />
+                            {/* 바깥 씨앗 알갱이 */}
+                            <ellipse
+                              cx="26.5"
+                              cy="21.5"
+                              rx="2"
+                              ry="3.2"
+                              transform="rotate(25 26.5 21.5)"
+                              fill={active ? '#6EE7B7' : '#5BB89A'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.7"
+                            />
+                            <ellipse
+                              cx="22.8"
+                              cy="26.5"
+                              rx="1.8"
+                              ry="2.8"
+                              transform="rotate(-20 22.8 26.5)"
+                              fill={active ? '#ffffff' : '#94A3B8'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="1.7"
+                            />
+                          </svg>
+                        ),
                       },
                       {
                         key: 'SEEDLING' as const,
                         label: '모종',
-                        icon: Sprout,
-                        topBarCls: 'bg-[#2E7D32]',
-                        iconActiveCls: 'bg-[#2E7D32]/12 text-[#1B5E20]',
-                        textActiveCls: 'text-[#1B5E20]',
+                        renderIcon: (active: boolean) => (
+                          <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                            {/* 줄기 */}
+                            <path
+                              d="M18 25V13"
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                            />
+                            {/* 우측 큰 떡잎 */}
+                            <path
+                              d="M18 16.5c0-4.8 3.8-8 8.5-8 0 4.8-3.8 8-8.5 8z"
+                              fill={active ? '#6EE7B7' : '#5BB89A'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                            {/* 좌측 작은 떡잎 */}
+                            <path
+                              d="M18 19c0-3.8-3.2-6.5-7-6.5 0 3.8 3.2 6.5 7 6.5z"
+                              fill={active ? '#A7F3D0' : '#7BC8AF'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                            {/* 흙 둔덕 */}
+                            <path
+                              d="M11 27.5c1.5-2.2 4-3.3 7-3.3s5.5 1.1 7 3.3H11z"
+                              fill={active ? '#ffffff' : '#64748B'}
+                              fillOpacity={active ? '0.35' : '0.55'}
+                              stroke={active ? '#ffffff' : '#334155'}
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        ),
                       },
                     ].map((tab) => {
-                      const TabIcon = tab.icon;
                       const isActive = mobileAgroCategoryTab === tab.key;
                       return (
                         <button
@@ -7251,36 +7407,24 @@ export default function UserIntroPage() {
                               .getElementById('mobile-agro-list-scroll')
                               ?.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
-                          className={`relative flex flex-col items-center justify-center py-2.5 px-0.5 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
+                          className={`relative flex flex-col items-center justify-between py-2.5 px-0.5 rounded-[18px] transition-all duration-150 cursor-pointer ${
                             isActive
-                              ? 'bg-white shadow-[0_-2px_8px_rgba(15,23,42,0.06)] z-10 -mb-[1px] pb-3 border-t border-x border-slate-200/90'
-                              : 'bg-[#D8E1DC]/75 hover:bg-[#DCE5E0] text-slate-600 border-t border-x border-transparent'
+                              ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_6px_16px_rgba(15,83,40,0.25)]'
+                              : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                           }`}
                         >
-                          {/* 활성 폴더 상단 컬러 포인트 바 */}
-                          <span
-                            className={`absolute top-0 inset-x-0 h-1 transition-opacity ${
-                              isActive ? `${tab.topBarCls} opacity-100` : 'opacity-0'
-                            }`}
-                          />
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 transition ${
-                              isActive
-                                ? tab.iconActiveCls
-                                : 'bg-white/60 text-slate-500'
-                            }`}
-                          >
-                            <TabIcon className="w-4 h-4 stroke-[2.2]" />
+                          <div className="h-9 flex items-center justify-center mb-1">
+                            {tab.renderIcon(isActive)}
                           </div>
                           <span
                             className={`min-h-[36px] flex flex-col items-center justify-center text-center tracking-tighter ${
                               tab.key === 'PESTICIDE'
-                                ? 'text-[15.5px] min-[390px]:text-[17px] sm:text-[18.5px] leading-[1.08]'
-                                : 'text-[17px] min-[390px]:text-[18.5px] sm:text-[20px] leading-none'
+                                ? 'text-[14.5px] min-[390px]:text-[16px] sm:text-[17.5px] leading-[1.1]'
+                                : 'text-[16.5px] min-[390px]:text-[18px] sm:text-[19.5px] leading-none'
                             } ${
                               isActive
-                                ? `font-black ${tab.textActiveCls}`
-                                : 'font-extrabold text-slate-700'
+                                ? 'font-black text-white'
+                                : 'font-black text-slate-900'
                             }`}
                           >
                             {tab.key === 'PESTICIDE' ? (
@@ -7297,26 +7441,36 @@ export default function UserIntroPage() {
                     })}
                   </div>
 
-                  {/* 폴더 탭과 하나로 이어지는 하단 헤더 패널 (현재 선택 카테고리 안내 & 검색창) */}
-                  <div className="bg-white rounded-b-2xl px-4 py-2.5 shadow-[0_4px_12px_rgba(15,23,42,0.04)] border border-slate-200/90 space-y-2">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full bg-[#1B5E20] shrink-0" />
-                        <span className="font-extrabold text-slate-900 truncate">
+                  {/* 카드 내부 하단 서브 안내 스트립 & 검색창 */}
+                  <div className="mt-2.5 pt-2.5 px-1 border-t border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-6 h-6 rounded-full bg-[#E3F7ED] text-[#11643C] flex items-center justify-center shrink-0">
+                          <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none">
+                            <path
+                              d="M3 10h3l2-4.5 3.5 9 2-4.5H17"
+                              stroke="currentColor"
+                              strokeWidth="2.2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <span className="text-[13px] min-[390px]:text-[13.5px] font-extrabold text-slate-900 truncate tracking-tight">
                           {mobileAgroCategoryTab === 'FERTILIZER'
-                            ? '비료 (유기질퇴비·복합·웃거름·완효성)'
+                            ? '비료 · 유기질퇴비·복합·웃거름·완효성'
                             : mobileAgroCategoryTab === 'NUTRIENT'
-                            ? '영양제 (칼슘·발근·비대·생리활성)'
+                            ? '영양제 · 칼슘·발근·비대·생리활성'
                             : mobileAgroCategoryTab === 'PESTICIDE'
-                            ? '병해충방지제 (살균·살충·유기농자재)'
+                            ? '병해충방지제 · 살균·살충·유기농자재'
                             : mobileAgroCategoryTab === 'SEED'
-                            ? '씨 (발아율 보증 우량 종자·씨앗)'
+                            ? '씨 · 발아율 보증 우량 종자·씨앗'
                             : mobileAgroCategoryTab === 'SEEDLING'
-                            ? '모종 (외기순화 트레이 건묘·접목묘)'
-                            : '전체 농작물·농자재 통합 리스트'}
+                            ? '모종 · 외기순화 트레이 건묘·접목묘'
+                            : '전체 · 농작물·농자재 통합 리스트'}
                         </span>
                       </div>
-                      <span className="text-[11px] font-bold text-slate-500 shrink-0">
+                      <span className="px-2.5 py-1 rounded-full bg-[#F1F4F3] text-[11.5px] font-extrabold text-slate-700 shrink-0">
                         {userAgroResult.total}개 품목
                       </span>
                     </div>
@@ -7343,7 +7497,7 @@ export default function UserIntroPage() {
                             value={userAgroKeyword}
                             onChange={(e) => setUserAgroKeyword(e.target.value)}
                             placeholder="비료, 영양제, 병해충방지제, 씨, 모종 검색..."
-                            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#1B5E20] focus:outline-none"
+                            className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#0F5328] focus:outline-none"
                           />
                           {userAgroKeyword && (
                             <button
@@ -7366,7 +7520,7 @@ export default function UserIntroPage() {
                         </div>
                         <button
                           type="submit"
-                          className="px-3.5 py-2 rounded-xl bg-[#1B5E20] text-white text-xs font-extrabold shrink-0 cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-[#0F5328] text-white text-xs font-extrabold shrink-0 cursor-pointer"
                         >
                           검색
                         </button>
@@ -11045,14 +11199,14 @@ export default function UserIntroPage() {
       {/* ==================== 모바일 전용 하단 고정 탭바 (홈 / 재배일정 / 농자재 판매 / 마이페이지) ==================== */}
       <nav
         aria-label="모바일 하단 주 메뉴"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(15,23,42,0.06)]"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]"
         style={{
           paddingBottom: isLegacyAndroidWebView
             ? 'max(14px, env(safe-area-inset-bottom, 14px))'
             : 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        <div className="grid grid-cols-4 h-16 max-w-md mx-auto px-2">
+        <div className="grid grid-cols-4 gap-2 h-[76px] max-w-lg mx-auto px-3 py-2 items-stretch">
           {/* 1. 홈 */}
           {(() => {
             const isHomeActive = activeMenu === '홈';
@@ -11063,20 +11217,20 @@ export default function UserIntroPage() {
                   setActiveMenu('홈');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
+                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
+                  isHomeActive
+                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
+                }`}
               >
-                <div
-                  className={`w-9 h-8 rounded-xl flex items-center justify-center transition ${
-                    isHomeActive
-                      ? 'bg-[#1B5E20] text-white shadow-2xs'
-                      : 'text-slate-400 group-hover:text-slate-700'
+                <Home
+                  className={`w-5 h-5 stroke-[2.3] ${
+                    isHomeActive ? 'text-white' : 'text-[#334155]'
                   }`}
-                >
-                  <Home className="w-5 h-5" />
-                </div>
+                />
                 <span
-                  className={`text-[11px] leading-none tracking-tight ${
-                    isHomeActive ? 'font-extrabold text-[#1B5E20]' : 'font-semibold text-slate-500'
+                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
+                    isHomeActive ? 'text-white' : 'text-slate-900'
                   }`}
                 >
                   홈
@@ -11097,22 +11251,20 @@ export default function UserIntroPage() {
                   setMobileScheduleStep('list');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
+                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
+                  isScheduleActive
+                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
+                }`}
               >
-                <div
-                  className={`w-9 h-8 rounded-xl flex items-center justify-center transition ${
-                    isScheduleActive
-                      ? 'bg-[#1B5E20] text-white shadow-2xs'
-                      : 'text-slate-400 group-hover:text-slate-700'
+                <Calendar
+                  className={`w-5 h-5 stroke-[2.3] ${
+                    isScheduleActive ? 'text-white' : 'text-[#334155]'
                   }`}
-                >
-                  <Calendar className="w-5 h-5" />
-                </div>
+                />
                 <span
-                  className={`text-[11px] leading-none tracking-tight ${
-                    isScheduleActive
-                      ? 'font-extrabold text-[#1B5E20]'
-                      : 'font-semibold text-slate-500'
+                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
+                    isScheduleActive ? 'text-white' : 'text-slate-900'
                   }`}
                 >
                   재배일정
@@ -11140,20 +11292,20 @@ export default function UserIntroPage() {
                   setActiveMenu('농작물 구매');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
+                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
+                  isAgroActive
+                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
+                }`}
               >
-                <div
-                  className={`w-9 h-8 rounded-xl flex items-center justify-center transition ${
-                    isAgroActive
-                      ? 'bg-[#1B5E20] text-white shadow-2xs'
-                      : 'text-slate-400 group-hover:text-slate-700'
+                <Sprout
+                  className={`w-5 h-5 stroke-[2.3] ${
+                    isAgroActive ? 'text-white' : 'text-[#334155]'
                   }`}
-                >
-                  <Sprout className="w-5 h-5" />
-                </div>
+                />
                 <span
-                  className={`text-[11px] leading-none tracking-tight ${
-                    isAgroActive ? 'font-extrabold text-[#1B5E20]' : 'font-semibold text-slate-500'
+                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
+                    isAgroActive ? 'text-white' : 'text-slate-900'
                   }`}
                 >
                   농자재 판매
@@ -11173,20 +11325,20 @@ export default function UserIntroPage() {
                   setMyPageTab('FARMLAND');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
+                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
+                  isMyPageActive
+                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
+                }`}
               >
-                <div
-                  className={`w-9 h-8 rounded-xl flex items-center justify-center transition ${
-                    isMyPageActive
-                      ? 'bg-[#1B5E20] text-white shadow-2xs'
-                      : 'text-slate-400 group-hover:text-slate-700'
+                <User
+                  className={`w-5 h-5 stroke-[2.3] ${
+                    isMyPageActive ? 'text-white' : 'text-[#334155]'
                   }`}
-                >
-                  <User className="w-5 h-5" />
-                </div>
+                />
                 <span
-                  className={`text-[11px] leading-none tracking-tight ${
-                    isMyPageActive ? 'font-extrabold text-[#1B5E20]' : 'font-semibold text-slate-500'
+                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
+                    isMyPageActive ? 'text-white' : 'text-slate-900'
                   }`}
                 >
                   마이페이지
