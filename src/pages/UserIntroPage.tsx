@@ -3058,178 +3058,463 @@ export default function UserIntroPage() {
       </aside>
 
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-10 py-5 sm:py-6 space-y-6">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-3.5 sm:px-10 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6">
         {/* ==================== [탭 1: 홈 (인트로 페이지)] ==================== */}
         {activeMenu === '홈' && (
           <>
-            {/* MODULE 2: 분리된 3D 농부 캐릭터 와이드 배너 (좌측 3인 상반신·멜빵바지 전체 + 우측 밭일 농부 2인 동일 비율, 텍스트 오버레이 없음) */}
-            <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+            {/* MODULE 2: 분리된 3D 농부 캐릭터 와이드 배너 */}
+            <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
               <div className="relative w-full">
                 <img
                   src="/images/user-intro-3d-farmers-banner.jpg?v=20261109-panoramic"
                   alt="풍작을 기뻐하는 3인의 3D 농부 캐릭터와 멀리 배추밭에서 일하는 농부들"
-                  className="w-full h-auto min-h-[140px] object-cover object-center block"
+                  className="w-full h-auto min-h-[115px] sm:min-h-[140px] object-cover object-center block"
                 />
               </div>
             </section>
 
-            {/* MODULE 3: 소프트 민트 히어로 모듈 & 4대 핵심 기능 카드 */}
-            <section className="rounded-3xl bg-[#E9F7F1] border border-emerald-200/80 p-4 sm:p-9 space-y-6 sm:space-y-7 shadow-2xs">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-7 items-center">
-                <div className="lg:col-span-7 space-y-3.5 sm:space-y-4 min-w-0">
-                  <div className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-white/85 border border-emerald-200 text-emerald-800 text-[11px] sm:text-xs font-extrabold whitespace-nowrap tracking-tight max-w-full overflow-hidden text-ellipsis">
-                    <span className="truncate">
-                      {loggedInUser.isLoggedIn
-                        ? `🌱 ${loggedInUser.name} 회원님 맞춤 영농 브리핑`
-                        : '🌱 지역 기후·토양검정 빅데이터 기반 맞춤형 영농 브리핑'}
-                    </span>
-                  </div>
-                  <h1 className="text-[20px] sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-snug break-keep">
-                    <span className="block whitespace-nowrap">내 농지에 꼭 맞는 맞춤형</span>
-                    <span className="block whitespace-nowrap">
-                      재배일정 서비스, <span className="text-emerald-700">FarmPlan</span>
-                    </span>
-                  </h1>
-                  <p className="text-slate-700 text-[13px] sm:text-base leading-relaxed max-w-2xl font-medium break-keep">
-                    지역 기후(최저·최고 한계온도 회피 및 적정온도 분석)와 토양검정 데이터에 따라
-                    내 농지에 맞는 맞춤 작물 생육과정별 단일 추천 진행일과 비료·영양제·병해충관리제 처방을 제안해 드립니다.
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('재배일정 요청')}
-                      className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-base whitespace-nowrap shadow-sm transition cursor-pointer"
-                    >
-                      재배일정 요청하기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveMenu('재배일정 확인');
-                        setMobileScheduleStep('list');
-                      }}
-                      className="px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-xs sm:text-base whitespace-nowrap transition cursor-pointer"
-                    >
-                      {loggedInUser.isLoggedIn
-                        ? `나의 재배일정 확인 (${cloudBaeCropList.length}건)`
-                        : '재배일정 확인하기'}
-                    </button>
-                  </div>
-                </div>
+            {/* MODULE 3-A: 다크 에메랄드 SMART FARM ENGINE 3단계 핵심 강점 도식 카드 */}
+            <section className="rounded-[26px] sm:rounded-3xl bg-gradient-to-b from-[#084227] via-[#063820] to-[#042816] border border-[#155E3A] p-4 sm:p-7 shadow-[0_10px_28px_rgba(4,40,22,0.2)] relative overflow-hidden">
+              {/* 은은한 배경 빛 효과 */}
+              <div
+                className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-36 rounded-full bg-emerald-400/15 blur-2xl"
+                aria-hidden="true"
+              />
 
-                {/* 우측: 충청북도 충주시 단월동 · 가을배추(불암3호) 추천 진행일 요약 카드 */}
-                <div className="lg:col-span-5 min-w-0">
-                  <div className="bg-white rounded-2xl p-4 sm:p-6 border border-emerald-100 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                      <div className="font-extrabold text-slate-900 text-xs sm:text-base flex items-center gap-1.5 min-w-0">
-                        <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span className="whitespace-nowrap truncate">
-                          충청북도 충주시 단월동 · 가을배추(불암3호)
-                        </span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] sm:text-xs font-bold whitespace-nowrap shrink-0">
-                        {loggedInUser.isLoggedIn ? `${loggedInUser.name} 농장` : '단월동 표준 포전'}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 border-y border-slate-100 py-3">
-                      <span className="px-2.5 sm:px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs sm:text-sm whitespace-nowrap">
-                        18~20℃ 적온
-                      </span>
-                      <span className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
-                        2026-08-25 (화) 정식
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-semibold text-slate-700">
-                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
-                          <CloudSun className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          날씨 상쾌
-                        </span>
-                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
-                          <Droplets className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                          토양pH 6.2
-                        </span>
-                        <span className="px-2 py-1 rounded-lg bg-slate-100 inline-flex items-center gap-1 whitespace-nowrap">
-                          <FlaskConical className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          정식비료 함량
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedRequestNo('REQ-20261106-009');
-                          setActiveMenu('재배일정 확인');
-                          setMobileScheduleStep('detail');
-                        }}
-                        className="text-xs font-extrabold text-emerald-700 hover:text-emerald-600 inline-flex items-center gap-0.5 whitespace-nowrap cursor-pointer"
-                      >
-                        <span>내 일정 확인</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              {/* 상단 SMART FARM ENGINE 배지 & 메인 헤드라인 */}
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#22C55E] text-[#032211] font-black text-[11px] sm:text-xs tracking-wider uppercase shadow-xs">
+                  SMART FARM ENGINE
+                </span>
+                <h1 className="text-[19px] sm:text-3xl font-black text-white tracking-tight leading-[1.35] mt-2.5 sm:mt-3 break-keep">
+                  <span className="block">기후 데이터로 세우고,</span>
+                  <span className="block">실시간 날씨로 고치고, 맞춤 농자재까지!</span>
+                </h1>
               </div>
 
-              {/* 하단: 4대 핵심 기능 카드 그리드 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-                <button
-                  type="button"
-                  onClick={() => setActiveMenu('재배일정 요청')}
-                  className="bg-white hover:bg-emerald-50/40 rounded-2xl p-5 border border-slate-200/80 shadow-xs text-left transition cursor-pointer group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-slate-100 group-hover:bg-emerald-100 text-slate-800 group-hover:text-emerald-700 flex items-center justify-center mb-3 transition">
-                    <FileEdit className="w-5 h-5" />
-                  </div>
-                  <div className="font-extrabold text-base text-slate-900">맞춤 재배일정 요청</div>
-                  <p className="text-xs text-slate-600 mt-1">지역·작물 선택 맞춤 일정 산출</p>
-                </button>
+              {/* 3단계 타임라인 도식 (STEP 01 ~ STEP 03) */}
+              <div className="relative z-10 mt-4 sm:mt-6 space-y-2.5 sm:space-y-3">
+                {/* 좌측 수직 연결 라인 */}
+                <div
+                  className="pointer-events-none absolute left-[11px] sm:left-[15px] top-[34px] bottom-[34px] w-[2px] bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#34D399]"
+                  aria-hidden="true"
+                />
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveMenu('재배일정 확인');
-                    setMobileScheduleStep('list');
-                  }}
-                  className="bg-white hover:bg-emerald-50/40 rounded-2xl p-5 border border-slate-200/80 shadow-xs text-left transition cursor-pointer group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-slate-100 group-hover:bg-emerald-100 text-slate-800 group-hover:text-emerald-700 flex items-center justify-center mb-3 transition">
-                    <Calendar className="w-5 h-5" />
+                {/* STEP 01 */}
+                <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                   </div>
-                  <div className="font-extrabold text-base text-slate-900">일별 추천 진행일 확인</div>
-                  <p className="text-xs text-slate-600 mt-1">기온·기상 최적화 단일 추천일자(요일 포함)</p>
-                </button>
+                  <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="min-w-0">
+                      <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        STEP 01 · 스마트 데이터 일정 수립
+                      </div>
+                      <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        기후 빅데이터 · 적산온도(GDD) 맞춤 산출
+                      </div>
+                    </div>
+                    {/* 위성 + 새싹 3D 일러스트 아이콘 */}
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                      <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                        {/* 토양 둔덕 */}
+                        <ellipse cx="26" cy="46" rx="16" ry="4.5" fill="#78350F" />
+                        <ellipse cx="26" cy="45" rx="13" ry="3.2" fill="#92400E" />
+                        {/* 새싹 */}
+                        <path d="M26 45V35" stroke="#4ADE80" strokeWidth="2.4" strokeLinecap="round" />
+                        <path
+                          d="M26 38c0-4.2 3.5-7 7.5-7 0 4.2-3.5 7-7.5 7z"
+                          fill="#4ADE80"
+                        />
+                        <path
+                          d="M26 40c0-3.2-2.8-5.5-6-5.5 0 3.2 2.8 5.5 6 5.5z"
+                          fill="#86EFAC"
+                        />
+                        {/* 전파 빔 */}
+                        <path
+                          d="M32 25c-2.5 1.8-5.5 1.8-8 0M34.5 29c-4 2.8-8.8 2.8-12.8 0"
+                          stroke="#FDE047"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeDasharray="2 2"
+                        />
+                        {/* 위성 날개 및 본체 */}
+                        <g transform="rotate(-28 32 16)">
+                          <rect x="17" y="13" width="9" height="6" rx="1" fill="#38BDF8" stroke="#E0F2FE" strokeWidth="1" />
+                          <rect x="36" y="13" width="9" height="6" rx="1" fill="#0284C7" stroke="#E0F2FE" strokeWidth="1" />
+                          <rect x="27.5" y="11.5" width="7" height="9" rx="2" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="1.2" />
+                          <circle cx="31" cy="22" r="2" fill="#FACC15" />
+                        </g>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveMenu('비료')}
-                  className="bg-white hover:bg-emerald-50/40 rounded-2xl p-5 border border-slate-200/80 shadow-xs text-left transition cursor-pointer group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-slate-100 group-hover:bg-emerald-100 text-slate-800 group-hover:text-emerald-700 flex items-center justify-center mb-3 transition">
-                    <FlaskConical className="w-5 h-5" />
+                {/* STEP 02 */}
+                <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                   </div>
-                  <div className="font-extrabold text-base text-slate-900">맞춤 비료 · 영양제 처방</div>
-                  <p className="text-xs text-slate-600 mt-1">생육단계별 밑거름·웃거름 자재 처방</p>
-                </button>
+                  <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="min-w-0">
+                      <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        STEP 02 · 실시간 기후 변동 자동 업데이트
+                      </div>
+                      <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        이상기후 감지 · 작업일 실시간 보정
+                      </div>
+                    </div>
+                    {/* 기상 레이더 3D 일러스트 아이콘 */}
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                      <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                        <circle cx="28" cy="28" r="20" fill="#064E3B" stroke="#34D399" strokeWidth="2" />
+                        <circle cx="28" cy="28" r="14" stroke="#10B981" strokeWidth="1.2" strokeDasharray="3 2" />
+                        <circle cx="28" cy="28" r="7.5" stroke="#10B981" strokeWidth="1.2" />
+                        {/* 레이더 스윕 */}
+                        <path d="M28 28L42 16A20 20 0 0028 8v20z" fill="#34D399" fillOpacity="0.35" />
+                        {/* 기상 히트 스팟 */}
+                        <circle cx="24" cy="23" r="4.5" fill="#F97316" fillOpacity="0.85" />
+                        <circle cx="24" cy="23" r="2" fill="#FDE047" />
+                        {/* 우측 상단 해/구름 미니 배지 */}
+                        <circle cx="41" cy="14" r="4" fill="#FACC15" />
+                        <path
+                          d="M36 18.5h8.5a3 3 0 000-6 4 4 0 00-7.6-1.2A3 3 0 0036 18.5z"
+                          fill="#F8FAFC"
+                        />
+                        {/* 우측 하단 강우 센서 배지 */}
+                        <circle cx="40" cy="40" r="6" fill="#2563EB" stroke="#93C5FD" strokeWidth="1.2" />
+                        <path d="M40 36.5c0 0 2.5 2.8 2.5 4.3a2.5 2.5 0 01-5 0c0-1.5 2.5-4.3 2.5-4.3z" fill="#BAE6FD" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveMenu('병해충관리제')}
-                  className="bg-white hover:bg-emerald-50/40 rounded-2xl p-5 border border-slate-200/80 shadow-xs text-left transition cursor-pointer group"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-slate-100 group-hover:bg-emerald-100 text-slate-800 group-hover:text-emerald-700 flex items-center justify-center mb-3 transition">
-                    <ShieldAlert className="w-5 h-5" />
+                {/* STEP 03 */}
+                <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                   </div>
-                  <div className="font-extrabold text-base text-slate-900">기후 연동 병해충관리제</div>
-                  <p className="text-xs text-slate-600 mt-1">강우·습도 예보 기반 적기 방제</p>
-                </button>
+                  <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="min-w-0">
+                      <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        STEP 03 · 과정별 맞춤 농자재 추천
+                      </div>
+                      <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        생육단계별 비료·영양제·방제 처방
+                      </div>
+                    </div>
+                    {/* 새싹 + 맞춤 농자재 보틀 3D 일러스트 아이콘 */}
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                      <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                        {/* 화분/토양 */}
+                        <rect x="10" y="34" width="16" height="12" rx="3" fill="#A16207" />
+                        {/* 줄기 및 큰 새싹 */}
+                        <path d="M22 35V18" stroke="#4ADE80" strokeWidth="2.8" strokeLinecap="round" />
+                        <path
+                          d="M22 22c0-6 5.5-9.5 11.5-9.5 0 6-5.5 9.5-11.5 9.5z"
+                          fill="#4ADE80"
+                        />
+                        <path
+                          d="M22 25c0-4.8-4.5-7.8-9.5-7.8 0 4.8 4.5 7.8 9.5 7.8z"
+                          fill="#86EFAC"
+                        />
+                        {/* 영양제/비료 보틀 */}
+                        <rect x="31" y="25" width="15" height="21" rx="3.5" fill="#FDE68A" stroke="#F59E0B" strokeWidth="1.4" />
+                        <rect x="34" y="21" width="9" height="4" rx="1.5" fill="#15803D" />
+                        <rect x="33" y="31" width="11" height="9" rx="1.5" fill="#16A34A" />
+                        <circle cx="38.5" cy="35.5" r="2.2" fill="#BBF7D0" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
-            {/* MODULE 4: 하단 2단 데이터 프리뷰 테이블 (최근 지역 추천 & 맞춤 비료/영양제 추천) */}
-            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* MODULE 3-B: 주요 서비스 바로가기 카드 (모바일 1개당 1라인 / 데스크톱 2열 매트릭스) */}
+            <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+              {/* 1. 재배일정 요청 */}
+              <button
+                type="button"
+                onClick={() => setActiveMenu('재배일정 요청')}
+                className="w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] flex items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    <g transform="rotate(-6 32 32)">
+                      <rect x="10" y="14" width="44" height="40" rx="9" fill="#CBD5E1" />
+                      <rect x="10" y="11" width="44" height="40" rx="9" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="1.5" />
+                      <path d="M10 20a9 9 0 019-9h26a9 9 0 019 9v5H10v-5z" fill="#EF4444" />
+                      <rect x="20" y="7" width="4.5" height="9" rx="2.2" fill="#DC2626" />
+                      <rect x="39.5" y="7" width="4.5" height="9" rx="2.2" fill="#DC2626" />
+                      {/* 달력 그리드 셀 */}
+                      <rect x="16" y="30" width="6" height="5" rx="1.5" fill="#94A3B8" />
+                      <rect x="25" y="30" width="6" height="5" rx="1.5" fill="#CBD5E1" />
+                      <rect x="34" y="30" width="6" height="5" rx="1.5" fill="#CBD5E1" />
+                      <rect x="43" y="30" width="5" height="5" rx="1.5" fill="#CBD5E1" />
+                      <rect x="16" y="38" width="6" height="5" rx="1.5" fill="#CBD5E1" />
+                      <rect x="25" y="38" width="6" height="5" rx="1.5" fill="#10B981" />
+                      <rect x="34" y="38" width="6" height="5" rx="1.5" fill="#CBD5E1" />
+                      <rect x="43" y="38" width="5" height="5" rx="1.5" fill="#CBD5E1" />
+                    </g>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    재배일정 요청
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #기후연동 산출
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    씨 · 모종 최적 파종·정식일 자동 산출
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+
+              {/* 2. 재배일정 확인 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMenu('재배일정 확인');
+                  setMobileScheduleStep('list');
+                }}
+                className="w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] flex items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    <g transform="rotate(5 32 32)">
+                      <rect x="13" y="11" width="38" height="45" rx="7" fill="#34D399" stroke="#059669" strokeWidth="1.5" />
+                      <rect x="17" y="16" width="30" height="36" rx="4" fill="#F8FAFC" />
+                      <rect x="24" y="8" width="16" height="6" rx="3" fill="#A7F3D0" stroke="#059669" strokeWidth="1.5" />
+                      {/* 체크라인 1 */}
+                      <path d="M21 24.5l2.2 2.2 4.2-4.2" stroke="#10B981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      <rect x="30" y="23" width="12" height="3.2" rx="1.6" fill="#94A3B8" />
+                      {/* 체크라인 2 */}
+                      <path d="M21 33.5l2.2 2.2 4.2-4.2" stroke="#10B981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      <rect x="30" y="32" width="12" height="3.2" rx="1.6" fill="#94A3B8" />
+                      {/* 체크라인 3 */}
+                      <path d="M21 42.5l2.2 2.2 4.2-4.2" stroke="#10B981" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      <rect x="30" y="41" width="10" height="3.2" rx="1.6" fill="#94A3B8" />
+                    </g>
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    재배일정 확인
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #48주 타임라인
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    실시간 기온 반영 생육과정별 작업일
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+
+              {/* 3. 비료 · 영양제 구매 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAgroCategoryTab('FERTILIZER');
+                  setActiveMenu('비료');
+                }}
+                className="w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] flex items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    {/* 비료 포대 본체 */}
+                    <path
+                      d="M18 14h28l3 6v30a5 5 0 01-5 5H20a5 5 0 01-5-5V20l3-6z"
+                      fill="#C8A97E"
+                      stroke="#9A7B56"
+                      strokeWidth="1.5"
+                    />
+                    <path d="M16 14h32" stroke="#B08D63" strokeWidth="3.5" strokeLinecap="round" />
+                    {/* 중앙 그린 라벨 밴드 */}
+                    <rect x="15.5" y="25" width="33" height="17" fill="#4ADE80" fillOpacity="0.85" />
+                    <path
+                      d="M32 38c0-5 4.2-8.2 8.5-8.2 0 5-4.2 8.2-8.5 8.2z"
+                      fill="#ECFDF5"
+                    />
+                    <path
+                      d="M32 38c0-3.8-3.4-6.4-7-6.4 0 3.8 3.4 6.4 7 6.4z"
+                      fill="#A7F3D0"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    비료 · 영양제 구매
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #맞춤 시비처방
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    평수별 권장량 자동 계산 맞춤 자재
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+
+              {/* 4. 병해충방지제 구매 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAgroCategoryTab('PESTICIDE');
+                  setActiveMenu('병해충관리제');
+                }}
+                className="w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] flex items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    {/* 방제 분사 물방울 */}
+                    <circle cx="13" cy="18" r="2" fill="#60A5FA" />
+                    <circle cx="18" cy="14" r="1.6" fill="#93C5FD" />
+                    <circle cx="15" cy="24" r="1.6" fill="#93C5FD" />
+                    {/* 보호 방패 */}
+                    <path
+                      d="M34 11l17 6.5v13c0 11.5-7.4 20.5-17 24-9.6-3.5-17-12.5-17-24v-13L34 11z"
+                      fill="#4ADE80"
+                      stroke="#94A3B8"
+                      strokeWidth="3"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M34 14l14 5.3v11c0 9.4-6 17-14 20"
+                      fill="#22C55E"
+                      fillOpacity="0.45"
+                    />
+                    {/* 무당벌레 심볼 */}
+                    <circle cx="34" cy="27" r="3.2" fill="#1E293B" />
+                    <ellipse cx="34" cy="34" rx="6.5" ry="7.5" fill="#EF4444" />
+                    <path d="M34 26.5v15" stroke="#1E293B" strokeWidth="1.5" />
+                    <circle cx="31.5" cy="32" r="1.2" fill="#1E293B" />
+                    <circle cx="36.5" cy="32" r="1.2" fill="#1E293B" />
+                    <circle cx="32" cy="36.5" r="1.2" fill="#1E293B" />
+                    <circle cx="36" cy="36.5" r="1.2" fill="#1E293B" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    병해충방지제 구매
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #적기 방제
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    날씨 연동 예방 및 친환경 방제
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+
+              {/* 5. 씨 · 모종 구매 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileAgroCategoryTab('SEED');
+                  setActiveMenu('씨');
+                }}
+                className="w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] flex items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    {/* 종자 봉투 */}
+                    <g transform="rotate(8 42 28)">
+                      <rect x="30" y="13" width="22" height="28" rx="3" fill="#DEC397" stroke="#A6895B" strokeWidth="1.5" />
+                      <path
+                        d="M41 31c0-4.2 3.5-7 7-7 0 4.2-3.5 7-7 7z"
+                        fill="#16A34A"
+                      />
+                      <path
+                        d="M41 32c0-3.2-2.8-5.5-5.5-5.5 0 3.2 2.8 5.5 5.5 5.5z"
+                        fill="#4ADE80"
+                      />
+                    </g>
+                    {/* 육묘 트레이 */}
+                    <rect x="9" y="38" width="38" height="14" rx="3" fill="#78350F" stroke="#5C280B" strokeWidth="1.5" />
+                    <path d="M21 38v14M34 38v14" stroke="#5C280B" strokeWidth="1.5" />
+                    {/* 트레이 위 모종 새싹 */}
+                    <path d="M18 38V28" stroke="#16A34A" strokeWidth="2.4" strokeLinecap="round" />
+                    <path d="M18 31c0-4 3.5-6.5 7-6.5 0 4-3.5 6.5-7 6.5z" fill="#22C55E" />
+                    <path d="M18 32c0-3.2-3-5.2-6-5.2 0 3.2 3 5.2 6 5.2z" fill="#4ADE80" />
+                    <path d="M30 38V30" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" />
+                    <path d="M30 33c0-3.5 3-5.5 6-5.5 0 3.5-3 5.5-6 5.5z" fill="#22C55E" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    씨 · 모종 구매
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #우량 종자·육묘
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    발아보증 종자 및 트레이 규격 모종
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+
+              {/* 6. 데스크톱(PC) 2열 균형용: 마이페이지 · 내 농장 관리 (모바일에서는 시안과 동일하게 5종만 노출) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMenu('마이페이지');
+                  setMyPageTab('FARMLAND');
+                }}
+                className="hidden lg:flex w-full bg-white hover:bg-emerald-50/40 active:scale-[0.99] rounded-[22px] px-4 py-3.5 sm:px-5 sm:py-4 border border-slate-200/85 shadow-[0_4px_14px_rgba(15,23,42,0.05)] items-center justify-between gap-3.5 text-left transition cursor-pointer group"
+              >
+                <div className="w-14 h-14 sm:w-16 sm:h-16 shrink-0 flex items-center justify-center">
+                  <svg viewBox="0 0 64 64" className="w-14 h-14 sm:w-16 sm:h-16" fill="none">
+                    <rect x="11" y="13" width="42" height="38" rx="10" fill="#E0F2FE" stroke="#7DD3FC" strokeWidth="1.5" />
+                    <circle cx="32" cy="27" r="7" fill="#0284C7" />
+                    <path d="M20 45c2.2-6 6.8-9 12-9s9.8 3 12 9" stroke="#0284C7" strokeWidth="4" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
+                    마이페이지 · 내 농장
+                  </div>
+                  <div className="mt-1">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-[#DDF5E8] text-[#0E6B40] text-[12.5px] sm:text-[13px] font-extrabold tracking-tight">
+                      #농지·주문관리
+                    </span>
+                  </div>
+                  <p className="text-[14px] sm:text-[15px] font-bold text-slate-700 mt-1 leading-snug break-keep">
+                    내 재배지 · 진행율 · 자재 구매현황 통합 관리
+                  </p>
+                </div>
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#E8ECEA] group-hover:bg-emerald-600 text-[#0F6E43] group-hover:text-white flex items-center justify-center shrink-0 transition">
+                  <ChevronRight className="w-5 h-5 stroke-[2.6]" />
+                </div>
+              </button>
+            </section>
+
+            {/* MODULE 4: 하단 2단 데이터 프리뷰 테이블 (데스크톱 전용 노출, 모바일에서는 심플 매트릭스 UI 유지) */}
+            <section className="hidden lg:grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
