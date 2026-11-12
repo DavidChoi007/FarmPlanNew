@@ -353,50 +353,7 @@ if (typeof window !== 'undefined') {
         return code && !deletedSet.has(`${table}:${code}`);
       });
       if (safeRemote.length === 0) return safeLocal;
-
-      const byCode = new Map<string, any>();
-      const remoteCodes = new Set<string>();
-      for (const r of safeRemote) {
-        const code = String(r.category_code || r.code || '').trim();
-        if (code) {
-          byCode.set(code, r);
-          remoteCodes.add(code);
-        }
-      }
-      const unsyncedLocals: any[] = [];
-      for (const l of safeLocal) {
-        const code = String(l.category_code || l.code || '').trim();
-        if (!code) continue;
-        const existing = byCode.get(code);
-        if (!existing) {
-          byCode.set(code, l);
-          unsyncedLocals.push(l);
-        } else if (Number(l._updatedAt || 0) > Number(existing._updatedAt || 0)) {
-          byCode.set(code, { ...existing, ...l });
-          unsyncedLocals.push({ ...existing, ...l });
-        }
-      }
-      if (unsyncedLocals.length > 0) {
-        await Promise.all(
-          unsyncedLocals.map((item) => {
-            const code = String(item.category_code || item.code || '').trim();
-            const name = String(item.category_name || item.sub_type_name || item.name || code).trim();
-            const desc = String(item.description ?? item.desc ?? '').trim();
-            const sortOrder = Number(item.sort_order) || 1;
-            return sbUpsert(
-              table,
-              {
-                category_code: code,
-                category_name: name,
-                description: desc,
-                sort_order: sortOrder,
-              },
-              'category_code'
-            );
-          })
-        );
-      }
-      return [...byCode.values()].sort(
+      return [...safeRemote].sort(
         (a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99)
       );
     };
@@ -407,38 +364,20 @@ if (typeof window !== 'undefined') {
         const savedOvRaw = localStorage.getItem(OVERVIEW_STORAGE_KEY);
         if (savedOvRaw) {
           const parsedSavedOv = JSON.parse(savedOvRaw);
-          const mergeLocalMemory = (memArr: any[], storageArr: any[]) => {
-            const a = Array.isArray(memArr) ? memArr : [];
-            const b = Array.isArray(storageArr) ? storageArr : [];
-            const map = new Map<string, any>();
-            for (const item of a) {
-              const code = String(item?.category_code || item?.code || '').trim();
-              if (code) map.set(code, item);
-            }
-            for (const item of b) {
-              const code = String(item?.category_code || item?.code || '').trim();
-              if (!code) continue;
-              const prev = map.get(code);
-              if (!prev || Number(item._updatedAt || 0) >= Number(prev._updatedAt || 0)) {
-                map.set(code, item);
-              }
-            }
-            return [...map.values()];
-          };
           if (Array.isArray(parsedSavedOv?.seedCategoryCodes)) {
-            ov.seedCategoryCodes = mergeLocalMemory(ov.seedCategoryCodes, parsedSavedOv.seedCategoryCodes);
+            ov.seedCategoryCodes = parsedSavedOv.seedCategoryCodes;
           }
           if (Array.isArray(parsedSavedOv?.seedlingCategoryCodes)) {
-            ov.seedlingCategoryCodes = mergeLocalMemory(ov.seedlingCategoryCodes, parsedSavedOv.seedlingCategoryCodes);
+            ov.seedlingCategoryCodes = parsedSavedOv.seedlingCategoryCodes;
           }
           if (Array.isArray(parsedSavedOv?.fertilizerCategoryCodes)) {
-            ov.fertilizerCategoryCodes = mergeLocalMemory(ov.fertilizerCategoryCodes, parsedSavedOv.fertilizerCategoryCodes);
+            ov.fertilizerCategoryCodes = parsedSavedOv.fertilizerCategoryCodes;
           }
           if (Array.isArray(parsedSavedOv?.nutrientCategoryCodes)) {
-            ov.nutrientCategoryCodes = mergeLocalMemory(ov.nutrientCategoryCodes, parsedSavedOv.nutrientCategoryCodes);
+            ov.nutrientCategoryCodes = parsedSavedOv.nutrientCategoryCodes;
           }
           if (Array.isArray(parsedSavedOv?.pesticideCategoryCodes)) {
-            ov.pesticideCategoryCodes = mergeLocalMemory(ov.pesticideCategoryCodes, parsedSavedOv.pesticideCategoryCodes);
+            ov.pesticideCategoryCodes = parsedSavedOv.pesticideCategoryCodes;
           }
         }
       } catch {
