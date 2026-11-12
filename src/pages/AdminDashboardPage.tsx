@@ -1890,7 +1890,7 @@ export default function AdminDashboardPage() {
           product_count: 1,
         }));
 
-  const resolvedSeedCategoryCodes =
+  const resolvedSeedCategoryCodes = (
     Array.isArray(overview?.seedCategoryCodes) && overview.seedCategoryCodes.length > 0
       ? overview.seedCategoryCodes
       : (agroResult.seedCategories || []).map((c, idx) => ({
@@ -1899,9 +1899,18 @@ export default function AdminDashboardPage() {
           description: c.desc,
           sort_order: idx + 1,
           product_count: 2,
-        }));
+        }))
+  )
+    .map((sc: any, idx: number) => ({
+      ...sc,
+      category_code: sc.category_code || sc.code || `CAT-SEED-0${idx + 1}`,
+      category_name: sc.category_name || sc.name || '',
+      description: sc.description ?? sc.desc ?? '',
+      sort_order: Number(sc.sort_order) || idx + 1,
+    }))
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
 
-  const resolvedSeedlingCategoryCodes =
+  const resolvedSeedlingCategoryCodes = (
     Array.isArray(overview?.seedlingCategoryCodes) && overview.seedlingCategoryCodes.length > 0
       ? overview.seedlingCategoryCodes
       : (agroResult.seedlingCategories || []).map((c, idx) => ({
@@ -1910,7 +1919,16 @@ export default function AdminDashboardPage() {
           description: c.desc,
           sort_order: idx + 1,
           product_count: 2,
-        }));
+        }))
+  )
+    .map((sc: any, idx: number) => ({
+      ...sc,
+      category_code: sc.category_code || sc.code || `CAT-SDL-0${idx + 1}`,
+      category_name: sc.category_name || sc.name || '',
+      description: sc.description ?? sc.desc ?? '',
+      sort_order: Number(sc.sort_order) || idx + 1,
+    }))
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
   const [selectedAgroDetail, setSelectedAgroDetail] = useState<any | null>(null);
   const [activeAgroGalleryImg, setActiveAgroGalleryImg] = useState<string>('');
   const [isAgroFormModalOpen, setIsAgroFormModalOpen] = useState<boolean>(false);
@@ -16937,6 +16955,56 @@ export default function AdminDashboardPage() {
                       </button>
                     </form>
                   </div>
+                </div>
+
+                {/* 기초코드 관리 연동 구분 카테고리 원클릭 빠른 필터 칩 바 */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAgroSubTypeFilter('ALL');
+                      executeAgroMaterialSearch({ sub_type: 'ALL' });
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition cursor-pointer ${
+                      agroSubTypeFilter === 'ALL'
+                        ? 'bg-emerald-700 text-white border-emerald-700'
+                        : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    전체 ({agroResult.total})
+                  </button>
+                  {(activeTab === 'agro_fertilizer'
+                    ? resolvedFertilizerCategoryCodes.filter((catItem: any) =>
+                        agroMainTypeFilter === 'ALL' ? true : catItem.main_type === agroMainTypeFilter
+                      )
+                    : activeTab === 'agro_nutrient'
+                    ? resolvedNutrientCategoryCodes
+                    : activeTab === 'agro_pesticide'
+                    ? resolvedPesticideCategoryCodes
+                    : activeTab === 'agro_seed'
+                    ? resolvedSeedCategoryCodes
+                    : resolvedSeedlingCategoryCodes
+                  ).map((catItem: any) => {
+                    const catCode = catItem.category_code || catItem.code;
+                    const catName = catItem.category_name || catItem.name;
+                    return (
+                      <button
+                        key={catCode}
+                        type="button"
+                        onClick={() => {
+                          setAgroSubTypeFilter(catName);
+                          executeAgroMaterialSearch({ sub_type: catName });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition cursor-pointer ${
+                          agroSubTypeFilter === catName
+                            ? 'bg-emerald-700 text-white border-emerald-700'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
+                        }`}
+                      >
+                        {catName}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

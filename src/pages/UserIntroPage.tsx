@@ -51,6 +51,11 @@ interface OverviewData {
   cultivars: any[];
   requests: any[];
   growthTypeCodes?: any[];
+  fertilizerCategoryCodes?: any[];
+  nutrientCategoryCodes?: any[];
+  pesticideCategoryCodes?: any[];
+  seedCategoryCodes?: any[];
+  seedlingCategoryCodes?: any[];
 }
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
@@ -1622,6 +1627,118 @@ export default function UserIntroPage() {
     return 'FERTILIZER';
   };
 
+  // 기초코드 관리(씨 분류 기초 코드 / 모종 분류 기초 코드 / 비료·영양제·병해충 기초 코드) 데이터 실시간 바인딩
+  const resolvedUserFertilizerCategories = (
+    Array.isArray(data?.fertilizerCategoryCodes) && data.fertilizerCategoryCodes.length > 0
+      ? data.fertilizerCategoryCodes
+      : userAgroResult.fertilizerCategories || []
+  )
+    .map((c: any, idx: number) => {
+      const code = String(c.category_code || c.code || `CAT-FERT-0${idx + 1}`).trim();
+      const name = String(c.category_name || c.sub_type_name || c.name || code).trim();
+      const desc = String(c.description ?? c.desc ?? '').trim();
+      return {
+        ...c,
+        code,
+        name,
+        desc,
+        category_code: code,
+        category_name: name,
+        description: desc,
+        main_type: resolveFertilizerMainType(name || code, c.main_type),
+        sort_order: Number(c.sort_order) || idx + 1,
+      };
+    })
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+
+  const resolvedUserNutrientCategories = (
+    Array.isArray(data?.nutrientCategoryCodes) && data.nutrientCategoryCodes.length > 0
+      ? data.nutrientCategoryCodes
+      : userAgroResult.nutrientCategories || []
+  )
+    .map((c: any, idx: number) => {
+      const code = String(c.category_code || c.code || `CAT-NUT-0${idx + 1}`).trim();
+      const name = String(c.category_name || c.name || code).trim();
+      const desc = String(c.description ?? c.desc ?? '').trim();
+      return {
+        ...c,
+        code,
+        name,
+        desc,
+        category_code: code,
+        category_name: name,
+        description: desc,
+        sort_order: Number(c.sort_order) || idx + 1,
+      };
+    })
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+
+  const resolvedUserPesticideCategories = (
+    Array.isArray(data?.pesticideCategoryCodes) && data.pesticideCategoryCodes.length > 0
+      ? data.pesticideCategoryCodes
+      : userAgroResult.pesticideCategories || []
+  )
+    .map((c: any, idx: number) => {
+      const code = String(c.category_code || c.code || `CAT-PST-0${idx + 1}`).trim();
+      const name = String(c.category_name || c.name || code).trim();
+      const desc = String(c.description ?? c.desc ?? '').trim();
+      return {
+        ...c,
+        code,
+        name,
+        desc,
+        category_code: code,
+        category_name: name,
+        description: desc,
+        sort_order: Number(c.sort_order) || idx + 1,
+      };
+    })
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+
+  const resolvedUserSeedCategories = (
+    Array.isArray(data?.seedCategoryCodes) && data.seedCategoryCodes.length > 0
+      ? data.seedCategoryCodes
+      : userAgroResult.seedCategories || []
+  )
+    .map((c: any, idx: number) => {
+      const code = String(c.category_code || c.code || `CAT-SEED-0${idx + 1}`).trim();
+      const name = String(c.category_name || c.name || code).trim();
+      const desc = String(c.description ?? c.desc ?? '').trim();
+      return {
+        ...c,
+        code,
+        name,
+        desc,
+        category_code: code,
+        category_name: name,
+        description: desc,
+        sort_order: Number(c.sort_order) || idx + 1,
+      };
+    })
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+
+  const resolvedUserSeedlingCategories = (
+    Array.isArray(data?.seedlingCategoryCodes) && data.seedlingCategoryCodes.length > 0
+      ? data.seedlingCategoryCodes
+      : userAgroResult.seedlingCategories || []
+  )
+    .map((c: any, idx: number) => {
+      const code = String(c.category_code || c.code || `CAT-SDL-0${idx + 1}`).trim();
+      const name = String(c.category_name || c.name || code).trim();
+      const desc = String(c.description ?? c.desc ?? '').trim();
+      return {
+        ...c,
+        code,
+        name,
+        desc,
+        category_code: code,
+        category_name: name,
+        description: desc,
+        sort_order: Number(c.sort_order) || idx + 1,
+      };
+    })
+    .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+
   const executeUserAgroMaterialSearch = async (override?: {
     category?: string;
     main_type?: string;
@@ -1901,6 +2018,10 @@ export default function UserIntroPage() {
       activeMenu === '씨' ||
       activeMenu === '모종'
     ) {
+      fetch('/api/overview')
+        .then((r) => r.json())
+        .then((res) => setData(res))
+        .catch(() => {});
       const cat = getUserAgroCategoryFromMenu(activeMenu);
       setUserAgroMainTypeFilter('ALL');
       setUserAgroSubTypeFilter('ALL');
@@ -7184,26 +7305,32 @@ export default function UserIntroPage() {
                     >
                       <option value="ALL">전체 세부 카테고리</option>
                       {(activeMenu === '비료'
-                        ? userAgroResult.fertilizerCategories.filter((catItem: any) =>
+                        ? resolvedUserFertilizerCategories.filter((catItem: any) =>
                             userAgroMainTypeFilter === 'ALL'
                               ? true
-                              : resolveFertilizerMainType(catItem.name || catItem.code, catItem.main_type) ===
-                                userAgroMainTypeFilter
+                              : resolveFertilizerMainType(
+                                  catItem.category_name || catItem.name || catItem.code,
+                                  catItem.main_type
+                                ) === userAgroMainTypeFilter
                           )
                         : activeMenu === '영양제'
-                        ? userAgroResult.nutrientCategories
+                        ? resolvedUserNutrientCategories
                         : activeMenu === '병해충관리제'
-                        ? userAgroResult.pesticideCategories
+                        ? resolvedUserPesticideCategories
                         : activeMenu === '씨'
-                        ? userAgroResult.seedCategories
-                        : userAgroResult.seedlingCategories
-                      ).map((catItem: any) => (
-                        <option key={catItem.code} value={catItem.name}>
-                          {activeMenu === '비료'
-                            ? `[${resolveFertilizerMainType(catItem.name || catItem.code, catItem.main_type)}] ${catItem.name}`
-                            : catItem.name}
-                        </option>
-                      ))}
+                        ? resolvedUserSeedCategories
+                        : resolvedUserSeedlingCategories
+                      ).map((catItem: any) => {
+                        const catCode = catItem.category_code || catItem.code;
+                        const catName = catItem.category_name || catItem.name;
+                        return (
+                          <option key={catCode} value={catName}>
+                            {activeMenu === '비료'
+                              ? `[${resolveFertilizerMainType(catName || catCode, catItem.main_type)}] ${catName}`
+                              : catName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -7291,31 +7418,35 @@ export default function UserIntroPage() {
                     전체 ({userAgroResult.total})
                   </button>
                   {(activeMenu === '비료'
-                    ? userAgroResult.fertilizerCategories
+                    ? resolvedUserFertilizerCategories
                     : activeMenu === '영양제'
-                    ? userAgroResult.nutrientCategories
+                    ? resolvedUserNutrientCategories
                     : activeMenu === '병해충관리제'
-                    ? userAgroResult.pesticideCategories
+                    ? resolvedUserPesticideCategories
                     : activeMenu === '씨'
-                    ? userAgroResult.seedCategories
-                    : userAgroResult.seedlingCategories
-                  ).map((catItem: any) => (
-                    <button
-                      key={catItem.code}
-                      type="button"
-                      onClick={() => {
-                        setUserAgroSubTypeFilter(catItem.name);
-                        executeUserAgroMaterialSearch({ sub_type: catItem.name });
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition cursor-pointer ${
-                        userAgroSubTypeFilter === catItem.name
-                          ? 'bg-emerald-700 text-white border-emerald-700'
-                          : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
-                      }`}
-                    >
-                      {catItem.name}
-                    </button>
-                  ))}
+                    ? resolvedUserSeedCategories
+                    : resolvedUserSeedlingCategories
+                  ).map((catItem: any) => {
+                    const catCode = catItem.category_code || catItem.code;
+                    const catName = catItem.category_name || catItem.name;
+                    return (
+                      <button
+                        key={catCode}
+                        type="button"
+                        onClick={() => {
+                          setUserAgroSubTypeFilter(catName);
+                          executeUserAgroMaterialSearch({ sub_type: catName });
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-extrabold border transition cursor-pointer ${
+                          userAgroSubTypeFilter === catName
+                            ? 'bg-emerald-700 text-white border-emerald-700'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300'
+                        }`}
+                      >
+                        {catName}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </section>

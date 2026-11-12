@@ -196,8 +196,249 @@ if (typeof window !== 'undefined') {
     const p = u.pathname;
     const method = (init?.method || 'GET').toUpperCase();
 
+    const SB_URL = 'https://eaycjzvtlstijkucmbau.supabase.co';
+    const SB_KEY =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheWNqenZ0bHN0aWprdWNtYmF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzkxMjcwNSwiZXhwIjoyMTA5NDg4NzA1fQ.2MkDiCld3tG2rTNi3XVtIkRh9I96r06H5w_mo1IEwP4';
+    const getKstNowStr = () =>
+      new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+
+    const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
+      try {
+        const r = await origFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
+          method: 'GET',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+        });
+        if (!r.ok) return null;
+        const data = await r.json();
+        return Array.isArray(data) ? data : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
+      try {
+        await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
+          method: 'POST',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'resolution=merge-duplicates,return=minimal',
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // ignore network errors
+      }
+    };
+
+    const sbDelete = async (table: string, filterQuery: string) => {
+      try {
+        await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
+          method: 'DELETE',
+          headers: {
+            apikey: SB_KEY,
+            Authorization: `Bearer ${SB_KEY}`,
+          },
+        });
+      } catch {
+        // ignore network errors
+      }
+    };
+
+    const normalizeCategoryCodeList = (
+      rawList: any[],
+      productItems: any[] = [],
+      isFertilizer = false
+    ) => {
+      const items = Array.isArray(productItems) ? productItems : [];
+      return (Array.isArray(rawList) ? rawList : [])
+        .map((c: any, idx: number) => {
+          const code = String(c.category_code || c.code || '').trim();
+          const name = String(c.category_name || c.sub_type_name || c.name || code).trim();
+          const desc = String(c.description ?? c.desc ?? '').trim();
+          const sortOrder = Number(c.sort_order) || idx + 1;
+          const matchedCount = items.filter(
+            (it: any) =>
+              (code && it.category_code === code) ||
+              (name && (it.sub_type === name || it.sub_type_name === name))
+          ).length;
+          const productCount = items.length > 0 ? matchedCount : Number(c.product_count) || 0;
+          const mainType = isFertilizer
+            ? resolveFertilizerMainType(name || code, c.main_type)
+            : c.main_type;
+          return {
+            ...c,
+            category_code: code,
+            category_name: name,
+            description: desc,
+            sort_order: sortOrder,
+            product_count: productCount,
+            code,
+            name,
+            desc,
+            ...(mainType ? { main_type: mainType } : {}),
+          };
+        })
+        .sort((a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99));
+    };
+
+    const bindAgroItemsToCategoryCodes = (items: any[], catCodeList: any[]) => {
+      if (!Array.isArray(items)) return [];
+      const byCode = new Map<string, string>();
+      for (const c of Array.isArray(catCodeList) ? catCodeList : []) {
+        const code = String(c.category_code || c.code || '').trim();
+        const name = String(c.category_name || c.name || '').trim();
+        if (code && name) byCode.set(code, name);
+      }
+      return items.map((it: any) => {
+        const code = String(it?.category_code || '').trim();
+        const boundName = code ? byCode.get(code) : undefined;
+        if (boundName && (it.sub_type !== boundName || it.sub_type_name !== boundName)) {
+          return { ...it, sub_type: boundName, sub_type_name: boundName };
+        }
+        return it;
+      });
+    };
+
+    const syncOverviewAndAgroCategories = async (pullFromSupabase = false) => {
+      const ov = (snap.overview = snap.overview || {});
+      if (pullFromSupabase) {
+        try {
+          const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats] = await Promise.all([
+            sbSelect('seed_category_code', 'select=*&order=sort_order.asc'),
+            sbSelect('seedling_category_code', 'select=*&order=sort_order.asc'),
+            sbSelect('fertilizer_category_code', 'select=*&order=sort_order.asc'),
+            sbSelect('nutrient_category_code', 'select=*&order=sort_order.asc'),
+            sbSelect('pesticide_category_code', 'select=*&order=sort_order.asc'),
+          ]);
+          if (Array.isArray(sbSeedCats) && sbSeedCats.length > 0) {
+            ov.seedCategoryCodes = sbSeedCats;
+          }
+          if (Array.isArray(sbSeedlingCats) && sbSeedlingCats.length > 0) {
+            ov.seedlingCategoryCodes = sbSeedlingCats;
+          }
+          if (Array.isArray(sbFertCats) && sbFertCats.length > 0) {
+            ov.fertilizerCategoryCodes = sbFertCats;
+          }
+          if (Array.isArray(sbNutrCats) && sbNutrCats.length > 0) {
+            ov.nutrientCategoryCodes = sbNutrCats;
+          }
+          if (Array.isArray(sbPestCats) && sbPestCats.length > 0) {
+            ov.pesticideCategoryCodes = sbPestCats;
+          }
+        } catch {
+          // ignore network errors
+        }
+      }
+
+      if (snap.seed) {
+        const rawSeedItems = Array.isArray(snap.seed.allItems)
+          ? snap.seed.allItems
+          : Array.isArray(snap.seed.items)
+          ? snap.seed.items
+          : [];
+        const normSeedCats = normalizeCategoryCodeList(
+          ov.seedCategoryCodes || snap.seed.seedCategories || [],
+          rawSeedItems
+        );
+        const boundSeedItems = bindAgroItemsToCategoryCodes(rawSeedItems, normSeedCats);
+        snap.seed.allItems = boundSeedItems;
+        snap.seed.items = boundSeedItems;
+        ov.seedCategoryCodes = normalizeCategoryCodeList(normSeedCats, boundSeedItems);
+        snap.seed.seedCategories = ov.seedCategoryCodes;
+        snap.seed.fertilizerCategories = ov.seedCategoryCodes;
+        snap.seed.subTypes = ov.seedCategoryCodes.map((c: any) => c.category_name);
+      }
+
+      if (snap.seedling) {
+        const rawSeedlingItems = Array.isArray(snap.seedling.allItems)
+          ? snap.seedling.allItems
+          : Array.isArray(snap.seedling.items)
+          ? snap.seedling.items
+          : [];
+        const normSeedlingCats = normalizeCategoryCodeList(
+          ov.seedlingCategoryCodes || snap.seedling.seedlingCategories || [],
+          rawSeedlingItems
+        );
+        const boundSeedlingItems = bindAgroItemsToCategoryCodes(rawSeedlingItems, normSeedlingCats);
+        snap.seedling.allItems = boundSeedlingItems;
+        snap.seedling.items = boundSeedlingItems;
+        ov.seedlingCategoryCodes = normalizeCategoryCodeList(normSeedlingCats, boundSeedlingItems);
+        snap.seedling.seedlingCategories = ov.seedlingCategoryCodes;
+        snap.seedling.fertilizerCategories = ov.seedlingCategoryCodes;
+        snap.seedling.subTypes = ov.seedlingCategoryCodes.map((c: any) => c.category_name);
+      }
+
+      if (snap.fertilizer) {
+        const rawFertItems = Array.isArray(snap.fertilizer.allItems)
+          ? snap.fertilizer.allItems
+          : Array.isArray(snap.fertilizer.items)
+          ? snap.fertilizer.items
+          : [];
+        const normFertCats = normalizeCategoryCodeList(
+          ov.fertilizerCategoryCodes || snap.fertilizer.fertilizerCategories || [],
+          rawFertItems,
+          true
+        );
+        const boundFertItems = bindAgroItemsToCategoryCodes(rawFertItems, normFertCats);
+        snap.fertilizer.allItems = boundFertItems;
+        snap.fertilizer.items = boundFertItems;
+        ov.fertilizerCategoryCodes = normalizeCategoryCodeList(normFertCats, boundFertItems, true);
+        snap.fertilizer.fertilizerCategories = ov.fertilizerCategoryCodes;
+        snap.fertilizer.subTypes = ov.fertilizerCategoryCodes.map((c: any) => c.category_name);
+      }
+
+      if (snap.nutrient) {
+        const rawNutrItems = Array.isArray(snap.nutrient.allItems)
+          ? snap.nutrient.allItems
+          : Array.isArray(snap.nutrient.items)
+          ? snap.nutrient.items
+          : [];
+        const normNutrCats = normalizeCategoryCodeList(
+          ov.nutrientCategoryCodes || snap.nutrient.nutrientCategories || [],
+          rawNutrItems
+        );
+        const boundNutrItems = bindAgroItemsToCategoryCodes(rawNutrItems, normNutrCats);
+        snap.nutrient.allItems = boundNutrItems;
+        snap.nutrient.items = boundNutrItems;
+        ov.nutrientCategoryCodes = normalizeCategoryCodeList(normNutrCats, boundNutrItems);
+        snap.nutrient.nutrientCategories = ov.nutrientCategoryCodes;
+        snap.nutrient.subTypes = ov.nutrientCategoryCodes.map((c: any) => c.category_name);
+      }
+
+      if (snap.pesticide) {
+        const rawPestItems = Array.isArray(snap.pesticide.allItems)
+          ? snap.pesticide.allItems
+          : Array.isArray(snap.pesticide.items)
+          ? snap.pesticide.items
+          : [];
+        const normPestCats = normalizeCategoryCodeList(
+          ov.pesticideCategoryCodes || snap.pesticide.pesticideCategories || [],
+          rawPestItems
+        );
+        const boundPestItems = bindAgroItemsToCategoryCodes(rawPestItems, normPestCats);
+        snap.pesticide.allItems = boundPestItems;
+        snap.pesticide.items = boundPestItems;
+        ov.pesticideCategoryCodes = normalizeCategoryCodeList(normPestCats, boundPestItems);
+        snap.pesticide.pesticideCategories = ov.pesticideCategoryCodes;
+        snap.pesticide.subTypes = ov.pesticideCategoryCodes.map((c: any) => c.category_name);
+      }
+
+      persistOverview(ov);
+      return ov;
+    };
+
     // 1. 농자재 상품 조회·저장·삭제
     if (p === '/api/agro-materials') {
+      await syncOverviewAndAgroCategories(true);
+      const ov = snap.overview || {};
       const cat = (u.searchParams.get('category') || 'FERTILIZER').toUpperCase();
       const mainType = (u.searchParams.get('main_type') || u.searchParams.get('mainType') || '').trim();
       const subType = (u.searchParams.get('subType') || u.searchParams.get('sub_type') || '').trim();
@@ -216,13 +457,37 @@ if (typeof window !== 'undefined') {
           : cat === 'SEEDLING'
           ? snap.seedling
           : snap.fertilizer;
+
+      const activeCategoryCodeList: any[] =
+        cat === 'NUTRIENT'
+          ? ov.nutrientCategoryCodes || []
+          : cat === 'PESTICIDE'
+          ? ov.pesticideCategoryCodes || []
+          : cat === 'SEED'
+          ? ov.seedCategoryCodes || []
+          : cat === 'SEEDLING'
+          ? ov.seedlingCategoryCodes || []
+          : ov.fertilizerCategoryCodes || [];
+
+      const matchedCatObj =
+        subType && subType !== 'ALL'
+          ? activeCategoryCodeList.find(
+              (c: any) =>
+                c.category_name === subType || c.name === subType || c.category_code === subType || c.code === subType
+            )
+          : null;
+
       const allItems: any[] = Array.isArray(src?.allItems) ? src.allItems : Array.isArray(src?.items) ? src.items : [];
       const filtered = allItems.filter((it) => {
         if (cat === 'FERTILIZER' && mainType && mainType !== 'ALL') {
           const itemMain = resolveFertilizerMainType(it.sub_type || it.sub_type_name || it.sub_type_code, it.main_type);
           if (itemMain !== mainType) return false;
         }
-        if (subType && subType !== 'ALL' && it.sub_type !== subType && it.sub_type_name !== subType) return false;
+        if (subType && subType !== 'ALL') {
+          const matchesSubName = it.sub_type === subType || it.sub_type_name === subType || it.category_code === subType;
+          const matchesCatCode = matchedCatObj && it.category_code && it.category_code === matchedCatObj.category_code;
+          if (!matchesSubName && !matchesCatCode) return false;
+        }
         if (isOrganicParam === '1' || isOrganicParam === 'true') {
           if (Number(it.is_organic) !== 1) return false;
         } else if (isOrganicParam === '0' || isOrganicParam === 'false') {
@@ -248,6 +513,17 @@ if (typeof window !== 'undefined') {
         page: safePage,
         pageSize,
         totalPages,
+        subTypes: activeCategoryCodeList.map((c: any) => c.category_name || c.name),
+        fertilizerCategories:
+          cat === 'SEED'
+            ? ov.seedCategoryCodes
+            : cat === 'SEEDLING'
+            ? ov.seedlingCategoryCodes
+            : ov.fertilizerCategoryCodes,
+        nutrientCategories: ov.nutrientCategoryCodes,
+        pesticideCategories: ov.pesticideCategoryCodes,
+        seedCategories: ov.seedCategoryCodes,
+        seedlingCategories: ov.seedlingCategoryCodes,
       });
     }
 
@@ -275,6 +551,7 @@ if (typeof window !== 'undefined') {
         src.allItems = list;
         src.items = list;
       }
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -286,12 +563,14 @@ if (typeof window !== 'undefined') {
           src.items = src.allItems;
         }
       }
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
     // 2. 기초코드 및 전체 Overview API
     if (p === '/api/overview') {
-      return jsonResponse(snap.overview || {});
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse(ov || {});
     }
 
     if (p === '/api/taxonomy/group' && method === 'POST') {
@@ -449,6 +728,11 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true });
     }
 
+    if (p === '/api/fertilizer-category-codes' && method === 'GET') {
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse({ items: ov.fertilizerCategoryCodes || [] });
+    }
+
     if (p === '/api/fertilizer-category-codes' && method === 'POST') {
       const body = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
@@ -457,16 +741,23 @@ if (typeof window !== 'undefined') {
       const item = {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
-        main_type: resolveFertilizerMainType(body.sub_type_name || body.category_code, body.main_type),
+        main_type: resolveFertilizerMainType(body.sub_type_name || body.category_name || body.category_code, body.main_type),
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.fertilizerCategoryCodes = list;
-      if (snap.fertilizer) {
-        snap.fertilizer.fertilizerCategories = list;
-      }
-      persistOverview(ov);
+      await sbUpsert(
+        'fertilizer_category_code',
+        {
+          category_code: item.category_code,
+          category_name: item.category_name || item.sub_type_name || item.category_code,
+          description: item.description || '',
+          sort_order: Number(item.sort_order) || 1,
+        },
+        'category_code'
+      );
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -476,8 +767,14 @@ if (typeof window !== 'undefined') {
       ov.fertilizerCategoryCodes = (ov.fertilizerCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
-      persistOverview(ov);
+      await sbDelete('fertilizer_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/nutrient-category-codes' && method === 'GET') {
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse({ items: ov.nutrientCategoryCodes || [] });
     }
 
     if (p === '/api/nutrient-category-codes' && method === 'POST') {
@@ -493,7 +790,17 @@ if (typeof window !== 'undefined') {
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.nutrientCategoryCodes = list;
-      persistOverview(ov);
+      await sbUpsert(
+        'nutrient_category_code',
+        {
+          category_code: item.category_code,
+          category_name: item.category_name || item.category_code,
+          description: item.description || '',
+          sort_order: Number(item.sort_order) || 1,
+        },
+        'category_code'
+      );
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -503,8 +810,14 @@ if (typeof window !== 'undefined') {
       ov.nutrientCategoryCodes = (ov.nutrientCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
-      persistOverview(ov);
+      await sbDelete('nutrient_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/pesticide-category-codes' && method === 'GET') {
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse({ items: ov.pesticideCategoryCodes || [] });
     }
 
     if (p === '/api/pesticide-category-codes' && method === 'POST') {
@@ -520,7 +833,17 @@ if (typeof window !== 'undefined') {
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.pesticideCategoryCodes = list;
-      persistOverview(ov);
+      await sbUpsert(
+        'pesticide_category_code',
+        {
+          category_code: item.category_code,
+          category_name: item.category_name || item.category_code,
+          description: item.description || '',
+          sort_order: Number(item.sort_order) || 1,
+        },
+        'category_code'
+      );
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -530,8 +853,14 @@ if (typeof window !== 'undefined') {
       ov.pesticideCategoryCodes = (ov.pesticideCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
-      persistOverview(ov);
+      await sbDelete('pesticide_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seed-category-codes' && method === 'GET') {
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse({ items: ov.seedCategoryCodes || [] });
     }
 
     if (p === '/api/seed-category-codes' && method === 'POST') {
@@ -539,6 +868,7 @@ if (typeof window !== 'undefined') {
       const ov = (snap.overview = snap.overview || {});
       const list: any[] = Array.isArray(ov.seedCategoryCodes) ? [...ov.seedCategoryCodes] : [];
       const idx = list.findIndex((c) => c.category_code === body.category_code);
+      const prevName = idx >= 0 ? list[idx].category_name || list[idx].name : '';
       const item = {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
@@ -547,11 +877,25 @@ if (typeof window !== 'undefined') {
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.seedCategoryCodes = list;
-      if (snap.seed) {
-        snap.seed.fertilizerCategories = list;
-        snap.seed.seedCategories = list;
+      if (snap.seed && Array.isArray(snap.seed.allItems) && body.category_name) {
+        snap.seed.allItems = snap.seed.allItems.map((it: any) =>
+          it.category_code === body.category_code || (prevName && it.sub_type === prevName)
+            ? { ...it, category_code: body.category_code, sub_type: body.category_name, sub_type_name: body.category_name }
+            : it
+        );
+        snap.seed.items = snap.seed.allItems;
       }
-      persistOverview(ov);
+      await sbUpsert(
+        'seed_category_code',
+        {
+          category_code: item.category_code,
+          category_name: item.category_name || item.category_code,
+          description: item.description || '',
+          sort_order: Number(item.sort_order) || 1,
+        },
+        'category_code'
+      );
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -561,8 +905,14 @@ if (typeof window !== 'undefined') {
       ov.seedCategoryCodes = (ov.seedCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
-      persistOverview(ov);
+      await sbDelete('seed_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/seedling-category-codes' && method === 'GET') {
+      const ov = await syncOverviewAndAgroCategories(true);
+      return jsonResponse({ items: ov.seedlingCategoryCodes || [] });
     }
 
     if (p === '/api/seedling-category-codes' && method === 'POST') {
@@ -570,6 +920,7 @@ if (typeof window !== 'undefined') {
       const ov = (snap.overview = snap.overview || {});
       const list: any[] = Array.isArray(ov.seedlingCategoryCodes) ? [...ov.seedlingCategoryCodes] : [];
       const idx = list.findIndex((c) => c.category_code === body.category_code);
+      const prevName = idx >= 0 ? list[idx].category_name || list[idx].name : '';
       const item = {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
@@ -578,11 +929,25 @@ if (typeof window !== 'undefined') {
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.seedlingCategoryCodes = list;
-      if (snap.seedling) {
-        snap.seedling.fertilizerCategories = list;
-        snap.seedling.seedlingCategories = list;
+      if (snap.seedling && Array.isArray(snap.seedling.allItems) && body.category_name) {
+        snap.seedling.allItems = snap.seedling.allItems.map((it: any) =>
+          it.category_code === body.category_code || (prevName && it.sub_type === prevName)
+            ? { ...it, category_code: body.category_code, sub_type: body.category_name, sub_type_name: body.category_name }
+            : it
+        );
+        snap.seedling.items = snap.seedling.allItems;
       }
-      persistOverview(ov);
+      await sbUpsert(
+        'seedling_category_code',
+        {
+          category_code: item.category_code,
+          category_name: item.category_name || item.category_code,
+          description: item.description || '',
+          sort_order: Number(item.sort_order) || 1,
+        },
+        'category_code'
+      );
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -592,7 +957,8 @@ if (typeof window !== 'undefined') {
       ov.seedlingCategoryCodes = (ov.seedlingCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
-      persistOverview(ov);
+      await sbDelete('seedling_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
+      await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
     }
 
@@ -1383,62 +1749,6 @@ if (typeof window !== 'undefined') {
     if (p === '/api/agro-recommendation-module') {
       return jsonResponse(snap.agroRecModule || {});
     }
-
-    const SB_URL = 'https://eaycjzvtlstijkucmbau.supabase.co';
-    const SB_KEY =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheWNqenZ0bHN0aWprdWNtYmF1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MzkxMjcwNSwiZXhwIjoyMTA5NDg4NzA1fQ.2MkDiCld3tG2rTNi3XVtIkRh9I96r06H5w_mo1IEwP4';
-    const getKstNowStr = () =>
-      new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-
-    const sbSelect = async (table: string, query = 'select=*'): Promise<any[] | null> => {
-      try {
-        const r = await origFetch(`${SB_URL}/rest/v1/${table}?${query}`, {
-          method: 'GET',
-          headers: {
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`,
-            Accept: 'application/json',
-          },
-          cache: 'no-store',
-        });
-        if (!r.ok) return null;
-        const data = await r.json();
-        return Array.isArray(data) ? data : null;
-      } catch {
-        return null;
-      }
-    };
-
-    const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
-      try {
-        await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
-          method: 'POST',
-          headers: {
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`,
-            'Content-Type': 'application/json',
-            Prefer: 'resolution=merge-duplicates,return=minimal',
-          },
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        // ignore network errors
-      }
-    };
-
-    const sbDelete = async (table: string, filterQuery: string) => {
-      try {
-        await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
-          method: 'DELETE',
-          headers: {
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`,
-          },
-        });
-      } catch {
-        // ignore network errors
-      }
-    };
 
     // 6. 설문조사 관리 (외부 /survey 참여 응답 수집 · 양식 수정 · 실시간 통계 산출 · Supabase 클라우드 실시간 동기화)
     if (
