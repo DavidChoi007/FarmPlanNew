@@ -2726,7 +2726,7 @@ export default function UserIntroPage() {
               </div>
               <div className="h-[38px] sm:h-10 flex flex-col justify-center">
                 <div className="flex items-center gap-1">
-                  <span className="font-black text-[18px] min-[390px]:text-[19.5px] sm:text-[24px] tracking-tight block leading-none whitespace-nowrap">
+                  <span className="font-black text-[20px] min-[390px]:text-[22px] sm:text-[25px] tracking-tight block leading-none whitespace-nowrap">
                     <span className="text-[#063820] group-hover:text-emerald-800 transition">Farm</span>
                     <span className="text-[#059669] group-hover:text-emerald-500 transition">Plan</span>
                   </span>
