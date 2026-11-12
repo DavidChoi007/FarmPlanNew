@@ -2457,6 +2457,293 @@ export default function UserIntroPage() {
     (/;\s*wv\)/i.test(navigator.userAgent) || /Version\/\d+\.\d+\s+Chrome/i.test(navigator.userAgent)) &&
     !/FarmPlanSafeInset/i.test(navigator.userAgent);
 
+  // 재배일정 확인 / 재배일정 요청 양방향 전환용 상단 폴더형 카드 탭 (농작물 구매 페이지와 동일한 구조)
+  const renderScheduleNavigationTabs = () => {
+    const isCheckTab = activeMenu === '재배일정 확인';
+    const isRequestTab = activeMenu === '재배일정 요청';
+
+    return (
+      <>
+        {/* ==================== [모바일 전용: 농작물 구매와 동일한 상단 고정 화이트 플로팅 2분할 폴더/카드 탭] ==================== */}
+        <div
+          className={`lg:hidden sticky z-20 -mx-4 -mt-5 px-3.5 pt-3 pb-2.5 bg-[#F4F6F5]/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_4px_12px_rgba(15,23,42,0.04)] space-y-2.5 ${
+            isLegacyAndroidWebView
+              ? 'top-[calc(max(34px,env(safe-area-inset-top,34px))+3.8rem)] sm:top-[calc(max(34px,env(safe-area-inset-top,34px))+5.3rem)]'
+              : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)]'
+          }`}
+        >
+          {/* 상단 타이틀 & 빠른 일정 요청 버튼 */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+                재배일정
+              </h2>
+              <span className="px-2.5 py-1 rounded-full bg-[#DDF5E8] text-[12px] font-extrabold text-[#11643C] leading-none">
+                총 {cloudBaeCropList.length}건
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setReqFormSubmitted(false);
+                setScheduleReqModalPos({ x: 0, y: 0 });
+                setIsScheduleReqModelessOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-full bg-[#0F5328] hover:bg-[#146C34] text-white text-[12px] font-extrabold shadow-xs transition cursor-pointer inline-flex items-center gap-1"
+            >
+              <FileEdit className="w-3.5 h-3.5" />
+              <span>+ 일정 요청</span>
+            </button>
+          </div>
+
+          {/* 일체형 화이트 플로팅 카드 (재배일정 확인 / 재배일정 요청 2분할 카드 탭 + 하단 요약 바) */}
+          <div className="bg-white rounded-[26px] p-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.07)] border border-slate-200/85">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                {
+                  key: '재배일정 확인' as const,
+                  label: '재배일정 확인',
+                  active: isCheckTab,
+                  renderIcon: (active: boolean) => (
+                    <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                      <rect
+                        x="6.5"
+                        y="8.5"
+                        width="23"
+                        height="21"
+                        rx="4"
+                        fill={active ? '#ffffff' : '#E2E8F0'}
+                        fillOpacity={active ? '0.2' : '0.65'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M6.5 14.5h23M12.5 5.5v5M23.5 5.5v5"
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                      />
+                      <circle
+                        cx="18"
+                        cy="22"
+                        r="5.2"
+                        fill={active ? '#6EE7B7' : '#5BB89A'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="1.8"
+                      />
+                      <path
+                        d="M15.8 22l1.6 1.6 3.2-3.2"
+                        stroke={active ? '#0F5328' : '#ffffff'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ),
+                },
+                {
+                  key: '재배일정 요청' as const,
+                  label: '재배일정 요청',
+                  active: isRequestTab,
+                  renderIcon: (active: boolean) => (
+                    <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                      <rect
+                        x="7"
+                        y="6.5"
+                        width="18"
+                        height="23"
+                        rx="3.5"
+                        fill={active ? '#ffffff' : '#E2E8F0'}
+                        fillOpacity={active ? '0.2' : '0.65'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M11.5 13h9M11.5 17.5h6"
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      {/* 우측 새싹 + 플러스 배지 */}
+                      <circle
+                        cx="24.5"
+                        cy="23.5"
+                        r="5.5"
+                        fill={active ? '#6EE7B7' : '#5BB89A'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="1.9"
+                      />
+                      <path
+                        d="M24.5 20.8v5.4M21.8 23.5h5.4"
+                        stroke={active ? '#0F5328' : '#ffffff'}
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ),
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu(tab.key);
+                    if (tab.key === '재배일정 확인') {
+                      setMobileScheduleStep('list');
+                    }
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`relative flex flex-col items-center justify-between py-2.5 px-2 rounded-[18px] transition-all duration-150 cursor-pointer ${
+                    tab.active
+                      ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_6px_16px_rgba(15,83,40,0.25)]'
+                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
+                  }`}
+                >
+                  <div className="h-9 flex items-center justify-center mb-1">
+                    {tab.renderIcon(tab.active)}
+                  </div>
+                  <span
+                    className={`min-h-[28px] flex items-center justify-center text-center tracking-tighter text-[17px] min-[390px]:text-[18.5px] sm:text-[20px] leading-none font-black whitespace-nowrap ${
+                      tab.active ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* 카드 내부 하단 서브 안내 스트립 */}
+            <div className="mt-2.5 pt-2.5 px-1 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-6 h-6 rounded-full bg-[#E3F7ED] text-[#11643C] flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 20 20" className="w-3.5 h-3.5" fill="none">
+                    <path
+                      d="M3 10h3l2-4.5 3.5 9 2-4.5H17"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <span className="text-[13px] min-[390px]:text-[13.5px] font-extrabold text-slate-900 truncate tracking-tight">
+                  {isCheckTab
+                    ? '재배일정 확인 · 기상·오늘 할 일·48주 생육 타임라인'
+                    : '재배일정 요청 · 기후(PGDD)·토양 맞춤 일정 산출'}
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-[#F1F4F3] text-[11.5px] font-extrabold text-slate-700 shrink-0">
+                {cloudBaeCropList.length}개 작물
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 농작물 구매와 동일한 2분할 세그먼트 폴더 탭] ==================== */}
+        <div className="hidden lg:block space-y-6">
+          <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+            <div className="relative w-full">
+              <img
+                src={
+                  isRequestTab
+                    ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
+                    : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+                }
+                alt={
+                  isRequestTab
+                    ? '모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너'
+                    : '생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너'
+                }
+                className="w-full h-auto min-h-[140px] object-cover object-center block"
+              />
+            </div>
+          </section>
+
+          <section className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs">
+            <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 grid grid-cols-2 gap-3">
+              {[
+                {
+                  menu: '재배일정 확인' as const,
+                  label: '재배일정 확인',
+                  eng: 'SCHEDULE CHECK',
+                  desc: '내 작물 48주 생육과정 타임라인 · 기상 · 오늘 할 일 · 맞춤 농자재 확인',
+                  icon: Calendar,
+                  activeGrad: 'from-[#0F5328] to-emerald-700',
+                },
+                {
+                  menu: '재배일정 요청' as const,
+                  label: '재배일정 요청',
+                  eng: 'SCHEDULE REQUEST',
+                  desc: '재배지 주소 · 작물(씨/모종) · 토양검정 기반 신규 재배일정 산출 요청',
+                  icon: FileEdit,
+                  activeGrad: 'from-[#0F5328] to-teal-700',
+                },
+              ].map((tabItem) => {
+                const TabIcon = tabItem.icon;
+                const isCurrentTab = activeMenu === tabItem.menu;
+                return (
+                  <button
+                    key={tabItem.menu}
+                    type="button"
+                    onClick={() => {
+                      setActiveMenu(tabItem.menu);
+                      if (tabItem.menu === '재배일정 확인') {
+                        setMobileScheduleStep('list');
+                      }
+                    }}
+                    className={`group relative rounded-xl px-5 py-4 text-left transition-all duration-200 cursor-pointer flex items-center gap-4 ${
+                      isCurrentTab
+                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.005]`
+                        : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
+                    }`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition ${
+                        isCurrentTab
+                          ? 'bg-white/20 text-white shadow-inner'
+                          : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
+                      }`}
+                    >
+                      <TabIcon className="w-6 h-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-lg font-extrabold tracking-tight truncate ${
+                            isCurrentTab ? 'text-white' : 'text-slate-900'
+                          }`}
+                        >
+                          {tabItem.label}
+                        </span>
+                        <span
+                          className={`text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shrink-0 ${
+                            isCurrentTab
+                              ? 'bg-white/20 text-white'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {tabItem.eng}
+                        </span>
+                      </div>
+                      <p
+                        className={`text-xs font-semibold truncate mt-0.5 ${
+                          isCurrentTab ? 'text-white/90' : 'text-slate-500'
+                        }`}
+                      >
+                        {tabItem.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  };
+
   return (
     <div
       className={`min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col break-keep ${
@@ -3123,17 +3410,8 @@ export default function UserIntroPage() {
 
         {/* ==================== [탭 2: 재배일정 확인 (회원 ID: CloudBae 전용 반응형 PC & 모바일 뷰)] ==================== */}
         {activeMenu === '재배일정 확인' && (
-          <div className="space-y-6">
-            {/* 재배일정 확인 페이지 전용 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
-            <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
-              <div className="relative w-full">
-                <img
-                  src="/images/user-schedule-check-3d-banner.jpg?v=20261109"
-                  alt="생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너"
-                  className="w-full h-auto min-h-[140px] object-cover object-center block"
-                />
-              </div>
-            </section>
+          <div className="space-y-4 sm:space-y-6">
+            {renderScheduleNavigationTabs()}
 
             {/* ---------- 1단계: CloudBae 님의 작물재배 리스트 (항목 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) ---------- */}
             <section
@@ -6396,17 +6674,8 @@ export default function UserIntroPage() {
 
         {/* ==================== [탭 3: 재배일정 요청 (해당 아이디 재배일정 요청 이력 리스트 + 모달리스 요청 폼)] ==================== */}
         {activeMenu === '재배일정 요청' && (
-          <div className="space-y-6">
-            {/* 재배일정 요청 페이지 전용 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
-            <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
-              <div className="relative w-full">
-                <img
-                  src="/images/user-schedule-request-3d-banner.jpg?v=20261109"
-                  alt="모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너"
-                  className="w-full h-auto min-h-[140px] object-cover object-center block"
-                />
-              </div>
-            </section>
+          <div className="space-y-4 sm:space-y-6">
+            {renderScheduleNavigationTabs()}
 
             {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
             <section className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs space-y-5">
