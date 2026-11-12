@@ -2496,16 +2496,56 @@ export default function UserIntroPage() {
             </button>
           </div>
 
-          {/* 일체형 화이트 플로팅 카드 (재배일정 확인 / 재배일정 요청 2분할 카드 탭 + 하단 요약 바) */}
+          {/* 일체형 화이트 플로팅 카드 (재배일정 요청 / 재배일정 확인 좌측 정렬 컴팩트 탭) */}
           <div className="bg-white rounded-[26px] p-2.5 shadow-[0_8px_28px_rgba(15,23,42,0.07)] border border-slate-200/85">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-stretch justify-start gap-2">
               {[
+                {
+                  key: '재배일정 요청' as const,
+                  label: '재배일정 요청',
+                  active: isRequestTab,
+                  renderIcon: (active: boolean) => (
+                    <svg viewBox="0 0 36 36" className="w-7 h-7" fill="none">
+                      <rect
+                        x="7"
+                        y="6.5"
+                        width="18"
+                        height="23"
+                        rx="3.5"
+                        fill={active ? '#ffffff' : '#E2E8F0'}
+                        fillOpacity={active ? '0.2' : '0.65'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M11.5 13h9M11.5 17.5h6"
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                      <circle
+                        cx="24.5"
+                        cy="23.5"
+                        r="5.5"
+                        fill={active ? '#6EE7B7' : '#5BB89A'}
+                        stroke={active ? '#ffffff' : '#334155'}
+                        strokeWidth="1.9"
+                      />
+                      <path
+                        d="M24.5 20.8v5.4M21.8 23.5h5.4"
+                        stroke={active ? '#0F5328' : '#ffffff'}
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  ),
+                },
                 {
                   key: '재배일정 확인' as const,
                   label: '재배일정 확인',
                   active: isCheckTab,
                   renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                    <svg viewBox="0 0 36 36" className="w-7 h-7" fill="none">
                       <rect
                         x="6.5"
                         y="8.5"
@@ -2541,47 +2581,6 @@ export default function UserIntroPage() {
                     </svg>
                   ),
                 },
-                {
-                  key: '재배일정 요청' as const,
-                  label: '재배일정 요청',
-                  active: isRequestTab,
-                  renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
-                      <rect
-                        x="7"
-                        y="6.5"
-                        width="18"
-                        height="23"
-                        rx="3.5"
-                        fill={active ? '#ffffff' : '#E2E8F0'}
-                        fillOpacity={active ? '0.2' : '0.65'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.1"
-                      />
-                      <path
-                        d="M11.5 13h9M11.5 17.5h6"
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      />
-                      {/* 우측 새싹 + 플러스 배지 */}
-                      <circle
-                        cx="24.5"
-                        cy="23.5"
-                        r="5.5"
-                        fill={active ? '#6EE7B7' : '#5BB89A'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="1.9"
-                      />
-                      <path
-                        d="M24.5 20.8v5.4M21.8 23.5h5.4"
-                        stroke={active ? '#0F5328' : '#ffffff'}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  ),
-                },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -2593,17 +2592,17 @@ export default function UserIntroPage() {
                     }
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`relative flex flex-col items-center justify-between py-2.5 px-2 rounded-[18px] transition-all duration-150 cursor-pointer ${
+                  className={`w-[32%] max-w-[116px] relative flex flex-col items-center justify-between py-2.5 px-1.5 rounded-[18px] transition-all duration-150 cursor-pointer shrink-0 ${
                     tab.active
                       ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_6px_16px_rgba(15,83,40,0.25)]'
                       : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  <div className="h-9 flex items-center justify-center mb-1">
+                  <div className="h-8 flex items-center justify-center mb-1">
                     {tab.renderIcon(tab.active)}
                   </div>
                   <span
-                    className={`min-h-[28px] flex items-center justify-center text-center tracking-tighter text-[17px] min-[390px]:text-[18.5px] sm:text-[20px] leading-none font-black whitespace-nowrap ${
+                    className={`min-h-[24px] flex items-center justify-center text-center tracking-tighter text-[14px] min-[390px]:text-[15px] sm:text-[16px] leading-none font-black whitespace-nowrap ${
                       tab.active ? 'text-white' : 'text-slate-900'
                     }`}
                   >
@@ -2615,7 +2614,7 @@ export default function UserIntroPage() {
           </div>
         </div>
 
-        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 농작물 구매와 동일한 2분할 세그먼트 폴더 탭] ==================== */}
+        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 좌측 정렬 1/3 폭 폴더형 탭] ==================== */}
         <div className="hidden lg:block space-y-6">
           <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
             <div className="relative w-full">
@@ -2635,24 +2634,22 @@ export default function UserIntroPage() {
             </div>
           </section>
 
-          <section className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs">
-            <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 grid grid-cols-2 gap-3">
+          <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs">
+            <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 flex items-stretch justify-start gap-2.5">
               {[
-                {
-                  menu: '재배일정 확인' as const,
-                  label: '재배일정 확인',
-                  eng: 'SCHEDULE CHECK',
-                  desc: '내 작물 48주 생육과정 타임라인 · 기상 · 오늘 할 일 · 맞춤 농자재 확인',
-                  icon: Calendar,
-                  activeGrad: 'from-[#0F5328] to-emerald-700',
-                },
                 {
                   menu: '재배일정 요청' as const,
                   label: '재배일정 요청',
-                  eng: 'SCHEDULE REQUEST',
-                  desc: '재배지 주소 · 작물(씨/모종) · 토양검정 기반 신규 재배일정 산출 요청',
+                  desc: '신규 맞춤 재배일정 산출',
                   icon: FileEdit,
                   activeGrad: 'from-[#0F5328] to-teal-700',
+                },
+                {
+                  menu: '재배일정 확인' as const,
+                  label: '재배일정 확인',
+                  desc: '48주 생육 타임라인·할 일',
+                  icon: Calendar,
+                  activeGrad: 'from-[#0F5328] to-emerald-700',
                 },
               ].map((tabItem) => {
                 const TabIcon = tabItem.icon;
@@ -2667,42 +2664,31 @@ export default function UserIntroPage() {
                         setMobileScheduleStep('list');
                       }
                     }}
-                    className={`group relative rounded-xl px-5 py-4 text-left transition-all duration-200 cursor-pointer flex items-center gap-4 ${
+                    className={`w-[220px] xl:w-[240px] shrink-0 group relative rounded-xl px-4 py-3 text-left transition-all duration-200 cursor-pointer flex items-center gap-3 ${
                       isCurrentTab
-                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.005]`
+                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.01]`
                         : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
                     }`}
                   >
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition ${
                         isCurrentTab
                           ? 'bg-white/20 text-white shadow-inner'
                           : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
                       }`}
                     >
-                      <TabIcon className="w-6 h-6" />
+                      <TabIcon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`text-lg font-extrabold tracking-tight truncate ${
-                            isCurrentTab ? 'text-white' : 'text-slate-900'
-                          }`}
-                        >
-                          {tabItem.label}
-                        </span>
-                        <span
-                          className={`text-[10px] font-black px-2 py-0.5 rounded-md tracking-wider uppercase shrink-0 ${
-                            isCurrentTab
-                              ? 'bg-white/20 text-white'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {tabItem.eng}
-                        </span>
+                      <div
+                        className={`text-base font-extrabold tracking-tight truncate ${
+                          isCurrentTab ? 'text-white' : 'text-slate-900'
+                        }`}
+                      >
+                        {tabItem.label}
                       </div>
                       <p
-                        className={`text-xs font-semibold truncate mt-0.5 ${
+                        className={`text-[11px] font-semibold truncate mt-0.5 ${
                           isCurrentTab ? 'text-white/90' : 'text-slate-500'
                         }`}
                       >
