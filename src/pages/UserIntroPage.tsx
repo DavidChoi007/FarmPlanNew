@@ -2288,16 +2288,17 @@ export default function UserIntroPage() {
     >
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
-        className="bg-white border-b border-slate-200/90 sticky top-0 z-30 shadow-[0_1px_3px_rgba(15,23,42,0.03)]"
+        className="bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]"
         style={{
           paddingTop: isLegacyAndroidWebView
             ? 'max(34px, env(safe-area-inset-top, 34px))'
             : 'env(safe-area-inset-top, 0px)',
         }}
       >
-        <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-10 h-14 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
-          {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 7대 가로 메뉴 */}
-          <div className="flex items-center gap-2 sm:gap-6 lg:gap-12 min-w-0">
+        <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+        <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-8 xl:px-10 h-14 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+          {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 가로 메뉴 독(Dock) */}
+          <div className="flex items-center gap-2 sm:gap-5 xl:gap-8 min-w-0">
             {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 */}
             <button
               type="button"
@@ -2318,13 +2319,18 @@ export default function UserIntroPage() {
               onClick={() => setActiveMenu('홈')}
               className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs group-hover:bg-emerald-500 transition shrink-0">
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-2 ring-emerald-50 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
                 <Sprout className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <span className="font-extrabold text-base sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
-                  FarmPlan
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-base sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
+                    FarmPlan
+                  </span>
+                  <span className="hidden xl:inline-flex px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 leading-none">
+                    한팜
+                  </span>
+                </div>
                 <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline whitespace-nowrap">
                   나의 맞춤형 재배관리
                 </span>
@@ -2336,28 +2342,50 @@ export default function UserIntroPage() {
               {activeMenu}
             </span>
 
-            {/* PC 버전 상단 가로 메뉴 (홈, 재배일정 요청, 재배일정 확인, 비료, 영양제, 병해충관리제, 마이페이지) */}
-            <nav className="hidden lg:flex items-center gap-8 text-[19px] overflow-x-auto h-20 no-scrollbar">
+            {/* PC 버전 상단 가로 캡슐형 메뉴 바 */}
+            <nav className="hidden lg:flex items-center gap-1 bg-slate-50/95 border border-slate-200/80 p-1.5 rounded-2xl shadow-2xs overflow-x-auto no-scrollbar">
               {userMenus.map((menu) => {
                 const isActive = activeMenu === menu;
+                const menuIconMap: Record<string, any> = {
+                  홈: Home,
+                  '재배일정 요청': FileEdit,
+                  '재배일정 확인': Calendar,
+                  비료: FlaskConical,
+                  영양제: Sparkles,
+                  병해충관리제: ShieldAlert,
+                  씨: Package,
+                  모종: Sprout,
+                  마이페이지: User,
+                };
+                const MenuIcon = menuIconMap[menu] || Sprout;
+                const showDividerBefore = menu === '비료' || menu === '마이페이지';
                 return (
-                  <button
-                    key={menu}
-                    type="button"
-                    onClick={() => {
-                      setActiveMenu(menu);
-                      if (menu === '재배일정 확인') {
-                        setMobileScheduleStep('list');
-                      }
-                    }}
-                    className={`h-full inline-flex items-center font-extrabold whitespace-nowrap border-b-[3px] transition cursor-pointer px-1.5 tracking-tight ${
-                      isActive
-                        ? 'text-emerald-600 border-emerald-600'
-                        : 'text-slate-800 border-transparent hover:text-emerald-600'
-                    }`}
-                  >
-                    {menu}
-                  </button>
+                  <React.Fragment key={menu}>
+                    {showDividerBefore && (
+                      <span className="h-5 w-px bg-slate-200/90 mx-0.5 shrink-0" aria-hidden="true" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveMenu(menu);
+                        if (menu === '재배일정 확인') {
+                          setMobileScheduleStep('list');
+                        }
+                      }}
+                      className={`px-3 xl:px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 text-[14px] xl:text-[15px] font-extrabold whitespace-nowrap transition-all duration-150 cursor-pointer tracking-tight ${
+                        isActive
+                          ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
+                          : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50/90'
+                      }`}
+                    >
+                      <MenuIcon
+                        className={`w-4 h-4 shrink-0 ${
+                          isActive ? 'text-white' : 'text-emerald-600/85'
+                        }`}
+                      />
+                      <span>{menu}</span>
+                    </button>
+                  </React.Fragment>
                 );
               })}
             </nav>
@@ -2413,7 +2441,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
                 >
                   회원가입
                 </button>
@@ -2421,7 +2449,7 @@ export default function UserIntroPage() {
             )}
             <Link
               to="/admin"
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
+              className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
             >
               <span>관리자</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -9675,18 +9703,18 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [독립 폼 2: 신규 회원가입 전용 폼 (화이트 & 로얄블루 2단 클린 구성)] ==================== */}
+        {/* ==================== [독립 폼 2: 신규 회원가입 전용 폼 (화이트 & 에메랄드 그린 2단 클린 구성)] ==================== */}
         {isAuthModalOpen && authModalTab === 'SIGNUP' && (
           <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.14)] max-w-[560px] w-full overflow-hidden my-auto">
-              {/* 상단 로얄블루 포인트 라인 (로그인 폼과 명확히 구분되는 컬러) */}
-              <div className="h-1.5 w-full bg-blue-600" />
+              {/* 상단 에메랄드 포인트 라인 */}
+              <div className="h-1.5 w-full bg-emerald-600" />
 
               {/* 회원가입 폼 헤더 */}
               <div className="px-7 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
                     <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
@@ -9711,7 +9739,7 @@ export default function UserIntroPage() {
                   <div
                     className={`rounded-xl px-3.5 py-2.5 text-xs font-bold border ${
                       authNoticeMsg.type === 'success'
-                        ? 'bg-blue-50 border-blue-200 text-blue-800'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                         : 'bg-rose-50 border-rose-200 text-rose-700'
                     }`}
                   >
@@ -9729,7 +9757,7 @@ export default function UserIntroPage() {
                       }
                       className={`py-2 px-3 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                         signupForm.signup_type === 'EMAIL'
-                          ? 'bg-white text-blue-700 shadow-2xs'
+                          ? 'bg-white text-emerald-700 shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -9751,7 +9779,7 @@ export default function UserIntroPage() {
                       }}
                       className={`py-2 px-3 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                         signupForm.signup_type === 'GOOGLE_GMAIL'
-                          ? 'bg-white text-blue-700 shadow-2xs'
+                          ? 'bg-white text-emerald-700 shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -9781,7 +9809,7 @@ export default function UserIntroPage() {
                   <div className="space-y-3.5">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1.5">
-                        이메일 주소 <span className="text-blue-600">*</span>
+                        이메일 주소 <span className="text-emerald-600">*</span>
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -9800,14 +9828,14 @@ export default function UserIntroPage() {
                               ? 'example@gmail.com'
                               : 'example@naver.com'
                           }
-                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold text-slate-900 transition"
+                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold text-slate-900 transition"
                         />
                         <button
                           type="button"
                           onClick={handleCheckEmailDuplicate}
                           className={`px-4 py-2.5 rounded-xl font-bold cursor-pointer shrink-0 transition ${
                             signupForm.emailChecked
-                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-slate-800 hover:bg-slate-900 text-white'
                           }`}
                         >
@@ -9817,7 +9845,7 @@ export default function UserIntroPage() {
                       {signupForm.emailCheckMsg && (
                         <div
                           className={`mt-1.5 text-[11px] font-bold ${
-                            signupForm.emailChecked ? 'text-blue-600' : 'text-rose-600'
+                            signupForm.emailChecked ? 'text-emerald-600' : 'text-rose-600'
                           }`}
                         >
                           {signupForm.emailCheckMsg}
@@ -9828,7 +9856,7 @@ export default function UserIntroPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          비밀번호 <span className="text-blue-600">*</span>
+                          비밀번호 <span className="text-emerald-600">*</span>
                         </label>
                         <input
                           type="password"
@@ -9837,12 +9865,12 @@ export default function UserIntroPage() {
                             setSignupForm({ ...signupForm, password: e.target.value })
                           }
                           placeholder="4자리 이상 입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                         />
                       </div>
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          비밀번호 확인 <span className="text-blue-600">*</span>
+                          비밀번호 확인 <span className="text-emerald-600">*</span>
                         </label>
                         <input
                           type="password"
@@ -9851,7 +9879,7 @@ export default function UserIntroPage() {
                             setSignupForm({ ...signupForm, passwordConfirm: e.target.value })
                           }
                           placeholder="비밀번호 재입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                         />
                       </div>
                     </div>
@@ -9864,7 +9892,7 @@ export default function UserIntroPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          이름 <span className="text-blue-600">*</span>
+                          이름 <span className="text-emerald-600">*</span>
                         </label>
                         <input
                           type="text"
@@ -9873,12 +9901,12 @@ export default function UserIntroPage() {
                             setSignupForm({ ...signupForm, name: e.target.value })
                           }
                           placeholder="실명 입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                         />
                       </div>
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          성별 <span className="text-blue-600">*</span>
+                          성별 <span className="text-emerald-600">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                           {(['남성', '여성'] as const).map((g) => (
@@ -9888,7 +9916,7 @@ export default function UserIntroPage() {
                               onClick={() => setSignupForm({ ...signupForm, gender: g })}
                               className={`py-2.5 rounded-xl border font-bold cursor-pointer transition ${
                                 signupForm.gender === g
-                                  ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                  ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
                                   : 'border-slate-200 bg-slate-50/70 text-slate-600 hover:bg-white'
                               }`}
                             >
@@ -9902,7 +9930,7 @@ export default function UserIntroPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          출생년월일 <span className="text-blue-600">*</span>
+                          출생년월일 <span className="text-emerald-600">*</span>
                         </label>
                         <input
                           type="date"
@@ -9915,12 +9943,12 @@ export default function UserIntroPage() {
                               age: calcAgeFromBirthDate(bd),
                             });
                           }}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                         />
                       </div>
                       <div>
                         <label className="block font-bold text-slate-700 mb-1.5">
-                          나이 (세) <span className="text-blue-600">*</span>
+                          나이 (세) <span className="text-emerald-600">*</span>
                         </label>
                         <input
                           type="number"
@@ -9931,7 +9959,7 @@ export default function UserIntroPage() {
                               age: Number(e.target.value) || 46,
                             })
                           }
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                         />
                       </div>
                     </div>
@@ -9942,7 +9970,7 @@ export default function UserIntroPage() {
                   {/* 섹션 3: 도로명 주소 */}
                   <div className="space-y-2.5">
                     <label className="block font-bold text-slate-700">
-                      주소 (도로명) <span className="text-blue-600">*</span>
+                      주소 (도로명) <span className="text-emerald-600">*</span>
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -9952,7 +9980,7 @@ export default function UserIntroPage() {
                           setSignupForm({ ...signupForm, road_address: e.target.value })
                         }
                         placeholder="도로명 주소 검색 또는 직접 입력"
-                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                       />
                       <button
                         type="button"
@@ -9969,7 +9997,7 @@ export default function UserIntroPage() {
                     </div>
 
                     {showRoadSearchBox && (
-                      <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-3 space-y-2">
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 space-y-2">
                         <div className="flex gap-2">
                           <input
                             type="text"
@@ -9987,7 +10015,7 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => handleSearchRoadAddress()}
-                            className="px-3.5 py-2 rounded-lg bg-blue-600 text-white font-bold cursor-pointer"
+                            className="px-3.5 py-2 rounded-lg bg-emerald-600 text-white font-bold cursor-pointer"
                           >
                             {isRoadSearching ? '검색중...' : '찾기'}
                           </button>
@@ -10005,7 +10033,7 @@ export default function UserIntroPage() {
                                 }));
                                 setShowRoadSearchBox(false);
                               }}
-                              className="w-full text-left px-3 py-2 hover:bg-blue-50 transition cursor-pointer"
+                              className="w-full text-left px-3 py-2 hover:bg-emerald-50 transition cursor-pointer"
                             >
                               <div className="font-bold text-slate-900">
                                 [{rItem.postal_code}] {rItem.full_road_address}
@@ -10028,13 +10056,13 @@ export default function UserIntroPage() {
                         setSignupForm({ ...signupForm, road_address_detail: e.target.value })
                       }
                       placeholder="상세주소 입력 (예: 101동 202호 / 농장명)"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/15 focus:outline-none font-semibold transition"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm cursor-pointer shadow-xs transition"
+                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm cursor-pointer shadow-xs transition"
                   >
                     회원가입 완료
                   </button>
