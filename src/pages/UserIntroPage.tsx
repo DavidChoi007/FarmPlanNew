@@ -7181,7 +7181,6 @@ export default function UserIntroPage() {
                     {
                       key: 'FERTILIZER' as const,
                       label: '비료',
-                      sub: '밑거름·추비',
                       icon: FlaskConical,
                       topBarCls: 'bg-[#6E6235]',
                       iconActiveCls: 'bg-[#6E6235]/12 text-[#5A4F28]',
@@ -7190,7 +7189,6 @@ export default function UserIntroPage() {
                     {
                       key: 'NUTRIENT' as const,
                       label: '영양제',
-                      sub: '칼슘·활력',
                       icon: Sparkles,
                       topBarCls: 'bg-[#2E7D78]',
                       iconActiveCls: 'bg-[#2E7D78]/12 text-[#1F635E]',
@@ -7199,7 +7197,6 @@ export default function UserIntroPage() {
                     {
                       key: 'PESTICIDE' as const,
                       label: '병해충방지제',
-                      sub: '살균·친환경',
                       icon: ShieldAlert,
                       topBarCls: 'bg-[#E57368]',
                       iconActiveCls: 'bg-[#E57368]/15 text-[#C6463B]',
@@ -7208,7 +7205,6 @@ export default function UserIntroPage() {
                     {
                       key: 'SEED' as const,
                       label: '씨',
-                      sub: '보증종자',
                       icon: Package,
                       topBarCls: 'bg-[#C88A2B]',
                       iconActiveCls: 'bg-[#C88A2B]/15 text-[#9E6814]',
@@ -7217,7 +7213,6 @@ export default function UserIntroPage() {
                     {
                       key: 'SEEDLING' as const,
                       label: '모종',
-                      sub: '우량건묘',
                       icon: Sprout,
                       topBarCls: 'bg-[#2E7D32]',
                       iconActiveCls: 'bg-[#2E7D32]/12 text-[#1B5E20]',
@@ -7243,7 +7238,7 @@ export default function UserIntroPage() {
                             q: userAgroKeyword,
                           });
                         }}
-                        className={`relative flex flex-col items-center justify-center py-2.5 px-0.5 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
+                        className={`relative flex flex-col items-center justify-center py-2.5 px-1 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
                           isActive
                             ? 'bg-white shadow-[0_-2px_8px_rgba(15,23,42,0.06)] z-10 -mb-[1px] pb-3 border-t border-x border-slate-200/90'
                             : 'bg-[#D8E1DC]/75 hover:bg-[#DCE5E0] text-slate-600 border-t border-x border-transparent'
@@ -7256,7 +7251,7 @@ export default function UserIntroPage() {
                           }`}
                         />
                         <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 transition ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition ${
                             isActive
                               ? tab.iconActiveCls
                               : 'bg-white/60 text-slate-500'
@@ -7265,20 +7260,20 @@ export default function UserIntroPage() {
                           <TabIcon className="w-4 h-4 stroke-[2.2]" />
                         </div>
                         <span
-                          className={`text-[11.5px] leading-tight tracking-tighter whitespace-nowrap ${
+                          className={`min-h-[26px] flex flex-col items-center justify-center text-[12.5px] leading-[1.15] tracking-tight text-center ${
                             isActive
                               ? `font-black ${tab.textActiveCls}`
                               : 'font-bold text-slate-600'
                           }`}
                         >
-                          {tab.label}
-                        </span>
-                        <span
-                          className={`text-[9.5px] leading-none mt-0.5 tracking-tighter whitespace-nowrap ${
-                            isActive ? 'font-bold text-slate-500' : 'font-medium text-slate-400'
-                          }`}
-                        >
-                          {tab.sub}
+                          {tab.key === 'PESTICIDE' ? (
+                            <>
+                              <span className="block whitespace-nowrap">병해충</span>
+                              <span className="block whitespace-nowrap">방지제</span>
+                            </>
+                          ) : (
+                            <span className="block whitespace-nowrap">{tab.label}</span>
+                          )}
                         </span>
                       </button>
                     );
