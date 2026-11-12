@@ -627,7 +627,7 @@ function ensureFertilizerCategoryCodes() {
 
 function ensureNutrientCategoryCodes() {
   const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM nutrient_category_code').get() as { cnt: number }).cnt;
-  if (existingCount < NUTRIENT_CATEGORIES.length) {
+  if (existingCount === 0) {
     const ins = db.prepare(`
       INSERT OR IGNORE INTO nutrient_category_code (category_code, category_name, description, sort_order)
       VALUES (?, ?, ?, ?)
@@ -640,7 +640,7 @@ function ensureNutrientCategoryCodes() {
 
 function ensurePesticideCategoryCodes() {
   const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM pesticide_category_code').get() as { cnt: number }).cnt;
-  if (existingCount < PESTICIDE_CATEGORIES.length) {
+  if (existingCount === 0) {
     const ins = db.prepare(`
       INSERT OR IGNORE INTO pesticide_category_code (category_code, category_name, description, sort_order)
       VALUES (?, ?, ?, ?)
@@ -653,7 +653,7 @@ function ensurePesticideCategoryCodes() {
 
 function ensureSeedCategoryCodes() {
   const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM seed_category_code').get() as { cnt: number }).cnt;
-  if (existingCount < SEED_CATEGORIES.length) {
+  if (existingCount === 0) {
     const ins = db.prepare(`
       INSERT OR IGNORE INTO seed_category_code (category_code, category_name, description, sort_order)
       VALUES (?, ?, ?, ?)
@@ -666,7 +666,7 @@ function ensureSeedCategoryCodes() {
 
 function ensureSeedlingCategoryCodes() {
   const existingCount = (db.prepare('SELECT COUNT(*) as cnt FROM seedling_category_code').get() as { cnt: number }).cnt;
-  if (existingCount < SEEDLING_CATEGORIES.length) {
+  if (existingCount === 0) {
     const ins = db.prepare(`
       INSERT OR IGNORE INTO seedling_category_code (category_code, category_name, description, sort_order)
       VALUES (?, ?, ?, ?)

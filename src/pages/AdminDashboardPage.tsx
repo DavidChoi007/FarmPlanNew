@@ -4631,8 +4631,8 @@ export default function AdminDashboardPage() {
     });
     showToast(`비료 분류 기초 코드 [${fertilizerCatForm.category_name} (${fertilizerCatForm.category_code})] 저장 완료`);
     setIsFertilizerCatModalOpen(false);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'FERTILIZER' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'FERTILIZER' });
   };
 
   const handleDeleteFertilizerCategoryCode = async (categoryCode: string, categoryName: string) => {
@@ -4640,11 +4640,11 @@ export default function AdminDashboardPage() {
     await fetch('/api/fertilizer-category-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_code: categoryCode }),
+      body: JSON.stringify({ category_code: categoryCode, category_name: categoryName }),
     });
     showToast(`비료 분류 기초 코드 [${categoryName}] 삭제 완료`);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'FERTILIZER' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'FERTILIZER' });
   };
 
   // 영양제 기초 코드 등록/수정 및 삭제 핸들러
@@ -4658,8 +4658,8 @@ export default function AdminDashboardPage() {
     });
     showToast(`영양제 기초 코드 [${nutrientCatForm.category_name} (${nutrientCatForm.category_code})] 저장 완료`);
     setIsNutrientCatModalOpen(false);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'NUTRIENT' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'NUTRIENT' });
   };
 
   const handleDeleteNutrientCategoryCode = async (categoryCode: string, categoryName: string) => {
@@ -4667,11 +4667,11 @@ export default function AdminDashboardPage() {
     await fetch('/api/nutrient-category-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_code: categoryCode }),
+      body: JSON.stringify({ category_code: categoryCode, category_name: categoryName }),
     });
     showToast(`영양제 기초 코드 [${categoryName}] 삭제 완료`);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'NUTRIENT' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'NUTRIENT' });
   };
 
   // 병해충관리제 기초 코드 등록/수정 및 삭제 핸들러
@@ -4685,8 +4685,8 @@ export default function AdminDashboardPage() {
     });
     showToast(`병해충관리제 기초 코드 [${pesticideCatForm.category_name} (${pesticideCatForm.category_code})] 저장 완료`);
     setIsPesticideCatModalOpen(false);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'PESTICIDE' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'PESTICIDE' });
   };
 
   const handleDeletePesticideCategoryCode = async (categoryCode: string, categoryName: string) => {
@@ -4694,11 +4694,11 @@ export default function AdminDashboardPage() {
     await fetch('/api/pesticide-category-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_code: categoryCode }),
+      body: JSON.stringify({ category_code: categoryCode, category_name: categoryName }),
     });
     showToast(`병해충관리제 기초 코드 [${categoryName}] 삭제 완료`);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'PESTICIDE' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'PESTICIDE' });
   };
 
   // 씨(종자) 분류 기초 코드 등록/수정 및 삭제 핸들러
@@ -4712,8 +4712,8 @@ export default function AdminDashboardPage() {
     });
     showToast(`씨(종자) 기초 코드 [${seedCatForm.category_name} (${seedCatForm.category_code})] 저장 완료`);
     setIsSeedCatModalOpen(false);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'SEED' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'SEED' });
   };
 
   const handleDeleteSeedCategoryCode = async (categoryCode: string, categoryName: string) => {
@@ -4721,11 +4721,11 @@ export default function AdminDashboardPage() {
     await fetch('/api/seed-category-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_code: categoryCode }),
+      body: JSON.stringify({ category_code: categoryCode, category_name: categoryName }),
     });
     showToast(`씨(종자) 기초 코드 [${categoryName}] 삭제 완료`);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'SEED' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'SEED' });
   };
 
   // 모종(육묘) 분류 기초 코드 등록/수정 및 삭제 핸들러
@@ -4739,8 +4739,8 @@ export default function AdminDashboardPage() {
     });
     showToast(`모종(육묘) 기초 코드 [${seedlingCatForm.category_name} (${seedlingCatForm.category_code})] 저장 완료`);
     setIsSeedlingCatModalOpen(false);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'SEEDLING' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'SEEDLING' });
   };
 
   const handleDeleteSeedlingCategoryCode = async (categoryCode: string, categoryName: string) => {
@@ -4748,11 +4748,11 @@ export default function AdminDashboardPage() {
     await fetch('/api/seedling-category-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_code: categoryCode }),
+      body: JSON.stringify({ category_code: categoryCode, category_name: categoryName }),
     });
     showToast(`모종(육묘) 기초 코드 [${categoryName}] 삭제 완료`);
-    loadAllData();
-    executeAgroMaterialSearch({ category: 'SEEDLING' });
+    await loadAllData();
+    await executeAgroMaterialSearch({ category: 'SEEDLING' });
   };
 
   const getGrowthTypeName = (typeCode: string) => {

@@ -2051,17 +2051,29 @@ export default function UserIntroPage() {
   }, [activeMenu]);
 
   useEffect(() => {
-    const syncCategoriesOnFocusOrStorage = () => {
+    const syncCategoriesOnFocus = () => {
       fetch('/api/overview')
         .then((r) => r.json())
         .then((res) => setData(res))
         .catch(() => {});
     };
-    window.addEventListener('focus', syncCategoriesOnFocusOrStorage);
-    window.addEventListener('storage', syncCategoriesOnFocusOrStorage);
+    const syncCategoriesOnStorage = (e: StorageEvent) => {
+      if (e.key === 'hanfarm_static_overview_v1' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === 'object') {
+            setData((prev) => (prev ? { ...prev, ...parsed } : parsed));
+          }
+        } catch {
+          // ignore
+        }
+      }
+    };
+    window.addEventListener('focus', syncCategoriesOnFocus);
+    window.addEventListener('storage', syncCategoriesOnStorage);
     return () => {
-      window.removeEventListener('focus', syncCategoriesOnFocusOrStorage);
-      window.removeEventListener('storage', syncCategoriesOnFocusOrStorage);
+      window.removeEventListener('focus', syncCategoriesOnFocus);
+      window.removeEventListener('storage', syncCategoriesOnStorage);
     };
   }, []);
 
