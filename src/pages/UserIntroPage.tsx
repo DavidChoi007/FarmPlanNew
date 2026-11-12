@@ -7557,14 +7557,14 @@ export default function UserIntroPage() {
                               setSelectedUserAgroDetail(item);
                               setActiveUserAgroGalleryImg(detailImgs[0]);
                             }}
-                            className="w-full text-left bg-white rounded-[24px] p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.04)] border border-slate-200/80 hover:border-emerald-400 active:scale-[0.99] transition flex items-center gap-3.5 cursor-pointer"
+                            className="w-full text-left bg-white rounded-[24px] px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.04)] border border-slate-200/80 hover:border-emerald-400 active:scale-[0.99] transition flex items-center gap-3.5 cursor-pointer"
                           >
-                            {/* 좌측 1:1 썸네일 */}
-                            <div className="w-[82px] h-[82px] rounded-2xl bg-[#F3F5F4] border border-slate-200/60 overflow-hidden shrink-0 flex items-center justify-center p-1.5">
+                            {/* 좌측 1:1 썸네일 (텍스트 영역과 동일한 순백색 배경 + 이미지 최대 확대) */}
+                            <div className="w-[104px] h-[104px] rounded-2xl bg-white overflow-hidden shrink-0 flex items-center justify-center">
                               <img
                                 src={thumbUrl}
                                 alt={cleanMobileProductName}
-                                className="w-full h-full object-contain rounded-xl"
+                                className="w-full h-full object-contain scale-[1.18]"
                               />
                             </div>
 
@@ -8118,13 +8118,13 @@ export default function UserIntroPage() {
                                       setSelectedUserAgroDetail(item);
                                       setActiveUserAgroGalleryImg(detailImgs[0]);
                                     }}
-                                    className="relative w-[5.25rem] h-[5.25rem] sm:w-30 sm:h-30 sm:row-span-2 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden shadow-xs group cursor-pointer shrink-0"
+                                    className="relative w-[6rem] h-[6rem] sm:w-32 sm:h-32 sm:row-span-2 rounded-2xl bg-white overflow-hidden group cursor-pointer shrink-0"
                                     title="클릭하여 상세 페이지 보기"
                                   >
                                     <img
                                       src={thumbUrl}
                                       alt={item.product_name}
-                                      className="w-full h-full object-contain group-hover:scale-105 transition"
+                                      className="w-full h-full object-contain scale-[1.16] group-hover:scale-[1.22] transition"
                                     />
                                     <span className="sm:hidden absolute top-1.5 left-1.5 min-w-5 h-5 px-1.5 rounded-full bg-slate-900/80 text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs">
                                       {rowNumber}
