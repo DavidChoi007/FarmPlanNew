@@ -1543,7 +1543,7 @@ export default function UserIntroPage() {
   const [userAgroOrderToast, setUserAgroOrderToast] = useState<string>('');
   const [mobileAgroCategoryTab, setMobileAgroCategoryTab] = useState<
     'ALL' | 'SEED' | 'SEEDLING' | 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE'
-  >('ALL');
+  >('FERTILIZER');
   const [showMobileAgroSearch, setShowMobileAgroSearch] = useState<boolean>(false);
 
   const formatMobileProductName = (rawName?: string | null): string => {
@@ -2751,7 +2751,7 @@ export default function UserIntroPage() {
                 type="button"
                 onClick={() => {
                   if (item.menu === '농작물 구매') {
-                    setMobileAgroCategoryTab('ALL');
+                    setMobileAgroCategoryTab('FERTILIZER');
                     setActiveMenu('농작물 구매');
                   } else {
                     setActiveMenu(item.menu);
@@ -7126,87 +7126,105 @@ export default function UserIntroPage() {
           <div className="space-y-4 sm:space-y-6">
             {/* ==================== [모바일 전용: 심플하고 안정적인 농작물 구매 리스트 화면] ==================== */}
             <div className="lg:hidden -mx-4 -mt-5 px-4 pt-4 pb-6 bg-[#F4F6F5] min-h-[calc(100vh-7.5rem)] space-y-3.5">
-              {/* 1. 모바일 상단 타이틀 + 우측 돋보기 검색 아이콘 */}
-              <div className="bg-white rounded-3xl px-5 pt-5 pb-4 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-200/70 space-y-3.5">
-                <div className="flex items-center justify-between gap-2">
+              {/* 1. 모바일 상단 타이틀 + 폴더 탭 (비료 / 영양제 / 병해충방지제 / 씨 / 모종 한 화면에 모두 노출) */}
+              <div className="space-y-0">
+                {/* 상단 타이틀 & 검색 버튼 */}
+                <div className="flex items-center justify-between gap-2 px-1 pb-2.5">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+                    <h2 className="text-[20px] font-black tracking-tight text-slate-900 leading-none">
                       농작물 구매
                     </h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-extrabold text-emerald-800">
-                      {userAgroResult.total}종
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100/90 border border-emerald-300/80 text-[11px] font-extrabold text-emerald-900">
+                      총 {userAgroResult.total}종
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowMobileAgroSearch((prev) => !prev)}
-                    aria-label="농작물 및 농자재 검색"
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition cursor-pointer ${
-                      showMobileAgroSearch || userAgroKeyword.trim()
-                        ? 'bg-[#1B5E20] text-white shadow-xs'
-                        : 'bg-slate-100/90 text-slate-800 hover:bg-slate-200'
-                    }`}
-                  >
-                    <Search className="w-5 h-5 stroke-[2.4]" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {mobileAgroCategoryTab !== 'ALL' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileAgroCategoryTab('ALL');
+                          setUserAgroMainTypeFilter('ALL');
+                          setUserAgroSubTypeFilter('ALL');
+                          setUserAgroOrganicFilter('ALL');
+                          executeUserAgroMaterialSearch({
+                            category: 'ALL',
+                            main_type: 'ALL',
+                            sub_type: 'ALL',
+                            is_organic: 'ALL',
+                            q: userAgroKeyword,
+                          });
+                        }}
+                        className="px-2.5 py-1.5 rounded-full bg-white border border-slate-300 text-[11px] font-extrabold text-slate-700 shadow-2xs cursor-pointer"
+                      >
+                        전체보기
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowMobileAgroSearch((prev) => !prev)}
+                      aria-label="농작물 및 농자재 검색"
+                      className={`w-9 h-9 rounded-full flex items-center justify-center transition cursor-pointer ${
+                        showMobileAgroSearch || userAgroKeyword.trim()
+                          ? 'bg-[#1B5E20] text-white shadow-xs'
+                          : 'bg-white border border-slate-200/90 text-slate-800 hover:bg-slate-100 shadow-2xs'
+                      }`}
+                    >
+                      <Search className="w-4 h-4 stroke-[2.4]" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* 돋보기 클릭 시 열리는 심플 검색바 */}
-                {showMobileAgroSearch && (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      executeUserAgroMaterialSearch({
-                        category: mobileAgroCategoryTab,
-                        q: userAgroKeyword,
-                      });
-                    }}
-                    className="flex items-center gap-2 pt-0.5"
-                  >
-                    <div className="relative flex-1">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input
-                        type="text"
-                        value={userAgroKeyword}
-                        onChange={(e) => setUserAgroKeyword(e.target.value)}
-                        placeholder="비료, 영양제, 병해충방지제, 씨, 모종 검색..."
-                        className="w-full pl-9 pr-8 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#1B5E20] focus:outline-none"
-                      />
-                      {userAgroKeyword && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUserAgroKeyword('');
-                            executeUserAgroMaterialSearch({
-                              category: mobileAgroCategoryTab,
-                              q: '',
-                            });
-                          }}
-                          className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700 p-0.5"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      className="px-4 py-2.5 rounded-2xl bg-[#1B5E20] text-white text-xs font-extrabold shrink-0 cursor-pointer"
-                    >
-                      검색
-                    </button>
-                  </form>
-                )}
-
-                {/* 2. 세련된 가로 스크롤 캡슐형 카테고리 탭 바 (전체 / 비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
+                {/* 2. 한 화면에 모두 들어오는 5분할 폴더 탭 바 (비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
+                <div className="grid grid-cols-5 gap-1 px-1 pt-1 bg-[#E4EAE7] rounded-t-2xl border-t border-x border-slate-300/70">
                   {[
-                    { key: 'ALL' as const, menuKey: '농작물 구매', label: '전체' },
-                    { key: 'FERTILIZER' as const, menuKey: '비료', label: '비료' },
-                    { key: 'NUTRIENT' as const, menuKey: '영양제', label: '영양제' },
-                    { key: 'PESTICIDE' as const, menuKey: '병해충관리제', label: '병해충방지제' },
-                    { key: 'SEED' as const, menuKey: '씨', label: '씨' },
-                    { key: 'SEEDLING' as const, menuKey: '모종', label: '모종' },
+                    {
+                      key: 'FERTILIZER' as const,
+                      label: '비료',
+                      sub: '밑거름·추비',
+                      icon: FlaskConical,
+                      topBarCls: 'bg-[#6E6235]',
+                      iconActiveCls: 'bg-[#6E6235]/12 text-[#5A4F28]',
+                      textActiveCls: 'text-[#4A401E]',
+                    },
+                    {
+                      key: 'NUTRIENT' as const,
+                      label: '영양제',
+                      sub: '칼슘·활력',
+                      icon: Sparkles,
+                      topBarCls: 'bg-[#2E7D78]',
+                      iconActiveCls: 'bg-[#2E7D78]/12 text-[#1F635E]',
+                      textActiveCls: 'text-[#18524E]',
+                    },
+                    {
+                      key: 'PESTICIDE' as const,
+                      label: '병해충방지제',
+                      sub: '살균·친환경',
+                      icon: ShieldAlert,
+                      topBarCls: 'bg-[#E57368]',
+                      iconActiveCls: 'bg-[#E57368]/15 text-[#C6463B]',
+                      textActiveCls: 'text-[#B5382D]',
+                    },
+                    {
+                      key: 'SEED' as const,
+                      label: '씨',
+                      sub: '보증종자',
+                      icon: Package,
+                      topBarCls: 'bg-[#C88A2B]',
+                      iconActiveCls: 'bg-[#C88A2B]/15 text-[#9E6814]',
+                      textActiveCls: 'text-[#87570D]',
+                    },
+                    {
+                      key: 'SEEDLING' as const,
+                      label: '모종',
+                      sub: '우량건묘',
+                      icon: Sprout,
+                      topBarCls: 'bg-[#2E7D32]',
+                      iconActiveCls: 'bg-[#2E7D32]/12 text-[#1B5E20]',
+                      textActiveCls: 'text-[#1B5E20]',
+                    },
                   ].map((tab) => {
+                    const TabIcon = tab.icon;
                     const isActive = mobileAgroCategoryTab === tab.key;
                     return (
                       <button
@@ -7225,16 +7243,117 @@ export default function UserIntroPage() {
                             q: userAgroKeyword,
                           });
                         }}
-                        className={`px-4 py-2 rounded-full text-[13px] font-extrabold whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 ${
+                        className={`relative flex flex-col items-center justify-center py-2.5 px-0.5 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
                           isActive
-                            ? 'bg-[#1B5E20] text-white shadow-xs ring-2 ring-emerald-700/20'
-                            : 'bg-[#E9ECEF] text-slate-700 hover:bg-slate-200'
+                            ? 'bg-white shadow-[0_-2px_8px_rgba(15,23,42,0.06)] z-10 -mb-[1px] pb-3 border-t border-x border-slate-200/90'
+                            : 'bg-[#D8E1DC]/75 hover:bg-[#DCE5E0] text-slate-600 border-t border-x border-transparent'
                         }`}
                       >
-                        {tab.label}
+                        {/* 활성 폴더 상단 컬러 포인트 바 */}
+                        <span
+                          className={`absolute top-0 inset-x-0 h-1 transition-opacity ${
+                            isActive ? `${tab.topBarCls} opacity-100` : 'opacity-0'
+                          }`}
+                        />
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 transition ${
+                            isActive
+                              ? tab.iconActiveCls
+                              : 'bg-white/60 text-slate-500'
+                          }`}
+                        >
+                          <TabIcon className="w-4 h-4 stroke-[2.2]" />
+                        </div>
+                        <span
+                          className={`text-[11.5px] leading-tight tracking-tighter whitespace-nowrap ${
+                            isActive
+                              ? `font-black ${tab.textActiveCls}`
+                              : 'font-bold text-slate-600'
+                          }`}
+                        >
+                          {tab.label}
+                        </span>
+                        <span
+                          className={`text-[9.5px] leading-none mt-0.5 tracking-tighter whitespace-nowrap ${
+                            isActive ? 'font-bold text-slate-500' : 'font-medium text-slate-400'
+                          }`}
+                        >
+                          {tab.sub}
+                        </span>
                       </button>
                     );
                   })}
+                </div>
+
+                {/* 폴더 탭과 하나로 이어지는 하단 헤더 패널 (현재 선택 카테고리 안내 & 검색창) */}
+                <div className="bg-white rounded-b-2xl px-4 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.04)] border border-slate-200/90 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-[#1B5E20] shrink-0" />
+                      <span className="font-extrabold text-slate-900 truncate">
+                        {mobileAgroCategoryTab === 'FERTILIZER'
+                          ? '비료 (유기질퇴비·복합·웃거름·완효성)'
+                          : mobileAgroCategoryTab === 'NUTRIENT'
+                          ? '영양제 (칼슘·발근·비대·생리활성)'
+                          : mobileAgroCategoryTab === 'PESTICIDE'
+                          ? '병해충방지제 (살균·살충·유기농자재)'
+                          : mobileAgroCategoryTab === 'SEED'
+                          ? '씨 (발아율 보증 우량 종자·씨앗)'
+                          : mobileAgroCategoryTab === 'SEEDLING'
+                          ? '모종 (외기순화 트레이 건묘·접목묘)'
+                          : '전체 농작물·농자재 통합 리스트'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 shrink-0">
+                      {userAgroResult.total}개 품목
+                    </span>
+                  </div>
+
+                  {/* 돋보기 클릭 시 열리는 심플 검색바 */}
+                  {showMobileAgroSearch && (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        executeUserAgroMaterialSearch({
+                          category: mobileAgroCategoryTab,
+                          q: userAgroKeyword,
+                        });
+                      }}
+                      className="flex items-center gap-2 pt-0.5"
+                    >
+                      <div className="relative flex-1">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                        <input
+                          type="text"
+                          value={userAgroKeyword}
+                          onChange={(e) => setUserAgroKeyword(e.target.value)}
+                          placeholder="비료, 영양제, 병해충방지제, 씨, 모종 검색..."
+                          className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#1B5E20] focus:outline-none"
+                        />
+                        {userAgroKeyword && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUserAgroKeyword('');
+                              executeUserAgroMaterialSearch({
+                                category: mobileAgroCategoryTab,
+                                q: '',
+                              });
+                            }}
+                            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700 p-0.5"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        className="px-3.5 py-2 rounded-xl bg-[#1B5E20] text-white text-xs font-extrabold shrink-0 cursor-pointer"
+                      >
+                        검색
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
 
@@ -11008,8 +11127,8 @@ export default function UserIntroPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setMobileAgroCategoryTab('FERTILIZER');
                   setActiveMenu('농작물 구매');
-                  setMobileAgroCategoryTab('ALL');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
                 className="flex flex-col items-center justify-center gap-1 cursor-pointer group"
