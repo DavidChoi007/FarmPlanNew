@@ -17025,116 +17025,115 @@ export default function AdminDashboardPage() {
                                 key={item.material_id}
                                 className="p-5 hover:bg-emerald-50/30 transition flex flex-col lg:flex-row gap-5 items-start lg:items-center justify-between"
                               >
-                                {/* 좌측: 순번 + 썸네일 이미지 1개 */}
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <span className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-extrabold text-[11px] flex items-center justify-center shrink-0">
-                                    {rowNumber}
-                                  </span>
+                                {/* 좌측 썸네일 + 중앙(제품명 및 규격·가격·할인·적립포인트 영역) */}
+                                <div className="flex items-start sm:items-center gap-4 sm:gap-5 flex-1 min-w-0 w-full">
+                                  <div className="flex items-center gap-3 shrink-0">
+                                    <span className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-extrabold text-[11px] flex items-center justify-center shrink-0">
+                                      {rowNumber}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedAgroDetail(item);
+                                        setActiveAgroGalleryImg(detailImgs[0]);
+                                      }}
+                                      className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden shadow-xs group cursor-pointer shrink-0"
+                                      title="클릭하여 상세 페이지 보기 (세부이미지 4개 + 제품 세부설명 이미지)"
+                                    >
+                                      <img
+                                        src={thumbUrl}
+                                        alt={item.product_name}
+                                        className="w-full h-full object-contain group-hover:scale-105 transition"
+                                      />
+                                      <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
+                                        썸네일
+                                      </span>
+                                    </button>
+                                  </div>
+
+                                  <div className="flex-1 min-w-0 space-y-1.5">
+                                    <div className="text-base font-extrabold text-slate-900 leading-snug break-keep">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedAgroDetail(item);
+                                          setActiveAgroGalleryImg(detailImgs[0]);
+                                        }}
+                                        className="hover:text-emerald-700 hover:underline text-left cursor-pointer"
+                                      >
+                                        [{item.manufacturer || '대유'}] {item.product_name}
+                                      </button>
+                                    </div>
+
+                                    <div className="space-y-1 pt-0.5">
+                                      <div className="text-xs font-bold text-slate-600">
+                                        규격 {item.unit_spec || item.weight_spec || '20Kg'} ·{' '}
+                                        <span className="text-emerald-700">{item.stock_status || '정상판매'}</span>
+                                      </div>
+                                      <div className="text-xs text-slate-400">
+                                        표준소비자가격:{' '}
+                                        <span className="line-through font-semibold">
+                                          ₩{Number(item.retail_price || 0).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-extrabold text-xs">
+                                          {item.discount_rate ??
+                                            (item.retail_price > item.unit_price
+                                              ? Number((((item.retail_price - item.unit_price) / item.retail_price) * 100).toFixed(1))
+                                              : 0)}
+                                          % 할인
+                                        </span>
+                                        <span className="text-lg font-extrabold text-slate-900">
+                                          ₩{Number(item.unit_price || 0).toLocaleString()}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700">
+                                          적립포인트: +
+                                          {Number(
+                                            item.reward_points ?? Math.round(Number(item.unit_price || 0) * 0.02)
+                                          ).toLocaleString()}
+                                          P
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 우측: 상세 페이지 보기/수정/삭제 버튼 */}
+                                <div className="flex items-center justify-end w-full lg:w-auto gap-1.5 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setSelectedAgroDetail(item);
                                       setActiveAgroGalleryImg(detailImgs[0]);
                                     }}
-                                    className="relative w-28 h-28 rounded-2xl border border-slate-200 bg-slate-50 overflow-hidden shadow-xs group cursor-pointer shrink-0"
-                                    title="클릭하여 상세 페이지 보기 (세부이미지 4개 + 제품 세부설명 이미지)"
+                                    className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xs transition cursor-pointer"
                                   >
-                                    <img
-                                      src={thumbUrl}
-                                      alt={item.product_name}
-                                      className="w-full h-full object-contain group-hover:scale-105 transition"
-                                    />
-                                    <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
-                                      썸네일
-                                    </span>
+                                    상세 페이지 보기
                                   </button>
-                                </div>
-
-                                {/* 중앙: 제품명 필수 영역 */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-base font-extrabold text-slate-900 leading-snug break-keep">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedAgroDetail(item);
-                                        setActiveAgroGalleryImg(detailImgs[0]);
-                                      }}
-                                      className="hover:text-emerald-700 hover:underline text-left cursor-pointer"
-                                    >
-                                      [{item.manufacturer || '대유'}] {item.product_name}
-                                    </button>
-                                  </div>
-                                </div>
-
-                                {/* 우측: 표준소비자가격 · 할인가격 · 할인율 · 적립포인트 · 상세 페이지 보기/수정/삭제 버튼 */}
-                                <div className="flex flex-row lg:flex-col items-center lg:items-end justify-between w-full lg:w-auto gap-3 shrink-0 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                                  <div className="text-left lg:text-right space-y-0.5">
-                                    <div className="text-[11px] font-bold text-slate-500">
-                                      규격 {item.unit_spec || item.weight_spec || '20Kg'} ·{' '}
-                                      <span className="text-emerald-700">{item.stock_status || '정상판매'}</span>
-                                    </div>
-                                    <div className="text-[11px] text-slate-400">
-                                      표준소비자가격:{' '}
-                                      <span className="line-through font-semibold">
-                                        ₩{Number(item.retail_price || 0).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center lg:justify-end gap-1.5">
-                                      <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-extrabold text-xs">
-                                        {item.discount_rate ??
-                                          (item.retail_price > item.unit_price
-                                            ? Number((((item.retail_price - item.unit_price) / item.retail_price) * 100).toFixed(1))
-                                            : 0)}
-                                        % 할인
-                                      </span>
-                                      <span className="text-lg font-extrabold text-slate-900">
-                                        ₩{Number(item.unit_price || 0).toLocaleString()}
-                                      </span>
-                                    </div>
-                                    <div className="text-[11px] font-bold text-amber-700">
-                                      적립포인트: +
-                                      {Number(
-                                        item.reward_points ?? Math.round(Number(item.unit_price || 0) * 0.02)
-                                      ).toLocaleString()}
-                                      P
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedAgroDetail(item);
-                                        setActiveAgroGalleryImg(detailImgs[0]);
-                                      }}
-                                      className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xs transition cursor-pointer"
-                                    >
-                                      상세 페이지 보기
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setAgroForm({
-                                          ...item,
-                                          main_type: resolveFertilizerMainType(item.sub_type, item.main_type),
-                                        });
-                                        setAgroFormMode('edit');
-                                        setIsAgroFormModalOpen(true);
-                                      }}
-                                      className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                                    >
-                                      <Edit3 className="w-3.5 h-3.5" />
-                                      수정
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteAgroMaterial(item.material_id, item.product_name)}
-                                      className="px-2.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      삭제
-                                    </button>
-                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setAgroForm({
+                                        ...item,
+                                        main_type: resolveFertilizerMainType(item.sub_type, item.main_type),
+                                      });
+                                      setAgroFormMode('edit');
+                                      setIsAgroFormModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteAgroMaterial(item.material_id, item.product_name)}
+                                    className="px-2.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    삭제
+                                  </button>
                                 </div>
                               </div>
                             );
