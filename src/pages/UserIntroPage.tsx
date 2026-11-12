@@ -2714,34 +2714,19 @@ export default function UserIntroPage() {
       >
         <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
         <div className="max-w-[1600px] w-full mx-auto px-2.5 sm:px-8 xl:px-10 h-14 sm:h-20 flex items-center justify-between gap-1.5 sm:gap-4">
-          {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 가로 메뉴 독(Dock) */}
+          {/* 좌측: 로고(로그인 버튼과 동일한 38px 높이) + FarmPlan 브랜드명 + PC 전용 가로 메뉴 독(Dock) */}
           <div className="flex items-center gap-1.5 sm:gap-5 xl:gap-8 min-w-0">
-            {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 (고령자 친화 38px 균일 높이 & 굵은 폰트) */}
-            <button
-              type="button"
-              onClick={() => setIsMobileGnbDrawerOpen(true)}
-              aria-label="전체 메뉴 열기"
-              className="lg:hidden inline-flex items-center justify-center gap-1 px-2.5 min-[390px]:px-3 h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] min-[390px]:text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
-            >
-              <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
-                <span className="block h-0.5 w-full bg-white rounded-full" />
-                <span className="block h-0.5 w-full bg-white rounded-full" />
-                <span className="block h-0.5 w-full bg-white rounded-full" />
-              </span>
-              <span>메뉴</span>
-            </button>
-
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="h-[38px] sm:h-auto flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0 cursor-pointer group text-left whitespace-nowrap"
+              className="h-[38px] sm:h-10 flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-1 sm:ring-2 ring-emerald-100 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
-                <Sprout className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2.3]" />
+              <div className="w-[38px] h-[38px] sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-1 sm:ring-2 ring-emerald-100 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
+                <Sprout className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.3]" />
               </div>
-              <div className="flex flex-col justify-center">
+              <div className="h-[38px] sm:h-10 flex flex-col justify-center">
                 <div className="flex items-center gap-1">
-                  <span className="font-black text-[16px] min-[380px]:text-[17px] sm:text-[24px] tracking-tight block leading-none whitespace-nowrap">
+                  <span className="font-black text-[18px] min-[390px]:text-[19.5px] sm:text-[24px] tracking-tight block leading-none whitespace-nowrap">
                     <span className="text-[#063820] group-hover:text-emerald-800 transition">Farm</span>
                     <span className="text-[#059669] group-hover:text-emerald-500 transition">Plan</span>
                   </span>
@@ -2819,7 +2804,7 @@ export default function UserIntroPage() {
             </nav>
           </div>
 
-          {/* 우측: 로그인 전에는 [로그인] / [회원가입]만 표시, 로그인 후에만 회원 이름(배철민 님) 배지 표시 (모바일 38px 균일 높이 & 고령자 친화 폰트) */}
+          {/* 우측: [로그인] + [회원가입] + [모바일 우측 슬라이드 메뉴 버튼] (모두 38px 균일 높이 & 고령자 친화 폰트) */}
           <div className="flex items-center gap-1 min-[390px]:gap-1.5 sm:gap-2 shrink-0">
             {loggedInUser.isLoggedIn ? (
               <>
@@ -2875,6 +2860,22 @@ export default function UserIntroPage() {
                 </button>
               </>
             )}
+
+            {/* 모바일 환경 전용: 회원가입 우측에 배치되어 우측에서 좌측으로 나오는 슬라이드 메뉴 열기 버튼 */}
+            <button
+              type="button"
+              onClick={() => setIsMobileGnbDrawerOpen(true)}
+              aria-label="전체 메뉴 열기"
+              className="lg:hidden inline-flex items-center justify-center gap-1 px-2.5 min-[390px]:px-3 h-[38px] sm:h-10 rounded-xl bg-[#063820] hover:bg-emerald-900 text-white text-[13px] min-[390px]:text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
+            >
+              <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+                <span className="block h-0.5 w-full bg-white rounded-full" />
+              </span>
+              <span>메뉴</span>
+            </button>
+
             <Link
               to="/admin"
               className="hidden sm:inline-flex items-center justify-center gap-1 h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
@@ -2886,7 +2887,7 @@ export default function UserIntroPage() {
         </div>
       </header>
 
-      {/* ==================== 모바일 전용 좌측 슬라이드 PC버전 전체 메뉴 드로어 ==================== */}
+      {/* ==================== 모바일 전용 우측→좌측 슬라이드 전체 메뉴 드로어 ==================== */}
       {isMobileGnbDrawerOpen && (
         <div
           onClick={() => setIsMobileGnbDrawerOpen(false)}
@@ -2895,8 +2896,8 @@ export default function UserIntroPage() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-white shadow-2xl border-r border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
-          isMobileGnbDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 right-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+          isMobileGnbDrawerOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         style={{
           paddingTop: isLegacyAndroidWebView
