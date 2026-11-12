@@ -3073,8 +3073,8 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* MODULE 3-A: 다크 에메랄드 SMART FARM ENGINE 3단계 핵심 강점 도식 카드 (PC에서는 우측에 실시간 내 농지 맞춤 재배일정 브리핑 패널 동시 제공) */}
-            <section className="rounded-[26px] sm:rounded-3xl bg-gradient-to-b from-[#084227] via-[#063820] to-[#042816] border border-[#155E3A] p-4 sm:p-7 lg:p-8 shadow-[0_10px_28px_rgba(4,40,22,0.2)] relative overflow-hidden">
+            {/* MODULE 3-A: 다크 에메랄드 SMART FARM ENGINE 3단계 핵심 강점 도식 카드 (모바일 고령자 친화 대형 가독성 폰트 & PC 실시간 브리핑 동시 제공) */}
+            <section className="rounded-[26px] sm:rounded-3xl bg-gradient-to-b from-[#084227] via-[#063820] to-[#042816] border border-[#155E3A] px-3.5 py-5 sm:p-7 lg:p-8 shadow-[0_10px_28px_rgba(4,40,22,0.2)] relative overflow-hidden">
               {/* 은은한 배경 빛 효과 */}
               <div
                 className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 lg:w-[520px] h-36 lg:h-48 rounded-full bg-emerald-400/15 blur-2xl"
@@ -3084,15 +3084,15 @@ export default function UserIntroPage() {
               {/* 상단 SMART FARM ENGINE 배지 & 메인 헤드라인 */}
               <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left">
                 <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-                  <span className="inline-flex items-center px-3.5 py-1 rounded-full bg-[#22C55E] text-[#032211] font-black text-[11px] sm:text-xs tracking-wider uppercase shadow-xs">
+                  <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#22C55E] text-[#032211] font-black text-[13px] sm:text-xs tracking-wider uppercase shadow-xs">
                     SMART FARM ENGINE
                   </span>
                   <span className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-emerald-400/30 text-emerald-200 text-xs font-extrabold">
                     <span>📍 기후 빅데이터 · 적산온도(GDD/PGDD) · 토양검정 통합 알고리즘</span>
                   </span>
                 </div>
-                <div className="w-full flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mt-2.5 sm:mt-3">
-                  <h1 className="text-[19px] sm:text-3xl lg:text-[32px] font-black text-white tracking-tight leading-[1.35] break-keep">
+                <div className="w-full flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mt-3">
+                  <h1 className="text-[21px] min-[390px]:text-[22.5px] sm:text-3xl lg:text-[32px] font-black text-white tracking-tight leading-[1.35] break-keep">
                     <span className="block">기후 데이터로 세우고,</span>
                     <span className="block">실시간 날씨로 고치고, 맞춤 농자재까지!</span>
                   </h1>
@@ -3103,26 +3103,26 @@ export default function UserIntroPage() {
                 </div>
               </div>
 
-              <div className="relative z-10 mt-4 sm:mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-stretch">
+              <div className="relative z-10 mt-4.5 sm:mt-6 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-7 items-stretch">
                 {/* 3단계 타임라인 도식 (STEP 01 ~ STEP 03) */}
-                <div className="lg:col-span-7 relative space-y-2.5 sm:space-y-3 flex flex-col justify-between">
+                <div className="lg:col-span-7 relative space-y-3 sm:space-y-3.5 flex flex-col justify-between">
                   {/* 좌측 수직 연결 라인 */}
                   <div
-                    className="pointer-events-none absolute left-[11px] sm:left-[15px] top-[34px] bottom-[34px] w-[2px] bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#34D399]"
+                    className="pointer-events-none absolute left-[9px] sm:left-[15px] top-[38px] bottom-[38px] w-[2px] bg-gradient-to-b from-[#34D399] via-[#10B981] to-[#34D399]"
                     aria-hidden="true"
                   />
 
                   {/* STEP 01 */}
                   <div className="flex items-center gap-2 sm:gap-3.5">
-                    <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <div className="relative z-10 w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/90 border border-[#2A7A54]/85 px-3.5 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2.5 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
+                        <div className="text-[14.5px] min-[390px]:text-[15.5px] sm:text-base font-black text-[#4ADE80] tracking-tight leading-snug break-keep">
                           STEP 01 · 스마트 데이터 일정 수립
                         </div>
-                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[17.5px] min-[390px]:text-[18.5px] sm:text-xl font-black text-white tracking-tight leading-[1.3] mt-1 break-keep">
                           기후 빅데이터 · 적산온도(GDD) 맞춤 산출
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3135,8 +3135,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 위성 + 새싹 3D 일러스트 아이콘 */}
-                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
                           {/* 토양 둔덕 */}
                           <ellipse cx="26" cy="46" rx="16" ry="4.5" fill="#78350F" />
                           <ellipse cx="26" cy="45" rx="13" ry="3.2" fill="#92400E" />
@@ -3172,15 +3172,15 @@ export default function UserIntroPage() {
 
                   {/* STEP 02 */}
                   <div className="flex items-center gap-2 sm:gap-3.5">
-                    <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <div className="relative z-10 w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/90 border border-[#2A7A54]/85 px-3.5 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2.5 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
+                        <div className="text-[14.5px] min-[390px]:text-[15.5px] sm:text-base font-black text-[#4ADE80] tracking-tight leading-snug break-keep">
                           STEP 02 · 실시간 기후 변동 자동 업데이트
                         </div>
-                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[17.5px] min-[390px]:text-[18.5px] sm:text-xl font-black text-white tracking-tight leading-[1.3] mt-1 break-keep">
                           이상기후 감지 · 작업일 실시간 보정
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3193,8 +3193,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 기상 레이더 3D 일러스트 아이콘 */}
-                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
                           <circle cx="28" cy="28" r="20" fill="#064E3B" stroke="#34D399" strokeWidth="2" />
                           <circle cx="28" cy="28" r="14" stroke="#10B981" strokeWidth="1.2" strokeDasharray="3 2" />
                           <circle cx="28" cy="28" r="7.5" stroke="#10B981" strokeWidth="1.2" />
@@ -3219,15 +3219,15 @@ export default function UserIntroPage() {
 
                   {/* STEP 03 */}
                   <div className="flex items-center gap-2 sm:gap-3.5">
-                    <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
+                    <div className="relative z-10 w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/90 border border-[#2A7A54]/85 px-3.5 py-3.5 sm:px-5 sm:py-4 flex items-center justify-between gap-2.5 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
+                        <div className="text-[14.5px] min-[390px]:text-[15.5px] sm:text-base font-black text-[#4ADE80] tracking-tight leading-snug break-keep">
                           STEP 03 · 과정별 맞춤 농자재 추천
                         </div>
-                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[17.5px] min-[390px]:text-[18.5px] sm:text-xl font-black text-white tracking-tight leading-[1.3] mt-1 break-keep">
                           생육단계별 비료·영양제·방제 처방
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3240,8 +3240,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 새싹 + 맞춤 농자재 보틀 3D 일러스트 아이콘 */}
-                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
                           {/* 화분/토양 */}
                           <rect x="10" y="34" width="16" height="12" rx="3" fill="#A16207" />
                           {/* 줄기 및 큰 새싹 */}
