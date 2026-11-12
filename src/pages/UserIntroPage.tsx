@@ -7304,49 +7304,6 @@ export default function UserIntroPage() {
 
               return (
                 <section className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-                  <div className="p-5 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
-                    <div>
-                      <h3 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2 flex-wrap">
-                        <span>
-                          {activeMenu === '비료'
-                            ? '비료 전문 판매점 등록 제품 리스트'
-                            : activeMenu === '영양제'
-                            ? '영양제 전문 판매점 등록 제품 리스트'
-                            : activeMenu === '병해충관리제'
-                            ? '병해충관리제 전문 판매점 등록 제품 리스트'
-                            : activeMenu === '씨'
-                            ? '씨 (종자) 전문 판매점 등록 제품 리스트'
-                            : '모종 (육묘) 전문 판매점 등록 제품 리스트'}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs bg-emerald-100 text-emerald-800 font-extrabold">
-                          검색결과 {totalItems}개 제품
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs bg-slate-900 text-emerald-300 font-extrabold">
-                          1페이지 20개 · {safePage} / {totalPages} 페이지 ({startRowNum}~{endRowNum}번)
-                        </span>
-                      </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        제품 썸네일이나 제품명 또는 <strong>[상세 페이지 보기]</strong> 버튼을 클릭하면 세부 이미지 4장과 영양소 첨가비·제품 상세설명 이미지를 확인할 수 있습니다.
-                      </p>
-                    </div>
-                    {userAgroResult.summary && (
-                      <div className="flex items-center gap-2 flex-wrap text-xs">
-                        <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 font-bold text-slate-700">
-                          친환경·유기농 공시:{' '}
-                          <strong className="text-emerald-700">
-                            {userAgroResult.summary.organic_count || 0}건
-                          </strong>
-                        </span>
-                        <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 font-bold text-slate-700">
-                          평균 할인가:{' '}
-                          <strong className="text-slate-900">
-                            ₩{Number(userAgroResult.summary.avg_price || 0).toLocaleString()}
-                          </strong>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
                   {isUserAgroLoading ? (
                     <div className="py-16 text-center text-slate-400 font-semibold text-xs">
                       관리자 페이지 농자재 DB에서 {activeMenu} 제품 목록을 불러오는 중입니다...
