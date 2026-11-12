@@ -7424,16 +7424,19 @@ export default function UserIntroPage() {
                                   </div>
 
                                   <div className="space-y-1 pt-0.5">
-                                    <div className="text-xs font-bold text-slate-600">
-                                      규격 {item.unit_spec || item.weight_spec || '20Kg'} ·{' '}
-                                      <span className="text-emerald-700">
-                                        {item.stock_status || '정상판매'}
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+                                      <span className="text-slate-400">
+                                        표준소비자가격:{' '}
+                                        <span className="line-through font-semibold">
+                                          ₩{Number(item.retail_price || 0).toLocaleString()}
+                                        </span>
                                       </span>
-                                    </div>
-                                    <div className="text-xs text-slate-400">
-                                      표준소비자가격:{' '}
-                                      <span className="line-through font-semibold">
-                                        ₩{Number(item.retail_price || 0).toLocaleString()}
+                                      <span className="text-slate-300">·</span>
+                                      <span className="font-bold text-slate-600">
+                                        규격 {item.unit_spec || item.weight_spec || '20Kg'} ·{' '}
+                                        <span className="text-emerald-700">
+                                          {item.stock_status || '정상판매'}
+                                        </span>
                                       </span>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
