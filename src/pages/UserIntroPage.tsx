@@ -3981,7 +3981,7 @@ export default function UserIntroPage() {
                 </button>
               </div>
 
-              {/* 5대 농자재 카테고리별 상세 추천 그리드 (5열 구성) */}
+              {/* 5대 농자재 카테고리별 상세 추천 그리드 (5열 구성 · 실물 제품 이미지 포함) */}
               <div className="grid grid-cols-5 gap-4">
                 {[
                   {
@@ -3993,19 +3993,23 @@ export default function UserIntroPage() {
                     badgeCls: 'bg-emerald-100 text-emerald-800',
                     items: [
                       {
-                        name: '맞춤 슈퍼배추 밑거름 특호',
+                        img: '/images/fertilizers/FERT-PRD-01-thumb.png',
+                        brand: '남해화학(주)',
+                        name: '슈퍼원예복합 밑거름 특호 20kg',
                         stage: '정식 10일전 밑거름',
                         spec: '완효성 N-P-K + 고토·붕소 함유',
                         dosage: '300평 기준 20kg × 3포',
-                        price: '18,500원',
+                        price: '21,500원',
                         match: '토양적합 99%',
                       },
                       {
-                        name: '엔케이(NK) 추비 전용 비료',
+                        img: '/images/fertilizers/FERT-PRD-02-thumb.png',
+                        brand: '(주)누보',
+                        name: '엔케이(NK) 마그네슘 추비특호 20kg',
                         stage: '정식 후 14·30일 웃거름',
-                        spec: '속효성 질소·칼리 생육촉진',
+                        spec: '속효성 질소·칼륨 생육·결구 촉진',
                         dosage: '300평 기준 20kg × 2포',
-                        price: '16,800원',
+                        price: '19,800원',
                         match: '생육적합 98%',
                       },
                     ],
@@ -4019,20 +4023,24 @@ export default function UserIntroPage() {
                     badgeCls: 'bg-teal-100 text-teal-800',
                     items: [
                       {
-                        name: '칼슘·붕소 결구강화 액상제',
+                        img: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+                        brand: '(주)누보',
+                        name: '엔플러스 튼튼칼슘 결구강화제',
                         stage: '결구초기 · 엽면시비',
                         spec: '꿀통배추·석회결핍(팁번) 예방',
-                        dosage: '500ml (1,000배 희석 살포)',
-                        price: '22,000원',
+                        dosage: '500ml (500~1,000배 희석)',
+                        price: '16,800원',
                         match: '결구필수 99%',
                       },
                       {
-                        name: '아미노산 뿌리발근 활력제',
+                        img: '/images/fertilizers/MAT-NUTR-03-thumb.png',
+                        brand: '(주)누보',
+                        name: '엔플러스 참편한 아미노 발근제',
                         stage: '정식 직후 · 초기활착기',
                         spec: '세근 발달 및 고온 스트레스 완화',
-                        dosage: '1L (관주 또는 500배 엽면)',
-                        price: '24,500원',
-                        match: '활착강화 97%',
+                        dosage: '500ml (관주·육묘침지 겸용)',
+                        price: '15,900원',
+                        match: '활착강화 98%',
                       },
                     ],
                   },
@@ -4045,19 +4053,23 @@ export default function UserIntroPage() {
                     badgeCls: 'bg-rose-100 text-rose-800',
                     items: [
                       {
-                        name: '배추 무름병·뿌리혹병 입제',
-                        stage: '정식전 토양혼화 · 강우전후',
-                        spec: '고온다습·강우 예보 연동 예방',
-                        dosage: '300평 기준 3kg × 2봉',
-                        price: '19,500원',
+                        img: '/images/fertilizers/MAT-PEST-03-thumb.png',
+                        brand: '인바이오 / 누보',
+                        name: '펀지해머 무름병·노균병 살균제',
+                        stage: '결구기 · 강우전후 방제',
+                        spec: '고온다습·강우 예보 연동 예방·치료',
+                        dosage: '500ml (1,000배 경엽살포)',
+                        price: '21,500원',
                         match: '기상연동 99%',
                       },
                       {
-                        name: '진딧물·배추좀나방 친환경제',
-                        stage: '생육중기 · 해충 발생초기',
-                        spec: '유기농업자재 · 수확 전 안전사용',
-                        dosage: '500ml (1,000배 경엽처리)',
-                        price: '21,000원',
+                        img: '/images/fertilizers/MAT-PEST-06-thumb.png',
+                        brand: '(주)누보',
+                        name: '엔플러스 해충박살 친환경제',
+                        stage: '생육중후기 · PLS 안전방제',
+                        spec: '유기농업자재 공시 · 나방·진딧물 방제',
+                        dosage: '250ml (500~1,000배 경엽처리)',
+                        price: '16,500원',
                         match: '안전방제 98%',
                       },
                     ],
@@ -4071,18 +4083,22 @@ export default function UserIntroPage() {
                     badgeCls: 'bg-amber-100 text-amber-800',
                     items: [
                       {
+                        img: '/images/fertilizers/MAT-SEED-01-thumb.jpg',
+                        brand: '농우바이오',
                         name: '가을배추 불암3호 코팅종자',
-                        stage: '파종적온 18~21℃ 맞춤',
-                        spec: '내병성·결구력 우수 대표 가을품종',
-                        dosage: '2,000립 (300평 정식 기준)',
+                        stage: '파종적온 20~25℃ 맞춤',
+                        spec: 'CR 무사마귀병 내병계 · 결구력 우수',
+                        dosage: '2,000립 (약 7g / 1봉)',
                         price: '15,000원',
                         match: '지역추천 99%',
                       },
                       {
-                        name: '청명가을 고품질 배추종자',
+                        img: '/images/fertilizers/MAT-SEED-02-thumb.jpg',
+                        brand: '팜한농 (흥농씨앗)',
+                        name: '휘파람골드 고품질 배추종자',
                         stage: '중부·남부 8월초 파종적기',
-                        spec: '노란 속잎 · 김장용 고당도 품종',
-                        dosage: '2,000립 (발아율 95% 보증)',
+                        spec: '뿌리혹병·노균병 복합내병성 대통배추',
+                        dosage: '2,000립 (발아보증 / 1봉)',
                         price: '16,500원',
                         match: '품종인기 98%',
                       },
@@ -4092,24 +4108,28 @@ export default function UserIntroPage() {
                     catKey: 'SEEDLING' as const,
                     menuName: '모종',
                     title: '규격 모종 추천',
-                    subtitle: '105구 트레이 · 건묘 예약',
+                    subtitle: '128구·72구 트레이 · 건묘 예약',
                     headerBg: 'bg-green-50 border-green-200 text-green-900',
                     badgeCls: 'bg-green-100 text-green-800',
                     items: [
                       {
-                        name: '불암3호 105구 트레이 건묘',
+                        img: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
+                        brand: '한팜스마트육묘장',
+                        name: '불암3호 128구 트레이 건묘',
                         stage: '08/25(화) 정식일 맞춤출하',
-                        spec: '25일 표준 육묘 · 뿌리분 활착 최상',
-                        dosage: '300평 기준 105구 × 10판',
-                        price: '9,500원/판',
+                        spec: '25일 표준 육묘 · 외기순화 · 뿌리활착 최상',
+                        dosage: '128구 트레이 / 1판 (120주↑)',
+                        price: '13,500원/판',
                         match: '정식일연동 99%',
                       },
                       {
-                        name: '해남1호 월동배추 규격모종',
+                        img: '/images/fertilizers/MAT-SDL-04-thumb.jpg',
+                        brand: '한팜스마트육묘장',
+                        name: '달콤 양배추·배추 규격모종',
                         stage: '09/10(목) 남부 정식 맞춤',
-                        spec: '내한성 강화 · 바이러스 무병 건묘',
-                        dosage: '300평 기준 105구 × 10판',
-                        price: '9,800원/판',
+                        spec: '내한성 강화 · 대립포트 무병 건묘',
+                        dosage: '72구 대립 트레이 / 1판',
+                        price: '13,800원/판',
                         match: '건묘보증 98%',
                       },
                     ],
@@ -4138,7 +4158,7 @@ export default function UserIntroPage() {
                         </button>
                       </div>
 
-                      {/* 카테고리별 추천 상품 2종 리스트 */}
+                      {/* 카테고리별 추천 상품 2종 리스트 (실물 제품 썸네일 이미지 포함) */}
                       <div className="p-3.5 space-y-3">
                         {catGroup.items.map((prod, pIdx) => (
                           <div
@@ -4147,8 +4167,9 @@ export default function UserIntroPage() {
                               setMobileAgroCategoryTab(catGroup.catKey);
                               setActiveMenu(catGroup.menuName);
                             }}
-                            className="rounded-xl bg-white hover:bg-emerald-50/40 border border-slate-200/85 hover:border-emerald-300 p-3.5 space-y-2 transition cursor-pointer shadow-2xs"
+                            className="group rounded-xl bg-white hover:bg-emerald-50/40 border border-slate-200/85 hover:border-emerald-300 p-3 space-y-2.5 transition cursor-pointer shadow-2xs"
                           >
+                            {/* 상단 생육단계 & 매칭율 배지 */}
                             <div className="flex items-center justify-between gap-1.5">
                               <span className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold ${catGroup.badgeCls}`}>
                                 {prod.stage}
@@ -4157,12 +4178,30 @@ export default function UserIntroPage() {
                                 {prod.match}
                               </span>
                             </div>
-                            <div className="text-[15px] font-black text-slate-900 leading-snug break-keep">
-                              {prod.name}
+
+                            {/* 제품 실물 썸네일 이미지 박스 */}
+                            <div className="relative w-full h-36 rounded-xl bg-white border border-slate-100 group-hover:border-emerald-200 overflow-hidden flex items-center justify-center p-2">
+                              <img
+                                src={prod.img}
+                                alt={prod.name}
+                                className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
+                              />
+                              <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-slate-900/75 backdrop-blur-xs text-white text-[10px] font-bold">
+                                {prod.brand}
+                              </span>
                             </div>
-                            <div className="text-xs font-semibold text-slate-600 leading-snug break-keep">
-                              {prod.spec}
+
+                            {/* 제품명 및 핵심 스펙 */}
+                            <div className="space-y-1">
+                              <div className="text-[14.5px] font-black text-slate-900 leading-snug break-keep group-hover:text-emerald-800 transition-colors">
+                                {prod.name}
+                              </div>
+                              <div className="text-xs font-semibold text-slate-600 leading-snug break-keep">
+                                {prod.spec}
+                              </div>
                             </div>
+
+                            {/* 하단 권장량 및 단가 */}
                             <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
                               <span className="text-[11px] font-bold text-slate-500 truncate">
                                 {prod.dosage}
