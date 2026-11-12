@@ -1772,6 +1772,18 @@ export default function UserIntroPage() {
         seedCategories: res.seedCategories || prev.seedCategories,
         seedlingCategories: res.seedlingCategories || prev.seedlingCategories,
       }));
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              fertilizerCategoryCodes: res.fertilizerCategories || prev.fertilizerCategoryCodes,
+              nutrientCategoryCodes: res.nutrientCategories || prev.nutrientCategoryCodes,
+              pesticideCategoryCodes: res.pesticideCategories || prev.pesticideCategoryCodes,
+              seedCategoryCodes: res.seedCategories || prev.seedCategoryCodes,
+              seedlingCategoryCodes: res.seedlingCategories || prev.seedlingCategoryCodes,
+            }
+          : prev
+      );
     } catch {
       // ignore
     } finally {
@@ -2037,6 +2049,21 @@ export default function UserIntroPage() {
       });
     }
   }, [activeMenu]);
+
+  useEffect(() => {
+    const syncCategoriesOnFocusOrStorage = () => {
+      fetch('/api/overview')
+        .then((r) => r.json())
+        .then((res) => setData(res))
+        .catch(() => {});
+    };
+    window.addEventListener('focus', syncCategoriesOnFocusOrStorage);
+    window.addEventListener('storage', syncCategoriesOnFocusOrStorage);
+    return () => {
+      window.removeEventListener('focus', syncCategoriesOnFocusOrStorage);
+      window.removeEventListener('storage', syncCategoriesOnFocusOrStorage);
+    };
+  }, []);
 
   const handleSelectStageItem = (item: any) => {
     setSelectedStageItem(item);

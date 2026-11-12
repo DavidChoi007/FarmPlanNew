@@ -2903,16 +2903,7 @@ const server = http.createServer(async (req, res) => {
         totalPages,
         summary,
         subTypes,
-        fertilizerCategories:
-          category === 'NUTRIENT'
-            ? resolvedNutrCategories
-            : category === 'PESTICIDE'
-            ? resolvedPestCategories
-            : category === 'SEED'
-            ? resolvedSeedCategories
-            : category === 'SEEDLING'
-            ? resolvedSeedlingCategories
-            : resolvedFertCategories,
+        fertilizerCategories: resolvedFertCategories,
         nutrientCategories: resolvedNutrCategories,
         pesticideCategories: resolvedPestCategories,
         seedCategories: resolvedSeedCategories,

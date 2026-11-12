@@ -307,8 +307,144 @@ if (typeof window !== 'undefined') {
       });
     };
 
+    const DELETED_CAT_CODES_KEY = 'hanfarm_deleted_category_codes_v1';
+    const getDeletedCatCodeSet = (): Set<string> => {
+      try {
+        const raw = localStorage.getItem(DELETED_CAT_CODES_KEY);
+        if (!raw) return new Set();
+        const arr = JSON.parse(raw);
+        return new Set(Array.isArray(arr) ? arr.map(String) : []);
+      } catch {
+        return new Set();
+      }
+    };
+    const markCatCodeDeleted = (table: string, code: string) => {
+      try {
+        const s = getDeletedCatCodeSet();
+        s.add(`${table}:${String(code).trim()}`);
+        localStorage.setItem(DELETED_CAT_CODES_KEY, JSON.stringify([...s]));
+      } catch {
+        // ignore
+      }
+    };
+    const unmarkCatCodeDeleted = (table: string, code: string) => {
+      try {
+        const s = getDeletedCatCodeSet();
+        if (s.delete(`${table}:${String(code).trim()}`)) {
+          localStorage.setItem(DELETED_CAT_CODES_KEY, JSON.stringify([...s]));
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const mergeCategoryCodeSources = async (
+      table: string,
+      localList: any[],
+      remoteList: any[] | null
+    ): Promise<any[]> => {
+      const deletedSet = getDeletedCatCodeSet();
+      const safeLocal = (Array.isArray(localList) ? localList : []).filter((c: any) => {
+        const code = String(c?.category_code || c?.code || '').trim();
+        return code && !deletedSet.has(`${table}:${code}`);
+      });
+      const safeRemote = (Array.isArray(remoteList) ? remoteList : []).filter((c: any) => {
+        const code = String(c?.category_code || c?.code || '').trim();
+        return code && !deletedSet.has(`${table}:${code}`);
+      });
+      if (safeRemote.length === 0) return safeLocal;
+
+      const byCode = new Map<string, any>();
+      const remoteCodes = new Set<string>();
+      for (const r of safeRemote) {
+        const code = String(r.category_code || r.code || '').trim();
+        if (code) {
+          byCode.set(code, r);
+          remoteCodes.add(code);
+        }
+      }
+      const unsyncedLocals: any[] = [];
+      for (const l of safeLocal) {
+        const code = String(l.category_code || l.code || '').trim();
+        if (!code) continue;
+        const existing = byCode.get(code);
+        if (!existing) {
+          byCode.set(code, l);
+          unsyncedLocals.push(l);
+        } else if (Number(l._updatedAt || 0) > Number(existing._updatedAt || 0)) {
+          byCode.set(code, { ...existing, ...l });
+          unsyncedLocals.push({ ...existing, ...l });
+        }
+      }
+      if (unsyncedLocals.length > 0) {
+        await Promise.all(
+          unsyncedLocals.map((item) => {
+            const code = String(item.category_code || item.code || '').trim();
+            const name = String(item.category_name || item.sub_type_name || item.name || code).trim();
+            const desc = String(item.description ?? item.desc ?? '').trim();
+            const sortOrder = Number(item.sort_order) || 1;
+            return sbUpsert(
+              table,
+              {
+                category_code: code,
+                category_name: name,
+                description: desc,
+                sort_order: sortOrder,
+              },
+              'category_code'
+            );
+          })
+        );
+      }
+      return [...byCode.values()].sort(
+        (a: any, b: any) => Number(a.sort_order || 99) - Number(b.sort_order || 99)
+      );
+    };
+
     const syncOverviewAndAgroCategories = async (pullFromSupabase = false) => {
       const ov = (snap.overview = snap.overview || {});
+      try {
+        const savedOvRaw = localStorage.getItem(OVERVIEW_STORAGE_KEY);
+        if (savedOvRaw) {
+          const parsedSavedOv = JSON.parse(savedOvRaw);
+          const mergeLocalMemory = (memArr: any[], storageArr: any[]) => {
+            const a = Array.isArray(memArr) ? memArr : [];
+            const b = Array.isArray(storageArr) ? storageArr : [];
+            const map = new Map<string, any>();
+            for (const item of a) {
+              const code = String(item?.category_code || item?.code || '').trim();
+              if (code) map.set(code, item);
+            }
+            for (const item of b) {
+              const code = String(item?.category_code || item?.code || '').trim();
+              if (!code) continue;
+              const prev = map.get(code);
+              if (!prev || Number(item._updatedAt || 0) >= Number(prev._updatedAt || 0)) {
+                map.set(code, item);
+              }
+            }
+            return [...map.values()];
+          };
+          if (Array.isArray(parsedSavedOv?.seedCategoryCodes)) {
+            ov.seedCategoryCodes = mergeLocalMemory(ov.seedCategoryCodes, parsedSavedOv.seedCategoryCodes);
+          }
+          if (Array.isArray(parsedSavedOv?.seedlingCategoryCodes)) {
+            ov.seedlingCategoryCodes = mergeLocalMemory(ov.seedlingCategoryCodes, parsedSavedOv.seedlingCategoryCodes);
+          }
+          if (Array.isArray(parsedSavedOv?.fertilizerCategoryCodes)) {
+            ov.fertilizerCategoryCodes = mergeLocalMemory(ov.fertilizerCategoryCodes, parsedSavedOv.fertilizerCategoryCodes);
+          }
+          if (Array.isArray(parsedSavedOv?.nutrientCategoryCodes)) {
+            ov.nutrientCategoryCodes = mergeLocalMemory(ov.nutrientCategoryCodes, parsedSavedOv.nutrientCategoryCodes);
+          }
+          if (Array.isArray(parsedSavedOv?.pesticideCategoryCodes)) {
+            ov.pesticideCategoryCodes = mergeLocalMemory(ov.pesticideCategoryCodes, parsedSavedOv.pesticideCategoryCodes);
+          }
+        }
+      } catch {
+        // ignore localStorage read errors
+      }
+
       if (pullFromSupabase) {
         try {
           const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats] = await Promise.all([
@@ -318,21 +454,31 @@ if (typeof window !== 'undefined') {
             sbSelect('nutrient_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('pesticide_category_code', 'select=*&order=sort_order.asc'),
           ]);
-          if (Array.isArray(sbSeedCats) && sbSeedCats.length > 0) {
-            ov.seedCategoryCodes = sbSeedCats;
-          }
-          if (Array.isArray(sbSeedlingCats) && sbSeedlingCats.length > 0) {
-            ov.seedlingCategoryCodes = sbSeedlingCats;
-          }
-          if (Array.isArray(sbFertCats) && sbFertCats.length > 0) {
-            ov.fertilizerCategoryCodes = sbFertCats;
-          }
-          if (Array.isArray(sbNutrCats) && sbNutrCats.length > 0) {
-            ov.nutrientCategoryCodes = sbNutrCats;
-          }
-          if (Array.isArray(sbPestCats) && sbPestCats.length > 0) {
-            ov.pesticideCategoryCodes = sbPestCats;
-          }
+          ov.seedCategoryCodes = await mergeCategoryCodeSources(
+            'seed_category_code',
+            ov.seedCategoryCodes || snap.seed?.seedCategories || [],
+            sbSeedCats
+          );
+          ov.seedlingCategoryCodes = await mergeCategoryCodeSources(
+            'seedling_category_code',
+            ov.seedlingCategoryCodes || snap.seedling?.seedlingCategories || [],
+            sbSeedlingCats
+          );
+          ov.fertilizerCategoryCodes = await mergeCategoryCodeSources(
+            'fertilizer_category_code',
+            ov.fertilizerCategoryCodes || snap.fertilizer?.fertilizerCategories || [],
+            sbFertCats
+          );
+          ov.nutrientCategoryCodes = await mergeCategoryCodeSources(
+            'nutrient_category_code',
+            ov.nutrientCategoryCodes || snap.nutrient?.nutrientCategories || [],
+            sbNutrCats
+          );
+          ov.pesticideCategoryCodes = await mergeCategoryCodeSources(
+            'pesticide_category_code',
+            ov.pesticideCategoryCodes || snap.pesticide?.pesticideCategories || [],
+            sbPestCats
+          );
         } catch {
           // ignore network errors
         }
@@ -514,12 +660,7 @@ if (typeof window !== 'undefined') {
         pageSize,
         totalPages,
         subTypes: activeCategoryCodeList.map((c: any) => c.category_name || c.name),
-        fertilizerCategories:
-          cat === 'SEED'
-            ? ov.seedCategoryCodes
-            : cat === 'SEEDLING'
-            ? ov.seedlingCategoryCodes
-            : ov.fertilizerCategoryCodes,
+        fertilizerCategories: ov.fertilizerCategoryCodes,
         nutrientCategories: ov.nutrientCategoryCodes,
         pesticideCategories: ov.pesticideCategoryCodes,
         seedCategories: ov.seedCategoryCodes,
@@ -743,10 +884,13 @@ if (typeof window !== 'undefined') {
         ...body,
         main_type: resolveFertilizerMainType(body.sub_type_name || body.category_name || body.category_code, body.main_type),
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+        _updatedAt: Date.now(),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.fertilizerCategoryCodes = list;
+      unmarkCatCodeDeleted('fertilizer_category_code', item.category_code);
+      persistOverview(ov);
       await sbUpsert(
         'fertilizer_category_code',
         {
@@ -764,9 +908,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/fertilizer-category-codes/delete' && method === 'POST') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
+      markCatCodeDeleted('fertilizer_category_code', category_code);
       ov.fertilizerCategoryCodes = (ov.fertilizerCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
+      persistOverview(ov);
       await sbDelete('fertilizer_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
@@ -786,10 +932,13 @@ if (typeof window !== 'undefined') {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+        _updatedAt: Date.now(),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.nutrientCategoryCodes = list;
+      unmarkCatCodeDeleted('nutrient_category_code', item.category_code);
+      persistOverview(ov);
       await sbUpsert(
         'nutrient_category_code',
         {
@@ -807,9 +956,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/nutrient-category-codes/delete' && method === 'POST') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
+      markCatCodeDeleted('nutrient_category_code', category_code);
       ov.nutrientCategoryCodes = (ov.nutrientCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
+      persistOverview(ov);
       await sbDelete('nutrient_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
@@ -829,10 +980,13 @@ if (typeof window !== 'undefined') {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+        _updatedAt: Date.now(),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.pesticideCategoryCodes = list;
+      unmarkCatCodeDeleted('pesticide_category_code', item.category_code);
+      persistOverview(ov);
       await sbUpsert(
         'pesticide_category_code',
         {
@@ -850,9 +1004,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/pesticide-category-codes/delete' && method === 'POST') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
+      markCatCodeDeleted('pesticide_category_code', category_code);
       ov.pesticideCategoryCodes = (ov.pesticideCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
+      persistOverview(ov);
       await sbDelete('pesticide_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
@@ -873,10 +1029,12 @@ if (typeof window !== 'undefined') {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+        _updatedAt: Date.now(),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.seedCategoryCodes = list;
+      unmarkCatCodeDeleted('seed_category_code', item.category_code);
       if (snap.seed && Array.isArray(snap.seed.allItems) && body.category_name) {
         snap.seed.allItems = snap.seed.allItems.map((it: any) =>
           it.category_code === body.category_code || (prevName && it.sub_type === prevName)
@@ -885,6 +1043,7 @@ if (typeof window !== 'undefined') {
         );
         snap.seed.items = snap.seed.allItems;
       }
+      persistOverview(ov);
       await sbUpsert(
         'seed_category_code',
         {
@@ -902,9 +1061,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/seed-category-codes/delete' && method === 'POST') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
+      markCatCodeDeleted('seed_category_code', category_code);
       ov.seedCategoryCodes = (ov.seedCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
+      persistOverview(ov);
       await sbDelete('seed_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });
@@ -925,10 +1086,12 @@ if (typeof window !== 'undefined') {
         ...(idx >= 0 ? list[idx] : {}),
         ...body,
         sort_order: Number(body.sort_order) || (idx >= 0 ? list[idx].sort_order : list.length + 1),
+        _updatedAt: Date.now(),
       };
       if (idx >= 0) list[idx] = item;
       else list.push(item);
       ov.seedlingCategoryCodes = list;
+      unmarkCatCodeDeleted('seedling_category_code', item.category_code);
       if (snap.seedling && Array.isArray(snap.seedling.allItems) && body.category_name) {
         snap.seedling.allItems = snap.seedling.allItems.map((it: any) =>
           it.category_code === body.category_code || (prevName && it.sub_type === prevName)
@@ -937,6 +1100,7 @@ if (typeof window !== 'undefined') {
         );
         snap.seedling.items = snap.seedling.allItems;
       }
+      persistOverview(ov);
       await sbUpsert(
         'seedling_category_code',
         {
@@ -954,9 +1118,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/seedling-category-codes/delete' && method === 'POST') {
       const { category_code } = parseBody(init);
       const ov = (snap.overview = snap.overview || {});
+      markCatCodeDeleted('seedling_category_code', category_code);
       ov.seedlingCategoryCodes = (ov.seedlingCategoryCodes || []).filter(
         (c: any) => c.category_code !== category_code
       );
+      persistOverview(ov);
       await sbDelete('seedling_category_code', `category_code=eq.${encodeURIComponent(category_code)}`);
       await syncOverviewAndAgroCategories(false);
       return jsonResponse({ ok: true });

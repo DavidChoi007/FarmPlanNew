@@ -2357,6 +2357,18 @@ export default function AdminDashboardPage() {
         seedCategories: res.seedCategories || prev.seedCategories,
         seedlingCategories: res.seedlingCategories || prev.seedlingCategories,
       }));
+      setOverview((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              fertilizerCategoryCodes: res.fertilizerCategories || prev.fertilizerCategoryCodes,
+              nutrientCategoryCodes: res.nutrientCategories || prev.nutrientCategoryCodes,
+              pesticideCategoryCodes: res.pesticideCategories || prev.pesticideCategoryCodes,
+              seedCategoryCodes: res.seedCategories || prev.seedCategoryCodes,
+              seedlingCategoryCodes: res.seedlingCategories || prev.seedlingCategories,
+            }
+          : prev
+      );
     } catch (e) {
       console.error(e);
     } finally {
