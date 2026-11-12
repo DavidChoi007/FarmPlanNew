@@ -3368,20 +3368,20 @@ export default function UserIntroPage() {
               className="block bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
                     <Sprout className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-sm sm:text-lg font-extrabold text-slate-900 whitespace-nowrap truncate">
+                      <h2 className="text-[18px] sm:text-[22px] font-black text-slate-900 whitespace-nowrap truncate">
                         {loggedInUser.isLoggedIn ? `${loggedInUser.name} 님의 내 작물재배 리스트` : '표준 작물재배 일정 리스트'} ({cloudBaeCropList.length}건)
                       </h2>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold whitespace-nowrap shrink-0">
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[13px] sm:text-sm font-extrabold whitespace-nowrap shrink-0">
                         회원 맞춤형 재배관리
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 break-keep mt-0.5">
+                    <p className="text-[14px] sm:text-[15.5px] font-semibold text-slate-600 break-keep mt-1">
                       조회할 재배 작물을 터치(클릭)하면 기상·오늘 할 일·3가지 일정 보기 및 생육과정 세부 일정이 표시됩니다.
                     </p>
                   </div>
@@ -3390,14 +3390,14 @@ export default function UserIntroPage() {
                 <button
                   type="button"
                   onClick={() => setActiveMenu('재배일정 요청')}
-                  className="px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-800 font-bold text-xs sm:text-sm whitespace-nowrap transition cursor-pointer shrink-0"
+                  className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-slate-900 font-extrabold text-[15px] sm:text-base whitespace-nowrap transition cursor-pointer shrink-0"
                 >
                   + 새 재배일정 요청
                 </button>
               </div>
 
               {/* 작물재배 리스트 (한 라인에 1개씩 표시 + 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {cloudBaeCropList.map((crop, idx) => {
                   const isSelected = crop.request_no === selectedRequestNo;
                   const isExpanded = expandedScheduleRequestNo === crop.request_no;
@@ -3425,80 +3425,80 @@ export default function UserIntroPage() {
                         }`}
                       >
                         {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 */}
-                        <div className="flex items-center gap-3.5 min-w-0 lg:w-[30%] shrink-0">
+                        <div className="flex items-center gap-3.5 min-w-0 lg:w-[31%] shrink-0">
                           <span
-                            className={`w-7 h-7 rounded-lg text-xs font-mono font-extrabold inline-flex items-center justify-center shrink-0 ${
+                            className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
                               isExpanded || isSelected
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}
                           >
                             {idx + 1}
                           </span>
 
                           <div
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
+                            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
                           >
-                            <Sprout className="w-5 h-5 sm:w-6 sm:h-6" />
-                            <span className="text-[9px] font-extrabold mt-0.5">{crop.crop_short}</span>
+                            <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
+                            <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
                           </div>
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[11px]">
+                              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[13px] sm:text-sm">
                                 {crop.badge}
                               </span>
                               {isExpanded && (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[10px]">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[12.5px] sm:text-[13px]">
                                   상세 타임라인 열림
                                 </span>
                               )}
                               {!isExpanded && isSelected && (
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[10px]">
+                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[12.5px] sm:text-[13px]">
                                   현재 선택됨
                                 </span>
                               )}
                             </div>
-                            <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5 truncate">
+                            <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 truncate leading-snug">
                               {crop.crop_title}
                             </h3>
                           </div>
                         </div>
 
                         {/* 중앙 1: 재배 지역 · 평수 · 정식(파종)일 */}
-                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-6 lg:w-[32%] text-xs sm:text-sm border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-200/70">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[32%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
                           <div className="min-w-0">
-                            <div className="text-[11px] font-bold text-slate-400">재배지 · 면적</div>
-                            <div className="font-extrabold text-slate-800 truncate">
+                            <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">재배지 · 면적</div>
+                            <div className="text-[16px] sm:text-[18px] font-black text-slate-900 truncate mt-0.5">
                               {crop.region} · <span className="text-emerald-700">{crop.area_pyeong}평</span>
                             </div>
                           </div>
                           <div className="shrink-0">
-                            <div className="text-[11px] font-bold text-slate-400">기준 정식일</div>
-                            <div className="font-mono font-extrabold text-emerald-700">
+                            <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">기준 정식일</div>
+                            <div className="text-[16px] sm:text-[18px] font-mono font-black text-emerald-700 mt-0.5">
                               {crop.planting_label}
                             </div>
                           </div>
                         </div>
 
                         {/* 중앙 2: 기상 요약 및 재배 진행상태 프로그레스 바 */}
-                        <div className="lg:w-[24%] space-y-1.5">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-600">
+                        <div className="lg:w-[23%] space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[15px] sm:text-base font-extrabold text-slate-800">
                               기온 {crop.temp_c}°C · 다음작업 {crop.next_work_dday}
                             </span>
-                            <span className="font-extrabold text-emerald-700">
+                            <span className="text-[16px] sm:text-lg font-black text-emerald-700">
                               {crop.progress_pct}%
                             </span>
                           </div>
-                          <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+                          <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
                             <div
                               style={{ width: `${crop.progress_pct}%` }}
                               className="h-full rounded-full bg-emerald-600 transition-all"
                             />
                           </div>
-                          <div className="text-[11px] font-semibold text-slate-500 truncate">
-                            진행상태: <strong className="text-slate-700">{crop.status_text}</strong>
+                          <div className="text-[14.5px] sm:text-[15.5px] font-bold text-slate-600 truncate">
+                            진행상태: <strong className="text-slate-900 font-black">{crop.status_text}</strong>
                           </div>
                         </div>
 
@@ -3510,15 +3510,15 @@ export default function UserIntroPage() {
                               e.stopPropagation();
                               toggleCropAccordion();
                             }}
-                            className={`flex-1 lg:flex-none px-4 py-2.5 rounded-xl font-extrabold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                            className={`flex-1 lg:flex-none px-4 py-3 rounded-xl font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
                               isExpanded
                                 ? 'bg-emerald-600 text-white shadow-2xs'
-                                : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-800'
+                                : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
                             }`}
                           >
                             <span>{isExpanded ? '일정 상세 접기' : '일정 상세 보기'}</span>
                             <ChevronRight
-                              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                              className={`w-4 h-4 transition-transform duration-200 ${
                                 isExpanded ? 'rotate-90' : ''
                               }`}
                             />
@@ -3528,9 +3528,9 @@ export default function UserIntroPage() {
                             type="button"
                             onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
                             title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
-                            className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-extrabold text-xs transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
+                            className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                             <span>삭제</span>
                           </button>
                         </div>
@@ -3545,43 +3545,43 @@ export default function UserIntroPage() {
                             <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs space-y-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="w-10 h-10 rounded-2xl bg-[#E9F7F1] text-emerald-700 flex items-center justify-center shrink-0">
-                                    <Sprout className="w-5 h-5" />
+                                  <div className="w-11 h-11 rounded-2xl bg-[#E9F7F1] text-emerald-700 flex items-center justify-center shrink-0">
+                                    <Sprout className="w-6 h-6" />
                                   </div>
                                   <div>
-                                    <div className="font-extrabold text-base text-slate-900 leading-tight">
+                                    <div className="font-black text-[18px] text-slate-900 leading-tight">
                                       한팜
                                     </div>
-                                    <div className="text-xs text-slate-500 font-medium">
+                                    <div className="text-[14px] text-slate-600 font-bold">
                                       나의 맞춤형 재배관리
                                     </div>
                                   </div>
                                 </div>
-                                <Bell className="w-5 h-5 text-slate-500" />
+                                <Bell className="w-6 h-6 text-slate-500" />
                               </div>
 
                               {/* 기온 · 강수 · 다음 작업 3열 미니 카드 */}
                               <div className="grid grid-cols-3 gap-2.5">
                                 <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
-                                  <Thermometer className="w-4 h-4 text-slate-500 mx-auto" />
-                                  <div className="text-xs text-slate-500 font-medium">기온</div>
-                                  <div className="text-base font-extrabold text-slate-900">
+                                  <Thermometer className="w-5 h-5 text-slate-500 mx-auto" />
+                                  <div className="text-[14px] text-slate-600 font-bold">기온</div>
+                                  <div className="text-[18px] font-black text-slate-900">
                                     {curDayClimate?.temp_avg ?? crop.temp_c ?? '18.5'}°C
                                   </div>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
-                                  <CloudRain className="w-4 h-4 text-slate-500 mx-auto" />
-                                  <div className="text-xs text-slate-500 font-medium">강수</div>
-                                  <div className="text-base font-extrabold text-slate-900">
+                                  <CloudRain className="w-5 h-5 text-slate-500 mx-auto" />
+                                  <div className="text-[14px] text-slate-600 font-bold">강수</div>
+                                  <div className="text-[18px] font-black text-slate-900">
                                     {curDayClimate?.precipitation_mm !== undefined
                                       ? `${curDayClimate.precipitation_mm}mm`
                                       : crop.rain_mm || '5mm'}
                                   </div>
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 bg-white p-3.5 text-center space-y-1">
-                                  <Calendar className="w-4 h-4 text-slate-500 mx-auto" />
-                                  <div className="text-xs text-slate-500 font-medium">다음 작업</div>
-                                  <div className="text-base font-extrabold text-slate-900">
+                                  <Calendar className="w-5 h-5 text-slate-500 mx-auto" />
+                                  <div className="text-[14px] text-slate-600 font-bold">다음 작업</div>
+                                  <div className="text-[18px] font-black text-slate-900">
                                     {crop.next_work_dday || crop.next_task_dday || '2일 후'}
                                   </div>
                                 </div>
@@ -3593,8 +3593,8 @@ export default function UserIntroPage() {
                               {/* 오늘 할 일 */}
                               <div className="space-y-2.5">
                                 <div className="flex items-center justify-between">
-                                  <h4 className="text-lg font-extrabold text-slate-900">오늘 할 일</h4>
-                                  <span className="text-xs font-semibold text-slate-500">
+                                  <h4 className="text-[19px] font-black text-slate-900">오늘 할 일</h4>
+                                  <span className="text-[14px] font-extrabold text-slate-600">
                                     작업 {todayTasks.length}개
                                   </span>
                                 </div>
@@ -3615,38 +3615,38 @@ export default function UserIntroPage() {
                                           )
                                         )
                                       }
-                                      className="p-3.5 flex items-start justify-between gap-3 hover:bg-slate-50 transition cursor-pointer"
+                                      className="p-4 flex items-start justify-between gap-3 hover:bg-slate-50 transition cursor-pointer"
                                     >
                                       <div className="flex items-start gap-3">
                                         <span
-                                          className={`w-5 h-5 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition ${
+                                          className={`w-6 h-6 rounded-full border flex items-center justify-center mt-0.5 shrink-0 transition ${
                                             task.done
                                               ? 'bg-emerald-600 border-emerald-600 text-white'
                                               : 'border-slate-300 bg-white'
                                           }`}
                                         >
-                                          {task.done && <Check className="w-3.5 h-3.5" />}
+                                          {task.done && <Check className="w-4 h-4" />}
                                         </span>
                                         <div>
                                           <div
-                                            className={`font-extrabold text-sm ${
+                                            className={`font-black text-[17px] ${
                                               task.done
                                                 ? 'line-through text-slate-400'
-                                                : 'text-slate-900'
+                                                : 'text-slate-950'
                                             }`}
                                           >
                                             {task.title}
                                           </div>
-                                          <p className="text-xs text-slate-500 mt-0.5">
+                                          <p className="text-[14.5px] font-semibold text-slate-600 mt-0.5">
                                             {task.desc}
                                           </p>
                                         </div>
                                       </div>
                                       <span
-                                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 ${
+                                        className={`px-3 py-1 rounded-full text-[13px] font-extrabold shrink-0 ${
                                           task.done
                                             ? 'bg-emerald-100 text-emerald-800'
-                                            : 'bg-slate-100 text-slate-600'
+                                            : 'bg-slate-100 text-slate-700'
                                         }`}
                                       >
                                         {task.status}
@@ -3658,16 +3658,16 @@ export default function UserIntroPage() {
 
                               {/* 오늘 처리할 일정 이후에 진행될 일정 (예정된 농작업 심플 리스트 & 선택 시 관련 정보 + 추천상품 1개 인라인 표시) */}
                               <div className="space-y-2.5">
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                   <div>
-                                    <h4 className="text-lg font-extrabold text-slate-900">
+                                    <h4 className="text-[19px] font-black text-slate-900">
                                       예정된 농작업 (이후 진행 일정)
                                     </h4>
-                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                    <p className="text-[13.5px] font-semibold text-slate-600 mt-0.5">
                                       항목을 선택하면 상세 생육정보와 맞춤 추천상품(1종)이 표시됩니다.
                                     </p>
                                   </div>
-                                  <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold shrink-0">
+                                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[13.5px] font-extrabold shrink-0">
                                     총 {(provisionData.scheduleItems || []).length}개 공정
                                   </span>
                                 </div>
@@ -3715,7 +3715,7 @@ export default function UserIntroPage() {
                                               handleSelectStageItem(item);
                                             }
                                           }}
-                                          className={`p-3 flex items-center justify-between gap-3 transition cursor-pointer ${
+                                          className={`p-3.5 flex items-center justify-between gap-3 transition cursor-pointer ${
                                             isSelected
                                               ? 'bg-emerald-50/80'
                                               : 'hover:bg-slate-50'
@@ -3723,7 +3723,7 @@ export default function UserIntroPage() {
                                         >
                                           <div className="flex items-center gap-3 min-w-0">
                                             <span
-                                              className={`px-3 py-2 rounded-xl font-mono font-extrabold text-xs shrink-0 ${
+                                              className={`px-3.5 py-2 rounded-xl font-mono font-black text-[15px] shrink-0 ${
                                                 isSelected
                                                   ? 'bg-emerald-600 text-white'
                                                   : 'bg-[#F4F6F8] text-slate-900'
@@ -3733,16 +3733,16 @@ export default function UserIntroPage() {
                                             </span>
                                             <div className="min-w-0">
                                               <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className="font-extrabold text-sm text-slate-900 truncate">
+                                                <span className="font-black text-[17px] text-slate-950 truncate">
                                                   {cleanName}
                                                 </span>
                                                 {item.stage_group_name && (
-                                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold shrink-0">
+                                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[12.5px] font-extrabold shrink-0">
                                                     {item.stage_group_name}
                                                   </span>
                                                 )}
                                               </div>
-                                              <div className="text-xs text-slate-500 truncate mt-0.5">
+                                              <div className="text-[14.5px] font-semibold text-slate-600 truncate mt-0.5">
                                                 {item.work_content ||
                                                   item.work_description ||
                                                   '생육상태 및 기온 확인 후 진행'}
@@ -3750,7 +3750,7 @@ export default function UserIntroPage() {
                                             </div>
                                           </div>
                                           <ChevronRight
-                                            className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
+                                            className={`w-5 h-5 shrink-0 transition-transform duration-200 ${
                                               isSelected
                                                 ? 'rotate-90 text-emerald-700'
                                                 : 'text-slate-400'
@@ -3762,27 +3762,27 @@ export default function UserIntroPage() {
                                         {isSelected && (
                                           <div className="px-3.5 pb-3.5 pt-2 bg-emerald-50/40 border-t border-emerald-100 space-y-3">
                                             {/* 1. 관련된 생육과정 상세 정보 */}
-                                            <div className="rounded-xl bg-white border border-emerald-200/80 p-3 space-y-2">
+                                            <div className="rounded-xl bg-white border border-emerald-200/80 p-3.5 space-y-2.5">
                                               <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 text-[11px] font-extrabold">
+                                                <span className="px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-900 text-[13px] font-extrabold">
                                                   {item.stage_group_name || '생육공정'} ·{' '}
                                                   {item.process_code || `SCH-0${idx + 1}`}
                                                 </span>
-                                                <span className="font-mono text-xs font-extrabold text-emerald-700">
+                                                <span className="font-mono text-[14.5px] font-black text-emerald-700">
                                                   추천 진행일: {formatYmdWithWeekday(item.start_date)}
                                                 </span>
                                               </div>
 
-                                              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                                                <div className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
-                                                  <span className="text-slate-500 font-semibold">목표 적산온도</span>
-                                                  <span className="font-mono font-extrabold text-slate-800">
+                                              <div className="grid grid-cols-2 gap-2 text-[13.5px]">
+                                                <div className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                                                  <span className="text-slate-600 font-bold">목표 적산온도</span>
+                                                  <span className="font-mono font-black text-slate-900">
                                                     PGDD {item.target_pgdd || 0}℃
                                                   </span>
                                                 </div>
-                                                <div className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
-                                                  <span className="text-slate-500 font-semibold">예상 평균기온</span>
-                                                  <span className="font-mono font-extrabold text-emerald-700">
+                                                <div className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                                                  <span className="text-slate-600 font-bold">예상 평균기온</span>
+                                                  <span className="font-mono font-black text-emerald-700">
                                                     {item.recommended_day_climate?.temp_avg ??
                                                       item.climate_stats?.avg_temp ??
                                                       18.5}
@@ -3791,8 +3791,8 @@ export default function UserIntroPage() {
                                                 </div>
                                               </div>
 
-                                              <div className="text-xs text-slate-700 leading-relaxed bg-slate-50/80 rounded-lg p-2.5 border border-slate-100">
-                                                <div className="font-extrabold text-slate-900 mb-0.5">
+                                              <div className="text-[15px] text-slate-800 leading-relaxed bg-slate-50/80 rounded-lg p-3 border border-slate-100 font-semibold">
+                                                <div className="font-black text-slate-950 mb-1">
                                                   📋 핵심 작업내용
                                                 </div>
                                                 <div>
@@ -3801,7 +3801,7 @@ export default function UserIntroPage() {
                                                     '토양 수분 및 생육 상태를 점검하고 적정량을 살포합니다.'}
                                                 </div>
                                                 {(item.climate_rule || item.usage_tip) && (
-                                                  <div className="mt-1.5 pt-1.5 border-t border-slate-200/70 text-[11px] text-emerald-800 font-medium">
+                                                  <div className="mt-2 pt-2 border-t border-slate-200/70 text-[13.5px] text-emerald-800 font-bold">
                                                     💡 {item.climate_rule || item.usage_tip}
                                                   </div>
                                                 )}
@@ -3810,20 +3810,20 @@ export default function UserIntroPage() {
 
                                             {/* 2. 해당 생육과정별 추천상품 1개 (체크박스 선택된 상태 + 제품이미지 + 제품명) */}
                                             {topMat && (
-                                              <div className="rounded-xl bg-white border-2 border-emerald-500/80 p-3 shadow-2xs space-y-2">
+                                              <div className="rounded-xl bg-white border-2 border-emerald-500/80 p-3.5 shadow-2xs space-y-2.5">
                                                 <div className="flex items-center justify-between">
-                                                  <span className="text-[11px] font-extrabold text-emerald-800 flex items-center gap-1">
-                                                    <Package className="w-3.5 h-3.5 text-emerald-600" />
+                                                  <span className="text-[13.5px] font-black text-emerald-800 flex items-center gap-1">
+                                                    <Package className="w-4 h-4 text-emerald-600" />
                                                     해당 생육과정 맞춤 추천상품 (1종)
                                                   </span>
-                                                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12.5px] font-extrabold">
                                                     추천점수 {topMat.match_score || 95}점
                                                   </span>
                                                 </div>
 
                                                 <label
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className="flex items-center gap-3 cursor-pointer select-none pt-0.5"
+                                                  className="flex items-center gap-3.5 cursor-pointer select-none pt-0.5"
                                                 >
                                                   <input
                                                     type="checkbox"
@@ -3831,7 +3831,7 @@ export default function UserIntroPage() {
                                                     onChange={() =>
                                                       handleToggleMaterialCheck(selKey, defaultQty)
                                                     }
-                                                    className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                                    className="w-6 h-6 rounded accent-emerald-600 cursor-pointer shrink-0"
                                                   />
                                                   <img
                                                     src={
@@ -3839,25 +3839,25 @@ export default function UserIntroPage() {
                                                       '/api/agro-materials/image/FERT-PRD-01/thumb'
                                                     }
                                                     alt={topMat.product_name}
-                                                    className="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
+                                                    className="w-16 h-16 rounded-xl object-contain border border-slate-200 bg-white shrink-0"
                                                   />
                                                   <div className="min-w-0 flex-1">
-                                                    <div className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
+                                                    <div className="font-black text-[16.5px] text-slate-950 leading-snug break-keep">
                                                       {topMat.product_name}
                                                     </div>
-                                                    <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                                                    <div className="text-[13.5px] font-semibold text-slate-600 mt-0.5 truncate">
                                                       {topMat.core_Spec ||
                                                         topMat.core_spec ||
                                                         topMat.material_category_name ||
                                                         '맞춤 농자재'}
                                                     </div>
-                                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                      <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold">
+                                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                                      <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12.5px] font-extrabold">
                                                         {areaPyeongVal.toLocaleString()}평 기준 권장{' '}
                                                         {defaultQty}
                                                         {topMat.unit_label || '개'}
                                                       </span>
-                                                      <span className="font-mono text-xs font-extrabold text-slate-900">
+                                                      <span className="font-mono text-[16px] font-black text-slate-950">
                                                         {Number(
                                                           topMat.unit_price || 15000
                                                         ).toLocaleString()}
@@ -3880,7 +3880,7 @@ export default function UserIntroPage() {
                             {/* [모바일 카드 3 (첨부 이미지 3, 4, 5번)]: 재배일정 3가지 보기 방식 (타임라인 | 달력 | 생육단계) */}
                             <section className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs space-y-4">
                               {/* 상단 3분할 탭 스위치 (타임라인 | 달력 | 생육단계) */}
-                              <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-slate-100/70 text-sm font-bold">
+                              <div className="grid grid-cols-3 gap-1 p-1 rounded-full bg-slate-100/70 text-[16px] font-black">
                                 {[
                                   { id: 'timeline', label: '타임라인' },
                                   { id: 'calendar', label: '달력' },
@@ -3896,8 +3896,8 @@ export default function UserIntroPage() {
                                     }
                                     className={`py-2.5 rounded-full transition cursor-pointer ${
                                       scheduleViewMode === t.id
-                                        ? 'bg-[#EAECEF] text-slate-900 font-extrabold shadow-2xs'
-                                        : 'text-slate-500 hover:text-slate-800'
+                                        ? 'bg-[#EAECEF] text-slate-950 font-black shadow-2xs'
+                                        : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                   >
                                     {t.label}
@@ -3908,10 +3908,10 @@ export default function UserIntroPage() {
                               {/* [탭 1: 타임라인 — 첨부 이미지 3번 '농작업 타임라인'] */}
                               {scheduleViewMode === 'timeline' && (
                                 <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
-                                  <h4 className="text-lg font-extrabold text-slate-900">
+                                  <h4 className="text-[19px] font-black text-slate-900">
                                     농작업 타임라인
                                   </h4>
-                                  <div className="space-y-3">
+                                  <div className="space-y-3.5">
                                     {(provisionData.scheduleItems || []).map(
                                       (item: any, idx: number) => {
                                         const cleanName = String(item.sub_item_name || '')
@@ -3935,32 +3935,32 @@ export default function UserIntroPage() {
                                             onClick={() => {
                                               handleSelectStageItem(item);
                                             }}
-                                            className={`flex items-start gap-3.5 rounded-xl p-1.5 transition cursor-pointer ${
+                                            className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
                                               isSelected
                                                 ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
                                                 : 'hover:bg-slate-50'
                                             }`}
                                           >
-                                            <div className="flex flex-col items-center w-5 shrink-0 pt-0.5">
+                                            <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
                                               <span
-                                                className={`text-sm font-bold leading-none ${
+                                                className={`text-[16px] font-black leading-none ${
                                                   isSelected
-                                                    ? 'text-emerald-700 font-extrabold'
-                                                    : 'text-slate-700'
+                                                    ? 'text-emerald-700 font-black'
+                                                    : 'text-slate-800'
                                                 }`}
                                               >
                                                 {idx + 1}
                                               </span>
                                               {idx <
                                                 (provisionData.scheduleItems?.length || 0) - 1 && (
-                                                <div className="w-px h-8 bg-slate-200 mt-1.5" />
+                                                <div className="w-px h-9 bg-slate-200 mt-1.5" />
                                               )}
                                             </div>
                                             <div className="min-w-0 flex-1 pb-1">
-                                              <div className="font-extrabold text-[15px] text-slate-900 leading-snug">
+                                              <div className="font-black text-[17.5px] text-slate-950 leading-snug">
                                                 {koreanDateLabel} · {cleanName}
                                               </div>
-                                              <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                              <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
                                                 {item.work_content ||
                                                   item.work_description ||
                                                   '토양검정과 생육상태 확인 후 진행'}
@@ -3978,7 +3978,7 @@ export default function UserIntroPage() {
                               {scheduleViewMode === 'calendar' && (
                                 <div className="rounded-2xl border border-slate-200 p-4 space-y-3.5">
                                   <div className="flex items-center justify-between">
-                                    <h4 className="text-xl font-extrabold text-slate-900">
+                                    <h4 className="text-[20px] font-black text-slate-900">
                                       {calendarYearMonth.year}년 {calendarYearMonth.month}월
                                     </h4>
                                     <div className="flex items-center gap-1.5">
@@ -3991,9 +3991,9 @@ export default function UserIntroPage() {
                                               : { year: prev.year, month: prev.month - 1 }
                                           )
                                         }
-                                        className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                                        className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
                                       >
-                                        <ChevronLeft className="w-4 h-4 text-slate-700" />
+                                        <ChevronLeft className="w-5 h-5 text-slate-700" />
                                       </button>
                                       <button
                                         type="button"
@@ -4004,16 +4004,16 @@ export default function UserIntroPage() {
                                               : { year: prev.year, month: prev.month + 1 }
                                           )
                                         }
-                                        className="p-1.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
+                                        className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
                                       >
-                                        <ChevronRight className="w-4 h-4 text-slate-700" />
+                                        <ChevronRight className="w-5 h-5 text-slate-700" />
                                       </button>
                                     </div>
                                   </div>
 
-                                  <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
+                                  <div className="grid grid-cols-7 gap-1.5 text-center text-sm">
                                     {WEEKDAY_KO.map((w) => (
-                                      <div key={w} className="py-1 text-slate-500 font-semibold">
+                                      <div key={w} className="py-1 text-slate-600 font-extrabold">
                                         {w}
                                       </div>
                                     ))}
@@ -4022,7 +4022,7 @@ export default function UserIntroPage() {
                                         return (
                                           <div
                                             key={cIdx}
-                                            className="h-11 rounded-xl bg-[#F4F6F8]/60"
+                                            className="h-12 rounded-xl bg-[#F4F6F8]/60"
                                           />
                                         );
                                       }
@@ -4038,11 +4038,11 @@ export default function UserIntroPage() {
                                               handleSelectStageItem(cell.items[0]);
                                             }
                                           }}
-                                          className={`h-11 rounded-xl flex flex-col items-center justify-center text-sm font-semibold transition cursor-pointer ${
+                                          className={`h-12 rounded-xl flex flex-col items-center justify-center text-[15px] font-bold transition cursor-pointer ${
                                             isSelectedDay
-                                              ? 'bg-emerald-600 text-white font-extrabold shadow-2xs'
+                                              ? 'bg-emerald-600 text-white font-black shadow-2xs'
                                               : hasTask
-                                              ? 'bg-[#DDF3E8] text-slate-900 font-extrabold'
+                                              ? 'bg-[#DDF3E8] text-slate-950 font-black'
                                               : 'bg-[#F4F6F8] text-slate-800 hover:bg-slate-200/70'
                                           }`}
                                         >
@@ -4059,7 +4059,7 @@ export default function UserIntroPage() {
                                     })}
                                   </div>
 
-                                  <div className="pt-2 text-xs text-slate-600 font-medium leading-relaxed">
+                                  <div className="pt-2 text-[14.5px] text-slate-700 font-bold leading-relaxed">
                                     {monthScheduledItems.length > 0
                                       ? monthScheduledItems
                                           .map(
@@ -4079,7 +4079,7 @@ export default function UserIntroPage() {
                               {/* [탭 3: 생육단계 — 첨부 이미지 5번 '배추 생육단계'] */}
                               {scheduleViewMode === 'stages' && (
                                 <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                                  <h4 className="text-lg font-extrabold text-slate-900">
+                                  <h4 className="text-[19px] font-black text-slate-900">
                                     {crop.crop_short || '배추'} 생육단계
                                   </h4>
                                   <div className="space-y-2.5">
@@ -4110,10 +4110,10 @@ export default function UserIntroPage() {
                                                   : grp.stage_group_id
                                               )
                                             }
-                                            className="w-full py-1.5 flex items-center justify-between gap-3 text-left cursor-pointer"
+                                            className="w-full py-2 flex items-center justify-between gap-3 text-left cursor-pointer"
                                           >
                                             <div className="flex items-center gap-3.5 min-w-0">
-                                              <span className="w-10 h-10 rounded-2xl bg-[#F4F6F8] text-slate-700 flex items-center justify-center shrink-0">
+                                              <span className="w-11 h-11 rounded-2xl bg-[#F4F6F8] text-slate-700 flex items-center justify-center shrink-0">
                                                 {isHarvestStage ? (
                                                   <PackageCheck className="w-5 h-5 text-slate-700" />
                                                 ) : (
@@ -4121,23 +4121,23 @@ export default function UserIntroPage() {
                                                 )}
                                               </span>
                                               <div className="min-w-0">
-                                                <div className="font-extrabold text-[15px] text-slate-900 truncate">
+                                                <div className="font-black text-[17.5px] text-slate-950 truncate">
                                                   {grp.stage_group_name}
                                                 </div>
-                                                <div className="text-xs text-slate-500 truncate mt-0.5">
+                                                <div className="text-[14.5px] font-semibold text-slate-600 truncate mt-0.5">
                                                   {subNamesSummary}
                                                 </div>
                                               </div>
                                             </div>
                                             <ChevronRight
-                                              className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+                                              className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${
                                                 isStageOpen ? 'rotate-90' : ''
                                               }`}
                                             />
                                           </button>
 
                                           {isStageOpen && (
-                                            <div className="pl-12 space-y-1.5 pb-1">
+                                            <div className="pl-12 space-y-2 pb-1">
                                               {(grp.items || []).map((it: any) => {
                                                 const cleanSub = String(it.sub_item_name || '')
                                                   .replace(/\s*\([^)]*\)/g, '')
@@ -4151,14 +4151,14 @@ export default function UserIntroPage() {
                                                     onClick={() => {
                                                       handleSelectStageItem(it);
                                                     }}
-                                                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
+                                                    className={`w-full text-left px-3.5 py-3 rounded-xl border text-[15px] flex items-center justify-between transition cursor-pointer ${
                                                       isSel
-                                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
-                                                        : 'bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-slate-100'
+                                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-black'
+                                                        : 'bg-slate-50 border-slate-200/80 text-slate-800 font-bold hover:bg-slate-100'
                                                     }`}
                                                   >
                                                     <span>{cleanSub}</span>
-                                                    <span className="font-mono text-emerald-700 font-bold">
+                                                    <span className="font-mono text-emerald-700 font-black">
                                                       {formatYmdWithWeekday(it.start_date)}
                                                     </span>
                                                   </button>
@@ -4201,18 +4201,18 @@ export default function UserIntroPage() {
                                 return (
                                   <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-3">
                                     <div className="flex items-center justify-between gap-2">
-                                      <span className="text-xs font-extrabold text-emerald-900">
+                                      <span className="text-[15px] font-black text-emerald-950">
                                         선택 공정:{' '}
                                         {String(detailItem.sub_item_name || '')
                                           .replace(/\s*\([^)]*\)/g, '')
                                           .trim()}
                                       </span>
-                                      <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-[10px] font-extrabold">
+                                      <span className="px-2.5 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-[12.5px] font-extrabold">
                                         PGDD {detailItem.target_pgdd || 0}℃
                                       </span>
                                     </div>
 
-                                    <div className="text-xs text-slate-700 bg-white/90 rounded-xl p-2.5 border border-emerald-200/70 leading-relaxed">
+                                    <div className="text-[14.5px] font-semibold text-slate-800 bg-white/90 rounded-xl p-3 border border-emerald-200/70 leading-relaxed">
                                       {detailItem.work_content ||
                                         detailItem.work_description ||
                                         '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
@@ -6631,22 +6631,22 @@ export default function UserIntroPage() {
             <section className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div className="flex items-start sm:items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
                     <FileEdit className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-extrabold">
+                      <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[13px] sm:text-sm font-extrabold">
                         ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
                       </span>
-                      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px] font-bold">
+                      <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[13px] sm:text-sm font-extrabold">
                         총 {cloudBaeCropList.length}건 요청 완료
                       </span>
                     </div>
-                    <h2 className="text-sm sm:text-2xl font-extrabold text-slate-900 mt-1 whitespace-nowrap truncate">
+                    <h2 className="text-[19px] sm:text-2xl font-black text-slate-900 mt-1.5 whitespace-nowrap truncate">
                       요청한 내 재배일정 리스트 ({cloudBaeCropList.length}건)
                     </h2>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                    <p className="text-[14.5px] sm:text-base font-semibold text-slate-600 mt-1 leading-relaxed">
                       해당 아이디로 요청하여 산출된 맞춤형 재배일정 내역입니다. 우측 <strong>[재배일정 요청]</strong> 버튼을 누르면 새로운 모달리스 폼에서 추가 재배일정을 요청할 수 있습니다.
                     </p>
                   </div>
@@ -6660,7 +6660,7 @@ export default function UserIntroPage() {
                       setScheduleReqModalPos({ x: 0, y: 0 });
                       setIsScheduleReqModelessOpen(true);
                     }}
-                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm shadow-sm transition cursor-pointer inline-flex items-center gap-2"
+                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base shadow-sm transition cursor-pointer inline-flex items-center gap-2"
                   >
                     <FileEdit className="w-4 h-4" />
                     <span>재배일정 요청</span>
@@ -6668,7 +6668,7 @@ export default function UserIntroPage() {
                   <button
                     type="button"
                     onClick={() => setActiveMenu('홈')}
-                    className="px-3.5 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-700 cursor-pointer"
+                    className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-[15px] sm:text-base font-extrabold text-slate-800 cursor-pointer"
                   >
                     홈으로 돌아가기
                   </button>
@@ -6676,7 +6676,7 @@ export default function UserIntroPage() {
               </div>
 
               {/* 해당 아이디의 재배일정 요청 이력 카드 리스트 */}
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {cloudBaeCropList.map((crop: any, idx: number) => {
                   const displayReqNo = crop.display_request_no || crop.request_no;
                   const isDetailSelected =
@@ -6696,68 +6696,68 @@ export default function UserIntroPage() {
                         }`}
                       >
                         {/* 좌측: 순번 + 썸네일 + 요청번호·작물명·품종 */}
-                        <div className="flex items-center gap-3.5 min-w-0 lg:w-[32%] shrink-0">
-                          <span className="w-7 h-7 rounded-lg bg-emerald-600 text-white text-xs font-mono font-extrabold inline-flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-3.5 min-w-0 lg:w-[33%] shrink-0">
+                          <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
 
                           <div
-                            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
+                            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
                           >
-                            <Sprout className="w-5 h-5 sm:w-6 sm:h-6" />
-                            <span className="text-[9px] font-extrabold mt-0.5">{crop.crop_short}</span>
+                            <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
+                            <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
                           </div>
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono font-extrabold text-[11px] text-slate-700">
+                              <span className="px-2.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono font-extrabold text-[13px] sm:text-sm text-slate-800">
                                 {displayReqNo}
                               </span>
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-extrabold text-[11px]">
+                              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[13px] sm:text-sm">
                                 {crop.badge}
                               </span>
-                              <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[10px]">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[12.5px] sm:text-[13px]">
                                 산출완료
                               </span>
                             </div>
-                            <div className="font-extrabold text-base sm:text-lg text-slate-900 mt-1 truncate">
+                            <div className="font-black text-[19px] sm:text-[22px] text-slate-950 mt-1 truncate leading-snug">
                               {crop.crop_title}
                             </div>
-                            <div className="text-xs text-slate-500 font-semibold truncate mt-0.5">
+                            <div className="text-[14.5px] sm:text-[15.5px] text-slate-600 font-bold truncate mt-0.5">
                               요청 ID: {loggedInUser.email || 'CloudBae@naver.com'} · 적정온도 {crop.opt_temp}
                             </div>
                           </div>
                         </div>
 
                         {/* 중앙: 요청 재배지 주소·평수 + 추천 정식/파종일 & 수확예정일 + 현재 생육단계 */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 text-xs border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                          <div className="bg-slate-50/90 rounded-xl px-3.5 py-2.5 border border-slate-200/70">
-                            <div className="text-[11px] text-slate-400 font-bold">요청 재배지 · 면적</div>
-                            <div className="font-extrabold text-slate-800 mt-0.5 truncate">{crop.region}</div>
-                            <div className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
+                          <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
+                            <div className="text-[13px] sm:text-sm text-slate-500 font-extrabold">요청 재배지 · 면적</div>
+                            <div className="text-[16px] sm:text-[18px] font-black text-slate-900 mt-1 truncate">{crop.region}</div>
+                            <div className="text-[14px] sm:text-[15px] text-emerald-700 font-extrabold mt-0.5">
                               {Number(crop.area_pyeong).toLocaleString()}평 ({crop.planting_type})
                             </div>
                           </div>
 
-                          <div className="bg-slate-50/90 rounded-xl px-3.5 py-2.5 border border-slate-200/70">
-                            <div className="text-[11px] text-slate-400 font-bold">기후 연동 추천 시작일 · 수확예정</div>
-                            <div className="font-extrabold text-slate-800 mt-0.5 truncate">{crop.planting_label}</div>
-                            <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                          <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
+                            <div className="text-[13px] sm:text-sm text-slate-500 font-extrabold">기후 연동 추천 시작일 · 수확예정</div>
+                            <div className="text-[16px] sm:text-[18px] font-black text-slate-900 mt-1 truncate">{crop.planting_label}</div>
+                            <div className="text-[14px] sm:text-[15px] text-slate-600 font-bold mt-0.5">
                               수확예정: {crop.expected_harvest_date}
                             </div>
                           </div>
 
-                          <div className="bg-slate-50/90 rounded-xl px-3.5 py-2.5 border border-slate-200/70">
+                          <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] text-slate-400 font-bold">현재 진행 단계</span>
-                              <span className="font-mono font-extrabold text-emerald-700 text-xs">
+                              <span className="text-[13px] sm:text-sm text-slate-500 font-extrabold">현재 진행 단계</span>
+                              <span className="font-mono font-black text-emerald-700 text-[15px] sm:text-base">
                                 진행률 {crop.progress_pct}%
                               </span>
                             </div>
-                            <div className="font-extrabold text-emerald-800 mt-0.5 truncate">
+                            <div className="text-[16px] sm:text-[18px] font-black text-emerald-900 mt-1 truncate">
                               {crop.current_stage_name}
                             </div>
-                            <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden mt-1.5">
+                            <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-1.5">
                               <div
                                 className="h-full rounded-full bg-emerald-500"
                                 style={{ width: `${crop.progress_pct}%` }}
@@ -6782,10 +6782,10 @@ export default function UserIntroPage() {
                                 });
                               }
                             }}
-                            className={`px-3.5 py-2.5 rounded-xl border font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                            className={`px-4 py-3 rounded-xl border font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
                               isDetailSelected
                                 ? 'bg-slate-900 text-white border-slate-900'
-                                : 'bg-white hover:bg-emerald-50 text-slate-800 border-slate-300 hover:border-emerald-400'
+                                : 'bg-white hover:bg-emerald-50 text-slate-900 border-slate-300 hover:border-emerald-400'
                             }`}
                           >
                             <span>세부보기</span>
@@ -6799,7 +6799,7 @@ export default function UserIntroPage() {
                               setActiveMenu('재배일정 확인');
                               setMobileScheduleStep('detail');
                             }}
-                            className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                            className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
                           >
                             <span>일정확인</span>
                             <ChevronRight className="w-4 h-4" />
@@ -6809,9 +6809,9 @@ export default function UserIntroPage() {
                             type="button"
                             onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
                             title="해당 재배일정 요청 및 연관된 일정·추천제품 데이터 모두 삭제"
-                            className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-extrabold text-xs transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                            className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                             <span>삭제</span>
                           </button>
                         </div>
@@ -6819,56 +6819,56 @@ export default function UserIntroPage() {
 
                       {/* 인라인 세부보기 요약 패널 (세부보기 클릭 시 해당 항목 바로 아래에도 상세 정보 표시) */}
                       {isDetailSelected && (
-                        <div className="ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-4 border-emerald-500 rounded-2xl bg-emerald-50/40 border border-emerald-200 p-4 sm:p-5 space-y-3 text-xs">
+                        <div className="ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-4 border-emerald-500 rounded-2xl bg-emerald-50/40 border border-emerald-200 p-4 sm:p-5 space-y-3 text-sm">
                           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2.5 py-0.5 rounded-md bg-emerald-600 text-white font-extrabold">
+                              <span className="px-3 py-1 rounded-md bg-emerald-600 text-white font-extrabold text-[13.5px]">
                                 요청 세부정보 #{idx + 1}
                               </span>
-                              <span className="font-mono font-extrabold text-emerald-900">
+                              <span className="font-mono font-black text-emerald-900 text-[15px]">
                                 {displayReqNo}
                               </span>
-                              <span className="font-extrabold text-slate-900 text-sm">
+                              <span className="font-black text-slate-900 text-[17px]">
                                 {crop.crop_title} ({crop.region})
                               </span>
                             </div>
                             <button
                               type="button"
                               onClick={() => setSelectedReqDetailCrop(null)}
-                              className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 font-bold text-xs cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-slate-300 font-extrabold text-[14px] cursor-pointer"
                             >
                               세부정보 닫기 ✕
                             </button>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                            <div className="bg-white rounded-xl p-3 border border-emerald-100">
-                              <div className="text-[11px] text-slate-500 font-bold">요청자 계정 · 성명</div>
-                              <div className="font-extrabold text-slate-900 mt-0.5">
+                            <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
+                              <div className="text-[13px] text-slate-500 font-extrabold">요청자 계정 · 성명</div>
+                              <div className="text-[16px] font-black text-slate-900 mt-1">
                                 {loggedInUser.name || '배철민'} ({loggedInUser.email || 'CloudBae@naver.com'})
                               </div>
-                              <div className="text-[11px] text-slate-500 mt-0.5">
+                              <div className="text-[13.5px] font-semibold text-slate-600 mt-0.5">
                                 연락처: {loggedInUser.phone || '010-2026-0109'}
                               </div>
                             </div>
-                            <div className="bg-white rounded-xl p-3 border border-emerald-100">
-                              <div className="text-[11px] text-slate-500 font-bold">요청 재배지 주소 · 면적</div>
-                              <div className="font-extrabold text-slate-900 mt-0.5">{crop.region}</div>
-                              <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                            <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
+                              <div className="text-[13px] text-slate-500 font-extrabold">요청 재배지 주소 · 면적</div>
+                              <div className="text-[16px] font-black text-slate-900 mt-1">{crop.region}</div>
+                              <div className="text-[13.5px] text-emerald-700 font-extrabold mt-0.5">
                                 재배면적 {Number(crop.area_pyeong).toLocaleString()}평 · 토양 pH {crop.soil_ph || 6.2} / EC {crop.soil_ec || 1.1}
                               </div>
                             </div>
-                            <div className="bg-white rounded-xl p-3 border border-emerald-100">
-                              <div className="text-[11px] text-slate-500 font-bold">작물 · 품종 · 재배구분</div>
-                              <div className="font-extrabold text-slate-900 mt-0.5">{crop.crop_title}</div>
-                              <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                            <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
+                              <div className="text-[13px] text-slate-500 font-extrabold">작물 · 품종 · 재배구분</div>
+                              <div className="text-[16px] font-black text-slate-900 mt-1">{crop.crop_title}</div>
+                              <div className="text-[13.5px] text-emerald-700 font-extrabold mt-0.5">
                                 {crop.badge} ({crop.planting_type}) · {crop.opt_temp}
                               </div>
                             </div>
-                            <div className="bg-white rounded-xl p-3 border border-emerald-100">
-                              <div className="text-[11px] text-slate-500 font-bold">추천 시작일 · 수확예정 · 상태</div>
-                              <div className="font-extrabold text-slate-900 mt-0.5">{crop.planting_label}</div>
-                              <div className="text-[11px] text-slate-600 font-bold mt-0.5">
+                            <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
+                              <div className="text-[13px] text-slate-500 font-extrabold">추천 시작일 · 수확예정 · 상태</div>
+                              <div className="text-[16px] font-black text-slate-900 mt-1">{crop.planting_label}</div>
+                              <div className="text-[13.5px] text-slate-700 font-extrabold mt-0.5">
                                 수확예정 {crop.expected_harvest_date} · {crop.status_text}
                               </div>
                             </div>
@@ -7831,7 +7831,7 @@ export default function UserIntroPage() {
 
                   if (isUserAgroLoading) {
                     return (
-                      <div className="bg-white rounded-3xl p-10 text-center text-slate-400 font-bold text-xs border border-slate-200/70">
+                      <div className="bg-white rounded-3xl p-10 text-center text-slate-500 font-extrabold text-[15px] border border-slate-200/70">
                         농작물·농자재 목록을 불러오는 중입니다...
                       </div>
                     );
@@ -7840,7 +7840,7 @@ export default function UserIntroPage() {
                   if (totalItems === 0) {
                     return (
                       <div className="bg-white rounded-3xl p-10 text-center space-y-3 border border-slate-200/70">
-                        <div className="text-slate-600 font-extrabold text-sm">
+                        <div className="text-slate-700 font-black text-[17px]">
                           조건에 일치하는 품목이 없습니다.
                         </div>
                         <button
@@ -7856,7 +7856,7 @@ export default function UserIntroPage() {
                               q: '',
                             });
                           }}
-                          className="px-4 py-2 rounded-full bg-[#1B5E20] text-white text-xs font-extrabold cursor-pointer"
+                          className="px-5 py-2.5 rounded-full bg-[#1B5E20] text-white text-[15px] font-black cursor-pointer"
                         >
                           전체 품목 다시 보기
                         </button>
@@ -7895,7 +7895,7 @@ export default function UserIntroPage() {
                               setSelectedUserAgroDetail(item);
                               setActiveUserAgroGalleryImg(detailImgs[0]);
                             }}
-                            className="w-full text-left bg-white rounded-[24px] px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.04)] border border-slate-200/80 hover:border-emerald-400 active:scale-[0.99] transition flex items-center gap-3.5 cursor-pointer"
+                            className="w-full text-left bg-white rounded-[24px] px-3.5 py-3 shadow-[0_2px_10px_rgba(15,23,42,0.04)] border border-slate-200/80 hover:border-emerald-400 active:scale-[0.99] transition flex items-center gap-3.5 cursor-pointer"
                           >
                             {/* 좌측 1:1 썸네일 (텍스트 영역과 동일한 순백색 배경 + 이미지 최대 확대) */}
                             <div className="w-[104px] h-[104px] rounded-2xl bg-white overflow-hidden shrink-0 flex items-center justify-center">
@@ -7906,25 +7906,25 @@ export default function UserIntroPage() {
                               />
                             </div>
 
-                            {/* 중앙 배지 + 품목명 + 핵심 1줄 요약 */}
+                            {/* 중앙 배지 + 품목명 + 핵심 1줄 요약 (고령자 기준 대형 가독성 폰트) */}
                             <div className="flex-1 min-w-0 space-y-1">
                               <div>
                                 <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-extrabold tracking-tight leading-tight ${badge.cls}`}
+                                  className={`inline-flex items-center px-3 py-0.5 rounded-full text-[13.5px] sm:text-[15px] font-black tracking-tight leading-tight ${badge.cls}`}
                                 >
                                   {badge.label}
                                 </span>
                               </div>
-                              <div className="text-[16px] font-extrabold text-slate-900 truncate leading-snug">
+                              <div className="text-[19px] sm:text-[21px] font-black text-slate-950 truncate leading-snug tracking-tight">
                                 {cleanMobileProductName}
                               </div>
-                              <div className="text-[12.5px] font-semibold text-slate-600 truncate">
+                              <div className="text-[15px] sm:text-[16.5px] font-bold text-slate-700 truncate leading-snug">
                                 {summaryLine}
                               </div>
                             </div>
 
                             {/* 우측 화살표 */}
-                            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                            <ChevronRight className="w-6 h-6 text-slate-500 shrink-0" />
                           </button>
                         );
                       })}
@@ -8388,12 +8388,12 @@ export default function UserIntroPage() {
                 return (
                   <section className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
                     {isUserAgroLoading ? (
-                      <div className="py-16 text-center text-slate-400 font-semibold text-xs">
+                      <div className="py-16 text-center text-slate-500 font-extrabold text-base">
                         관리자 페이지 농자재 DB에서 {activeMenu} 제품 목록을 불러오는 중입니다...
                       </div>
                     ) : totalItems === 0 ? (
                       <div className="py-16 text-center space-y-3">
-                        <div className="text-slate-500 font-extrabold text-sm">
+                        <div className="text-slate-700 font-black text-lg">
                           검색 조건에 일치하는 {activeMenu} 제품이 없습니다.
                         </div>
                         <button
@@ -8410,7 +8410,7 @@ export default function UserIntroPage() {
                               q: '',
                             });
                           }}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
+                          className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-base font-black cursor-pointer"
                         >
                           전체 {activeMenu} 리스트 다시 보기
                         </button>
@@ -8439,7 +8439,7 @@ export default function UserIntroPage() {
                                 className="p-4 sm:p-6 hover:bg-emerald-50/30 transition flex flex-col lg:flex-row gap-3.5 sm:gap-5 items-stretch lg:items-center justify-between"
                               >
                                 <div className="grid grid-cols-[5.25rem_minmax(0,1fr)] sm:grid-cols-[auto_7.5rem_minmax(0,1fr)] gap-x-3.5 sm:gap-x-4 gap-y-3 sm:gap-y-1.5 items-center flex-1 min-w-0 w-full">
-                                  <span className="hidden sm:flex sm:row-span-2 w-7 h-7 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-extrabold text-[11px] items-center justify-center shrink-0">
+                                  <span className="hidden sm:flex sm:row-span-2 w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-black text-sm items-center justify-center shrink-0">
                                     {rowNumber}
                                   </span>
 
@@ -8457,10 +8457,10 @@ export default function UserIntroPage() {
                                       alt={item.product_name}
                                       className="w-full h-full object-contain scale-[1.16] group-hover:scale-[1.22] transition"
                                     />
-                                    <span className="sm:hidden absolute top-1.5 left-1.5 min-w-5 h-5 px-1.5 rounded-full bg-slate-900/80 text-white font-extrabold text-[10px] flex items-center justify-center shadow-2xs">
+                                    <span className="sm:hidden absolute top-1.5 left-1.5 min-w-6 h-6 px-1.5 rounded-full bg-slate-900/80 text-white font-black text-xs flex items-center justify-center shadow-2xs">
                                       {rowNumber}
                                     </span>
-                                    <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
+                                    <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-slate-900/80 text-white text-[11px] font-extrabold">
                                       상세보기
                                     </span>
                                   </button>
@@ -8474,37 +8474,37 @@ export default function UserIntroPage() {
                                       }}
                                       className="hover:text-emerald-700 hover:underline text-left cursor-pointer block"
                                     >
-                                      <span className="inline-block text-emerald-800 font-extrabold text-xs sm:text-base mr-1">
+                                      <span className="inline-block text-emerald-800 font-black text-[15px] sm:text-xl mr-1.5">
                                         [{item.manufacturer || '대유'}]
                                       </span>
-                                      <span className="lg:hidden text-[15px] sm:text-lg font-extrabold text-slate-900 leading-snug break-keep">
+                                      <span className="lg:hidden text-[18px] sm:text-[22px] font-black text-slate-950 leading-snug break-keep">
                                         {formatMobileProductName(item.product_name).replace(/(\d)-(\d)/g, '$1\u2011$2')}
                                       </span>
-                                      <span className="hidden lg:inline text-[15px] sm:text-lg font-extrabold text-slate-900 leading-snug break-keep">
+                                      <span className="hidden lg:inline text-[18px] sm:text-[22px] font-black text-slate-950 leading-snug break-keep">
                                         {String(item.product_name || '').replace(/(\d)-(\d)/g, '$1\u2011$2')}
                                       </span>
                                     </button>
                                   </div>
 
                                   <div className="col-span-2 sm:col-span-1 sm:col-start-3 sm:self-start bg-slate-50/90 sm:bg-transparent border border-slate-200/80 sm:border-0 rounded-xl sm:rounded-none px-3.5 py-2.5 sm:p-0 space-y-1.5 sm:space-y-1">
-                                    <div className="flex flex-wrap items-center justify-between sm:justify-start gap-x-2 gap-y-1 text-xs">
-                                      <span className="text-slate-500 whitespace-nowrap">
+                                    <div className="flex flex-wrap items-center justify-between sm:justify-start gap-x-2.5 gap-y-1 text-[14.5px] sm:text-base">
+                                      <span className="text-slate-600 font-bold whitespace-nowrap">
                                         표준소비자가격:{' '}
-                                        <span className="line-through font-semibold text-slate-400">
+                                        <span className="line-through font-bold text-slate-400">
                                           ₩{Number(item.retail_price || 0).toLocaleString()}
                                         </span>
                                       </span>
                                       <span className="hidden sm:inline text-slate-300">·</span>
-                                      <span className="font-bold text-slate-600 whitespace-nowrap">
+                                      <span className="font-extrabold text-slate-700 whitespace-nowrap">
                                         규격 {item.unit_spec || item.weight_spec || '20Kg'} ·{' '}
-                                        <span className="text-emerald-700">
+                                        <span className="text-emerald-700 font-black">
                                           {item.stock_status || '정상판매'}
                                         </span>
                                       </span>
                                     </div>
-                                    <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 pt-0.5 sm:pt-0">
+                                    <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2.5 pt-0.5 sm:pt-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 font-extrabold text-xs whitespace-nowrap">
+                                        <span className="px-2.5 py-1 rounded-md bg-rose-100 text-rose-700 font-black text-[14px] sm:text-[15px] whitespace-nowrap">
                                           {item.discount_rate ??
                                             (item.retail_price > item.unit_price
                                               ? Number(
@@ -8517,11 +8517,11 @@ export default function UserIntroPage() {
                                               : 0)}
                                           % 할인
                                         </span>
-                                        <span className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
+                                        <span className="text-[20px] sm:text-2xl font-black text-slate-950 tracking-tight whitespace-nowrap">
                                           ₩{Number(item.unit_price || 0).toLocaleString()}
                                         </span>
                                       </div>
-                                      <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700 whitespace-nowrap">
+                                      <span className="px-2.5 py-1 rounded-md bg-amber-50 border border-amber-200 text-[13.5px] sm:text-[15px] font-extrabold text-amber-800 whitespace-nowrap">
                                         적립포인트: +
                                         {Number(
                                           item.reward_points ??
@@ -8541,16 +8541,16 @@ export default function UserIntroPage() {
                                       setSelectedUserAgroDetail(item);
                                       setActiveUserAgroGalleryImg(detailImgs[0]);
                                     }}
-                                    className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-xs shadow-2xs transition cursor-pointer text-center justify-center inline-flex items-center"
+                                    className="px-4 py-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 font-black text-[15px] sm:text-base shadow-2xs transition cursor-pointer text-center justify-center inline-flex items-center"
                                   >
                                     상세 페이지 보기
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleQuickBuyAgroMaterial(item)}
-                                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs inline-flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
+                                    className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[15px] sm:text-base inline-flex items-center justify-center gap-1.5 shadow-xs transition cursor-pointer"
                                   >
-                                    <ShoppingCart className="w-3.5 h-3.5" />
+                                    <ShoppingCart className="w-4 h-4" />
                                     즉시 구매
                                   </button>
                                 </div>
@@ -8561,9 +8561,9 @@ export default function UserIntroPage() {
 
                         {/* 하단 1페이지 20개 기준 페이징 네비게이션 바 */}
                         <div className="px-5 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
-                          <div className="text-xs font-bold text-slate-600">
-                            총 <strong className="text-emerald-700">{totalItems}개</strong> {activeMenu} 제품 중{' '}
-                            <strong className="text-slate-900">
+                          <div className="text-[14.5px] sm:text-base font-extrabold text-slate-700">
+                            총 <strong className="text-emerald-700 font-black">{totalItems}개</strong> {activeMenu} 제품 중{' '}
+                            <strong className="text-slate-950 font-black">
                               {startRowNum}–{endRowNum}번째
                             </strong>{' '}
                             표시 · 1페이지당 {USER_AGRO_PAGE_SIZE}개 (현재 {safePage} / {totalPages} 페이지)
@@ -8573,7 +8573,7 @@ export default function UserIntroPage() {
                               type="button"
                               disabled={safePage <= 1}
                               onClick={() => setUserAgroPage(1)}
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-extrabold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-800 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
                             >
                               처음
                             </button>
@@ -8581,7 +8581,7 @@ export default function UserIntroPage() {
                               type="button"
                               disabled={safePage <= 1}
                               onClick={() => setUserAgroPage(Math.max(1, safePage - 1))}
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-extrabold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-800 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
                             >
                               이전
                             </button>
@@ -8590,10 +8590,10 @@ export default function UserIntroPage() {
                                 key={pNum}
                                 type="button"
                                 onClick={() => setUserAgroPage(pNum)}
-                                className={`min-w-8 h-8 px-2.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
+                                className={`min-w-9 h-9 px-3 rounded-xl text-sm font-black border transition cursor-pointer ${
                                   pNum === safePage
                                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                                    : 'bg-white text-slate-800 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
                                 }`}
                               >
                                 {pNum}
@@ -8603,7 +8603,7 @@ export default function UserIntroPage() {
                               type="button"
                               disabled={safePage >= totalPages}
                               onClick={() => setUserAgroPage(Math.min(totalPages, safePage + 1))}
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-extrabold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-800 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
                             >
                               다음
                             </button>
@@ -8611,7 +8611,7 @@ export default function UserIntroPage() {
                               type="button"
                               disabled={safePage >= totalPages}
                               onClick={() => setUserAgroPage(totalPages)}
-                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-extrabold text-slate-700 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
+                              className="px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-800 hover:bg-emerald-50 hover:border-emerald-300 disabled:opacity-40 disabled:pointer-events-none cursor-pointer transition"
                             >
                               마지막
                             </button>
