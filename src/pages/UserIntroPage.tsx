@@ -2489,7 +2489,7 @@ export default function UserIntroPage() {
                 setScheduleReqModalPos({ x: 0, y: 0 });
                 setIsScheduleReqModelessOpen(true);
               }}
-              className="px-2.5 py-1 rounded-full bg-[#0F5328] hover:bg-[#146C34] text-white text-[11px] font-extrabold shadow-2xs transition cursor-pointer inline-flex items-center gap-1 leading-none"
+              className="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs shadow-emerald-600/20 transition cursor-pointer inline-flex items-center gap-1 leading-none"
             >
               <FileEdit className="w-3 h-3" />
               <span>+ 일정 요청</span>
@@ -2527,13 +2527,13 @@ export default function UserIntroPage() {
                         cx="24.5"
                         cy="23.5"
                         r="5.5"
-                        fill={active ? '#6EE7B7' : '#5BB89A'}
+                        fill={active ? '#A7F3D0' : '#5BB89A'}
                         stroke={active ? '#ffffff' : '#334155'}
                         strokeWidth="2"
                       />
                       <path
                         d="M24.5 20.8v5.4M21.8 23.5h5.4"
-                        stroke={active ? '#0F5328' : '#ffffff'}
+                        stroke={active ? '#059669' : '#ffffff'}
                         strokeWidth="2.3"
                         strokeLinecap="round"
                       />
@@ -2567,13 +2567,13 @@ export default function UserIntroPage() {
                         cx="18"
                         cy="22"
                         r="5.2"
-                        fill={active ? '#6EE7B7' : '#5BB89A'}
+                        fill={active ? '#A7F3D0' : '#5BB89A'}
                         stroke={active ? '#ffffff' : '#334155'}
                         strokeWidth="1.9"
                       />
                       <path
                         d="M15.8 22l1.6 1.6 3.2-3.2"
-                        stroke={active ? '#0F5328' : '#ffffff'}
+                        stroke={active ? '#059669' : '#ffffff'}
                         strokeWidth="2.2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -2594,7 +2594,7 @@ export default function UserIntroPage() {
                   }}
                   className={`w-[32%] max-w-[118px] relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all duration-150 cursor-pointer shrink-0 ${
                     tab.active
-                      ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_4px_12px_rgba(15,83,40,0.22)]'
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                       : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
@@ -2641,13 +2641,11 @@ export default function UserIntroPage() {
                   menu: '재배일정 요청' as const,
                   label: '재배일정 요청',
                   icon: FileEdit,
-                  activeGrad: 'from-[#0F5328] to-teal-700',
                 },
                 {
                   menu: '재배일정 확인' as const,
                   label: '재배일정 확인',
                   icon: Calendar,
-                  activeGrad: 'from-[#0F5328] to-emerald-700',
                 },
               ].map((tabItem) => {
                 const TabIcon = tabItem.icon;
@@ -2664,7 +2662,7 @@ export default function UserIntroPage() {
                     }}
                     className={`w-[190px] xl:w-[210px] shrink-0 group relative rounded-lg px-3.5 py-2 text-left transition-all duration-150 cursor-pointer flex items-center gap-2.5 ${
                       isCurrentTab
-                        ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-sm`
+                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                         : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
                     }`}
                   >
@@ -7384,7 +7382,7 @@ export default function UserIntroPage() {
                       }}
                       className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold transition cursor-pointer leading-none ${
                         mobileAgroCategoryTab === 'ALL'
-                          ? 'bg-[#0F5328] text-white shadow-xs'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/20'
                           : 'bg-[#E9ECEB] hover:bg-slate-200 text-slate-700'
                       }`}
                     >
@@ -7396,7 +7394,7 @@ export default function UserIntroPage() {
                       aria-label="농작물 및 농자재 검색"
                       className={`w-7 h-7 rounded-full flex items-center justify-center transition cursor-pointer ${
                         showMobileAgroSearch || userAgroKeyword.trim()
-                          ? 'bg-[#0F5328] text-white shadow-xs'
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs shadow-emerald-600/20'
                           : 'bg-[#E9ECEB] text-slate-800 hover:bg-slate-200'
                       }`}
                     >
@@ -7427,7 +7425,7 @@ export default function UserIntroPage() {
                             />
                             <path
                               d="M8.8 21.5h10.4l1.1 2.1a1 1 0 01-.88 1.48H8.58a1 1 0 01-.88-1.48l1.1-2.1z"
-                              fill={active ? '#4E9F86' : '#5BB89A'}
+                              fill={active ? '#A7F3D0' : '#5BB89A'}
                             />
                             {/* 우측 비료 포대 */}
                             <rect
@@ -7442,7 +7440,7 @@ export default function UserIntroPage() {
                             />
                             <path
                               d="M22.5 21.8c0-2.2 1.8-3.8 4-3.8 0 2.2-1.8 3.8-4 3.8z"
-                              fill={active ? '#0F5328' : '#4E9F86'}
+                              fill={active ? '#059669' : '#4E9F86'}
                             />
                           </svg>
                         ),
@@ -7628,7 +7626,7 @@ export default function UserIntroPage() {
                           }}
                           className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all duration-150 cursor-pointer ${
                             isActive
-                              ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_4px_12px_rgba(15,83,40,0.22)]'
+                              ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                               : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                           }`}
                         >
@@ -7682,7 +7680,7 @@ export default function UserIntroPage() {
                           value={userAgroKeyword}
                           onChange={(e) => setUserAgroKeyword(e.target.value)}
                           placeholder="비료, 영양제, 병해충방지제, 씨, 모종 검색..."
-                          className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#0F5328] focus:outline-none"
+                          className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-emerald-600 focus:outline-none"
                         />
                         {userAgroKeyword && (
                           <button
@@ -7705,7 +7703,7 @@ export default function UserIntroPage() {
                       </div>
                       <button
                         type="submit"
-                        className="px-3.5 py-2 rounded-xl bg-[#0F5328] text-white text-xs font-extrabold shrink-0 cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shrink-0 cursor-pointer shadow-xs shadow-emerald-600/20"
                       >
                         검색
                       </button>
@@ -7760,7 +7758,7 @@ export default function UserIntroPage() {
                     if (cat === 'PESTICIDE') {
                       return { label: '병해충방지제', cls: 'bg-[#E57368] text-white' };
                     }
-                    return { label: activeMenu, cls: 'bg-[#2E7D32] text-white' };
+                    return { label: activeMenu, cls: 'bg-emerald-600 text-white' };
                   };
 
                   const stripParenthesesText = (val?: string | null) =>
@@ -7856,7 +7854,7 @@ export default function UserIntroPage() {
                               q: '',
                             });
                           }}
-                          className="px-5 py-2.5 rounded-full bg-[#1B5E20] text-white text-[15px] font-black cursor-pointer"
+                          className="px-5 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-[15px] font-black cursor-pointer shadow-xs shadow-emerald-600/20"
                         >
                           전체 품목 다시 보기
                         </button>
@@ -7997,7 +7995,6 @@ export default function UserIntroPage() {
                       eng: 'FERTILIZER',
                       desc: '밑거름 · 웃거름 · 유기질 퇴비',
                       icon: FlaskConical,
-                      activeGrad: 'from-emerald-600 to-teal-700',
                       badgeCls: 'bg-emerald-100 text-emerald-800',
                     },
                     {
@@ -8006,7 +8003,6 @@ export default function UserIntroPage() {
                       eng: 'NUTRIENT',
                       desc: '칼슘 · 아미노산 · 생리활성',
                       icon: Sparkles,
-                      activeGrad: 'from-teal-600 to-cyan-700',
                       badgeCls: 'bg-teal-100 text-teal-800',
                     },
                     {
@@ -8015,7 +8011,6 @@ export default function UserIntroPage() {
                       eng: 'PESTICIDE',
                       desc: '살균 · 살충 · 친환경 방제',
                       icon: ShieldAlert,
-                      activeGrad: 'from-rose-600 to-orange-600',
                       badgeCls: 'bg-rose-100 text-rose-800',
                     },
                     {
@@ -8024,7 +8019,6 @@ export default function UserIntroPage() {
                       eng: 'SEED',
                       desc: '발아보증 · 내병성 우량 종자',
                       icon: Package,
-                      activeGrad: 'from-amber-600 to-yellow-600',
                       badgeCls: 'bg-amber-100 text-amber-800',
                     },
                     {
@@ -8033,7 +8027,6 @@ export default function UserIntroPage() {
                       eng: 'SEEDLING',
                       desc: '트레이 육묘 · 접목 건묘',
                       icon: Sprout,
-                      activeGrad: 'from-green-600 to-emerald-700',
                       badgeCls: 'bg-green-100 text-green-800',
                     },
                   ].map((tabItem) => {
@@ -8049,7 +8042,7 @@ export default function UserIntroPage() {
                         onClick={() => setActiveMenu(tabItem.menu)}
                         className={`group relative rounded-lg px-3 py-2 text-left transition-all duration-200 cursor-pointer flex items-center gap-2.5 ${
                           isCurrentTab
-                            ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-sm`
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                             : 'bg-white/80 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
                         }`}
                       >
@@ -11396,7 +11389,7 @@ export default function UserIntroPage() {
                 }}
                 className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
                   isHomeActive
-                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                     : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                 }`}
               >
@@ -11430,7 +11423,7 @@ export default function UserIntroPage() {
                 }}
                 className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
                   isScheduleActive
-                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                     : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                 }`}
               >
@@ -11471,7 +11464,7 @@ export default function UserIntroPage() {
                 }}
                 className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
                   isAgroActive
-                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                     : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                 }`}
               >
@@ -11504,7 +11497,7 @@ export default function UserIntroPage() {
                 }}
                 className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
                   isMyPageActive
-                    ? 'bg-[#0F5328] text-white border border-[#0F5328] shadow-[0_5px_14px_rgba(15,83,40,0.24)]'
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
                     : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                 }`}
               >
