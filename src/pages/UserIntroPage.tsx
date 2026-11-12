@@ -7238,7 +7238,7 @@ export default function UserIntroPage() {
                             q: userAgroKeyword,
                           });
                         }}
-                        className={`relative flex flex-col items-center justify-center py-2.5 px-1 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
+                        className={`relative flex flex-col items-center justify-center py-2.5 px-0.5 rounded-t-xl transition-all duration-150 cursor-pointer overflow-hidden ${
                           isActive
                             ? 'bg-white shadow-[0_-2px_8px_rgba(15,23,42,0.06)] z-10 -mb-[1px] pb-3 border-t border-x border-slate-200/90'
                             : 'bg-[#D8E1DC]/75 hover:bg-[#DCE5E0] text-slate-600 border-t border-x border-transparent'
@@ -7251,7 +7251,7 @@ export default function UserIntroPage() {
                           }`}
                         />
                         <div
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1 transition ${
                             isActive
                               ? tab.iconActiveCls
                               : 'bg-white/60 text-slate-500'
@@ -7260,10 +7260,14 @@ export default function UserIntroPage() {
                           <TabIcon className="w-4 h-4 stroke-[2.2]" />
                         </div>
                         <span
-                          className={`min-h-[26px] flex flex-col items-center justify-center text-[12.5px] leading-[1.15] tracking-tight text-center ${
+                          className={`min-h-[36px] flex flex-col items-center justify-center text-center tracking-tighter ${
+                            tab.key === 'PESTICIDE'
+                              ? 'text-[15.5px] min-[390px]:text-[17px] sm:text-[18.5px] leading-[1.08]'
+                              : 'text-[17px] min-[390px]:text-[18.5px] sm:text-[20px] leading-none'
+                          } ${
                             isActive
                               ? `font-black ${tab.textActiveCls}`
-                              : 'font-bold text-slate-600'
+                              : 'font-extrabold text-slate-700'
                           }`}
                         >
                           {tab.key === 'PESTICIDE' ? (
