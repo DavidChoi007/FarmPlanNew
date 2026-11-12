@@ -532,7 +532,7 @@ export default function UserIntroPage() {
     };
   }, [isDraggingReqDetailModal]);
 
-  const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '비료', '영양제', '병해충관리제', '씨', '모종', '마이페이지'];
+  const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '농작물 구매', '마이페이지'];
 
   // CloudBae@naver.com (배철민) 회원의 전체 등록 재배작물 리스트 (관리자 페이지의 재배일정 요청 9건 & 제공 일정 데이터와 1:1 매칭)
   const defaultCloudBaeCropList = [
@@ -1634,9 +1634,9 @@ export default function UserIntroPage() {
   const getUserAgroCategoryFromMenu = (
     menuName: string
   ): 'ALL' | 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE' | 'SEED' | 'SEEDLING' => {
-    if (menuName === '농자재 판매') return 'ALL';
+    if (menuName === '농작물 구매' || menuName === '농자재 판매') return 'FERTILIZER';
     if (menuName === '영양제') return 'NUTRIENT';
-    if (menuName === '병해충관리제') return 'PESTICIDE';
+    if (menuName === '병해충관리제' || menuName === '병해충방지제') return 'PESTICIDE';
     if (menuName === '씨') return 'SEED';
     if (menuName === '모종') return 'SEEDLING';
     return 'FERTILIZER';
@@ -2039,10 +2039,12 @@ export default function UserIntroPage() {
 
   useEffect(() => {
     if (
+      activeMenu === '농작물 구매' ||
       activeMenu === '농자재 판매' ||
       activeMenu === '비료' ||
       activeMenu === '영양제' ||
       activeMenu === '병해충관리제' ||
+      activeMenu === '병해충방지제' ||
       activeMenu === '씨' ||
       activeMenu === '모종'
     ) {
@@ -2050,7 +2052,10 @@ export default function UserIntroPage() {
         .then((r) => r.json())
         .then((res) => setData(res))
         .catch(() => {});
-      const cat = getUserAgroCategoryFromMenu(activeMenu);
+      const cat =
+        activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
+          ? mobileAgroCategoryTab
+          : getUserAgroCategoryFromMenu(activeMenu);
       setMobileAgroCategoryTab(cat);
       setUserAgroMainTypeFilter('ALL');
       setUserAgroSubTypeFilter('ALL');
@@ -2522,20 +2527,25 @@ export default function UserIntroPage() {
             {/* PC 버전 상단 가로 캡슐형 메뉴 바 */}
             <nav className="hidden lg:flex items-center gap-1 bg-slate-50/95 border border-slate-200/80 p-1.5 rounded-2xl shadow-2xs overflow-x-auto no-scrollbar">
               {userMenus.map((menu) => {
-                const isActive = activeMenu === menu;
+                const isAgroMenu =
+                  activeMenu === '농작물 구매' ||
+                  activeMenu === '농자재 판매' ||
+                  activeMenu === '비료' ||
+                  activeMenu === '영양제' ||
+                  activeMenu === '병해충관리제' ||
+                  activeMenu === '병해충방지제' ||
+                  activeMenu === '씨' ||
+                  activeMenu === '모종';
+                const isActive = menu === '농작물 구매' ? isAgroMenu : activeMenu === menu;
                 const menuIconMap: Record<string, any> = {
                   홈: Home,
                   '재배일정 요청': FileEdit,
                   '재배일정 확인': Calendar,
-                  비료: FlaskConical,
-                  영양제: Sparkles,
-                  병해충관리제: ShieldAlert,
-                  씨: Package,
-                  모종: Sprout,
+                  '농작물 구매': ShoppingBag,
                   마이페이지: User,
                 };
                 const MenuIcon = menuIconMap[menu] || Sprout;
-                const showDividerBefore = menu === '비료' || menu === '마이페이지';
+                const showDividerBefore = menu === '농작물 구매' || menu === '마이페이지';
                 return (
                   <React.Fragment key={menu}>
                     {showDividerBefore && (
@@ -2544,12 +2554,17 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setActiveMenu(menu);
+                        if (menu === '농작물 구매') {
+                          setMobileAgroCategoryTab('FERTILIZER');
+                          setActiveMenu('비료');
+                        } else {
+                          setActiveMenu(menu);
+                        }
                         if (menu === '재배일정 확인') {
                           setMobileScheduleStep('list');
                         }
                       }}
-                      className={`px-3 xl:px-3.5 py-2 rounded-xl inline-flex items-center gap-1.5 text-[14px] xl:text-[15px] font-extrabold whitespace-nowrap transition-all duration-150 cursor-pointer tracking-tight ${
+                      className={`px-3 xl:px-4 py-2 rounded-xl inline-flex items-center gap-1.5 text-[14px] xl:text-[15px] font-extrabold whitespace-nowrap transition-all duration-150 cursor-pointer tracking-tight ${
                         isActive
                           ? 'bg-emerald-600 text-white shadow-xs shadow-emerald-600/25'
                           : 'text-slate-700 hover:text-emerald-800 hover:bg-emerald-50/90'
@@ -2682,7 +2697,7 @@ export default function UserIntroPage() {
           </button>
         </div>
 
-        {/* 드로어 본문: PC 버전 7대 메뉴 전체 리스트 */}
+        {/* 드로어 본문: 주요 서비스 메뉴 리스트 */}
         <div className="p-4 flex-1 overflow-y-auto space-y-2">
           <div className="px-2 pb-1 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
             주요 서비스 메뉴 ({userMenus.length}개)
@@ -2707,34 +2722,10 @@ export default function UserIntroPage() {
               icon: Calendar,
             },
             {
-              menu: '비료',
-              desc: '9대 보증성분 · 완효성 맞춤 비료 카탈로그',
-              badge: '농자재',
-              icon: FlaskConical,
-            },
-            {
-              menu: '영양제',
-              desc: '생리활성 아미노산 · 킬레이트 기능성 영양제',
-              badge: '농자재',
-              icon: Sparkles,
-            },
-            {
-              menu: '병해충관리제',
-              desc: 'PLS 안전기준 · 작용기작 교호살포 약제',
-              badge: '농자재',
-              icon: ShieldAlert,
-            },
-            {
-              menu: '씨',
-              desc: '발아율 · 내병성 보증 우량 코팅종자 · 씨앗',
-              badge: '종자',
-              icon: Package,
-            },
-            {
-              menu: '모종',
-              desc: '트레이 규격 · 접목/실생 · 외기순화 건묘 모종',
-              badge: '육묘',
-              icon: Sprout,
+              menu: '농작물 구매',
+              desc: '비료 · 영양제 · 병해충방지제 · 씨 · 모종 통합 마켓',
+              badge: '5대 카테고리',
+              icon: ShoppingBag,
             },
             {
               menu: '마이페이지',
@@ -2744,13 +2735,27 @@ export default function UserIntroPage() {
             },
           ].map((item) => {
             const IconComp = item.icon;
-            const isSelected = activeMenu === item.menu;
+            const isAgroMenu =
+              activeMenu === '농작물 구매' ||
+              activeMenu === '농자재 판매' ||
+              activeMenu === '비료' ||
+              activeMenu === '영양제' ||
+              activeMenu === '병해충관리제' ||
+              activeMenu === '병해충방지제' ||
+              activeMenu === '씨' ||
+              activeMenu === '모종';
+            const isSelected = item.menu === '농작물 구매' ? isAgroMenu : activeMenu === item.menu;
             return (
               <button
                 key={item.menu}
                 type="button"
                 onClick={() => {
-                  setActiveMenu(item.menu);
+                  if (item.menu === '농작물 구매') {
+                    setMobileAgroCategoryTab('ALL');
+                    setActiveMenu('농작물 구매');
+                  } else {
+                    setActiveMenu(item.menu);
+                  }
                   if (item.menu === '재배일정 확인') {
                     setMobileScheduleStep('list');
                   }
@@ -7109,22 +7114,29 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [탭 4~8: 비료 / 영양제 / 병해충관리제 / 씨 / 모종 / 농자재 판매 (관리자 페이지 등록 농자재 DB + 다중 검색 필터 + 전체 리스트 출력)] ==================== */}
-        {(activeMenu === '농자재 판매' ||
+        {/* ==================== [탭 4: 농작물 구매 (비료 / 영양제 / 병해충방지제 / 씨 / 모종 통합 탭 구분 + 관리자 DB 실시간 연동)] ==================== */}
+        {(activeMenu === '농작물 구매' ||
+          activeMenu === '농자재 판매' ||
           activeMenu === '비료' ||
           activeMenu === '영양제' ||
           activeMenu === '병해충관리제' ||
+          activeMenu === '병해충방지제' ||
           activeMenu === '씨' ||
           activeMenu === '모종') && (
           <div className="space-y-4 sm:space-y-6">
-            {/* ==================== [모바일 전용: 심플하고 안정적인 농작물·농자재 안내 리스트 화면 (시안 100% 반영)] ==================== */}
+            {/* ==================== [모바일 전용: 심플하고 안정적인 농작물 구매 리스트 화면] ==================== */}
             <div className="lg:hidden -mx-4 -mt-5 px-4 pt-4 pb-6 bg-[#F4F6F5] min-h-[calc(100vh-7.5rem)] space-y-3.5">
               {/* 1. 모바일 상단 타이틀 + 우측 돋보기 검색 아이콘 */}
               <div className="bg-white rounded-3xl px-5 pt-5 pb-4 shadow-[0_2px_12px_rgba(15,23,42,0.04)] border border-slate-200/70 space-y-3.5">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
-                    농작물·농자재 안내
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[22px] font-black tracking-tight text-slate-900 leading-none">
+                      농작물 구매
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-extrabold text-emerald-800">
+                      {userAgroResult.total}종
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowMobileAgroSearch((prev) => !prev)}
@@ -7157,7 +7169,7 @@ export default function UserIntroPage() {
                         type="text"
                         value={userAgroKeyword}
                         onChange={(e) => setUserAgroKeyword(e.target.value)}
-                        placeholder="작물명, 씨앗, 모종, 비료, 영양제 검색..."
+                        placeholder="비료, 영양제, 병해충방지제, 씨, 모종 검색..."
                         className="w-full pl-9 pr-8 py-2.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#1B5E20] focus:outline-none"
                       />
                       {userAgroKeyword && (
@@ -7185,15 +7197,15 @@ export default function UserIntroPage() {
                   </form>
                 )}
 
-                {/* 2. 가로 스크롤 캡슐형 카테고리 탭 바 (전체 / 씨(종자) / 모종 / 비료 / 영양제 / 병해충방지제) */}
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
+                {/* 2. 세련된 가로 스크롤 캡슐형 카테고리 탭 바 (전체 / 비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 -mx-1 px-1">
                   {[
-                    { key: 'ALL' as const, label: '전체' },
-                    { key: 'SEED' as const, label: '씨(종자)' },
-                    { key: 'SEEDLING' as const, label: '모종' },
-                    { key: 'FERTILIZER' as const, label: '비료' },
-                    { key: 'NUTRIENT' as const, label: '영양제' },
-                    { key: 'PESTICIDE' as const, label: '병해충방지제' },
+                    { key: 'ALL' as const, menuKey: '농작물 구매', label: '전체' },
+                    { key: 'FERTILIZER' as const, menuKey: '비료', label: '비료' },
+                    { key: 'NUTRIENT' as const, menuKey: '영양제', label: '영양제' },
+                    { key: 'PESTICIDE' as const, menuKey: '병해충관리제', label: '병해충방지제' },
+                    { key: 'SEED' as const, menuKey: '씨', label: '씨' },
+                    { key: 'SEEDLING' as const, menuKey: '모종', label: '모종' },
                   ].map((tab) => {
                     const isActive = mobileAgroCategoryTab === tab.key;
                     return (
@@ -7213,10 +7225,10 @@ export default function UserIntroPage() {
                             q: userAgroKeyword,
                           });
                         }}
-                        className={`px-4 py-2 rounded-full text-[13px] font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                        className={`px-4 py-2 rounded-full text-[13px] font-extrabold whitespace-nowrap transition-all duration-150 cursor-pointer shrink-0 ${
                           isActive
-                            ? 'bg-[#1B5E20] text-white shadow-xs'
-                            : 'bg-[#E9ECEF] text-slate-800 hover:bg-slate-200'
+                            ? 'bg-[#1B5E20] text-white shadow-xs ring-2 ring-emerald-700/20'
+                            : 'bg-[#E9ECEF] text-slate-700 hover:bg-slate-200'
                         }`}
                       >
                         {tab.label}
@@ -7469,22 +7481,22 @@ export default function UserIntroPage() {
               })()}
             </div>
 
-            {/* ==================== [PC 전용 (lg 이상): 기존 와이드 배너 + 다중 검색 필터 + 상세 리스트] ==================== */}
+            {/* ==================== [PC 전용 (lg 이상): 기존 와이드 배너 + 세련된 5대 카테고리 탭 + 다중 검색 필터 + 상세 리스트] ==================== */}
             <div className="hidden lg:block space-y-6">
-              {/* 비료 / 영양제 / 병해충관리제 / 씨 / 모종 페이지별 맞춤형 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
+              {/* 비료 / 영양제 / 병해충방지제 / 씨 / 모종 페이지별 맞춤형 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
               <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
                 <div className="relative w-full">
                   <img
                     src={
-                      activeMenu === '비료' || activeMenu === '농자재 판매'
-                        ? '/images/user-fertilizer-3d-banner.jpg?v=20261109'
-                        : activeMenu === '영양제'
+                      activeMenu === '영양제'
                         ? '/images/user-nutrient-3d-banner.jpg?v=20261109'
-                        : activeMenu === '병해충관리제'
+                        : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
                         ? '/images/user-pesticide-3d-banner.jpg?v=20261109'
                         : activeMenu === '씨'
                         ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
-                        : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+                        : activeMenu === '모종'
+                        ? '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+                        : '/images/user-fertilizer-3d-banner.jpg?v=20261109'
                     }
                     alt={`${activeMenu} 페이지 전용 3D 농부 캐릭터 와이드 배너`}
                     className="w-full h-auto min-h-[140px] object-cover object-center block"
@@ -7521,26 +7533,128 @@ export default function UserIntroPage() {
                 </div>
               )}
 
-              {/* 상단 서브메뉴 5종 빠른 전환 바 (비료 / 영양제 / 병해충관리제 / 씨 / 모종) */}
-              <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
+              {/* 농작물 구매: 세련된 5대 카테고리 탭 바 (비료 / 영양제 / 병해충방지제 / 씨 / 모종) */}
+              <section className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
+                {/* 세련된 5분할 세그먼트 카테고리 탭 */}
+                <div className="bg-slate-100/90 p-2 rounded-2xl border border-slate-200/80 grid grid-cols-5 gap-2">
+                  {[
+                    {
+                      menu: '비료',
+                      label: '비료',
+                      eng: 'FERTILIZER',
+                      desc: '밑거름 · 웃거름 · 유기질 퇴비',
+                      icon: FlaskConical,
+                      activeGrad: 'from-emerald-600 to-teal-700',
+                      badgeCls: 'bg-emerald-100 text-emerald-800',
+                    },
+                    {
+                      menu: '영양제',
+                      label: '영양제',
+                      eng: 'NUTRIENT',
+                      desc: '칼슘 · 아미노산 · 생리활성',
+                      icon: Sparkles,
+                      activeGrad: 'from-teal-600 to-cyan-700',
+                      badgeCls: 'bg-teal-100 text-teal-800',
+                    },
+                    {
+                      menu: '병해충관리제',
+                      label: '병해충방지제',
+                      eng: 'PESTICIDE',
+                      desc: '살균 · 살충 · 친환경 방제',
+                      icon: ShieldAlert,
+                      activeGrad: 'from-rose-600 to-orange-600',
+                      badgeCls: 'bg-rose-100 text-rose-800',
+                    },
+                    {
+                      menu: '씨',
+                      label: '씨',
+                      eng: 'SEED',
+                      desc: '발아보증 · 내병성 우량 종자',
+                      icon: Package,
+                      activeGrad: 'from-amber-600 to-yellow-600',
+                      badgeCls: 'bg-amber-100 text-amber-800',
+                    },
+                    {
+                      menu: '모종',
+                      label: '모종',
+                      eng: 'SEEDLING',
+                      desc: '트레이 육묘 · 접목 건묘',
+                      icon: Sprout,
+                      activeGrad: 'from-green-600 to-emerald-700',
+                      badgeCls: 'bg-green-100 text-green-800',
+                    },
+                  ].map((tabItem) => {
+                    const TabIcon = tabItem.icon;
+                    const isCurrentTab =
+                      activeMenu === tabItem.menu ||
+                      ((activeMenu === '농작물 구매' || activeMenu === '농자재 판매') &&
+                        tabItem.menu === '비료');
+                    return (
+                      <button
+                        key={tabItem.menu}
+                        type="button"
+                        onClick={() => setActiveMenu(tabItem.menu)}
+                        className={`group relative rounded-xl px-4 py-3.5 text-left transition-all duration-200 cursor-pointer flex items-center gap-3.5 ${
+                          isCurrentTab
+                            ? `bg-gradient-to-br ${tabItem.activeGrad} text-white shadow-md scale-[1.01]`
+                            : 'bg-white/80 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
+                        }`}
+                      >
+                        <div
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition ${
+                            isCurrentTab
+                              ? 'bg-white/20 text-white shadow-inner'
+                              : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
+                          }`}
+                        >
+                          <TabIcon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-base font-extrabold tracking-tight truncate ${
+                                isCurrentTab ? 'text-white' : 'text-slate-900'
+                              }`}
+                            >
+                              {tabItem.label}
+                            </span>
+                            <span
+                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${
+                                isCurrentTab ? 'bg-white/20 text-white' : tabItem.badgeCls
+                              }`}
+                            >
+                              {tabItem.eng}
+                            </span>
+                          </div>
+                          <p
+                            className={`text-[11px] mt-0.5 truncate font-semibold ${
+                              isCurrentTab ? 'text-white/90' : 'text-slate-500'
+                            }`}
+                          >
+                            {tabItem.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                   <div>
                     <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                      관리자 페이지 등록 농자재 DB 실시간 연동{loggedInUser.isLoggedIn ? ` · ${loggedInUser.name} 님 맞춤 처방` : ''}
+                      관리자 페이지 등록 농작물·농자재 DB 실시간 연동{loggedInUser.isLoggedIn ? ` · ${loggedInUser.name} 님 맞춤 처방` : ''}
                     </span>
                     <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1.5 flex items-center gap-2.5 flex-wrap">
                       <span>
-                        {activeMenu === '비료'
-                          ? '비료 (FERTILIZER) 전문 판매점 전체 제품 리스트'
-                          : activeMenu === '영양제'
+                        {activeMenu === '영양제'
                           ? '영양제 (NUTRIENT) 전문 판매점 전체 제품 리스트'
-                          : activeMenu === '병해충관리제'
-                          ? '병해충관리제 (PESTICIDE) 전문 판매점 전체 제품 리스트'
+                          : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
+                          ? '병해충방지제 (PESTICIDE) 전문 판매점 전체 제품 리스트'
                           : activeMenu === '씨'
                           ? '씨 (SEED) 전문 종자 판매점 전체 제품 리스트'
                           : activeMenu === '모종'
                           ? '모종 (SEEDLING) 전문 육묘 판매점 전체 제품 리스트'
-                          : '농작물·농자재 전문 판매점 전체 제품 리스트'}
+                          : '비료 (FERTILIZER) 전문 판매점 전체 제품 리스트'}
                       </span>
                       <span className="px-3 py-0.5 rounded-full text-xs sm:text-sm bg-emerald-600 text-white font-extrabold">
                         총 {userAgroResult.total}개 제품
@@ -7562,69 +7676,6 @@ export default function UserIntroPage() {
                       )}
                     </p>
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('비료')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                        activeMenu === '비료'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <FlaskConical className="w-4 h-4" />
-                      비료 (FERTILIZER)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('영양제')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                        activeMenu === '영양제'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Sprout className="w-4 h-4" />
-                      영양제 (NUTRIENT)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('병해충관리제')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                        activeMenu === '병해충관리제'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <ShieldAlert className="w-4 h-4" />
-                      병해충관리제 (PESTICIDE)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('씨')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                        activeMenu === '씨'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Package className="w-4 h-4" />
-                      씨 (SEED)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('모종')}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 border transition cursor-pointer ${
-                        activeMenu === '모종'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Sprout className="w-4 h-4" />
-                      모종 (SEEDLING)
-                    </button>
-                  </div>
                 </div>
 
                 {/* 관리자 페이지와 동일한 다중 검색 필터 바 (① 구분 카테고리, ② 친환경·유기농자재 구분, ③ 제품명·제조사·영양소·효능 키워드 검색) */}
@@ -7633,15 +7684,15 @@ export default function UserIntroPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-extrabold text-xs flex items-center gap-1">
                         <Search className="w-3.5 h-3.5" />
-                        {activeMenu === '비료'
-                          ? '비료 전문점 제품'
-                          : activeMenu === '영양제'
+                        {activeMenu === '영양제'
                           ? '영양제 제품'
-                          : activeMenu === '병해충관리제'
-                          ? '병해충관리제 제품'
+                          : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
+                          ? '병해충방지제 제품'
                           : activeMenu === '씨'
                           ? '씨 (종자) 제품'
-                          : '모종 (육묘) 제품'}{' '}
+                          : activeMenu === '모종'
+                          ? '모종 (육묘) 제품'
+                          : '비료 전문점 제품'}{' '}
                         다중 검색 필터
                       </span>
                       <span className="text-xs text-slate-600 font-semibold">
@@ -7672,7 +7723,7 @@ export default function UserIntroPage() {
                   </div>
 
                   <div className="grid sm:grid-cols-12 gap-3 text-xs">
-                    {activeMenu === '비료' && (
+                    {(activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매') && (
                       <div className="sm:col-span-2">
                         <label className="block text-[11px] font-extrabold text-emerald-900 mb-1">
                           ① 비료 구분 카테고리 (Main-Type)
@@ -7695,17 +7746,17 @@ export default function UserIntroPage() {
                     )}
 
                     {/* 세부 카테고리 (Sub-Type) */}
-                    <div className={activeMenu === '비료' ? 'sm:col-span-3' : 'sm:col-span-3'}>
+                    <div className="sm:col-span-3">
                       <label className="block text-[11px] font-extrabold text-emerald-900 mb-1">
-                        {activeMenu === '비료'
-                          ? '② 비료 세부 카테고리 (Sub-Type)'
-                          : activeMenu === '영양제'
+                        {activeMenu === '영양제'
                           ? '① 영양제 구분 카테고리 (Sub-Type)'
-                          : activeMenu === '병해충관리제'
-                          ? '① 병해충관리제 구분 카테고리 (Sub-Type)'
+                          : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
+                          ? '① 병해충방지제 구분 카테고리 (Sub-Type)'
                           : activeMenu === '씨'
                           ? '① 씨 (종자) 구분 카테고리 (Sub-Type)'
-                          : '① 모종 (육묘) 구분 카테고리 (Sub-Type)'}
+                          : activeMenu === '모종'
+                          ? '① 모종 (육묘) 구분 카테고리 (Sub-Type)'
+                          : '② 비료 세부 카테고리 (Sub-Type)'}
                       </label>
                       <select
                         value={userAgroSubTypeFilter}
@@ -7717,8 +7768,15 @@ export default function UserIntroPage() {
                         className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
                       >
                         <option value="ALL">전체 세부 카테고리</option>
-                        {(activeMenu === '비료'
-                          ? resolvedUserFertilizerCategories.filter((catItem: any) =>
+                        {(activeMenu === '영양제'
+                          ? resolvedUserNutrientCategories
+                          : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
+                          ? resolvedUserPesticideCategories
+                          : activeMenu === '씨'
+                          ? resolvedUserSeedCategories
+                          : activeMenu === '모종'
+                          ? resolvedUserSeedlingCategories
+                          : resolvedUserFertilizerCategories.filter((catItem: any) =>
                               userAgroMainTypeFilter === 'ALL'
                                 ? true
                                 : resolveFertilizerMainType(
@@ -7726,19 +7784,12 @@ export default function UserIntroPage() {
                                     catItem.main_type
                                   ) === userAgroMainTypeFilter
                             )
-                          : activeMenu === '영양제'
-                          ? resolvedUserNutrientCategories
-                          : activeMenu === '병해충관리제'
-                          ? resolvedUserPesticideCategories
-                          : activeMenu === '씨'
-                          ? resolvedUserSeedCategories
-                          : resolvedUserSeedlingCategories
                         ).map((catItem: any) => {
                           const catCode = catItem.category_code || catItem.code;
                           const catName = catItem.category_name || catItem.name;
                           return (
                             <option key={catCode} value={catName}>
-                              {activeMenu === '비료'
+                              {activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
                                 ? `[${resolveFertilizerMainType(catName || catCode, catItem.main_type)}] ${catName}`
                                 : catName}
                             </option>
@@ -7748,9 +7799,17 @@ export default function UserIntroPage() {
                     </div>
 
                     {/* 친환경·유기농자재 구분 */}
-                    <div className={activeMenu === '비료' ? 'sm:col-span-2' : 'sm:col-span-3'}>
+                    <div
+                      className={
+                        activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
+                          ? 'sm:col-span-2'
+                          : 'sm:col-span-3'
+                      }
+                    >
                       <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                        {activeMenu === '비료' ? '③ 친환경·유기농 구분' : '② 친환경·유기농자재 구분'}
+                        {activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
+                          ? '③ 친환경·유기농 구분'
+                          : '② 친환경·유기농자재 구분'}
                       </label>
                       <select
                         value={userAgroOrganicFilter}
@@ -7768,9 +7827,15 @@ export default function UserIntroPage() {
                     </div>
 
                     {/* 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색 */}
-                    <div className={activeMenu === '비료' ? 'sm:col-span-5' : 'sm:col-span-6'}>
+                    <div
+                      className={
+                        activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
+                          ? 'sm:col-span-5'
+                          : 'sm:col-span-6'
+                      }
+                    >
                       <label className="block text-[11px] font-extrabold text-slate-700 mb-1">
-                        {activeMenu === '비료'
+                        {activeMenu === '비료' || activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
                           ? '④ 제품명 · 제조사 · 주요 영양소 첨가비 · 효능 검색'
                           : activeMenu === '씨' || activeMenu === '모종'
                           ? '③ 품종명 · 종묘사/육묘장 · 내병성 · 규격 검색'
@@ -7790,15 +7855,15 @@ export default function UserIntroPage() {
                             value={userAgroKeyword}
                             onChange={(e) => setUserAgroKeyword(e.target.value)}
                             placeholder={
-                              activeMenu === '비료'
-                                ? '예: 슈퍼원예복합, 엔케이, 단한번, 고토석회, 유박, 대유, 남해화학, 누보...'
-                                : activeMenu === '영양제'
+                              activeMenu === '영양제'
                                 ? '예: 칼슘, 붕소, 발근, 비대, 아미노산, 냉해, 광합성, 미량요소...'
-                                : activeMenu === '병해충관리제'
+                                : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
                                 ? '예: 무름병, 노균병, 진딧물, 나방, 뿌리혹병, 제초제, 친환경...'
                                 : activeMenu === '씨'
                                 ? '예: 불암3호, 포항초, 청치마, 코팅종자, 무사마귀병, 농우바이오, 아시아종묘...'
-                                : '예: 불암3호 모종, 칼라탄 고추모종, 105구, 접목묘, 베니하루카, 씨감자...'
+                                : activeMenu === '모종'
+                                ? '예: 불암3호 모종, 칼라탄 고추모종, 105구, 접목묘, 베니하루카, 씨감자...'
+                                : '예: 슈퍼원예복합, 엔케이, 단한번, 고토석회, 유박, 대유, 남해화학, 누보...'
                             }
                             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900 placeholder-slate-400"
                           />
@@ -7830,15 +7895,15 @@ export default function UserIntroPage() {
                     >
                       전체 ({userAgroResult.total})
                     </button>
-                    {(activeMenu === '비료'
-                      ? resolvedUserFertilizerCategories
-                      : activeMenu === '영양제'
+                    {(activeMenu === '영양제'
                       ? resolvedUserNutrientCategories
-                      : activeMenu === '병해충관리제'
+                      : activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
                       ? resolvedUserPesticideCategories
                       : activeMenu === '씨'
                       ? resolvedUserSeedCategories
-                      : resolvedUserSeedlingCategories
+                      : activeMenu === '모종'
+                      ? resolvedUserSeedlingCategories
+                      : resolvedUserFertilizerCategories
                     ).map((catItem: any) => {
                       const catCode = catItem.category_code || catItem.code;
                       const catName = catItem.category_name || catItem.name;
@@ -10931,17 +10996,19 @@ export default function UserIntroPage() {
           {/* 3. 농자재 판매 */}
           {(() => {
             const isAgroActive =
+              activeMenu === '농작물 구매' ||
               activeMenu === '농자재 판매' ||
               activeMenu === '비료' ||
               activeMenu === '영양제' ||
               activeMenu === '병해충관리제' ||
+              activeMenu === '병해충방지제' ||
               activeMenu === '씨' ||
               activeMenu === '모종';
             return (
               <button
                 type="button"
                 onClick={() => {
-                  setActiveMenu('농자재 판매');
+                  setActiveMenu('농작물 구매');
                   setMobileAgroCategoryTab('ALL');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
