@@ -3113,16 +3113,16 @@ export default function UserIntroPage() {
                   />
 
                   {/* STEP 01 */}
-                  <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="flex items-center gap-2 sm:gap-3.5">
                     <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
                           STEP 01 · 스마트 데이터 일정 수립
                         </div>
-                        <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
                           기후 빅데이터 · 적산온도(GDD) 맞춤 산출
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3135,8 +3135,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 위성 + 새싹 3D 일러스트 아이콘 */}
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
                           {/* 토양 둔덕 */}
                           <ellipse cx="26" cy="46" rx="16" ry="4.5" fill="#78350F" />
                           <ellipse cx="26" cy="45" rx="13" ry="3.2" fill="#92400E" />
@@ -3171,16 +3171,16 @@ export default function UserIntroPage() {
                   </div>
 
                   {/* STEP 02 */}
-                  <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="flex items-center gap-2 sm:gap-3.5">
                     <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
                           STEP 02 · 실시간 기후 변동 자동 업데이트
                         </div>
-                        <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
                           이상기후 감지 · 작업일 실시간 보정
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3193,8 +3193,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 기상 레이더 3D 일러스트 아이콘 */}
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
                           <circle cx="28" cy="28" r="20" fill="#064E3B" stroke="#34D399" strokeWidth="2" />
                           <circle cx="28" cy="28" r="14" stroke="#10B981" strokeWidth="1.2" strokeDasharray="3 2" />
                           <circle cx="28" cy="28" r="7.5" stroke="#10B981" strokeWidth="1.2" />
@@ -3218,16 +3218,16 @@ export default function UserIntroPage() {
                   </div>
 
                   {/* STEP 03 */}
-                  <div className="flex items-center gap-2.5 sm:gap-3.5">
+                  <div className="flex items-center gap-2 sm:gap-3.5">
                     <div className="relative z-10 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-[#10B981]/25 border border-[#34D399]/60 flex items-center justify-center shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4ADE80] shadow-[0_0_8px_#4ADE80]" />
                     </div>
-                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3.5 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2.5 shadow-inner">
+                    <div className="flex-1 min-w-0 rounded-2xl bg-[#0D4A2E]/85 border border-[#256D4B]/80 px-3 py-2.5 sm:px-5 sm:py-3.5 flex items-center justify-between gap-2 shadow-inner">
                       <div className="min-w-0">
-                        <div className="text-[12px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug">
+                        <div className="text-[11px] min-[390px]:text-[11.5px] sm:text-sm font-extrabold text-[#4ADE80] tracking-tight leading-snug whitespace-nowrap truncate">
                           STEP 03 · 과정별 맞춤 농자재 추천
                         </div>
-                        <div className="text-[15.5px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
+                        <div className="text-[13px] min-[390px]:text-[14px] sm:text-xl font-black text-white tracking-tight leading-snug mt-0.5 break-keep">
                           생육단계별 비료·영양제·방제 처방
                         </div>
                         <div className="hidden lg:flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -3240,8 +3240,8 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                       {/* 새싹 + 맞춤 농자재 보틀 3D 일러스트 아이콘 */}
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
-                        <svg viewBox="0 0 56 56" className="w-12 h-12 sm:w-14 sm:h-14" fill="none">
+                      <div className="w-10 h-10 sm:w-14 sm:h-14 shrink-0 flex items-center justify-center">
+                        <svg viewBox="0 0 56 56" className="w-10 h-10 sm:w-14 sm:h-14" fill="none">
                           {/* 화분/토양 */}
                           <rect x="10" y="34" width="16" height="12" rx="3" fill="#A16207" />
                           {/* 줄기 및 큰 새싹 */}
@@ -12179,7 +12179,9 @@ export default function UserIntroPage() {
 
       {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 농작물 구매 모바일 고정뷰에서는 숨김) */}
       <footer
-        className={`bg-white border-t border-slate-200/80 py-6 mt-8 pb-24 lg:pb-6 ${
+        className={`bg-white border-t border-slate-200/80 py-6 mt-8 ${
+          activeMenu === '홈' ? 'pb-6' : 'pb-24 lg:pb-6'
+        } ${
           activeMenu === '농작물 구매' ||
           activeMenu === '농자재 판매' ||
           activeMenu === '비료' ||
@@ -12205,158 +12207,160 @@ export default function UserIntroPage() {
         </div>
       </footer>
 
-      {/* ==================== 모바일 전용 하단 고정 탭바 (홈 / 재배일정 / 농자재 판매 / 마이페이지) ==================== */}
-      <nav
-        aria-label="모바일 하단 주 메뉴"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]"
-        style={{
-          paddingBottom: isLegacyAndroidWebView
-            ? 'max(14px, env(safe-area-inset-bottom, 14px))'
-            : 'env(safe-area-inset-bottom, 0px)',
-        }}
-      >
-        <div className="grid grid-cols-4 gap-2 h-[76px] max-w-lg mx-auto px-3 py-2 items-stretch">
-          {/* 1. 홈 */}
-          {(() => {
-            const isHomeActive = activeMenu === '홈';
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMenu('홈');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
-                  isHomeActive
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                }`}
-              >
-                <Home
-                  className={`w-5 h-5 stroke-[2.3] ${
-                    isHomeActive ? 'text-white' : 'text-[#334155]'
-                  }`}
-                />
-                <span
-                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
-                    isHomeActive ? 'text-white' : 'text-slate-900'
+      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 페이지에서는 숨김, 내부 서브 페이지에서만 노출) ==================== */}
+      {activeMenu !== '홈' && (
+        <nav
+          aria-label="모바일 하단 주 메뉴"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]"
+          style={{
+            paddingBottom: isLegacyAndroidWebView
+              ? 'max(14px, env(safe-area-inset-bottom, 14px))'
+              : 'env(safe-area-inset-bottom, 0px)',
+          }}
+        >
+          <div className="grid grid-cols-4 gap-1.5 h-[64px] max-w-lg mx-auto px-2.5 py-1.5 items-stretch">
+            {/* 1. 홈 */}
+            {(() => {
+              const isHomeActive = activeMenu === '홈';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu('홈');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
+                    isHomeActive
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  홈
-                </span>
-              </button>
-            );
-          })()}
+                  <Home
+                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
+                      isHomeActive ? 'text-white' : 'text-[#334155]'
+                    }`}
+                  />
+                  <span
+                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
+                      isHomeActive ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    홈
+                  </span>
+                </button>
+              );
+            })()}
 
-          {/* 2. 재배일정 */}
-          {(() => {
-            const isScheduleActive =
-              activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청';
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMenu('재배일정 확인');
-                  setMobileScheduleStep('list');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
-                  isScheduleActive
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                }`}
-              >
-                <Calendar
-                  className={`w-5 h-5 stroke-[2.3] ${
-                    isScheduleActive ? 'text-white' : 'text-[#334155]'
-                  }`}
-                />
-                <span
-                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
-                    isScheduleActive ? 'text-white' : 'text-slate-900'
+            {/* 2. 재배일정 */}
+            {(() => {
+              const isScheduleActive =
+                activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu('재배일정 확인');
+                    setMobileScheduleStep('list');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
+                    isScheduleActive
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  재배일정
-                </span>
-              </button>
-            );
-          })()}
+                  <Calendar
+                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
+                      isScheduleActive ? 'text-white' : 'text-[#334155]'
+                    }`}
+                  />
+                  <span
+                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
+                      isScheduleActive ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    재배일정
+                  </span>
+                </button>
+              );
+            })()}
 
-          {/* 3. 농자재 판매 */}
-          {(() => {
-            const isAgroActive =
-              activeMenu === '농작물 구매' ||
-              activeMenu === '농자재 판매' ||
-              activeMenu === '비료' ||
-              activeMenu === '영양제' ||
-              activeMenu === '병해충관리제' ||
-              activeMenu === '병해충방지제' ||
-              activeMenu === '씨' ||
-              activeMenu === '모종';
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  setMobileAgroCategoryTab('FERTILIZER');
-                  setActiveMenu('농작물 구매');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
-                  isAgroActive
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                }`}
-              >
-                <Sprout
-                  className={`w-5 h-5 stroke-[2.3] ${
-                    isAgroActive ? 'text-white' : 'text-[#334155]'
-                  }`}
-                />
-                <span
-                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
-                    isAgroActive ? 'text-white' : 'text-slate-900'
+            {/* 3. 농자재 판매 */}
+            {(() => {
+              const isAgroActive =
+                activeMenu === '농작물 구매' ||
+                activeMenu === '농자재 판매' ||
+                activeMenu === '비료' ||
+                activeMenu === '영양제' ||
+                activeMenu === '병해충관리제' ||
+                activeMenu === '병해충방지제' ||
+                activeMenu === '씨' ||
+                activeMenu === '모종';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileAgroCategoryTab('FERTILIZER');
+                    setActiveMenu('농작물 구매');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
+                    isAgroActive
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  농자재 판매
-                </span>
-              </button>
-            );
-          })()}
+                  <Sprout
+                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
+                      isAgroActive ? 'text-white' : 'text-[#334155]'
+                    }`}
+                  />
+                  <span
+                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
+                      isAgroActive ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    농자재 판매
+                  </span>
+                </button>
+              );
+            })()}
 
-          {/* 4. 마이페이지 */}
-          {(() => {
-            const isMyPageActive = activeMenu === '마이페이지';
-            return (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMenu('마이페이지');
-                  setMyPageTab('FARMLAND');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`flex flex-col items-center justify-center gap-1 rounded-[18px] px-1 transition-all duration-150 cursor-pointer ${
-                  isMyPageActive
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                    : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                }`}
-              >
-                <User
-                  className={`w-5 h-5 stroke-[2.3] ${
-                    isMyPageActive ? 'text-white' : 'text-[#334155]'
-                  }`}
-                />
-                <span
-                  className={`text-[14.5px] min-[390px]:text-[15.5px] sm:text-[16.5px] leading-none tracking-tighter whitespace-nowrap font-black ${
-                    isMyPageActive ? 'text-white' : 'text-slate-900'
+            {/* 4. 마이페이지 */}
+            {(() => {
+              const isMyPageActive = activeMenu === '마이페이지';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu('마이페이지');
+                    setMyPageTab('FARMLAND');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
+                    isMyPageActive
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
+                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
                   }`}
                 >
-                  마이페이지
-                </span>
-              </button>
-            );
-          })()}
-        </div>
-      </nav>
+                  <User
+                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
+                      isMyPageActive ? 'text-white' : 'text-[#334155]'
+                    }`}
+                  />
+                  <span
+                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
+                      isMyPageActive ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
+                    마이페이지
+                  </span>
+                </button>
+              );
+            })()}
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
