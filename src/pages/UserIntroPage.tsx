@@ -2713,15 +2713,15 @@ export default function UserIntroPage() {
         }}
       >
         <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
-        <div className="max-w-[1600px] w-full mx-auto px-3 sm:px-8 xl:px-10 h-14 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="max-w-[1600px] w-full mx-auto px-2.5 sm:px-8 xl:px-10 h-14 sm:h-20 flex items-center justify-between gap-1.5 sm:gap-4">
           {/* 좌측: 모바일 좌측 슬라이드 메뉴 버튼 + 로고 + PC 전용 가로 메뉴 독(Dock) */}
-          <div className="flex items-center gap-2 sm:gap-5 xl:gap-8 min-w-0">
-            {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 */}
+          <div className="flex items-center gap-1.5 sm:gap-5 xl:gap-8 min-w-0">
+            {/* 모바일 환경 전용: 좌측에서 나오는 슬라이드 메뉴 열기 버튼 (고령자 친화 38px 균일 높이 & 굵은 폰트) */}
             <button
               type="button"
               onClick={() => setIsMobileGnbDrawerOpen(true)}
               aria-label="전체 메뉴 열기"
-              className="lg:hidden inline-flex items-center gap-1.5 px-2.5 py-2 min-h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
+              className="lg:hidden inline-flex items-center justify-center gap-1.5 px-3 h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
             >
               <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
                 <span className="block h-0.5 w-full bg-white rounded-full" />
@@ -2734,21 +2734,21 @@ export default function UserIntroPage() {
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer group text-left whitespace-nowrap"
+              className="h-[38px] sm:h-auto flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-2 ring-emerald-50 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
-                <Sprout className="w-4 h-4 sm:w-6 sm:h-6" />
+              <div className="w-[36px] h-[36px] sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-2 ring-emerald-50 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
+                <Sprout className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
               </div>
-              <div>
+              <div className="flex flex-col justify-center">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-extrabold text-base sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
+                  <span className="font-black text-[18px] sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
                     FarmPlan
                   </span>
                   <span className="hidden xl:inline-flex px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 leading-none">
                     한팜
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline whitespace-nowrap">
+                <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline whitespace-nowrap mt-0.5">
                   나의 맞춤형 재배관리
                 </span>
               </div>
@@ -2818,7 +2818,7 @@ export default function UserIntroPage() {
             </nav>
           </div>
 
-          {/* 우측: 로그인 전에는 [로그인] / [회원가입]만 표시, 로그인 후에만 회원 이름(배철민 님) 배지 표시 */}
+          {/* 우측: 로그인 전에는 [로그인] / [회원가입]만 표시, 로그인 후에만 회원 이름(배철민 님) 배지 표시 (모바일 38px 균일 높이 & 고령자 친화 폰트) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {loggedInUser.isLoggedIn ? (
               <>
@@ -2828,19 +2828,19 @@ export default function UserIntroPage() {
                     setActiveMenu('마이페이지');
                     setMyPageTab('FARMLAND');
                   }}
-                  className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-full border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-slate-900 font-bold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-2.5 sm:px-4 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 text-slate-900 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0">
                     {loggedInUser.name.slice(0, 1)}
                   </span>
-                  <span className="font-extrabold text-emerald-950 whitespace-nowrap">
+                  <span className="font-black text-emerald-950 whitespace-nowrap">
                     {loggedInUser.name} 님
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-2 sm:px-3.5 py-1.5 sm:py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-3 sm:px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그아웃
                 </button>
@@ -2855,7 +2855,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('LOGIN');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-3 sm:px-4 rounded-xl border-2 border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그인
                 </button>
@@ -2868,7 +2868,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] sm:text-xs whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
+                  className="h-[38px] sm:h-10 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
                 >
                   회원가입
                 </button>
@@ -2876,7 +2876,7 @@ export default function UserIntroPage() {
             )}
             <Link
               to="/admin"
-              className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
+              className="hidden sm:inline-flex items-center justify-center gap-1 h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
             >
               <span>관리자</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
