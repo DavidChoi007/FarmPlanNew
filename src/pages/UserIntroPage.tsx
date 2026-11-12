@@ -2721,7 +2721,7 @@ export default function UserIntroPage() {
               type="button"
               onClick={() => setIsMobileGnbDrawerOpen(true)}
               aria-label="전체 메뉴 열기"
-              className="lg:hidden inline-flex items-center justify-center gap-1.5 px-3 h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
+              className="lg:hidden inline-flex items-center justify-center gap-1 px-2.5 min-[390px]:px-3 h-[38px] rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] min-[390px]:text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
             >
               <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
                 <span className="block h-0.5 w-full bg-white rounded-full" />
@@ -2734,16 +2734,16 @@ export default function UserIntroPage() {
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="h-[38px] sm:h-auto flex items-center gap-1.5 sm:gap-2.5 shrink-0 cursor-pointer group text-left whitespace-nowrap"
+              className="h-[38px] sm:h-auto flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-[36px] h-[36px] sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-2 ring-emerald-50 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
-                <Sprout className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.2]" />
+              <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-1 sm:ring-2 ring-emerald-100 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
+                <Sprout className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2.3]" />
               </div>
               <div className="flex flex-col justify-center">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-[20px] min-[390px]:text-[21px] sm:text-[25px] tracking-tight block leading-none whitespace-nowrap">
-                    <span className="text-[#065F46] group-hover:text-emerald-700 transition">Farm</span>
-                    <span className="text-emerald-600 group-hover:text-emerald-500 transition">Plan</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-black text-[16px] min-[380px]:text-[17px] sm:text-[24px] tracking-tight block leading-none whitespace-nowrap">
+                    <span className="text-[#063820] group-hover:text-emerald-800 transition">Farm</span>
+                    <span className="text-[#059669] group-hover:text-emerald-500 transition">Plan</span>
                   </span>
                   <span className="hidden xl:inline-flex px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 leading-none">
                     한팜
@@ -2820,7 +2820,7 @@ export default function UserIntroPage() {
           </div>
 
           {/* 우측: 로그인 전에는 [로그인] / [회원가입]만 표시, 로그인 후에만 회원 이름(배철민 님) 배지 표시 (모바일 38px 균일 높이 & 고령자 친화 폰트) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 min-[390px]:gap-1.5 sm:gap-2 shrink-0">
             {loggedInUser.isLoggedIn ? (
               <>
                 <button
@@ -2829,7 +2829,7 @@ export default function UserIntroPage() {
                     setActiveMenu('마이페이지');
                     setMyPageTab('FARMLAND');
                   }}
-                  className="h-[38px] sm:h-10 px-2.5 sm:px-4 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 text-slate-900 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-2.5 sm:px-4 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 text-slate-900 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0">
                     {loggedInUser.name.slice(0, 1)}
@@ -2841,7 +2841,7 @@ export default function UserIntroPage() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="h-[38px] sm:h-10 px-3 sm:px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-2.5 min-[390px]:px-3 sm:px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그아웃
                 </button>
@@ -2856,7 +2856,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('LOGIN');
                     setIsAuthModalOpen(true);
                   }}
-                  className="h-[38px] sm:h-10 px-3 sm:px-4 rounded-xl border-2 border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[38px] sm:h-10 px-2.5 min-[390px]:px-3 sm:px-4 rounded-xl border-2 border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그인
                 </button>
@@ -2869,7 +2869,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="h-[38px] sm:h-10 px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
+                  className="h-[38px] sm:h-10 px-2.5 min-[390px]:px-3 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
                 >
                   회원가입
                 </button>
