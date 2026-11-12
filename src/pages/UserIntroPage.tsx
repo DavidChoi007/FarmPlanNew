@@ -2741,14 +2741,15 @@ export default function UserIntroPage() {
               </div>
               <div className="flex flex-col justify-center">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-black text-[18px] sm:text-2xl tracking-tight text-slate-900 block leading-none whitespace-nowrap">
-                    FarmPlan
+                  <span className="font-black text-[20px] min-[390px]:text-[21px] sm:text-[25px] tracking-tight block leading-none whitespace-nowrap">
+                    <span className="text-[#065F46] group-hover:text-emerald-700 transition">Farm</span>
+                    <span className="text-emerald-600 group-hover:text-emerald-500 transition">Plan</span>
                   </span>
                   <span className="hidden xl:inline-flex px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[10px] font-extrabold text-emerald-700 leading-none">
                     한팜
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-500 font-semibold hidden sm:inline whitespace-nowrap mt-0.5">
+                <span className="text-[10.5px] text-emerald-800/75 font-bold hidden sm:inline whitespace-nowrap mt-0.5">
                   나의 맞춤형 재배관리
                 </span>
               </div>
