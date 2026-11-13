@@ -3974,14 +3974,14 @@ export default function UserIntroPage() {
                       setMobileAgroCategoryTab(item.catKey);
                       setActiveMenu(item.menuName);
                     }}
-                    className="w-full text-left bg-slate-50/75 hover:bg-emerald-50/40 active:scale-[0.99] rounded-[20px] p-3 border border-slate-200/90 hover:border-emerald-400 flex items-center gap-3.5 transition cursor-pointer shadow-2xs"
+                    className="w-full text-left bg-white hover:bg-emerald-50/30 active:scale-[0.99] rounded-[22px] px-3 py-3 border border-slate-200/95 hover:border-emerald-400 flex items-center gap-3 transition cursor-pointer shadow-[0_3px_12px_rgba(15,23,42,0.05)]"
                   >
-                    {/* 좌측 제품 실물 썸네일 이미지 */}
-                    <div className="w-[88px] h-[88px] min-[390px]:w-[96px] min-[390px]:h-[96px] rounded-2xl bg-white border border-slate-200/80 p-1.5 shrink-0 flex items-center justify-center overflow-hidden">
+                    {/* 좌측 제품 실물 썸네일 이미지 (순백색 배경 + 이미지 크기 최대 확대) */}
+                    <div className="w-[114px] h-[114px] min-[390px]:w-[124px] min-[390px]:h-[124px] sm:w-[132px] sm:h-[132px] rounded-2xl bg-white shrink-0 flex items-center justify-center overflow-hidden">
                       <img
                         src={item.img}
                         alt={item.name}
-                        className="w-full h-full object-contain scale-105"
+                        className="w-full h-full object-contain scale-[1.22]"
                       />
                     </div>
 
