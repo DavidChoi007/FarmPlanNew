@@ -958,12 +958,15 @@ export default function UserIntroPage() {
 
   // 특정 생육관리 항목의 완료 인정 상태 조회
   // 핵심 규칙: [완료] 버튼을 클릭해야 해당 날짜(수정 시 수정된 날짜)에 그 생육과정을 시작한 것으로 인정!
+  // 또한 오늘 이후(오늘 포함) 날짜에 해당하는 생육작업은 미완료여도 "(완료작업 처리 필요)"를 표시하지 않고,
+  // 완료 처리를 하지 않은 상태에서 해당 날짜로부터 하루(1일) 이상 지나면 그때 표시!
   const getStageItemCompletionState = (reqNo: string, item: any, explicitDate?: string) => {
     const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
     const itemId = resolveStageItemId(item);
     const entry = stageItemCompletions[rNo]?.[itemId];
     const effectiveDate = getEffectiveStageItemDate(rNo, item, explicitDate);
     const savedStartDate = String(item?.start_date || effectiveDate);
+    const todayKstYmd = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
     // 완료 버튼이 눌렸고, 인정된 날짜(confirmedDate)가 현재(또는 수정된) 날짜와 일치해야만 시작 인정!
     const isRecognized = Boolean(
@@ -979,6 +982,14 @@ export default function UserIntroPage() {
         entry.confirmedDate !== effectiveDate
     );
     const isDraftModified = Boolean(effectiveDate && savedStartDate && effectiveDate !== savedStartDate);
+    const isConfirmed = Boolean(isRecognized && !isDraftModified);
+
+    // 해당 작업일(effectiveDate)로부터 오늘(todayKstYmd)까지 경과 일수: 1일 이상 지났고 미완료일 때만 "완료작업 처리 필요" 표시
+    const elapsedDaysFromTask =
+      effectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)
+        ? diffDaysBetweenYmd(effectiveDate, todayKstYmd)
+        : 0;
+    const shouldShowNeedCompletionText = !isConfirmed && elapsedDaysFromTask >= 1;
 
     return {
       itemId,
@@ -989,6 +1000,8 @@ export default function UserIntroPage() {
       isDateModifiedAfterConfirm,
       isDraftModified,
       needsConfirmClick: !isRecognized,
+      shouldShowNeedCompletionText,
+      elapsedDaysFromTask,
       confirmedDate: entry?.confirmedDate || '',
       completedAt: entry?.completedAt || '',
     };
@@ -4322,7 +4335,7 @@ export default function UserIntroPage() {
             >
               {st.confirmedDate} 시작인정
             </span>
-          ) : (
+          ) : st.shouldShowNeedCompletionText ? (
             <span
               className={`rounded-md bg-red-50 border border-red-200 text-red-600 font-extrabold whitespace-nowrap shrink-0 ${
                 isSm ? 'px-1.5 py-0.5 text-[10.5px]' : 'px-2 py-1 text-[11px]'
@@ -4330,12 +4343,14 @@ export default function UserIntroPage() {
             >
               완료작업 처리 필요
             </span>
-          ))}
+          ) : null)}
       </div>
     );
   };
 
   // 생육과정명(예: 포장 정리) 오른쪽에 괄호로 표시하는 상태 텍스트 렌더러: "포장 정리 (완료작업 처리 필요)"
+  // - 오늘 이후(오늘 포함) 날짜에 해당하는 생육작업은 미완료 상태여도 표시하지 않음
+  // - 처리완료를 하지 않은 상태에서 해당 작업일로부터 하루(1일) 이상 지나면 "(완료작업 처리 필요)" 빨간색 글씨 표시
   const renderStageInlineStatusText = (
     reqNoInput: string,
     item: any,
@@ -4364,6 +4379,10 @@ export default function UserIntroPage() {
           ({st.confirmedDate} 시작인정)
         </span>
       );
+    }
+
+    if (!st.shouldShowNeedCompletionText) {
+      return null;
     }
 
     return (
