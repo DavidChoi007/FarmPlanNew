@@ -4272,6 +4272,46 @@ export default function UserIntroPage() {
     setTimeout(() => setPurchaseToastMessage(''), 3500);
   };
 
+  // 생육과정별 추천상품의 긴 괄호 설명과 핵심 상품명/성분을 모바일 카드에 맞게 깔끔히 분리하는 헬퍼
+  const parseStageRecommendedProductDisplay = (mat: any) => {
+    const rawName = String(mat?.product_name || '맞춤 농자재');
+    const parenMatch = rawName.match(/\(([^)]+)\)/);
+    const parenInner = parenMatch ? parenMatch[1].trim() : '';
+    const cleanTitle = rawName
+      .replace(/\s*\([^)]*\)\s*/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const baseCategory =
+      mat?.material_category_name || mat?.sub_type || mat?.main_type || '맞춤 농자재';
+    const rawCoreSpec = String(mat?.core_Spec || mat?.core_spec || '').trim();
+
+    let categoryTag = baseCategory;
+    let formulaLine = rawCoreSpec;
+
+    if (parenInner) {
+      const parts = parenInner.split(/\s+/);
+      if (parts.length >= 2) {
+        const firstPart = parts[0];
+        const restPart = parts.slice(1).join(' ');
+        categoryTag = `${baseCategory} · ${restPart}`;
+        formulaLine = `성분: ${firstPart.replace(/\+/g, ' + ')}`;
+      } else {
+        formulaLine = `특징: ${parenInner}`;
+      }
+    } else if (rawCoreSpec) {
+      formulaLine = rawCoreSpec.startsWith('성분') ? rawCoreSpec : `성분: ${rawCoreSpec}`;
+    } else {
+      formulaLine = String(mat?.manufacturer || mat?.unit_spec || '생육단계 맞춤 처방 자재');
+    }
+
+    return {
+      cleanTitle: cleanTitle || rawName,
+      categoryTag,
+      formulaLine,
+    };
+  };
+
   // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료] 버튼 렌더러
   const renderStageCompletionButton = (
     reqNoInput: string,
@@ -6912,7 +6952,7 @@ export default function UserIntroPage() {
                                               </div>
                                             </div>
 
-                                            {/* 2. 해당 생육과정별 추천상품 1개 (체크박스 선택된 상태 + 제품이미지 + 제품명 + 갯수 설정 구매 버튼 + 구매한 제품 표시) */}
+                                            {/* 2. 해당 생육과정별 추천상품 1개 (모바일 최적화: 상단 체크박스 헤더 + 정방형 썸네일 & 우측 요약 2열 + 수량·총액 단일 바 + 하단 3:7 버튼) */}
                                             {topMat && (() => {
                                               const reqNoVal =
                                                 crop.request_no ||
@@ -6926,163 +6966,174 @@ export default function UserIntroPage() {
                                               const recQtyVal = getStageRecQty(reqNoVal, item, topMat, defaultQty);
                                               const purchasedInfo = getPurchasedStageProductInfo(reqNoVal, item, topMat);
                                               const noticeKey = getStageRecQtyKey(reqNoVal, item, topMat);
+                                              const prodDisp = parseStageRecommendedProductDisplay(topMat);
 
                                               return (
                                                 <div
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className={`rounded-xl bg-white border-2 p-3.5 shadow-2xs space-y-2.5 ${
+                                                  className={`rounded-2xl bg-white border-2 overflow-hidden shadow-xs ${
                                                     purchasedInfo.isPurchased
                                                       ? 'border-emerald-600 ring-2 ring-emerald-500/15'
-                                                      : 'border-emerald-500/80'
+                                                      : 'border-[#0FA968]'
                                                   }`}
                                                 >
-                                                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                                    <span className="text-[13.5px] font-black text-emerald-800 flex items-center gap-1">
-                                                      <Package className="w-4 h-4 text-emerald-600 shrink-0" />
-                                                      <span>해당 생육과정 맞춤 추천상품 (1종)</span>
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                  {/* 상단 헤더 바: 좌측 체크박스 + 타이틀 / 우측 추천점수 배지 */}
+                                                  <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
+                                                    <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0">
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={() =>
+                                                          handleToggleMaterialCheck(selKey, defaultQty)
+                                                        }
+                                                        className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                                      />
+                                                      <span className="text-[14.5px] font-black text-slate-950 leading-snug break-keep">
+                                                        해당 생육과정 맞춤 추천상품 (1종)
+                                                      </span>
+                                                    </label>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
                                                       {purchasedInfo.isPurchased && (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[12px] font-black shadow-2xs">
-                                                          <CheckCircle2 className="w-3.5 h-3.5" />
-                                                          <span>구매한 제품 ({purchasedInfo.totalQty}{unitLabel})</span>
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black shadow-2xs whitespace-nowrap">
+                                                          <CheckCircle2 className="w-3 h-3" />
+                                                          <span>구매완료 ({purchasedInfo.totalQty}{unitLabel})</span>
                                                         </span>
                                                       )}
-                                                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[12px] font-extrabold">
-                                                        추천점수 {topMat.match_score || 95}점
+                                                      <span className="px-2.5 py-1 rounded-full bg-[#C7F3DE] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                        추천점수 {topMat.match_score || 96}점
                                                       </span>
                                                     </div>
                                                   </div>
 
-                                                  {purchasedInfo.isPurchased && (
-                                                    <div className="rounded-lg bg-emerald-50 border border-emerald-300 px-3 py-2 flex items-center justify-between gap-2 text-xs">
-                                                      <div className="font-extrabold text-emerald-950 flex items-center gap-1.5 min-w-0">
-                                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                                        <span className="truncate">
-                                                          구매한 제품입니다 (총 {purchasedInfo.totalQty}{unitLabel} 구매완료)
-                                                        </span>
-                                                      </div>
-                                                      <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                          setActiveMenu('마이페이지');
-                                                          setMyPageTab('PURCHASE_HISTORY');
-                                                        }}
-                                                        className="px-2.5 py-1 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
-                                                      >
-                                                        구매 내역 보기 ›
-                                                      </button>
-                                                    </div>
-                                                  )}
-
-                                                  <label className="flex items-center gap-3.5 cursor-pointer select-none pt-0.5">
-                                                    <input
-                                                      type="checkbox"
-                                                      checked={isChecked}
-                                                      onChange={() =>
-                                                        handleToggleMaterialCheck(selKey, defaultQty)
-                                                      }
-                                                      className="w-6 h-6 rounded accent-emerald-600 cursor-pointer shrink-0"
-                                                    />
-                                                    <img
-                                                      src={resolveAgroProductThumbUrl(topMat)}
-                                                      alt={topMat.product_name}
-                                                      onError={handleAgroThumbImgError}
-                                                      className="w-16 h-16 rounded-xl object-contain border border-slate-200 bg-white shrink-0"
-                                                    />
-                                                    <div className="min-w-0 flex-1">
-                                                      <div className="font-black text-[16.5px] text-slate-950 leading-snug break-keep">
-                                                        {topMat.product_name}
-                                                      </div>
-                                                      <div className="text-[13.5px] font-semibold text-slate-600 mt-0.5 truncate">
-                                                        {topMat.core_Spec ||
-                                                          topMat.core_spec ||
-                                                          topMat.material_category_name ||
-                                                          '맞춤 농자재'}
-                                                      </div>
-                                                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                                        <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12.5px] font-extrabold">
-                                                          {areaPyeongVal.toLocaleString()}평 기준 권장{' '}
-                                                          {defaultQty}
-                                                          {unitLabel}
-                                                        </span>
-                                                        <span className="font-mono text-[15.5px] font-black text-slate-950">
-                                                          단가 {unitPriceVal.toLocaleString()}원
-                                                        </span>
-                                                      </div>
-                                                    </div>
-                                                  </label>
-
-                                                  {/* 갯수 설정 + 구매 버튼 바 */}
-                                                  <div className="pt-2.5 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                                                    <div className="flex items-center justify-between sm:justify-start gap-2">
-                                                      <span className="text-[12.5px] font-extrabold text-slate-700">
-                                                        구매 갯수:
-                                                      </span>
-                                                      <div className="inline-flex items-center rounded-xl border border-emerald-300 bg-slate-50 overflow-hidden">
+                                                  {/* 본문 영역 */}
+                                                  <div className="p-3.5 space-y-3">
+                                                    {purchasedInfo.isPurchased && (
+                                                      <div className="rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                                                        <div className="font-extrabold text-emerald-950 flex items-center gap-1.5 min-w-0">
+                                                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                          <span className="truncate">
+                                                            구매한 제품입니다 (총 {purchasedInfo.totalQty}{unitLabel} 구매완료)
+                                                          </span>
+                                                        </div>
                                                         <button
                                                           type="button"
-                                                          onClick={() =>
-                                                            handleSetStageRecQty(
-                                                              reqNoVal,
-                                                              item,
-                                                              topMat,
-                                                              defaultQty,
-                                                              -1,
-                                                              true
-                                                            )
-                                                          }
-                                                          className="w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-emerald-100 cursor-pointer font-black"
+                                                          onClick={() => {
+                                                            setActiveMenu('마이페이지');
+                                                            setMyPageTab('PURCHASE_HISTORY');
+                                                          }}
+                                                          className="px-2.5 py-1 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
                                                         >
-                                                          <Minus className="w-3.5 h-3.5" />
+                                                          구매 내역 보기 ›
                                                         </button>
-                                                        <input
-                                                          type="number"
-                                                          min={1}
-                                                          max={99}
-                                                          value={recQtyVal}
-                                                          onChange={(e) =>
-                                                            handleSetStageRecQty(
-                                                              reqNoVal,
-                                                              item,
-                                                              topMat,
-                                                              defaultQty,
-                                                              Number(e.target.value) || 1,
-                                                              false
-                                                            )
-                                                          }
-                                                          className="w-11 h-8 text-center bg-white font-mono text-[14px] font-black text-slate-950 border-x border-emerald-200 focus:outline-none"
+                                                      </div>
+                                                    )}
+
+                                                    {/* 제품 썸네일(좌) + 핵심 상품정보(우) 2열 조화 배치 */}
+                                                    <div className="flex items-stretch gap-3">
+                                                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                                        <img
+                                                          src={resolveAgroProductThumbUrl(topMat)}
+                                                          alt={topMat.product_name}
+                                                          onError={handleAgroThumbImgError}
+                                                          className="w-full h-full object-contain"
                                                         />
-                                                        <button
-                                                          type="button"
-                                                          onClick={() =>
-                                                            handleSetStageRecQty(
-                                                              reqNoVal,
-                                                              item,
-                                                              topMat,
-                                                              defaultQty,
-                                                              1,
-                                                              true
-                                                            )
-                                                          }
-                                                          className="w-8 h-8 flex items-center justify-center text-slate-700 hover:bg-emerald-100 cursor-pointer font-black"
-                                                        >
-                                                          <Plus className="w-3.5 h-3.5" />
-                                                        </button>
                                                       </div>
-                                                      <span className="font-mono text-[14px] font-black text-emerald-800">
-                                                        {(unitPriceVal * recQtyVal).toLocaleString()}원
+                                                      <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
+                                                        <div>
+                                                          <span className="inline-block max-w-full px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11.5px] font-bold truncate">
+                                                            {prodDisp.categoryTag}
+                                                          </span>
+                                                          <div className="font-black text-[16px] sm:text-[17px] text-slate-950 leading-tight break-keep mt-1">
+                                                            {prodDisp.cleanTitle}
+                                                          </div>
+                                                          <div className="text-[12.5px] font-semibold text-slate-600 truncate mt-1">
+                                                            {prodDisp.formulaLine}
+                                                          </div>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1.5">
+                                                          <span className="px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                            {areaPyeongVal.toLocaleString()}평 권장 {defaultQty}
+                                                            {unitLabel}
+                                                          </span>
+                                                          <span className="text-[14px] font-black text-slate-950 whitespace-nowrap">
+                                                            단가 {unitPriceVal.toLocaleString()}원
+                                                          </span>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+
+                                                    {/* 구매 수량 스텝퍼 + 총액 단일 바 */}
+                                                    <div className="rounded-xl bg-[#EEF3F7] px-3.5 py-2.5 flex items-center justify-between gap-2 flex-nowrap">
+                                                      <div className="flex items-center gap-2 shrink-0">
+                                                        <span className="text-[13.5px] font-extrabold text-slate-900 whitespace-nowrap">
+                                                          구매 수량
+                                                        </span>
+                                                        <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                              handleSetStageRecQty(
+                                                                reqNoVal,
+                                                                item,
+                                                                topMat,
+                                                                defaultQty,
+                                                                -1,
+                                                                true
+                                                              )
+                                                            }
+                                                            className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
+                                                          >
+                                                            <Minus className="w-3.5 h-3.5" />
+                                                          </button>
+                                                          <input
+                                                            type="number"
+                                                            min={1}
+                                                            max={99}
+                                                            value={recQtyVal}
+                                                            onChange={(e) =>
+                                                              handleSetStageRecQty(
+                                                                reqNoVal,
+                                                                item,
+                                                                topMat,
+                                                                defaultQty,
+                                                                Number(e.target.value) || 1,
+                                                                false
+                                                              )
+                                                            }
+                                                            className="w-10 h-8 text-center bg-white font-mono text-[14px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                                          />
+                                                          <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                              handleSetStageRecQty(
+                                                                reqNoVal,
+                                                                item,
+                                                                topMat,
+                                                                defaultQty,
+                                                                1,
+                                                                true
+                                                              )
+                                                            }
+                                                            className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
+                                                          >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                      <span className="text-[15.5px] font-black text-emerald-700 whitespace-nowrap">
+                                                        총액 {(unitPriceVal * recQtyVal).toLocaleString()}원
                                                       </span>
                                                     </div>
 
-                                                    <div className="flex items-center gap-1.5">
+                                                    {/* 하단 액션 버튼 (좌측 30% 세부보기 / 우측 70% 추천 제품 구매) */}
+                                                    <div className="grid grid-cols-10 gap-2">
                                                       <button
                                                         type="button"
                                                         onClick={() => {
                                                           setDetailModalPos({ x: 0, y: 0 });
                                                           setClickedProvisionItem(item);
                                                         }}
-                                                        className="px-3 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-[12.5px] font-extrabold cursor-pointer shrink-0"
+                                                        className="col-span-3 py-2.5 px-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 text-[13.5px] font-extrabold cursor-pointer whitespace-nowrap text-center"
                                                       >
                                                         세부보기
                                                       </button>
@@ -7096,9 +7147,9 @@ export default function UserIntroPage() {
                                                             qty: recQtyVal,
                                                           })
                                                         }
-                                                        className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition"
+                                                        className="col-span-7 py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[14px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                                                       >
-                                                        <ShoppingBag className="w-4 h-4" />
+                                                        <ShoppingBag className="w-4 h-4 shrink-0" />
                                                         <span>
                                                           {purchasedInfo.isPurchased
                                                             ? `추가 구매 (${recQtyVal}${unitLabel})`
@@ -7106,27 +7157,27 @@ export default function UserIntroPage() {
                                                         </span>
                                                       </button>
                                                     </div>
-                                                  </div>
 
-                                                  {stageDetailPurchaseNotice?.key === noticeKey && (
-                                                    <div className="rounded-xl bg-emerald-900 text-white px-3.5 py-2.5 text-xs flex items-center justify-between gap-2">
-                                                      <span className="font-bold">
-                                                        ✅ [{stageDetailPurchaseNotice.productName}]{' '}
-                                                        {stageDetailPurchaseNotice.qty}
-                                                        {stageDetailPurchaseNotice.unitLabel} 구매 완료!
-                                                      </span>
-                                                      <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                          setActiveMenu('마이페이지');
-                                                          setMyPageTab('PURCHASE_HISTORY');
-                                                        }}
-                                                        className="px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-black text-[11px] shrink-0 cursor-pointer"
-                                                      >
-                                                        구매 내역 확인 ›
-                                                      </button>
-                                                    </div>
-                                                  )}
+                                                    {stageDetailPurchaseNotice?.key === noticeKey && (
+                                                      <div className="rounded-xl bg-emerald-900 text-white px-3.5 py-2.5 text-xs flex items-center justify-between gap-2">
+                                                        <span className="font-bold">
+                                                          ✅ [{stageDetailPurchaseNotice.productName}]{' '}
+                                                          {stageDetailPurchaseNotice.qty}
+                                                          {stageDetailPurchaseNotice.unitLabel} 구매 완료!
+                                                        </span>
+                                                        <button
+                                                          type="button"
+                                                          onClick={() => {
+                                                            setActiveMenu('마이페이지');
+                                                            setMyPageTab('PURCHASE_HISTORY');
+                                                          }}
+                                                          className="px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-black text-[11px] shrink-0 cursor-pointer"
+                                                        >
+                                                          구매 내역 확인 ›
+                                                        </button>
+                                                      </div>
+                                                    )}
+                                                  </div>
                                                 </div>
                                               );
                                             })()}
@@ -7556,112 +7607,143 @@ export default function UserIntroPage() {
                                       const dUnitPrice = Number(dTopMat.unit_price || 15000);
                                       const dRecQty = getStageRecQty(dReqNo, detailItem, dTopMat, dDefaultQty);
                                       const dPurchasedInfo = getPurchasedStageProductInfo(dReqNo, detailItem, dTopMat);
+                                      const dProdDisp = parseStageRecommendedProductDisplay(dTopMat);
 
                                       return (
-                                        <div className="rounded-xl bg-white border-2 border-emerald-400 p-3 space-y-2.5">
-                                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                                            <span className="text-xs font-black text-emerald-900">
-                                              맞춤 추천 제품
-                                            </span>
-                                            {dPurchasedInfo.isPurchased ? (
-                                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black">
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                <span>구매한 제품 ({dPurchasedInfo.totalQty}{dUnitLabel} 구매완료)</span>
+                                        <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
+                                          {/* 상단 헤더 바 */}
+                                          <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
+                                            <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0">
+                                              <input
+                                                type="checkbox"
+                                                checked={dIsChecked}
+                                                onChange={() =>
+                                                  handleToggleMaterialCheck(dSelKey, dDefaultQty)
+                                                }
+                                                className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                              />
+                                              <span className="text-[14px] font-black text-slate-950 leading-snug break-keep">
+                                                해당 생육과정 맞춤 추천상품 (1종)
                                               </span>
-                                            ) : (
-                                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
-                                                권장 {dDefaultQty}{dUnitLabel}
+                                            </label>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              {dPurchasedInfo.isPurchased && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black whitespace-nowrap">
+                                                  <CheckCircle2 className="w-3 h-3" />
+                                                  <span>구매완료 ({dPurchasedInfo.totalQty}{dUnitLabel})</span>
+                                                </span>
+                                              )}
+                                              <span className="px-2.5 py-1 rounded-full bg-[#C7F3DE] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                추천점수 {dTopMat.match_score || 96}점
                                               </span>
-                                            )}
+                                            </div>
                                           </div>
 
-                                          <label className="flex items-center gap-3 cursor-pointer select-none">
-                                            <input
-                                              type="checkbox"
-                                              checked={dIsChecked}
-                                              onChange={() =>
-                                                handleToggleMaterialCheck(dSelKey, dDefaultQty)
-                                              }
-                                              className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
-                                            />
-                                            <img
-                                              src={resolveAgroProductThumbUrl(dTopMat)}
-                                              alt={dTopMat.product_name}
-                                              onError={handleAgroThumbImgError}
-                                              className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                              <div className="font-extrabold text-xs text-slate-900 truncate">
-                                                {dTopMat.product_name}
+                                          {/* 본문 영역 */}
+                                          <div className="p-3.5 space-y-3">
+                                            <div className="flex items-stretch gap-3">
+                                              <div className="w-24 h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                                <img
+                                                  src={resolveAgroProductThumbUrl(dTopMat)}
+                                                  alt={dTopMat.product_name}
+                                                  onError={handleAgroThumbImgError}
+                                                  className="w-full h-full object-contain"
+                                                />
                                               </div>
-                                              <div className="text-[11px] text-emerald-800 font-bold mt-0.5">
-                                                권장 {dDefaultQty}
-                                                {dUnitLabel} · 단가 {dUnitPrice.toLocaleString()}원
+                                              <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
+                                                <div>
+                                                  <span className="inline-block max-w-full px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11.5px] font-bold truncate">
+                                                    {dProdDisp.categoryTag}
+                                                  </span>
+                                                  <div className="font-black text-[15.5px] text-slate-950 leading-tight break-keep mt-1">
+                                                    {dProdDisp.cleanTitle}
+                                                  </div>
+                                                  <div className="text-[12px] font-semibold text-slate-600 truncate mt-1">
+                                                    {dProdDisp.formulaLine}
+                                                  </div>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1.5">
+                                                  <span className="px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                    {dAreaPyeong.toLocaleString()}평 권장 {dDefaultQty}
+                                                    {dUnitLabel}
+                                                  </span>
+                                                  <span className="text-[13.5px] font-black text-slate-950 whitespace-nowrap">
+                                                    단가 {dUnitPrice.toLocaleString()}원
+                                                  </span>
+                                                </div>
                                               </div>
                                             </div>
-                                          </label>
 
-                                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                                            <div className="inline-flex items-center rounded-lg border border-emerald-300 bg-slate-50 overflow-hidden">
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSetStageRecQty(
-                                                    dReqNo,
-                                                    detailItem,
-                                                    dTopMat,
-                                                    dDefaultQty,
-                                                    -1,
-                                                    true
-                                                  )
-                                                }
-                                                className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-emerald-100 cursor-pointer"
-                                              >
-                                                <Minus className="w-3.5 h-3.5" />
-                                              </button>
-                                              <input
-                                                type="number"
-                                                min={1}
-                                                max={99}
-                                                value={dRecQty}
-                                                onChange={(e) =>
-                                                  handleSetStageRecQty(
-                                                    dReqNo,
-                                                    detailItem,
-                                                    dTopMat,
-                                                    dDefaultQty,
-                                                    Number(e.target.value) || 1,
-                                                    false
-                                                  )
-                                                }
-                                                className="w-10 h-7 text-center bg-white font-mono text-xs font-black text-slate-950 border-x border-emerald-200 focus:outline-none"
-                                              />
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSetStageRecQty(
-                                                    dReqNo,
-                                                    detailItem,
-                                                    dTopMat,
-                                                    dDefaultQty,
-                                                    1,
-                                                    true
-                                                  )
-                                                }
-                                                className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-emerald-100 cursor-pointer"
-                                              >
-                                                <Plus className="w-3.5 h-3.5" />
-                                              </button>
+                                            <div className="rounded-xl bg-[#EEF3F7] px-3.5 py-2.5 flex items-center justify-between gap-2 flex-nowrap">
+                                              <div className="flex items-center gap-2 shrink-0">
+                                                <span className="text-[13px] font-extrabold text-slate-900 whitespace-nowrap">
+                                                  구매 수량
+                                                </span>
+                                                <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleSetStageRecQty(
+                                                        dReqNo,
+                                                        detailItem,
+                                                        dTopMat,
+                                                        dDefaultQty,
+                                                        -1,
+                                                        true
+                                                      )
+                                                    }
+                                                    className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                                  >
+                                                    <Minus className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={99}
+                                                    value={dRecQty}
+                                                    onChange={(e) =>
+                                                      handleSetStageRecQty(
+                                                        dReqNo,
+                                                        detailItem,
+                                                        dTopMat,
+                                                        dDefaultQty,
+                                                        Number(e.target.value) || 1,
+                                                        false
+                                                      )
+                                                    }
+                                                    className="w-10 h-8 text-center bg-white font-mono text-[13.5px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      handleSetStageRecQty(
+                                                        dReqNo,
+                                                        detailItem,
+                                                        dTopMat,
+                                                        dDefaultQty,
+                                                        1,
+                                                        true
+                                                      )
+                                                    }
+                                                    className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                                  >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <span className="text-[15px] font-black text-emerald-700 whitespace-nowrap">
+                                                총액 {(dUnitPrice * dRecQty).toLocaleString()}원
+                                              </span>
                                             </div>
 
-                                            <div className="flex items-center gap-1.5 ml-auto">
+                                            <div className="grid grid-cols-10 gap-2">
                                               <button
                                                 type="button"
                                                 onClick={() => {
                                                   setDetailModalPos({ x: 0, y: 0 });
                                                   setClickedProvisionItem(detailItem);
                                                 }}
-                                                className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-extrabold cursor-pointer"
+                                                className="col-span-3 py-2.5 px-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 text-[13px] font-extrabold cursor-pointer whitespace-nowrap text-center"
                                               >
                                                 세부보기
                                               </button>
@@ -7675,13 +7757,13 @@ export default function UserIntroPage() {
                                                     qty: dRecQty,
                                                   })
                                                 }
-                                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black cursor-pointer inline-flex items-center gap-1"
+                                                className="col-span-7 py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                                               >
-                                                <ShoppingBag className="w-3.5 h-3.5" />
+                                                <ShoppingBag className="w-4 h-4 shrink-0" />
                                                 <span>
                                                   {dPurchasedInfo.isPurchased
                                                     ? `추가 구매 (${dRecQty}${dUnitLabel})`
-                                                    : `구매 (${dRecQty}${dUnitLabel})`}
+                                                    : `추천 제품 구매 (${dRecQty}${dUnitLabel})`}
                                                 </span>
                                               </button>
                                             </div>
