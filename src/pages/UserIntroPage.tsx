@@ -2109,48 +2109,142 @@ export default function UserIntroPage() {
     }
   };
 
-  const recentRecommendations = [
+  // ==================== 현재 날짜(KST) 기준 가장 근시일 내 예정 생육단계·작업 동적 산출 ====================
+  const currentTodayYmd = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  const parseNextTaskOffsetDays = (ddayText: string | undefined, fallbackDays = 2): number => {
+    const m = String(ddayText || '').match(/(\d+)/);
+    return m ? Math.max(1, Number(m[1])) : fallbackDays;
+  };
+
+  const repBaseCrop = activeCropCard || cloudBaeCropList[0];
+  const repOffsetDays = parseNextTaskOffsetDays(repBaseCrop?.next_task_dday, 2);
+  const repNearestUpcomingYmd = addDaysToYmd(currentTodayYmd, repOffsetDays);
+  const repExpectedHarvestYmd = addDaysToYmd(currentTodayYmd, repOffsetDays + 16);
+
+  const homeRepBriefing = {
+    requestNo: repBaseCrop?.request_no || 'REQ-20261106-009',
+    region: repBaseCrop?.region || '충청북도 충주시 단월동',
+    cropTitle: repBaseCrop?.crop_title || '가을배추 (불암3호)',
+    areaPyeong: Number(provisionData?.activeRequest?.area_pyeong ?? repBaseCrop?.area_pyeong ?? 1000),
+    soilPh: Number(provisionData?.activeRequest?.soil_ph ?? (repBaseCrop as any)?.soil_ph ?? 6.5),
+    fertilityGrade: String(provisionData?.activeRequest?.fertility_grade || '적정'),
+    plantingDate: String(
+      provisionData?.activeRequest?.desired_start_date || repBaseCrop?.planting_date || '2026-08-25'
+    ),
+    progressPct: Number(repBaseCrop?.progress_pct ?? 60),
+    currentStageLabel:
+      repBaseCrop?.current_stage_name || '04. 생육 관리 (2차 웃거름·결구중기)',
+    nearestTaskYmd: repNearestUpcomingYmd,
+    nearestTaskDateText: formatYmdWithWeekday(repNearestUpcomingYmd),
+    nearestTaskDdayBadge: `D-${repOffsetDays} (${repOffsetDays}일 후 예정)`,
+    expectedHarvestYmd: repExpectedHarvestYmd,
+    expectedHarvestShort: `${repExpectedHarvestYmd.slice(5).replace('-', '/')} (${getWeekdayNameFromYmd(repExpectedHarvestYmd)})`,
+    nearestStageTitle: 'STEP 04 · 결구중기 칼슘·붕소 영양관리',
+    nearestTaskSummary: '속잎 결구 집중기 칼슘·붕소 엽면시비 및 결구 상태 점검',
+    nearestMaterialName: '엔플러스 튼튼칼슘 결구강화제',
+  };
+
+  const homeUpcomingSixStages = [
     {
-      request_no: 'REQ-20261106-009',
-      region: '충청북도 충주시 단월동',
-      stage: '정식',
-      crop: '가을배추 (불암3호)',
-      planting_type: '모종',
-      opt_temp: '18~20℃ 적온',
-      recommended_date: '2026-08-25',
-      status: '정식 적기 추천',
+      step: 'STEP 04',
+      ddayBadge: `★ 최근접 예정 (D-${repOffsetDays})`,
+      isNearest: true,
+      stageName: '결구중기 · 칼슘·붕소 영양관리',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays)),
+      gdd: `누적 620 GDD 도달 (진행률 ${homeRepBriefing.progressPct}%)`,
+      climate: `기온 ${repBaseCrop?.temp_avg || '18.5°C'} · 적온(18~20℃) 일치`,
+      task: '속잎 결구 시작기 칼슘·붕소 엽면시비 (꿀통배추·팁번 예방)',
+      material: '엔플러스 튼튼칼슘 결구강화제 (500ml)',
+      matBadge: '영양제 · 최근접 처방',
+      badgeCls: 'bg-emerald-100 text-emerald-900 border-emerald-300',
     },
     {
-      request_no: 'REQ-20261106-008',
-      region: '충청북도 충주시 단월동',
-      stage: '파종',
-      crop: '가을배추 (청명가을)',
-      planting_type: '씨 (발아 20℃↑)',
-      opt_temp: '18~21℃ 적온',
-      recommended_date: '2026-08-05',
-      status: '최적 발아기후',
+      step: 'STEP 04-2',
+      ddayBadge: `차기 예정 (D-${repOffsetDays + 3})`,
+      isNearest: false,
+      stageName: '생육중기 · 2차 웃거름(추비)',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays + 3)),
+      gdd: '누적 710 GDD 도달 예상',
+      climate: '평균 17.8℃ · 토양수분 적정',
+      task: '결구 비대 촉진용 속효성 NK 2차 추비 시비 및 이랑 북주기',
+      material: '엔케이(NK) 마그네슘 추비특호 (20kg)',
+      matBadge: '비료 · 2차추비',
+      badgeCls: 'bg-teal-50 text-teal-800 border-teal-200',
     },
     {
-      request_no: 'REQ-20261106-005',
-      region: '강원특별자치도 평창군 방림면',
-      stage: '정식',
-      crop: '봄배추 (춘광)',
-      planting_type: '모종',
-      opt_temp: '15~18℃ 적온',
-      recommended_date: '2026-05-12',
-      status: '한계온도 회피',
+      step: 'STEP 05',
+      ddayBadge: `예정 작업 (D-${repOffsetDays + 7})`,
+      isNearest: false,
+      stageName: '병해충 집중 예방 · 살균 방제',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays + 7)),
+      gdd: '누적 840 GDD 도달 예상',
+      climate: '평균 15.6℃ · 강우예보 3일전',
+      task: '가을 강우 전후 무름병·노균병 예방 및 진딧물 적기 방제',
+      material: '펀지해머 무름병·노균병 살균제 (500ml)',
+      matBadge: '병해충방지제 · 예방',
+      badgeCls: 'bg-rose-50 text-rose-800 border-rose-200',
     },
     {
-      request_no: 'REQ-20261106-003',
-      region: '전라남도 해남군 산이면',
-      stage: '정식',
-      crop: '월동배추 (해남1호)',
-      planting_type: '모종',
-      opt_temp: '16~20℃ 적온',
-      recommended_date: '2026-09-10',
-      status: '정식 적기 추천',
+      step: 'STEP 05-2',
+      ddayBadge: `예정 작업 (D-${repOffsetDays + 12})`,
+      isNearest: false,
+      stageName: '결구후기 · 구비대 및 외엽 결속',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays + 12)),
+      gdd: '누적 980 GDD 도달 예상',
+      climate: '평균 13.4℃ · 일교차 확대기',
+      task: '결구 후기 속채움 구비대 강화 및 야간 저온 대비 외엽 묶기',
+      material: '엔플러스 커진다 구비대 영양제 (500ml)',
+      matBadge: '영양제 · 후기비대',
+      badgeCls: 'bg-amber-50 text-amber-800 border-amber-200',
+    },
+    {
+      step: 'STEP 06',
+      ddayBadge: `수확 예정 (D-${repOffsetDays + 16})`,
+      isNearest: false,
+      stageName: '결구완료 · 적기 본수확',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays + 16)),
+      gdd: '목표 1,180 GDD 100% 도달',
+      climate: '평균 11.2℃ · 한계온도(5℃↓) 도래 전',
+      task: '최저 한계온도(5℃ 미만) 도래 전 결구 충실도 98% 적기 수확',
+      material: `결구 충실도 98% · ${homeRepBriefing.areaPyeong.toLocaleString()}평 수확`,
+      matBadge: '수확적기 도달',
+      badgeCls: 'bg-sky-50 text-sky-800 border-sky-200',
+    },
+    {
+      step: 'STEP 06-2',
+      ddayBadge: `마감 예정 (D-${repOffsetDays + 20})`,
+      isNearest: false,
+      stageName: '수확 후 예건 · 선별 및 저장',
+      date: formatYmdWithWeekday(addDaysToYmd(currentTodayYmd, repOffsetDays + 20)),
+      gdd: '생육 전 과정 마감 · 사후관리',
+      climate: '저장고 0~1℃ · 습도 90~95%',
+      task: '현장 예건 후 등급별 선별·저온저장 입고 및 포장 잔재물 정리',
+      material: '슈퍼원예복합 밑거름 · 토양환원 관리',
+      matBadge: '저장 · 차기작준비',
+      badgeCls: 'bg-indigo-50 text-indigo-800 border-indigo-200',
     },
   ];
+
+  // 등록된 작물재배 리스트(cloudBaeCropList) 중 진행중인 포전을 현재 날짜 기준 가장 근시일 내 예정 작업 순으로 정렬
+  const recentRecommendations = cloudBaeCropList
+    .filter((c: any) => Number(c.progress_pct ?? 0) < 100 && c.next_task_dday !== '완료')
+    .map((c: any, idx: number) => {
+      const offsetDays = parseNextTaskOffsetDays(c.next_task_dday, idx + 2);
+      const upcomingYmd = addDaysToYmd(currentTodayYmd, offsetDays);
+      return {
+        request_no: c.request_no || 'REQ-20261106-009',
+        region: `${c.region} (${Number(c.area_pyeong || 300).toLocaleString()}평)`,
+        stage: c.current_stage_name || '04. 생육 관리 (추비·영양관리)',
+        crop: c.crop_title || `${c.crop_short} (${c.cultivar_name})`,
+        planting_type: c.planting_type || '모종',
+        opt_temp: c.opt_temp || '18~20℃ 적온',
+        recommended_date: upcomingYmd,
+        dday_badge: `D-${offsetDays} (${offsetDays}일 후)`,
+        offset_days: offsetDays,
+        status: `${c.status_text || '생육 확인 필요'} · 진행률 ${c.progress_pct ?? 60}%`,
+      };
+    })
+    .sort((a, b) => a.offset_days - b.offset_days);
 
   const recommendedMaterials = [
     {
@@ -3267,7 +3361,7 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* PC 전용 우측: 실시간 내 농지 맞춤 재배일정 & 기후·자재 브리핑 요약 카드 */}
+                {/* PC 전용 우측: 실시간 내 농지 맞춤 재배일정 & 기후·자재 브리핑 요약 카드 (현재 날짜 기준 최근접 예정 작업 연동) */}
                 <div className="hidden lg:flex lg:col-span-5 flex-col justify-between rounded-2xl bg-white/95 backdrop-blur-xs border border-emerald-200/90 p-5 text-slate-900 shadow-lg space-y-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-2">
@@ -3276,30 +3370,47 @@ export default function UserIntroPage() {
                         <span>실시간 대표 포전 맞춤 브리핑</span>
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
-                        {loggedInUser.isLoggedIn ? `${loggedInUser.name} 님 농장 (300평)` : '충주 단월동 표준 포전 (300평)'}
+                        {loggedInUser.isLoggedIn
+                          ? `${loggedInUser.name} 님 농장 (${homeRepBriefing.areaPyeong.toLocaleString()}평)`
+                          : `충주 단월동 대표 포전 (${homeRepBriefing.areaPyeong.toLocaleString()}평)`}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-lg font-black text-slate-900">
-                      <MapPin className="w-5 h-5 text-emerald-600 shrink-0" />
-                      <span className="truncate">충청북도 충주시 단월동 · 가을배추 (불암3호)</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-lg font-black text-slate-900 min-w-0">
+                        <MapPin className="w-5 h-5 text-emerald-600 shrink-0" />
+                        <span className="truncate">
+                          {homeRepBriefing.region} · {homeRepBriefing.cropTitle}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold shrink-0">
+                        진행률 {homeRepBriefing.progressPct}%
+                      </span>
                     </div>
 
                     <div className="rounded-xl bg-[#F0FDF4] border border-emerald-200 p-3.5 space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-extrabold text-emerald-800">
-                          기후 빅데이터 산출 정식(아주심기) 추천일
+                        <span className="text-xs font-extrabold text-emerald-800 truncate">
+                          현재일({currentTodayYmd}) 기준 최근접 작업 · {homeRepBriefing.nearestStageTitle}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] font-extrabold">
-                          생육적온 18~20℃ 일치
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] font-extrabold shrink-0">
+                          {homeRepBriefing.nearestTaskDdayBadge}
                         </span>
                       </div>
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-2xl font-black text-emerald-950 tracking-tight">
-                          2026-08-25 (화)
+                        <span className="text-2xl font-black text-emerald-950 tracking-tight font-mono">
+                          {homeRepBriefing.nearestTaskDateText}
                         </span>
-                        <span className="text-xs font-bold text-emerald-700">
-                          목표 적산온도 1,180 GDD · 수확예정 11/05 (목)
+                        <span className="text-xs font-bold text-emerald-700 truncate">
+                          적산온도 620 GDD 도달 · 수확예정 {homeRepBriefing.expectedHarvestShort}
+                        </span>
+                      </div>
+                      <div className="pt-1.5 border-t border-emerald-200/70 flex items-center justify-between gap-2 text-xs">
+                        <span className="font-extrabold text-emerald-900 truncate">
+                          📌 {homeRepBriefing.nearestTaskSummary}
+                        </span>
+                        <span className="font-bold text-emerald-700 shrink-0">
+                          정식 {homeRepBriefing.plantingDate.slice(5).replace('-', '/')} 완료
                         </span>
                       </div>
                     </div>
@@ -3307,15 +3418,21 @@ export default function UserIntroPage() {
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-2.5">
                         <div className="text-[11px] font-bold text-slate-500">한계온도 회피</div>
-                        <div className="text-sm font-black text-slate-900 mt-0.5">5~26℃ 안전</div>
+                        <div className="text-sm font-black text-slate-900 mt-0.5">
+                          {cropMinT}~{cropMaxT}℃ 안전
+                        </div>
                       </div>
                       <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-2.5">
                         <div className="text-[11px] font-bold text-slate-500">토양검정 상태</div>
-                        <div className="text-sm font-black text-sky-700 mt-0.5">pH 6.2 · 적정</div>
+                        <div className="text-sm font-black text-sky-700 mt-0.5">
+                          pH {homeRepBriefing.soilPh} · {homeRepBriefing.fertilityGrade}
+                        </div>
                       </div>
                       <div className="rounded-xl bg-slate-50 border border-slate-200/80 p-2.5">
-                        <div className="text-[11px] font-bold text-slate-500">단계별 추천 자재</div>
-                        <div className="text-sm font-black text-emerald-700 mt-0.5">5대 자재 10종</div>
+                        <div className="text-[11px] font-bold text-slate-500">최근접 처방 자재</div>
+                        <div className="text-sm font-black text-emerald-700 mt-0.5 truncate">
+                          튼튼칼슘 영양제
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -3324,8 +3441,8 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setSelectedRequestNo('REQ-20261106-009');
-                        setExpandedScheduleRequestNo('REQ-20261106-009');
+                        setSelectedRequestNo(homeRepBriefing.requestNo);
+                        setExpandedScheduleRequestNo(homeRepBriefing.requestNo);
                         setActiveMenu('재배일정 확인');
                         setMobileScheduleStep('detail');
                       }}
@@ -3741,113 +3858,73 @@ export default function UserIntroPage() {
                 </div>
               </div>
 
-              {/* 파트 1: 대표 포전 6단계 생육과정별 세부 진행일정 타임라인 카드 */}
+              {/* 파트 1: 대표 포전 현재 날짜 기준 가장 근시일 내 예정 작업 및 후속 생육과정 타임라인 카드 */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                     <h3 className="text-base font-black text-slate-900">
-                      생육과정별 6단계 표준 진행일정 및 연계 처방 (충청북도 충주시 단월동 · 가을배추 불암3호 · 300평)
+                      현재 날짜({formatYmdWithWeekday(currentTodayYmd)}) 기준 최근접 예정 작업 및 후속 생육과정 처방 ({homeRepBriefing.region} · {homeRepBriefing.cropTitle} · {homeRepBriefing.areaPyeong.toLocaleString()}평)
                     </h3>
                   </div>
-                  <span className="text-xs font-bold text-slate-500">
-                    ※ 각 단계 카드를 클릭하면 48주 타임라인 세부 일정으로 이동합니다
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-extrabold border border-slate-200">
+                      이행완료: STEP 01 밑거름 ➔ STEP 02 정식({homeRepBriefing.plantingDate.slice(5).replace('-', '/')}) ➔ STEP 03 1차 추비 완료
+                    </span>
+                    <span className="text-xs font-bold text-slate-500">
+                      ※ 각 단계 카드를 클릭하면 48주 타임라인 세부 일정으로 이동합니다
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-6 gap-3">
-                  {[
-                    {
-                      step: 'STEP 01',
-                      stageName: '토양준비 · 밑거름',
-                      date: '2026-08-15 (토)',
-                      gdd: '누적 0 GDD (정식 10일전)',
-                      climate: '평균 24.8℃ · 강수 0mm',
-                      task: '경운·정지 및 완효성 밑거름·토양살충제 혼화',
-                      material: '맞춤 슈퍼배추 밑거름 특호 (3포)',
-                      matBadge: '비료 · 밑거름',
-                      badgeCls: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-                    },
-                    {
-                      step: 'STEP 02',
-                      stageName: '모종 정식 (아주심기)',
-                      date: '2026-08-25 (화)',
-                      gdd: '누적 120 GDD 도달',
-                      climate: '평균 19.2℃ · 적온(18~20℃) 일치',
-                      task: '고온 한계온도(26℃↑) 종료 직후 규격 건묘 정식',
-                      material: '불암3호 105구 트레이 규격 건묘 (10판)',
-                      matBadge: '모종 · 정식적기',
-                      badgeCls: 'bg-green-50 text-green-800 border-green-200',
-                    },
-                    {
-                      step: 'STEP 03',
-                      stageName: '활착기 · 1차 웃거름',
-                      date: '2026-09-08 (화)',
-                      gdd: '누적 340 GDD 도달',
-                      climate: '평균 18.6℃ · 습도 64%',
-                      task: '정식 후 14일차 초기 뿌리활착 및 1차 추비 시비',
-                      material: '엔케이(NK) 추비 전용 웃거름 (2포)',
-                      matBadge: '비료 · 1차추비',
-                      badgeCls: 'bg-teal-50 text-teal-800 border-teal-200',
-                    },
-                    {
-                      step: 'STEP 04',
-                      stageName: '결구초기 · 영양관리',
-                      date: '2026-09-24 (목)',
-                      gdd: '누적 620 GDD 도달',
-                      climate: '평균 17.4℃ · 일조 양호',
-                      task: '속잎 결구 시작기 칼슘·붕소 엽면시비 (꿀통배추 예방)',
-                      material: '칼슘·붕소 결구강화 액상 영양제 (500ml)',
-                      matBadge: '영양제 · 결구강화',
-                      badgeCls: 'bg-amber-50 text-amber-800 border-amber-200',
-                    },
-                    {
-                      step: 'STEP 05',
-                      stageName: '병해충 집중 예방·방제',
-                      date: '2026-10-10 (토)',
-                      gdd: '누적 890 GDD 도달',
-                      climate: '평균 15.1℃ · 강우예보 3일전',
-                      task: '가을 강우 전후 무름병·뿌리혹병 및 진딧물 적기 방제',
-                      material: '배추 무름병·뿌리혹병 예방 입제 (3kg)',
-                      matBadge: '병해충방지제 · 예방',
-                      badgeCls: 'bg-rose-50 text-rose-800 border-rose-200',
-                    },
-                    {
-                      step: 'STEP 06',
-                      stageName: '결구완료 · 적기 수확',
-                      date: '2026-11-05 (목)',
-                      gdd: '목표 1,180 GDD 100% 도달',
-                      climate: '평균 11.2℃ · 서리 피해 전',
-                      task: '최저 한계온도(5℃ 미만) 도래 전 상품성 최상 수확',
-                      material: '결구 충실도 98% · 300평 수확 완료',
-                      matBadge: '수확적기 도달',
-                      badgeCls: 'bg-sky-50 text-sky-800 border-sky-200',
-                    },
-                  ].map((st, idx) => (
+                  {homeUpcomingSixStages.map((st, idx) => (
                     <button
                       key={st.step}
                       type="button"
                       onClick={() => {
-                        setSelectedRequestNo('REQ-20261106-009');
-                        setExpandedScheduleRequestNo('REQ-20261106-009');
+                        setSelectedRequestNo(homeRepBriefing.requestNo);
+                        setExpandedScheduleRequestNo(homeRepBriefing.requestNo);
                         setActiveMenu('재배일정 확인');
                         setMobileScheduleStep('detail');
                       }}
-                      className="group relative rounded-2xl bg-slate-50/80 hover:bg-emerald-50/50 border border-slate-200/90 hover:border-emerald-400 p-4 text-left flex flex-col justify-between transition cursor-pointer shadow-2xs"
+                      className={`group relative rounded-2xl p-4 text-left flex flex-col justify-between transition cursor-pointer shadow-2xs ${
+                        st.isNearest
+                          ? 'bg-emerald-50/80 hover:bg-emerald-100/70 border-2 border-emerald-600 ring-2 ring-emerald-500/20'
+                          : 'bg-slate-50/80 hover:bg-emerald-50/50 border border-slate-200/90 hover:border-emerald-400'
+                      }`}
                     >
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-1">
-                          <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-black text-[11px]">
+                          <span
+                            className={`px-2 py-0.5 rounded-md font-black text-[11px] ${
+                              st.isNearest
+                                ? 'bg-emerald-700 text-white'
+                                : 'bg-emerald-600 text-white'
+                            }`}
+                          >
                             {st.step}
                           </span>
-                          <span className="text-[11px] font-bold text-slate-400">
-                            {idx < 5 ? '다음 단계 ➔' : '최종 완료'}
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10.5px] font-extrabold ${
+                              st.isNearest
+                                ? 'bg-amber-400 text-slate-950'
+                                : 'bg-white border border-slate-200 text-emerald-700'
+                            }`}
+                          >
+                            {st.ddayBadge}
                           </span>
                         </div>
                         <div className="text-base font-black text-slate-900 group-hover:text-emerald-800 leading-snug">
                           {st.stageName}
                         </div>
-                        <div className="rounded-lg bg-white border border-slate-200/80 px-2.5 py-1.5">
+                        <div
+                          className={`rounded-lg border px-2.5 py-1.5 ${
+                            st.isNearest
+                              ? 'bg-white border-emerald-300'
+                              : 'bg-white border-slate-200/80'
+                          }`}
+                        >
                           <div className="text-xs font-black text-emerald-700 font-mono">
                             {st.date}
                           </div>
@@ -3874,17 +3951,17 @@ export default function UserIntroPage() {
                 </div>
               </div>
 
-              {/* 파트 2: 지역별 · 작물별 기후연동 추천 재배일정 상세 비교 테이블 */}
+              {/* 파트 2: 지역별 · 작물별 현재 날짜 기준 최근접 예정 작업 현황 테이블 */}
               <div className="space-y-2.5 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
                     <h3 className="text-base font-black text-slate-900">
-                      지역별 · 작물별 기후 빅데이터 추천 진행일 현황 (시도 · 시군구 · 읍면동 정밀 분석)
+                      지역별 · 작물별 현재 날짜({currentTodayYmd}) 기준 최근접 예정 작업 현황 (등록 포전 실데이터 연동)
                     </h3>
                   </div>
                   <span className="text-xs font-semibold text-slate-500">
-                    기후 데이터 규칙: 모종(최저·최고 한계온도 제외 최적온도) · 씨(발아적온 이상 조기 파종)
+                    정렬 기준: 현재 날짜로부터 가장 근시일 내 작업 예정일(D-Day) 오름차순
                   </span>
                 </div>
 
@@ -3892,18 +3969,23 @@ export default function UserIntroPage() {
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-extrabold text-xs">
-                        <th className="py-3.5 px-4">지역 (시도·시군구·읍면동)</th>
+                        <th className="py-3.5 px-4">지역 · 재배면적</th>
                         <th className="py-3.5 px-3">작물 · 품종명</th>
                         <th className="py-3.5 px-3">구분 · 온도 기준</th>
-                        <th className="py-3.5 px-3">핵심 생육단계</th>
-                        <th className="py-3.5 px-3">추천 진행일 (요일)</th>
-                        <th className="py-3.5 px-3">기후 분석 상태</th>
+                        <th className="py-3.5 px-3">최근접 예정 생육단계</th>
+                        <th className="py-3.5 px-3">최근접 작업 예정일 (D-Day)</th>
+                        <th className="py-3.5 px-3">생육 진행 상태</th>
                         <th className="py-3.5 px-4 text-right">일정 · 처방 상세</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {recentRecommendations.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-emerald-50/30 transition">
+                        <tr
+                          key={item.request_no || idx}
+                          className={`hover:bg-emerald-50/40 transition ${
+                            idx === 0 ? 'bg-emerald-50/25' : ''
+                          }`}
+                        >
                           <td className="py-3.5 px-4 font-extrabold text-slate-900">{item.region}</td>
                           <td className="py-3.5 px-3 font-bold text-slate-900">{item.crop}</td>
                           <td className="py-3.5 px-3">
@@ -3917,8 +3999,15 @@ export default function UserIntroPage() {
                               {item.stage}
                             </span>
                           </td>
-                          <td className="py-3.5 px-3 font-mono font-black text-emerald-700 text-base">
-                            {formatYmdWithWeekday(item.recommended_date)}
+                          <td className="py-3.5 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-emerald-700 text-base">
+                                {formatYmdWithWeekday(item.recommended_date)}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white text-[11px] font-extrabold">
+                                {item.dday_badge}
+                              </span>
+                            </div>
                           </td>
                           <td className="py-3.5 px-3">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#DDF5E8] text-[#0E6B40] text-xs font-extrabold">
