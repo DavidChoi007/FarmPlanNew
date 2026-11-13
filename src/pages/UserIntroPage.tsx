@@ -781,19 +781,391 @@ export default function UserIntroPage() {
     }
   });
 
+  // ==================== 생육관리 항목별 [완료] 버튼 기반 시작 인정 & 진행률 산출 로직 ====================
+  const STAGE_COMPLETION_STORAGE_KEY = 'hanfarm_stage_item_completions_v1';
+
+  const STANDARD_16_STAGE_META = useMemo(
+    () => [
+      { itemId: 'SCH-01', stepOrder: 1, stageNum: '01', stageGroupName: '재배 준비', subItemName: '포장 정리', offsetDays: -32 },
+      { itemId: 'SCH-02', stepOrder: 2, stageNum: '01', stageGroupName: '재배 준비', subItemName: '토양 개량(시비)', offsetDays: -18 },
+      { itemId: 'SCH-03', stepOrder: 3, stageNum: '01', stageGroupName: '재배 준비', subItemName: '이랑 만들기', offsetDays: -9 },
+      { itemId: 'SCH-04', stepOrder: 4, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '파종(종자 준비)', offsetDays: -25 },
+      { itemId: 'SCH-05', stepOrder: 5, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '육묘 관리(관수·온도)', offsetDays: -19 },
+      { itemId: 'SCH-06', stepOrder: 6, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '묘 관리(시비·병해충)', offsetDays: -9 },
+      { itemId: 'SCH-07', stepOrder: 7, stageNum: '03', stageGroupName: '정식·활착', subItemName: '정식(본밭 이식)', offsetDays: 0 },
+      { itemId: 'SCH-08', stepOrder: 8, stageNum: '03', stageGroupName: '정식·활착', subItemName: '활착 관리(관수·차광)', offsetDays: 2 },
+      { itemId: 'SCH-09', stepOrder: 9, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생장 관리(시비·관수)', offsetDays: 9 },
+      { itemId: 'SCH-10', stepOrder: 10, stageNum: '04', stageGroupName: '생육 관리', subItemName: '줄기·잎 관리(정지·유인)', offsetDays: 16 },
+      { itemId: 'SCH-11', stepOrder: 11, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생육 점검(생육량·생육상태)', offsetDays: 28 },
+      { itemId: 'SCH-12', stepOrder: 12, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '병해충 예찰(정기 점검)', offsetDays: -10 },
+      { itemId: 'SCH-13', stepOrder: 13, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '방제(필요 시)', offsetDays: 9 },
+      { itemId: 'SCH-14', stepOrder: 14, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '예방 관리(환경·위생)', offsetDays: 36 },
+      { itemId: 'SCH-15', stepOrder: 15, stageNum: '06', stageGroupName: '수확', subItemName: '수확 적기 확인', offsetDays: 65 },
+      { itemId: 'SCH-16', stepOrder: 16, stageNum: '06', stageGroupName: '수확', subItemName: '본 수확 및 예건·저장', offsetDays: 68 },
+    ],
+    []
+  );
+
+  const defaultStageItemCompletions = useMemo(() => {
+    const seedMap: Record<
+      string,
+      Record<
+        string,
+        {
+          itemId: string;
+          stepOrder: number;
+          stageGroupName: string;
+          subItemName: string;
+          completed: boolean;
+          confirmedDate: string;
+          completedAt: string;
+          isSeeded?: boolean;
+        }
+      >
+    > = {};
+
+    defaultCloudBaeCropList.forEach((c) => {
+      const reqNo = c.request_no;
+      const basePct = Number(c.progress_pct ?? 60);
+      const completedTargetCount = Math.max(
+        0,
+        Math.min(16, Math.round((basePct / 100) * 16))
+      );
+      const pDate = c.planting_date || '2026-08-25';
+      const reqMap: Record<string, any> = {};
+
+      STANDARD_16_STAGE_META.forEach((meta, idx) => {
+        if (idx < completedTargetCount) {
+          const estDate = addDaysToYmd(pDate, meta.offsetDays);
+          reqMap[meta.itemId] = {
+            itemId: meta.itemId,
+            stepOrder: meta.stepOrder,
+            stageGroupName: meta.stageGroupName,
+            subItemName: meta.subItemName,
+            completed: true,
+            confirmedDate: estDate,
+            completedAt: `${estDate.replace(/-/g, '.')} 09:00`,
+            isSeeded: true,
+          };
+        }
+      });
+      seedMap[reqNo] = reqMap;
+    });
+    return seedMap;
+  }, [STANDARD_16_STAGE_META]);
+
+  const [stageItemCompletions, setStageItemCompletions] = useState<
+    Record<
+      string,
+      Record<
+        string,
+        {
+          itemId: string;
+          stepOrder: number;
+          stageGroupName: string;
+          subItemName: string;
+          completed: boolean;
+          confirmedDate: string;
+          completedAt: string;
+          isSeeded?: boolean;
+        }
+      >
+    >
+  >(() => {
+    try {
+      const saved = localStorage.getItem('hanfarm_stage_item_completions_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return { ...defaultStageItemCompletions, ...parsed };
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return defaultStageItemCompletions;
+  });
+
+  // 각 생육관리 항목의 인라인 날짜 수정 드래프트 상태 (수정 후 [완료] 버튼을 눌러야 해당 날짜에 시작 인정)
+  const [inlineStageDateDrafts, setInlineStageDateDrafts] = useState<Record<string, string>>({});
+
+  const saveStageItemCompletions = (
+    updater: (prev: typeof stageItemCompletions) => typeof stageItemCompletions
+  ) => {
+    setStageItemCompletions((prev) => {
+      const next = updater(prev);
+      try {
+        localStorage.setItem(STAGE_COMPLETION_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const resolveStageItemId = (item: any, fallbackIdx = 0): string => {
+    if (!item) return `SCH-${String(fallbackIdx + 1).padStart(2, '0')}`;
+    if (item.item_id && /^SCH-\d+/i.test(String(item.item_id))) {
+      return String(item.item_id).toUpperCase();
+    }
+    if (Number(item.step_order) >= 1 && Number(item.step_order) <= 16) {
+      return `SCH-${String(Number(item.step_order)).padStart(2, '0')}`;
+    }
+    const cleanSub = String(item.sub_item_name || item.subItemName || '')
+      .replace(/\s*\([^)]*\)/g, '')
+      .trim();
+    const matchedMeta = STANDARD_16_STAGE_META.find(
+      (m) =>
+        m.subItemName === cleanSub ||
+        m.subItemName.replace(/\s*\([^)]*\)/g, '').trim() === cleanSub
+    );
+    if (matchedMeta) return matchedMeta.itemId;
+    return String(item.item_id || item.process_code || `SCH-${String(fallbackIdx + 1).padStart(2, '0')}`);
+  };
+
+  // provisionData가 로드되었을 때, 초기 시드(isSeeded: true) 상태인 항목의 confirmedDate를 서버 산출 start_date와 1회 정합화
+  useEffect(() => {
+    const activeReqNo =
+      provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const items: any[] = provisionData?.scheduleItems || [];
+    if (!items.length) return;
+
+    setStageItemCompletions((prev) => {
+      const curReqMap = prev[activeReqNo] || {};
+      let changed = false;
+      const nextReqMap = { ...curReqMap };
+
+      items.forEach((it: any, idx: number) => {
+        const itemId = resolveStageItemId(it, idx);
+        const existing = nextReqMap[itemId];
+        if (existing?.isSeeded && it.start_date) {
+          changed = true;
+          nextReqMap[itemId] = {
+            ...existing,
+            confirmedDate: it.start_date,
+            stageGroupName: it.stage_group_name || existing.stageGroupName,
+            subItemName: it.sub_item_name || existing.subItemName,
+            isSeeded: false,
+          };
+        }
+      });
+
+      if (!changed) return prev;
+      const next = { ...prev, [activeReqNo]: nextReqMap };
+      try {
+        localStorage.setItem(STAGE_COMPLETION_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [provisionData, selectedRequestNo]);
+
+  // 특정 생육관리 항목의 현재 표시/수정 날짜 조회 헬퍼
+  const getEffectiveStageItemDate = (reqNo: string, item: any, explicitDate?: string): string => {
+    if (explicitDate && /^\d{4}-\d{2}-\d{2}$/.test(explicitDate)) {
+      return explicitDate;
+    }
+    const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const itemId = resolveStageItemId(item);
+    const draftKey = `${rNo}__${itemId}`;
+    if (inlineStageDateDrafts[draftKey] && /^\d{4}-\d{2}-\d{2}$/.test(inlineStageDateDrafts[draftKey])) {
+      return inlineStageDateDrafts[draftKey];
+    }
+    if (
+      selectedStageItem &&
+      resolveStageItemId(selectedStageItem) === itemId &&
+      editDetailForm?.start_date &&
+      /^\d{4}-\d{2}-\d{2}$/.test(editDetailForm.start_date)
+    ) {
+      return editDetailForm.start_date;
+    }
+    return String(item?.start_date || '2026-08-25');
+  };
+
+  // 특정 생육관리 항목의 완료 인정 상태 조회
+  // 핵심 규칙: [완료] 버튼을 클릭해야 해당 날짜(수정 시 수정된 날짜)에 그 생육과정을 시작한 것으로 인정!
+  const getStageItemCompletionState = (reqNo: string, item: any, explicitDate?: string) => {
+    const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const itemId = resolveStageItemId(item);
+    const entry = stageItemCompletions[rNo]?.[itemId];
+    const effectiveDate = getEffectiveStageItemDate(rNo, item, explicitDate);
+    const savedStartDate = String(item?.start_date || effectiveDate);
+
+    // 완료 버튼이 눌렸고, 인정된 날짜(confirmedDate)가 현재(또는 수정된) 날짜와 일치해야만 시작 인정!
+    const isRecognized = Boolean(
+      entry?.completed &&
+        (entry.isSeeded || !effectiveDate || entry.confirmedDate === effectiveDate)
+    );
+    // 이전에 완료했었으나 날짜를 수정하여 다시 [완료] 버튼을 눌러야 인정되는 상태인지 여부
+    const isDateModifiedAfterConfirm = Boolean(
+      entry?.completed &&
+        !entry.isSeeded &&
+        effectiveDate &&
+        entry.confirmedDate &&
+        entry.confirmedDate !== effectiveDate
+    );
+    const isDraftModified = Boolean(effectiveDate && savedStartDate && effectiveDate !== savedStartDate);
+
+    return {
+      itemId,
+      entry: entry || null,
+      effectiveDate,
+      savedStartDate,
+      isRecognized,
+      isDateModifiedAfterConfirm,
+      isDraftModified,
+      needsConfirmClick: !isRecognized,
+      confirmedDate: entry?.confirmedDate || '',
+      completedAt: entry?.completedAt || '',
+    };
+  };
+
+  // 재배일정(request_no) 단위의 완료 인정 공정 수 및 진행률(%) 산출 함수
+  const getScheduleCompletionSummary = (reqNo: string, fallbackPct = 60) => {
+    const rNo = reqNo || 'REQ-20261106-009';
+    const isActiveProvision =
+      provisionData &&
+      Array.isArray(provisionData.scheduleItems) &&
+      provisionData.scheduleItems.length > 0 &&
+      (provisionData.activeRequest?.request_no === rNo || selectedRequestNo === rNo);
+
+    const reqMap = stageItemCompletions[rNo] || {};
+
+    if (isActiveProvision) {
+      const sItems: any[] = provisionData.scheduleItems;
+      const totalCount = sItems.length || 16;
+      const recognizedItems: any[] = [];
+      let pendingModifiedCount = 0;
+
+      sItems.forEach((it: any) => {
+        const st = getStageItemCompletionState(rNo, it);
+        if (st.isRecognized) {
+          recognizedItems.push({ ...it, confirmedDate: st.confirmedDate || st.effectiveDate });
+        } else if (st.isDateModifiedAfterConfirm || st.isDraftModified) {
+          pendingModifiedCount++;
+        }
+      });
+
+      const completedCount = recognizedItems.length;
+      const progressPct = Math.round((completedCount / Math.max(1, totalCount)) * 100);
+      const sortedRecognized = [...recognizedItems].sort(
+        (a, b) => Number(a.step_order || 0) - Number(b.step_order || 0)
+      );
+      const lastCompleted = sortedRecognized[sortedRecognized.length - 1] || null;
+      const nextUncompleted =
+        sItems.find((it: any) => !getStageItemCompletionState(rNo, it).isRecognized) || null;
+
+      let currentStageName = '01. 재배 준비 (시작 대기)';
+      let statusText = `완료 인정 0/${totalCount}건 · 완료 클릭 시 시작 인정`;
+
+      if (completedCount >= totalCount) {
+        currentStageName = '06. 수확 완료 (전 공정 완료 인정)';
+        statusText = `전체 ${totalCount}/${totalCount}개 생육과정 시작·완료 인정 (100%)`;
+      } else if (lastCompleted) {
+        const meta = STANDARD_16_STAGE_META.find(
+          (m) => m.itemId === resolveStageItemId(lastCompleted)
+        );
+        const stagePrefix = meta?.stageNum ? `${meta.stageNum}. ` : '';
+        const grpName = lastCompleted.stage_group_name || meta?.stageGroupName || '생육 관리';
+        const cleanSub = String(lastCompleted.sub_item_name || meta?.subItemName || '')
+          .replace(/\s*\([^)]*\)/g, '')
+          .trim();
+        currentStageName = `${stagePrefix}${grpName} (${cleanSub})`;
+        statusText =
+          pendingModifiedCount > 0
+            ? `완료 인정 ${completedCount}/${totalCount}건 (수정일 미확정 ${pendingModifiedCount}건)`
+            : `완료 인정 ${completedCount}/${totalCount}건 · 최근 ${lastCompleted.confirmedDate} 시작인정`;
+      }
+
+      return {
+        totalCount,
+        completedCount,
+        pendingModifiedCount,
+        progressPct,
+        currentStageName,
+        statusText,
+        lastCompleted,
+        nextUncompleted,
+        nextTaskDday:
+          completedCount >= totalCount
+            ? '완료'
+            : nextUncompleted?.start_date
+            ? `${formatShortMdWithWeekday(nextUncompleted.start_date)}`
+            : '대기',
+      };
+    }
+
+    // 비활성 재배일정 요청 카드용 (STANDARD_16_STAGE_META 기준 산출)
+    const totalCount = 16;
+    const recognizedMetas = STANDARD_16_STAGE_META.filter((m) => {
+      const e = reqMap[m.itemId];
+      return Boolean(e?.completed);
+    });
+    const completedCount =
+      Object.keys(reqMap).length > 0
+        ? recognizedMetas.length
+        : Math.max(0, Math.min(16, Math.round((fallbackPct / 100) * 16)));
+    const progressPct = Math.round((completedCount / totalCount) * 100);
+    const lastMeta = recognizedMetas[recognizedMetas.length - 1] || null;
+    const nextMeta = STANDARD_16_STAGE_META.find((m) => !reqMap[m.itemId]?.completed) || null;
+
+    let currentStageName = '01. 재배 준비 (시작 대기)';
+    let statusText = `완료 인정 0/${totalCount}건 · 완료 클릭 시 시작 인정`;
+
+    if (completedCount >= totalCount) {
+      currentStageName = '06. 수확 완료 (전 공정 완료 인정)';
+      statusText = `전체 ${totalCount}/${totalCount}개 생육과정 시작·완료 인정 (100%)`;
+    } else if (lastMeta) {
+      const lastEntry = reqMap[lastMeta.itemId];
+      currentStageName = `${lastMeta.stageNum}. ${lastMeta.stageGroupName} (${lastMeta.subItemName})`;
+      statusText = `완료 인정 ${completedCount}/${totalCount}건 · 최근 ${
+        lastEntry?.confirmedDate || ''
+      } 시작인정`;
+    }
+
+    return {
+      totalCount,
+      completedCount,
+      pendingModifiedCount: 0,
+      progressPct,
+      currentStageName,
+      statusText,
+      lastCompleted: lastMeta,
+      nextUncompleted: nextMeta,
+      nextTaskDday: completedCount >= totalCount ? '완료' : '예정 대기',
+    };
+  };
+
   const cloudBaeCropList = [
     ...localAddedCropRequests.filter(
       (loc) => !baseCropList.some((b) => b.crop_plan_id === loc.crop_plan_id)
     ),
     ...baseCropList,
-  ].filter((crop: any) => {
-    const keysToCheck = [
-      crop.crop_plan_id,
-      crop.request_no,
-      crop.display_request_no,
-    ].filter(Boolean);
-    return !keysToCheck.some((k) => deletedScheduleKeys.includes(String(k)));
-  });
+  ]
+    .filter((crop: any) => {
+      const keysToCheck = [
+        crop.crop_plan_id,
+        crop.request_no,
+        crop.display_request_no,
+      ].filter(Boolean);
+      return !keysToCheck.some((k) => deletedScheduleKeys.includes(String(k)));
+    })
+    .map((crop: any) => {
+      const reqNo = crop.request_no || 'REQ-20261106-009';
+      const summary = getScheduleCompletionSummary(reqNo, Number(crop.progress_pct ?? 60));
+      return {
+        ...crop,
+        progress_pct: summary.progressPct,
+        completed_stage_count: summary.completedCount,
+        total_stage_count: summary.totalCount,
+        pending_modified_count: summary.pendingModifiedCount,
+        current_stage_name: summary.currentStageName,
+        status_text: summary.statusText,
+        next_task_dday:
+          summary.completedCount >= summary.totalCount ? '완료' : crop.next_task_dday || '2일 후',
+      };
+    });
 
   // 재배일정 요청 및 재배일정 리스트 통합 연쇄 삭제 핸들러 (요청 + 16개 생육과정 일정 + 추천 제품·근거 + 이력 모두 삭제)
   const handleDeleteScheduleAndCascade = async (crop: any, e?: React.MouseEvent) => {
@@ -3647,10 +4019,352 @@ export default function UserIntroPage() {
         gdd_mode: patentGddMode,
         preserveItemId: selectedStageItem?.item_id,
       });
+      setInlineStageDateDrafts({});
       setDetailSaveMessage('초기 AI 365일 기후 산출 일정으로 복원되었습니다.');
     } finally {
       setIsSavingDetailItem(false);
     }
+  };
+
+  // 생육관리 항목별 인라인 날짜 변경 핸들러 (날짜 변경 즉시 [수정일 완료] 대기 상태로 전환되며, 완료 버튼 클릭 시 인정)
+  const handleInlineStageDateChange = (reqNo: string, item: any, nextYmd: string) => {
+    if (!nextYmd || !/^\d{4}-\d{2}-\d{2}$/.test(nextYmd)) return;
+    const rNo =
+      reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const itemId = resolveStageItemId(item);
+    const draftKey = `${rNo}__${itemId}`;
+    setInlineStageDateDrafts((prev) => ({
+      ...prev,
+      [draftKey]: nextYmd,
+    }));
+    if (selectedStageItem && resolveStageItemId(selectedStageItem) === itemId) {
+      setEditDetailForm((prev: any) => (prev ? { ...prev, start_date: nextYmd } : prev));
+    }
+  };
+
+  // 생육관리 항목별 일자 옆 [완료] 버튼 클릭 핸들러
+  // - 미완료 상태 또는 날짜가 수정된 상태에서 클릭 시: 해당 날짜(수정일 포함)에 생육과정을 시작한 것으로 확정·인정하고 진행률 재계산
+  // - 이미 해당 날짜로 완료 인정된 상태에서 다시 클릭 시: 완료 인정 취소(토글) 및 진행률 재계산
+  const handleConfirmStageItemCompletion = async (
+    reqNoInput: string,
+    item: any,
+    explicitDate?: string,
+    e?: React.MouseEvent
+  ) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!item) return;
+
+    const rNo =
+      reqNoInput ||
+      provisionData?.activeRequest?.request_no ||
+      selectedRequestNo ||
+      'REQ-20261106-009';
+    const st = getStageItemCompletionState(rNo, item, explicitDate);
+    const targetYmd = st.effectiveDate || String(item.start_date || '2026-08-25');
+    const cleanSubName = String(item.sub_item_name || item.subItemName || '생육과정')
+      .replace(/\s*\([^)]*\)/g, '')
+      .trim();
+    const meta = STANDARD_16_STAGE_META.find((m) => m.itemId === st.itemId);
+    const stepOrder = Number(item.step_order || meta?.stepOrder || 1);
+    const stageGroupName = item.stage_group_name || meta?.stageGroupName || '생육 관리';
+
+    // 이미 동일한 날짜로 완료 인정된 상태라면 -> 완료 취소 토글
+    if (st.isRecognized && !st.isDraftModified) {
+      saveStageItemCompletions((prev) => {
+        const curReq = { ...(prev[rNo] || {}) };
+        delete curReq[st.itemId];
+        return {
+          ...prev,
+          [rNo]: curReq,
+        };
+      });
+
+      const sItems: any[] = provisionData?.scheduleItems || [];
+      const totalCnt = sItems.length || 16;
+      const prevSummary = getScheduleCompletionSummary(rNo);
+      const nextCompletedCnt = Math.max(0, prevSummary.completedCount - 1);
+      const nextPct = Math.round((nextCompletedCnt / totalCnt) * 100);
+
+      const matchedCrop = cloudBaeCropList.find((c: any) => c.request_no === rNo);
+      if (matchedCrop?.crop_plan_id) {
+        handleUpdateCropProgress(matchedCrop.crop_plan_id, nextPct);
+      }
+
+      const cancelMsg = `[${cleanSubName}] 시작 완료 인정이 취소되었습니다. (현재 진행률 ${nextPct}% · ${nextCompletedCnt}/${totalCnt}개 공정 완료)`;
+      setDetailSaveMessage(cancelMsg);
+      setPurchaseToastMessage(cancelMsg);
+      setTimeout(() => setPurchaseToastMessage(''), 3500);
+      return;
+    }
+
+    // 1) 만약 날짜가 수정된 상태(targetYmd !== item.start_date)라면 일정 데이터에도 수정된 날짜를 즉시 반영·저장
+    if (targetYmd && item.start_date && targetYmd !== item.start_date) {
+      const origSpan = Math.max(
+        0,
+        diffDaysBetweenYmd(item.start_date, item.end_date || item.start_date)
+      );
+      const nextEndYmd = addDaysToYmd(targetYmd, origSpan);
+      const updatedItemObj = {
+        ...item,
+        start_date: targetYmd,
+        end_date: nextEndYmd,
+        recommended_date: targetYmd,
+        recommended_date_with_weekday: formatYmdWithWeekday(targetYmd),
+      };
+
+      // 프론트엔드 provisionData 즉시 반영
+      setProvisionData((prev: any) => {
+        if (!prev) return prev;
+        const nextScheduleItems = (prev.scheduleItems || []).map((si: any) =>
+          resolveStageItemId(si) === st.itemId ? { ...si, ...updatedItemObj } : si
+        );
+        const nextStageGroups = (prev.stageGroups || []).map((grp: any) => ({
+          ...grp,
+          items: (grp.items || []).map((gi: any) =>
+            resolveStageItemId(gi) === st.itemId ? { ...gi, ...updatedItemObj } : gi
+          ),
+        }));
+        return {
+          ...prev,
+          scheduleItems: nextScheduleItems,
+          stageGroups: nextStageGroups,
+        };
+      });
+
+      if (selectedStageItem && resolveStageItemId(selectedStageItem) === st.itemId) {
+        setSelectedStageItem((prev: any) => (prev ? { ...prev, ...updatedItemObj } : prev));
+        setEditDetailForm((prev: any) => (prev ? { ...prev, ...updatedItemObj } : prev));
+      }
+      if (clickedProvisionItem && resolveStageItemId(clickedProvisionItem) === st.itemId) {
+        setClickedProvisionItem((prev: any) => (prev ? { ...prev, ...updatedItemObj } : prev));
+      }
+
+      // 백엔드 일정 업데이트 비동기 반영
+      fetch('/api/schedule-provision/update-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_no: rNo,
+          cultivar_id: provisionData?.activeRequest?.cultivar_id || 'CV-BRM3',
+          updated_item: updatedItemObj,
+          cascaded_items: [],
+          items_to_save: [updatedItemObj],
+        }),
+      }).catch(() => {});
+    }
+
+    // 인라인 드래프트 정리
+    const draftKey = `${rNo}__${st.itemId}`;
+    setInlineStageDateDrafts((prev) => {
+      if (!(draftKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[draftKey];
+      return next;
+    });
+
+    // 2) 해당 날짜(targetYmd)에 생육과정을 시작한 것으로 완료 인정 저장
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(
+      now.getDate()
+    ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes()
+    ).padStart(2, '0')}`;
+
+    saveStageItemCompletions((prev) => {
+      const curReq = { ...(prev[rNo] || {}) };
+      curReq[st.itemId] = {
+        itemId: st.itemId,
+        stepOrder,
+        stageGroupName,
+        subItemName: cleanSubName,
+        completed: true,
+        confirmedDate: targetYmd,
+        completedAt: nowStr,
+        isSeeded: false,
+      };
+      return {
+        ...prev,
+        [rNo]: curReq,
+      };
+    });
+
+    const sItems: any[] = provisionData?.scheduleItems || [];
+    const totalCnt = sItems.length || 16;
+    const prevSummary = getScheduleCompletionSummary(rNo);
+    const nextCompletedCnt = Math.min(totalCnt, prevSummary.completedCount + 1);
+    const nextPct = Math.round((nextCompletedCnt / totalCnt) * 100);
+
+    const matchedCrop = cloudBaeCropList.find((c: any) => c.request_no === rNo);
+    if (matchedCrop?.crop_plan_id) {
+      handleUpdateCropProgress(matchedCrop.crop_plan_id, nextPct);
+    }
+
+    const confirmMsg = `✅ [${cleanSubName}] ${formatYmdWithWeekday(
+      targetYmd
+    )}에 생육과정을 시작한 것으로 인정되었습니다! (진행률 ${nextPct}% · ${nextCompletedCnt}/${totalCnt}개 공정 완료)`;
+    setDetailSaveMessage(confirmMsg);
+    setPurchaseToastMessage(confirmMsg);
+    setTimeout(() => setPurchaseToastMessage(''), 4000);
+  };
+
+  // 전체 생육과정 완료 상태 일괄 변경 (초기화 0% 또는 전체 완료 100%)
+  const handleBatchSetStageCompletions = (reqNoInput: string, mode: 'CLEAR_ALL' | 'COMPLETE_ALL') => {
+    const rNo =
+      reqNoInput ||
+      provisionData?.activeRequest?.request_no ||
+      selectedRequestNo ||
+      'REQ-20261106-009';
+    const sItems: any[] = provisionData?.scheduleItems || [];
+
+    if (mode === 'CLEAR_ALL') {
+      saveStageItemCompletions((prev) => ({
+        ...prev,
+        [rNo]: {},
+      }));
+      setInlineStageDateDrafts({});
+      const matchedCrop = cloudBaeCropList.find((c: any) => c.request_no === rNo);
+      if (matchedCrop?.crop_plan_id) {
+        handleUpdateCropProgress(matchedCrop.crop_plan_id, 0);
+      }
+      const msg = '모든 생육관리 항목이 미완료(0%) 상태로 초기화되었습니다. 각 일자 옆의 [완료] 버튼을 눌러 진행률을 계산해 보세요.';
+      setDetailSaveMessage(msg);
+      setPurchaseToastMessage(msg);
+      setTimeout(() => setPurchaseToastMessage(''), 3500);
+      return;
+    }
+
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(
+      now.getDate()
+    ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes()
+    ).padStart(2, '0')}`;
+
+    const nextReqMap: Record<string, any> = {};
+    if (sItems.length > 0) {
+      sItems.forEach((it: any, idx: number) => {
+        const itemId = resolveStageItemId(it, idx);
+        const effDate = getEffectiveStageItemDate(rNo, it);
+        nextReqMap[itemId] = {
+          itemId,
+          stepOrder: Number(it.step_order || idx + 1),
+          stageGroupName: it.stage_group_name || '생육 관리',
+          subItemName: String(it.sub_item_name || '')
+            .replace(/\s*\([^)]*\)/g, '')
+            .trim(),
+          completed: true,
+          confirmedDate: effDate,
+          completedAt: nowStr,
+          isSeeded: false,
+        };
+      });
+    } else {
+      STANDARD_16_STAGE_META.forEach((meta) => {
+        nextReqMap[meta.itemId] = {
+          itemId: meta.itemId,
+          stepOrder: meta.stepOrder,
+          stageGroupName: meta.stageGroupName,
+          subItemName: meta.subItemName,
+          completed: true,
+          confirmedDate: '2026-08-25',
+          completedAt: nowStr,
+          isSeeded: false,
+        };
+      });
+    }
+
+    saveStageItemCompletions((prev) => ({
+      ...prev,
+      [rNo]: nextReqMap,
+    }));
+    const matchedCrop = cloudBaeCropList.find((c: any) => c.request_no === rNo);
+    if (matchedCrop?.crop_plan_id) {
+      handleUpdateCropProgress(matchedCrop.crop_plan_id, 100);
+    }
+    const msg = '전체 생육관리 항목이 각 일자 기준으로 시작 완료 인정(100%) 처리되었습니다.';
+    setDetailSaveMessage(msg);
+    setPurchaseToastMessage(msg);
+    setTimeout(() => setPurchaseToastMessage(''), 3500);
+  };
+
+  // 각 생육관리 항목의 일자 표시 옆에 부착되는 공통 [완료] 버튼 렌더러
+  const renderStageCompletionButton = (
+    reqNoInput: string,
+    item: any,
+    opts?: {
+      explicitDate?: string;
+      size?: 'sm' | 'md';
+      showConfirmedBadge?: boolean;
+    }
+  ) => {
+    const rNo =
+      reqNoInput ||
+      provisionData?.activeRequest?.request_no ||
+      selectedRequestNo ||
+      'REQ-20261106-009';
+    const st = getStageItemCompletionState(rNo, item, opts?.explicitDate);
+    const isSm = opts?.size === 'sm';
+    const isDateModified = st.isDateModifiedAfterConfirm || st.isDraftModified;
+
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 shrink-0"
+      >
+        <button
+          type="button"
+          onClick={(e) =>
+            handleConfirmStageItemCompletion(rNo, item, opts?.explicitDate, e)
+          }
+          title={
+            st.isRecognized && !st.isDraftModified
+              ? `${st.confirmedDate}에 생육과정 시작으로 인정됨 (클릭 시 완료 취소)`
+              : isDateModified
+              ? `수정된 날짜(${st.effectiveDate})에 생육과정을 시작한 것으로 인정하려면 클릭하세요`
+              : `${st.effectiveDate}에 해당 생육과정을 시작한 것으로 인정하려면 [완료]를 클릭하세요`
+          }
+          className={`rounded-lg font-extrabold transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs ${
+            isSm ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-xs'
+          } ${
+            st.isRecognized && !st.isDraftModified
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
+              : isDateModified
+              ? 'bg-amber-500 hover:bg-emerald-600 text-white border border-amber-600 ring-2 ring-amber-300/60'
+              : 'bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-500'
+          }`}
+        >
+          {st.isRecognized && !st.isDraftModified ? (
+            <>
+              <Check className={isSm ? 'w-3 h-3 stroke-[3]' : 'w-3.5 h-3.5 stroke-[3]'} />
+              <span>완료됨</span>
+            </>
+          ) : isDateModified ? (
+            <>
+              <CheckCircle2 className={isSm ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+              <span>수정일 완료</span>
+            </>
+          ) : (
+            <>
+              <Check className={isSm ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+              <span>완료</span>
+            </>
+          )}
+        </button>
+
+        {opts?.showConfirmedBadge && st.isRecognized && !st.isDraftModified && (
+          <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[10px] font-extrabold">
+            {st.confirmedDate} 시작인정
+          </span>
+        )}
+        {opts?.showConfirmedBadge && isDateModified && (
+          <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-extrabold">
+            날짜수정 · 완료클릭 필요
+          </span>
+        )}
+      </div>
+    );
   };
 
   // 월간 달력 렌더링 데이터 생성
@@ -5793,8 +6507,8 @@ export default function UserIntroPage() {
                         {/* 중앙 2: 기상 요약 및 재배 진행상태 프로그레스 바 */}
                         <div className="lg:w-[23%] space-y-1.5">
                           <div className="flex items-center justify-between">
-                            <span className="text-[15px] sm:text-base font-extrabold text-slate-800">
-                              기온 {crop.temp_c}°C · 다음작업 {crop.next_work_dday}
+                            <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
+                              완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정
                             </span>
                             <span className="text-[16px] sm:text-lg font-black text-emerald-700">
                               {crop.progress_pct}%
@@ -5806,8 +6520,13 @@ export default function UserIntroPage() {
                               className="h-full rounded-full bg-emerald-600 transition-all"
                             />
                           </div>
-                          <div className="text-[14.5px] sm:text-[15.5px] font-bold text-slate-600 truncate">
+                          <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate">
                             진행상태: <strong className="text-slate-900 font-black">{crop.status_text}</strong>
+                            {Number(crop.pending_modified_count || 0) > 0 && (
+                              <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-black">
+                                수정일 미완료 {crop.pending_modified_count}건
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -5967,17 +6686,17 @@ export default function UserIntroPage() {
 
                               {/* 오늘 처리할 일정 이후에 진행될 일정 (예정된 농작업 심플 리스트 & 선택 시 관련 정보 + 추천상품 1개 인라인 표시) */}
                               <div className="space-y-2.5">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
                                   <div>
                                     <h4 className="text-[19px] font-black text-slate-900">
-                                      예정된 농작업 (이후 진행 일정)
+                                      예정된 농작업 (생육관리 공정별 시작 완료 체크)
                                     </h4>
-                                    <p className="text-[13.5px] font-semibold text-slate-600 mt-0.5">
-                                      항목을 선택하면 상세 생육정보와 맞춤 추천상품(1종)이 표시됩니다.
+                                    <p className="text-[13px] font-semibold text-slate-600 mt-0.5">
+                                      일자 옆 <strong>[완료]</strong> 버튼을 눌러야 해당 날짜(수정일 포함)에 생육과정을 시작한 것으로 인정되어 진행률({crop.progress_pct}%)에 반영됩니다.
                                     </p>
                                   </div>
-                                  <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[13.5px] font-extrabold shrink-0">
-                                    총 {(provisionData.scheduleItems || []).length}개 공정
+                                  <span className="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] font-extrabold shrink-0">
+                                    완료 인정 {crop.completed_stage_count ?? 0}/{(provisionData.scheduleItems || []).length || 16}개 ({crop.progress_pct}%)
                                   </span>
                                 </div>
 
@@ -5986,9 +6705,11 @@ export default function UserIntroPage() {
                                     const cleanName = String(item.sub_item_name || '')
                                       .replace(/\s*\([^)]*\)/g, '')
                                       .trim();
-                                    const shortMd = item.start_date
-                                      ? `${item.start_date.slice(5, 7)}/${item.start_date.slice(8, 10)}`
+                                    const effectiveYmd = getEffectiveStageItemDate(crop.request_no, item);
+                                    const shortMd = effectiveYmd
+                                      ? `${effectiveYmd.slice(5, 7)}/${effectiveYmd.slice(8, 10)}`
                                       : '-';
+                                    const compState = getStageItemCompletionState(crop.request_no, item);
                                     const isSelected = selectedStageItem?.item_id === item.item_id;
                                     const topMat = [...(item.materials || [])].sort(
                                       (a: any, b: any) =>
@@ -6024,34 +6745,45 @@ export default function UserIntroPage() {
                                               handleSelectStageItem(item);
                                             }
                                           }}
-                                          className={`p-3.5 flex items-center justify-between gap-3 transition cursor-pointer ${
+                                          className={`p-3.5 flex items-center justify-between gap-2.5 transition cursor-pointer ${
                                             isSelected
                                               ? 'bg-emerald-50/80'
+                                              : compState.isRecognized
+                                              ? 'bg-emerald-50/25 hover:bg-slate-50'
                                               : 'hover:bg-slate-50'
                                           }`}
                                         >
-                                          <div className="flex items-center gap-3 min-w-0">
-                                            <span
-                                              className={`px-3.5 py-2 rounded-xl font-mono font-black text-[15px] shrink-0 ${
-                                                isSelected
-                                                  ? 'bg-emerald-600 text-white'
-                                                  : 'bg-[#F4F6F8] text-slate-900'
-                                              }`}
-                                            >
-                                              {shortMd}
-                                            </span>
-                                            <div className="min-w-0">
+                                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <span
+                                                className={`px-3 py-1.5 rounded-xl font-mono font-black text-[14px] shrink-0 ${
+                                                  isSelected
+                                                    ? 'bg-emerald-600 text-white'
+                                                    : compState.isRecognized
+                                                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                                    : compState.isDateModifiedAfterConfirm || compState.isDraftModified
+                                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                                    : 'bg-[#F4F6F8] text-slate-900'
+                                                }`}
+                                              >
+                                                {shortMd}
+                                              </span>
+                                              {renderStageCompletionButton(crop.request_no, item, {
+                                                size: 'sm',
+                                              })}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
                                               <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className="font-black text-[17px] text-slate-950 truncate">
+                                                <span className="font-black text-[16px] text-slate-950 truncate">
                                                   {cleanName}
                                                 </span>
                                                 {item.stage_group_name && (
-                                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[12.5px] font-extrabold shrink-0">
+                                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[12px] font-extrabold shrink-0">
                                                     {item.stage_group_name}
                                                   </span>
                                                 )}
                                               </div>
-                                              <div className="text-[14.5px] font-semibold text-slate-600 truncate mt-0.5">
+                                              <div className="text-[13.5px] font-semibold text-slate-600 truncate mt-0.5">
                                                 {item.work_content ||
                                                   item.work_description ||
                                                   '생육상태 및 기온 확인 후 진행'}
@@ -6077,9 +6809,37 @@ export default function UserIntroPage() {
                                                   {item.stage_group_name || '생육공정'} ·{' '}
                                                   {item.process_code || `SCH-0${idx + 1}`}
                                                 </span>
-                                                <span className="font-mono text-[14.5px] font-black text-emerald-700">
-                                                  추천 진행일: {formatYmdWithWeekday(item.start_date)}
+                                                <span className="font-mono text-[13.5px] font-black text-emerald-700">
+                                                  일자: {formatYmdWithWeekday(effectiveYmd)}
                                                 </span>
+                                              </div>
+
+                                              {/* 일자 수정 + [완료] 버튼 (수정 시에도 완료 버튼 클릭 시에만 시작 인정) */}
+                                              <div
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 flex flex-wrap items-center justify-between gap-2"
+                                              >
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className="text-[12px] font-extrabold text-emerald-950">
+                                                    📅 진행 일자:
+                                                  </span>
+                                                  <input
+                                                    type="date"
+                                                    value={effectiveYmd}
+                                                    onChange={(e) =>
+                                                      handleInlineStageDateChange(
+                                                        crop.request_no,
+                                                        item,
+                                                        e.target.value
+                                                      )
+                                                    }
+                                                    className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                                  />
+                                                </div>
+                                                {renderStageCompletionButton(crop.request_no, item, {
+                                                  explicitDate: effectiveYmd,
+                                                  showConfirmedBadge: true,
+                                                })}
                                               </div>
 
                                               <div className="grid grid-cols-2 gap-2 text-[13.5px]">
@@ -6375,25 +7135,34 @@ export default function UserIntroPage() {
                               {/* [탭 1: 타임라인 — 첨부 이미지 3번 '농작업 타임라인'] */}
                               {scheduleViewMode === 'timeline' && (
                                 <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
-                                  <h4 className="text-[19px] font-black text-slate-900">
-                                    농작업 타임라인
-                                  </h4>
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <h4 className="text-[19px] font-black text-slate-900">
+                                      농작업 타임라인
+                                    </h4>
+                                    <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+                                      완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 · 진행률 {crop.progress_pct}%
+                                    </span>
+                                  </div>
                                   <div className="space-y-3.5">
                                     {(provisionData.scheduleItems || []).map(
                                       (item: any, idx: number) => {
                                         const cleanName = String(item.sub_item_name || '')
                                           .replace(/\s*\([^)]*\)/g, '')
                                           .trim();
+                                        const effDate = getEffectiveStageItemDate(
+                                          crop.request_no,
+                                          item
+                                        );
                                         const mNum = Number(
-                                          String(item.start_date || '').slice(5, 7)
+                                          String(effDate || '').slice(5, 7)
                                         );
                                         const dNum = Number(
-                                          String(item.start_date || '').slice(8, 10)
+                                          String(effDate || '').slice(8, 10)
                                         );
                                         const koreanDateLabel =
                                           mNum && dNum
                                             ? `${mNum}월 ${dNum}일`
-                                            : item.start_date || '-';
+                                            : effDate || '-';
                                         const isSelected =
                                           selectedStageItem?.item_id === item.item_id;
                                         return (
@@ -6424,8 +7193,18 @@ export default function UserIntroPage() {
                                               )}
                                             </div>
                                             <div className="min-w-0 flex-1 pb-1">
-                                              <div className="font-black text-[17.5px] text-slate-950 leading-snug">
-                                                {koreanDateLabel} · {cleanName}
+                                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                <div className="font-black text-[17px] text-slate-950 leading-snug">
+                                                  {koreanDateLabel} · {cleanName}
+                                                </div>
+                                                {renderStageCompletionButton(
+                                                  crop.request_no,
+                                                  item,
+                                                  {
+                                                    size: 'sm',
+                                                    explicitDate: effDate,
+                                                  }
+                                                )}
                                               </div>
                                               <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
                                                 {item.work_content ||
@@ -6609,26 +7388,39 @@ export default function UserIntroPage() {
                                                 const cleanSub = String(it.sub_item_name || '')
                                                   .replace(/\s*\([^)]*\)/g, '')
                                                   .trim();
+                                                const effSubDate = getEffectiveStageItemDate(
+                                                  crop.request_no,
+                                                  it
+                                                );
                                                 const isSel =
                                                   selectedStageItem?.item_id === it.item_id;
                                                 return (
-                                                  <button
+                                                  <div
                                                     key={`mob-stg-it-${it.item_id}`}
-                                                    type="button"
                                                     onClick={() => {
                                                       handleSelectStageItem(it);
                                                     }}
-                                                    className={`w-full text-left px-3.5 py-3 rounded-xl border text-[15px] flex items-center justify-between transition cursor-pointer ${
+                                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-[15px] flex items-center justify-between gap-2 transition cursor-pointer ${
                                                       isSel
                                                         ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-black'
                                                         : 'bg-slate-50 border-slate-200/80 text-slate-800 font-bold hover:bg-slate-100'
                                                     }`}
                                                   >
-                                                    <span>{cleanSub}</span>
-                                                    <span className="font-mono text-emerald-700 font-black">
-                                                      {formatYmdWithWeekday(it.start_date)}
-                                                    </span>
-                                                  </button>
+                                                    <span className="truncate">{cleanSub}</span>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                      <span className="font-mono text-emerald-700 font-black text-[13.5px]">
+                                                        {formatYmdWithWeekday(effSubDate)}
+                                                      </span>
+                                                      {renderStageCompletionButton(
+                                                        crop.request_no,
+                                                        it,
+                                                        {
+                                                          size: 'sm',
+                                                          explicitDate: effSubDate,
+                                                        }
+                                                      )}
+                                                    </div>
+                                                  </div>
                                                 );
                                               })}
                                             </div>
@@ -6831,21 +7623,39 @@ export default function UserIntroPage() {
                                       );
                                     })()}
 
-                                    <div className="flex items-center justify-between gap-2">
-                                      <input
-                                        type="date"
-                                        value={curStart}
-                                        onChange={(e) =>
-                                          setEditDetailForm((prev: any) => ({
-                                            ...prev,
-                                            start_date: e.target.value,
-                                          }))
-                                        }
-                                        className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
-                                      />
-                                      <span className="font-mono font-extrabold text-xs text-emerald-900">
-                                        {formatYmdWithWeekday(curStart)}
-                                      </span>
+                                    <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
+                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <span className="text-xs font-extrabold text-emerald-900">
+                                          📅 생육관리 일자 &amp; 시작 완료 인정
+                                        </span>
+                                        <span className="font-mono font-extrabold text-xs text-emerald-800">
+                                          {formatYmdWithWeekday(curStart)}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <input
+                                          type="date"
+                                          value={curStart}
+                                          onChange={(e) =>
+                                            setEditDetailForm((prev: any) => ({
+                                              ...prev,
+                                              start_date: e.target.value,
+                                            }))
+                                          }
+                                          className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                        />
+                                        {renderStageCompletionButton(
+                                          crop.request_no,
+                                          detailItem,
+                                          {
+                                            explicitDate: curStart,
+                                            showConfirmedBadge: true,
+                                          }
+                                        )}
+                                      </div>
+                                      <p className="text-[11px] font-semibold text-slate-600 leading-snug">
+                                        💡 일자 수정 후에도 옆의 <strong>[완료]</strong>(또는 <strong>[수정일 완료]</strong>) 버튼을 클릭해야 해당 일자에 생육과정을 시작한 것으로 인정되어 진행률에 반영됩니다.
+                                      </p>
                                     </div>
                                     {cascadeDeltaDays !== 0 && (
                                       <button
@@ -6918,13 +7728,62 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
+                            {/* 생육관리 공정별 일자 [완료] 시작 인정 기반 진행률 컨트롤 바 */}
+                            <div className="rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-white border border-emerald-200 p-4 flex flex-wrap items-center justify-between gap-4">
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-extrabold">
+                                    공정별 일자 [완료] 시작 인정 기반 진행률
+                                  </span>
+                                  <span className="text-xs font-extrabold text-emerald-900">
+                                    완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정 · 현재 진행률{' '}
+                                    <strong className="text-emerald-700 text-sm">{crop.progress_pct}%</strong>
+                                  </span>
+                                  {Number(crop.pending_modified_count || 0) > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-black">
+                                      ⚠️ 일정 수정 후 완료 대기 {crop.pending_modified_count}건 (수정일 옆 [수정일 완료] 클릭 필요)
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-600 font-medium">
+                                  각 생육관리 항목의 <strong>일자 옆 [완료] 버튼</strong>을 클릭해야 해당 날짜(일자 수정 시에도 동일)에 그 생육과정을 시작한 것으로 인정되며, 이를 기반으로 전체 진행률이 자동 계산됩니다.
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleBatchSetStageCompletions(
+                                      provisionData.activeRequest?.request_no || crop.request_no,
+                                      'COMPLETE_ALL'
+                                    )
+                                  }
+                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer transition shadow-2xs"
+                                >
+                                  전 공정 완료 인정 (100%)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleBatchSetStageCompletions(
+                                      provisionData.activeRequest?.request_no || crop.request_no,
+                                      'CLEAR_ALL'
+                                    )
+                                  }
+                                  className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-extrabold cursor-pointer transition"
+                                >
+                                  전체 미완료 초기화 (0%)
+                                </button>
+                              </div>
+                            </div>
+
                             {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
                             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
-                              <table className="w-full border-collapse table-fixed min-w-[1260px]">
+                              <table className="w-full border-collapse table-fixed min-w-[1360px]">
                                 <colgroup>
-                                  <col className="w-[150px]" />
-                                  <col className="w-[195px]" />
-                                  <col className="w-[165px]" />
+                                  <col className="w-[145px]" />
+                                  <col className="w-[185px]" />
+                                  <col className="w-[265px]" />
                                   <col />
                                 </colgroup>
                                 <thead>
@@ -6936,7 +7795,7 @@ export default function UserIntroPage() {
                                       생육 과정명
                                     </th>
                                     <th className="py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700">
-                                      추천 진행일 (요일 포함)
+                                      추천 진행일 (수정 가능) · 시작 완료
                                     </th>
                                     <th className="p-0 align-top">
                                       <div
@@ -7067,8 +7926,49 @@ export default function UserIntroPage() {
                                               </span>
                                             </div>
                                           </td>
-                                          <td className="py-2.5 px-2.5 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700">
-                                            {formatYmdWithWeekday(item.start_date)}
+                                          <td
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
+                                          >
+                                            {(() => {
+                                              const rowReqNo =
+                                                provisionData.activeRequest?.request_no ||
+                                                crop.request_no ||
+                                                selectedRequestNo;
+                                              const effRowDate = getEffectiveStageItemDate(
+                                                rowReqNo,
+                                                enrichedItem
+                                              );
+                                              return (
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                  <div className="flex items-center gap-1 min-w-0">
+                                                    <input
+                                                      type="date"
+                                                      value={effRowDate}
+                                                      onChange={(e) =>
+                                                        handleInlineStageDateChange(
+                                                          rowReqNo,
+                                                          enrichedItem,
+                                                          e.target.value
+                                                        )
+                                                      }
+                                                      className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500"
+                                                    />
+                                                    <span className="text-[11px] text-emerald-800 font-extrabold shrink-0">
+                                                      ({getWeekdayNameFromYmd(effRowDate)})
+                                                    </span>
+                                                  </div>
+                                                  {renderStageCompletionButton(
+                                                    rowReqNo,
+                                                    enrichedItem,
+                                                    {
+                                                      size: 'sm',
+                                                      explicitDate: effRowDate,
+                                                    }
+                                                  )}
+                                                </div>
+                                              );
+                                            })()}
                                           </td>
                                           <td className="p-0 relative h-[36px] align-middle">
                                             <div
@@ -8142,8 +9042,10 @@ export default function UserIntroPage() {
 
                     <div className="space-y-1.5 pt-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-extrabold text-slate-800">재배 진행상태</span>
-                        <span className="font-semibold text-slate-500">{activeCropCard.status_text}</span>
+                        <span className="font-extrabold text-slate-800">
+                          재배 진행률 (완료 인정 {activeCropCard.completed_stage_count ?? 0}/{activeCropCard.total_stage_count ?? 16}개)
+                        </span>
+                        <span className="font-extrabold text-emerald-700">{activeCropCard.progress_pct}%</span>
                       </div>
                       <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
                         <div
@@ -8151,8 +9053,8 @@ export default function UserIntroPage() {
                           className="h-full rounded-full bg-emerald-600 transition-all"
                         />
                       </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed pt-0.5">
-                        적산온도(PGDD) 및 현장 작업 실행 기록을 기반으로 산출된 진행 상태입니다.
+                      <p className="text-[11px] text-slate-600 leading-relaxed pt-0.5 font-medium">
+                        현재 상태: <strong className="text-slate-900">{activeCropCard.status_text}</strong> · 각 생육관리 항목 일자 옆 <strong>[완료]</strong> 버튼 클릭 시 시작 인정 및 진행률 반영
                       </p>
                     </div>
                   </div>
@@ -8258,21 +9160,32 @@ export default function UserIntroPage() {
                     <div className="space-y-2.5">
                       {(provisionData?.scheduleItems || []).slice(0, 4).map((item: any) => {
                         const isSelected = selectedStageItem?.item_id === item.item_id;
+                        const activeReqNo =
+                          provisionData?.activeRequest?.request_no ||
+                          selectedRequestNo ||
+                          activeCropCard.request_no;
+                        const effYmd = getEffectiveStageItemDate(activeReqNo, item);
                         return (
                           <div
                             key={item.item_id}
                             onClick={() => handleSelectStageItem(item)}
-                            className={`p-3 rounded-2xl border flex items-center justify-between gap-3 transition cursor-pointer ${
+                            className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition cursor-pointer ${
                               isSelected
                                 ? 'border-emerald-500 bg-emerald-50/50'
                                 : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/80'
                             }`}
                           >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="px-3 py-2 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0">
-                                {formatShortMdWithWeekday(item.start_date)}
-                              </span>
-                              <div className="min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0">
+                                  {formatShortMdWithWeekday(effYmd)}
+                                </span>
+                                {renderStageCompletionButton(activeReqNo, item, {
+                                  size: 'sm',
+                                  explicitDate: effYmd,
+                                })}
+                              </div>
+                              <div className="min-w-0 flex-1">
                                 <div className="font-extrabold text-sm text-slate-900 truncate">
                                   {item.sub_item_name}
                                 </div>
@@ -8325,10 +9238,20 @@ export default function UserIntroPage() {
                   {/* 보기 1: 농작업 타임라인 (샘플 이미지 3번) */}
                   {scheduleViewMode === 'timeline' && (
                     <div className="rounded-2xl border border-slate-200 p-4 space-y-3 max-h-[380px] overflow-y-auto">
-                      <div className="font-extrabold text-base text-slate-900">농작업 타임라인</div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-extrabold text-base text-slate-900">농작업 타임라인</div>
+                        <span className="text-[11px] font-extrabold text-emerald-700">
+                          완료 {activeCropCard.completed_stage_count ?? 0}/{activeCropCard.total_stage_count ?? 16}개 ({activeCropCard.progress_pct}%)
+                        </span>
+                      </div>
                       <div className="space-y-3">
                         {(provisionData?.scheduleItems || []).map((item: any, idx: number) => {
                           const isSelected = selectedStageItem?.item_id === item.item_id;
+                          const activeReqNo =
+                            provisionData?.activeRequest?.request_no ||
+                            selectedRequestNo ||
+                            activeCropCard.request_no;
+                          const effYmd = getEffectiveStageItemDate(activeReqNo, item);
                           return (
                             <div
                               key={item.item_id}
@@ -8352,8 +9275,14 @@ export default function UserIntroPage() {
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="font-extrabold text-sm text-slate-900">
-                                  {formatKoreanMdWithWeekday(item.start_date)} · {item.sub_item_name}
+                                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                  <div className="font-extrabold text-sm text-slate-900">
+                                    {formatKoreanMdWithWeekday(effYmd)} · {item.sub_item_name}
+                                  </div>
+                                  {renderStageCompletionButton(activeReqNo, item, {
+                                    size: 'sm',
+                                    explicitDate: effYmd,
+                                  })}
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
                                   {item.work_description || item.action_tip || '기온 및 토양 수분 확인 후 작업 진행'}
@@ -8498,23 +9427,35 @@ export default function UserIntroPage() {
 
                               {isExpanded && (
                                 <div className="pl-12 space-y-1.5">
-                                  {(grp.items || []).map((it: any) => (
-                                    <button
-                                      key={it.item_id}
-                                      type="button"
-                                      onClick={() => handleSelectStageItem(it)}
-                                      className={`w-full text-left px-3 py-2 rounded-xl border text-xs flex items-center justify-between transition cursor-pointer ${
-                                        selectedStageItem?.item_id === it.item_id
-                                          ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
-                                          : 'bg-slate-50 border-slate-200/70 text-slate-700 hover:bg-slate-100'
-                                      }`}
-                                    >
-                                      <span>{it.sub_item_name}</span>
-                                      <span className="font-mono text-emerald-700 font-bold">
-                                        {formatYmdWithWeekday(it.start_date)}
-                                      </span>
-                                    </button>
-                                  ))}
+                                  {(grp.items || []).map((it: any) => {
+                                    const activeReqNo =
+                                      provisionData?.activeRequest?.request_no ||
+                                      selectedRequestNo ||
+                                      activeCropCard.request_no;
+                                    const effYmd = getEffectiveStageItemDate(activeReqNo, it);
+                                    return (
+                                      <div
+                                        key={it.item_id}
+                                        onClick={() => handleSelectStageItem(it)}
+                                        className={`w-full text-left px-3 py-2 rounded-xl border text-xs flex items-center justify-between gap-2 transition cursor-pointer ${
+                                          selectedStageItem?.item_id === it.item_id
+                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
+                                            : 'bg-slate-50 border-slate-200/70 text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                      >
+                                        <span className="truncate">{it.sub_item_name}</span>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <span className="font-mono text-emerald-700 font-bold">
+                                            {formatYmdWithWeekday(effYmd)}
+                                          </span>
+                                          {renderStageCompletionButton(activeReqNo, it, {
+                                            size: 'sm',
+                                            explicitDate: effYmd,
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -8584,10 +9525,15 @@ export default function UserIntroPage() {
                           </p>
                         </div>
                         <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2">
-                          <div className="text-xs font-bold text-emerald-800">
-                            📅 추천 진행일 (요일 포함 · 변경 가능)
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-emerald-800">
+                              📅 추천 진행일 (요일 포함 · 변경 가능) &amp; 시작 완료
+                            </span>
+                            <span className="font-mono font-extrabold text-xs text-emerald-900">
+                              {formatYmdWithWeekday(curStart)}
+                            </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
                             <input
                               type="date"
                               value={curStart}
@@ -8599,10 +9545,14 @@ export default function UserIntroPage() {
                               }
                               className="px-3 py-2 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
                             />
-                            <span className="font-mono font-extrabold text-sm text-emerald-900">
-                              {formatYmdWithWeekday(curStart)}
-                            </span>
+                            {renderStageCompletionButton(reqNo, detailItem, {
+                              explicitDate: curStart,
+                              showConfirmedBadge: true,
+                            })}
                           </div>
+                          <p className="text-[11px] font-semibold text-emerald-900/90 leading-snug">
+                            💡 일자(또는 수정한 일자) 옆의 <strong>[완료]</strong> 버튼을 클릭해야 해당 날짜에 생육과정을 시작한 것으로 인정되며 진행률({activeCropCard.progress_pct}%)에 반영됩니다.
+                          </p>
                           {cascadeDeltaDays !== 0 && (
                             <button
                               type="button"
@@ -8874,15 +9824,27 @@ export default function UserIntroPage() {
                           </div>
 
                           {/* 중단 핵심: 생육 과정의 추천 진행일(요일 포함) 강조 */}
-                          <div className="mt-2.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                          <div className="mt-2.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1.5">
                             <div className="text-[11px] font-bold text-emerald-800 flex items-center justify-between">
                               <span>📅 추천 진행일 (요일 포함)</span>
                               <span className="font-mono font-extrabold text-emerald-700">
                                 {hoveredProvisionItem.start_week_label} · 1일 추천
                               </span>
                             </div>
-                            <div className="font-mono font-extrabold text-sm text-slate-900 mt-0.5 tracking-tight">
-                              {formatYmdWithWeekday(hoveredProvisionItem.start_date)}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="font-mono font-extrabold text-sm text-slate-900 tracking-tight">
+                                {formatYmdWithWeekday(
+                                  getEffectiveStageItemDate(
+                                    provisionData.activeRequest?.request_no || selectedRequestNo,
+                                    hoveredProvisionItem
+                                  )
+                                )}
+                              </div>
+                              {renderStageCompletionButton(
+                                provisionData.activeRequest?.request_no || selectedRequestNo,
+                                hoveredProvisionItem,
+                                { size: 'sm' }
+                              )}
                             </div>
                           </div>
 
@@ -8974,10 +9936,15 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2" onMouseDown={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2 flex-wrap" onMouseDown={(e) => e.stopPropagation()}>
                             <span className="px-2.5 py-1 rounded-lg bg-white text-emerald-800 border border-emerald-200 font-mono font-extrabold text-xs">
                               📅 추천 진행일: {formatYmdWithWeekday(viewDate)}
                             </span>
+                            {renderStageCompletionButton(
+                              provisionData.activeRequest?.request_no || selectedRequestNo,
+                              viewItem,
+                              { explicitDate: viewDate, showConfirmedBadge: true }
+                            )}
                           </div>
 
                           {/* 오른쪽 상단 끝 닫기 버튼 */}
@@ -13480,11 +14447,14 @@ export default function UserIntroPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                      실시간 생육단계 · 적산온도(PGDD) 연동
+                      생육관리 항목별 일자 [완료] 시작 인정 기반 진행율 산출
                     </span>
                     <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
                       ③ 내 작물재배현황 및 진행율 ({cloudBaeCropList.length}건)
                     </h3>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      재배일정의 각 생육관리 항목(총 16개 공정) 일자 옆 <strong>[완료]</strong> 버튼을 클릭한 공정 수에 따라 진행율이 실시간 계산됩니다. (일자 수정 시 수정일 옆 [완료] 클릭 필요)
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -13515,6 +14485,14 @@ export default function UserIntroPage() {
                           <span className="text-xs font-bold text-slate-600">
                             📍 {crop.region}
                           </span>
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold">
+                            완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정
+                          </span>
+                          {Number(crop.pending_modified_count || 0) > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-extrabold">
+                              수정일 미완료 {crop.pending_modified_count}건
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-4 flex-wrap text-xs text-slate-600 font-semibold">
@@ -13539,7 +14517,7 @@ export default function UserIntroPage() {
                           </div>
                           <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
                             <div
-                              style={{ width: `${Math.min(100, Math.max(5, crop.progress_pct))}%` }}
+                              style={{ width: `${Math.min(100, Math.max(0, crop.progress_pct))}%` }}
                               className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 transition-all"
                             />
                           </div>
@@ -13547,25 +14525,35 @@ export default function UserIntroPage() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {crop.crop_plan_id && (
-                          <div className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1 text-[11px] font-bold text-slate-600">
-                            <span>진행율 변경:</span>
-                            {[25, 60, 80, 100].map((pct) => (
-                              <button
-                                key={pct}
-                                type="button"
-                                onClick={() => handleUpdateCropProgress(crop.crop_plan_id, pct)}
-                                className={`px-2 py-0.5 rounded-md cursor-pointer ${
-                                  Number(crop.progress_pct) === pct
-                                    ? 'bg-emerald-600 text-white font-extrabold'
-                                    : 'hover:bg-slate-100 text-slate-700'
-                                }`}
-                              >
-                                {pct}%
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                        <div className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1 text-[11px] font-bold text-slate-600">
+                          <span>공정 일괄:</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleBatchSetStageCompletions(crop.request_no, 'COMPLETE_ALL')
+                            }
+                            className={`px-2 py-0.5 rounded-md cursor-pointer ${
+                              Number(crop.progress_pct) === 100
+                                ? 'bg-emerald-600 text-white font-extrabold'
+                                : 'hover:bg-emerald-50 text-emerald-700 font-bold'
+                            }`}
+                          >
+                            전 공정 완료(100%)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleBatchSetStageCompletions(crop.request_no, 'CLEAR_ALL')
+                            }
+                            className={`px-2 py-0.5 rounded-md cursor-pointer ${
+                              Number(crop.progress_pct) === 0
+                                ? 'bg-slate-800 text-white font-extrabold'
+                                : 'hover:bg-slate-100 text-slate-600 font-bold'
+                            }`}
+                          >
+                            초기화(0%)
+                          </button>
+                        </div>
 
                         <button
                           type="button"
@@ -13578,7 +14566,7 @@ export default function UserIntroPage() {
                           }}
                           className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer"
                         >
-                          48주 타임라인 · 농자재 구매 ›
+                          재배일정에서 공정별 완료 체크 ›
                         </button>
 
                         <button
