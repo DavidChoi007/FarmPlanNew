@@ -4289,7 +4289,7 @@ export default function UserIntroPage() {
     setTimeout(() => setPurchaseToastMessage(''), 3500);
   };
 
-  // 각 생육관리 항목의 일자 표시 옆에 부착되는 공통 [완료] 버튼 렌더러
+  // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료 / 완료] 버튼 렌더러
   const renderStageCompletionButton = (
     reqNoInput: string,
     item: any,
@@ -4309,61 +4309,46 @@ export default function UserIntroPage() {
     const isDateModified = st.isDateModifiedAfterConfirm || st.isDraftModified;
 
     return (
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="inline-flex items-center gap-1.5 shrink-0"
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleConfirmStageItemCompletion(rNo, item, opts?.explicitDate, e);
+        }}
+        title={
+          st.isRecognized && !st.isDraftModified
+            ? `${st.confirmedDate} 작업완료 인정됨 (클릭 시 완료 취소)`
+            : isDateModified
+            ? `수정된 날짜(${st.effectiveDate})에 생육과정을 시작한 것으로 인정하려면 클릭하세요`
+            : `${st.effectiveDate}에 해당 생육과정을 시작한 것으로 인정하려면 클릭하세요`
+        }
+        className={`rounded-lg font-extrabold transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap shadow-2xs ${
+          isSm ? 'px-2 py-1 text-[11px] leading-none' : 'px-2.5 py-1.5 text-xs leading-none'
+        } ${
+          st.isRecognized && !st.isDraftModified
+            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
+            : isDateModified
+            ? 'bg-amber-500 hover:bg-emerald-600 text-white border border-amber-600 ring-2 ring-amber-300/60'
+            : 'bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-500'
+        }`}
       >
-        <button
-          type="button"
-          onClick={(e) =>
-            handleConfirmStageItemCompletion(rNo, item, opts?.explicitDate, e)
-          }
-          title={
-            st.isRecognized && !st.isDraftModified
-              ? `${st.confirmedDate}에 생육과정 시작으로 인정됨 (클릭 시 완료 취소)`
-              : isDateModified
-              ? `수정된 날짜(${st.effectiveDate})에 생육과정을 시작한 것으로 인정하려면 클릭하세요`
-              : `${st.effectiveDate}에 해당 생육과정을 시작한 것으로 인정하려면 [완료]를 클릭하세요`
-          }
-          className={`rounded-lg font-extrabold transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs ${
-            isSm ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1.5 text-xs'
-          } ${
-            st.isRecognized && !st.isDraftModified
-              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
-              : isDateModified
-              ? 'bg-amber-500 hover:bg-emerald-600 text-white border border-amber-600 ring-2 ring-amber-300/60'
-              : 'bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-500'
-          }`}
-        >
-          {st.isRecognized && !st.isDraftModified ? (
-            <>
-              <Check className={isSm ? 'w-3 h-3 stroke-[3]' : 'w-3.5 h-3.5 stroke-[3]'} />
-              <span>완료됨</span>
-            </>
-          ) : isDateModified ? (
-            <>
-              <CheckCircle2 className={isSm ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
-              <span>수정일 완료</span>
-            </>
-          ) : (
-            <>
-              <Check className={isSm ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
-              <span>완료</span>
-            </>
-          )}
-        </button>
-
-        {opts?.showConfirmedBadge && st.isRecognized && !st.isDraftModified && (
-          <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono text-[10px] font-extrabold">
-            {st.confirmedDate} 시작인정
-          </span>
+        {st.isRecognized && !st.isDraftModified ? (
+          <>
+            <Check className={isSm ? 'w-3 h-3 stroke-[3] shrink-0' : 'w-3.5 h-3.5 stroke-[3] shrink-0'} />
+            <span>작업완료</span>
+          </>
+        ) : isDateModified ? (
+          <>
+            <CheckCircle2 className={isSm ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />
+            <span>수정일 완료</span>
+          </>
+        ) : (
+          <>
+            <Check className={isSm ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />
+            <span>완료</span>
+          </>
         )}
-        {opts?.showConfirmedBadge && isDateModified && (
-          <span className="px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-extrabold">
-            날짜수정 · 완료클릭 필요
-          </span>
-        )}
-      </div>
+      </button>
     );
   };
 
@@ -6809,20 +6794,26 @@ export default function UserIntroPage() {
                                                   {item.stage_group_name || '생육공정'} ·{' '}
                                                   {item.process_code || `SCH-0${idx + 1}`}
                                                 </span>
-                                                <span className="font-mono text-[13.5px] font-black text-emerald-700">
-                                                  일자: {formatYmdWithWeekday(effectiveYmd)}
-                                                </span>
+                                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                                  <span className="font-mono text-[13.5px] font-black text-emerald-700 whitespace-nowrap">
+                                                    일자: {formatYmdWithWeekday(effectiveYmd)}
+                                                  </span>
+                                                  {renderStageCompletionButton(crop.request_no, item, {
+                                                    size: 'sm',
+                                                    explicitDate: effectiveYmd,
+                                                  })}
+                                                </div>
                                               </div>
 
-                                              {/* 일자 수정 + [완료] 버튼 (수정 시에도 완료 버튼 클릭 시에만 시작 인정) */}
+                                              {/* 일자 수정 + 오른쪽 [작업완료] 버튼 (수정 시에도 완료 버튼 클릭 시에만 시작 인정) */}
                                               <div
                                                 onClick={(e) => e.stopPropagation()}
-                                                className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 flex flex-wrap items-center justify-between gap-2"
+                                                className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-2.5 flex items-center justify-between gap-2 flex-nowrap"
                                               >
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                  <span className="text-[12px] font-extrabold text-emerald-950">
-                                                    📅 진행 일자:
-                                                  </span>
+                                                <span className="text-[12px] font-extrabold text-emerald-950 whitespace-nowrap shrink-0">
+                                                  📅 진행 일자:
+                                                </span>
+                                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0 ml-auto">
                                                   <input
                                                     type="date"
                                                     value={effectiveYmd}
@@ -6833,13 +6824,12 @@ export default function UserIntroPage() {
                                                         e.target.value
                                                       )
                                                     }
-                                                    className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                                    className="px-2 py-1 rounded-lg border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
                                                   />
+                                                  {renderStageCompletionButton(crop.request_no, item, {
+                                                    explicitDate: effectiveYmd,
+                                                  })}
                                                 </div>
-                                                {renderStageCompletionButton(crop.request_no, item, {
-                                                  explicitDate: effectiveYmd,
-                                                  showConfirmedBadge: true,
-                                                })}
                                               </div>
 
                                               <div className="grid grid-cols-2 gap-2 text-[13.5px]">
@@ -7193,18 +7183,23 @@ export default function UserIntroPage() {
                                               )}
                                             </div>
                                             <div className="min-w-0 flex-1 pb-1">
-                                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                <div className="font-black text-[17px] text-slate-950 leading-snug">
-                                                  {koreanDateLabel} · {cleanName}
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                                  <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                                    {koreanDateLabel}
+                                                  </span>
+                                                  {renderStageCompletionButton(
+                                                    crop.request_no,
+                                                    item,
+                                                    {
+                                                      size: 'sm',
+                                                      explicitDate: effDate,
+                                                    }
+                                                  )}
                                                 </div>
-                                                {renderStageCompletionButton(
-                                                  crop.request_no,
-                                                  item,
-                                                  {
-                                                    size: 'sm',
-                                                    explicitDate: effDate,
-                                                  }
-                                                )}
+                                                <span className="font-black text-[17px] text-slate-950 leading-snug">
+                                                  · {cleanName}
+                                                </span>
                                               </div>
                                               <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
                                                 {item.work_content ||
@@ -7626,13 +7621,13 @@ export default function UserIntroPage() {
                                     <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
                                       <div className="flex items-center justify-between gap-2 flex-wrap">
                                         <span className="text-xs font-extrabold text-emerald-900">
-                                          📅 생육관리 일자 &amp; 시작 완료 인정
+                                          📅 생육관리 일자 &amp; 작업완료 인증
                                         </span>
-                                        <span className="font-mono font-extrabold text-xs text-emerald-800">
+                                        <span className="font-mono font-extrabold text-xs text-emerald-800 whitespace-nowrap">
                                           {formatYmdWithWeekday(curStart)}
                                         </span>
                                       </div>
-                                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <div className="flex items-center gap-2 flex-nowrap">
                                         <input
                                           type="date"
                                           value={curStart}
@@ -7649,12 +7644,11 @@ export default function UserIntroPage() {
                                           detailItem,
                                           {
                                             explicitDate: curStart,
-                                            showConfirmedBadge: true,
                                           }
                                         )}
                                       </div>
                                       <p className="text-[11px] font-semibold text-slate-600 leading-snug">
-                                        💡 일자 수정 후에도 옆의 <strong>[완료]</strong>(또는 <strong>[수정일 완료]</strong>) 버튼을 클릭해야 해당 일자에 생육과정을 시작한 것으로 인정되어 진행률에 반영됩니다.
+                                        💡 날짜 오른쪽의 <strong>[완료 / 작업완료]</strong> 버튼을 클릭해야 해당 일자에 생육과정을 시작한 것으로 인정되어 진행률에 반영됩니다.
                                       </p>
                                     </div>
                                     {cascadeDeltaDays !== 0 && (
@@ -7779,11 +7773,11 @@ export default function UserIntroPage() {
 
                             {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
                             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
-                              <table className="w-full border-collapse table-fixed min-w-[1360px]">
+                              <table className="w-full border-collapse table-fixed min-w-[1380px]">
                                 <colgroup>
                                   <col className="w-[145px]" />
                                   <col className="w-[185px]" />
-                                  <col className="w-[265px]" />
+                                  <col className="w-[275px]" />
                                   <col />
                                 </colgroup>
                                 <thead>
@@ -7940,8 +7934,8 @@ export default function UserIntroPage() {
                                                 enrichedItem
                                               );
                                               return (
-                                                <div className="flex items-center justify-between gap-1.5">
-                                                  <div className="flex items-center gap-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                                                  <div className="flex items-center gap-1 min-w-0 flex-nowrap">
                                                     <input
                                                       type="date"
                                                       value={effRowDate}
@@ -7952,9 +7946,9 @@ export default function UserIntroPage() {
                                                           e.target.value
                                                         )
                                                       }
-                                                      className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500"
+                                                      className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
                                                     />
-                                                    <span className="text-[11px] text-emerald-800 font-extrabold shrink-0">
+                                                    <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
                                                       ({getWeekdayNameFromYmd(effRowDate)})
                                                     </span>
                                                   </div>
@@ -9275,14 +9269,19 @@ export default function UserIntroPage() {
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                  <div className="font-extrabold text-sm text-slate-900">
-                                    {formatKoreanMdWithWeekday(effYmd)} · {item.sub_item_name}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                    <span className="font-extrabold text-sm text-slate-900 whitespace-nowrap">
+                                      {formatKoreanMdWithWeekday(effYmd)}
+                                    </span>
+                                    {renderStageCompletionButton(activeReqNo, item, {
+                                      size: 'sm',
+                                      explicitDate: effYmd,
+                                    })}
                                   </div>
-                                  {renderStageCompletionButton(activeReqNo, item, {
-                                    size: 'sm',
-                                    explicitDate: effYmd,
-                                  })}
+                                  <span className="font-extrabold text-sm text-slate-900">
+                                    · {item.sub_item_name}
+                                  </span>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
                                   {item.work_description || item.action_tip || '기온 및 토양 수분 확인 후 작업 진행'}
@@ -9527,13 +9526,13 @@ export default function UserIntroPage() {
                         <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <span className="text-xs font-bold text-emerald-800">
-                              📅 추천 진행일 (요일 포함 · 변경 가능) &amp; 시작 완료
+                              📅 추천 진행일 (요일 포함 · 변경 가능) &amp; 작업완료 인증
                             </span>
-                            <span className="font-mono font-extrabold text-xs text-emerald-900">
+                            <span className="font-mono font-extrabold text-xs text-emerald-900 whitespace-nowrap">
                               {formatYmdWithWeekday(curStart)}
                             </span>
                           </div>
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 flex-nowrap">
                             <input
                               type="date"
                               value={curStart}
@@ -9547,11 +9546,10 @@ export default function UserIntroPage() {
                             />
                             {renderStageCompletionButton(reqNo, detailItem, {
                               explicitDate: curStart,
-                              showConfirmedBadge: true,
                             })}
                           </div>
                           <p className="text-[11px] font-semibold text-emerald-900/90 leading-snug">
-                            💡 일자(또는 수정한 일자) 옆의 <strong>[완료]</strong> 버튼을 클릭해야 해당 날짜에 생육과정을 시작한 것으로 인정되며 진행률({activeCropCard.progress_pct}%)에 반영됩니다.
+                            💡 날짜 오른쪽의 <strong>[완료 / 작업완료]</strong> 버튼을 클릭해야 해당 날짜에 생육과정을 시작한 것으로 인정되며 진행률({activeCropCard.progress_pct}%)에 반영됩니다.
                           </p>
                           {cascadeDeltaDays !== 0 && (
                             <button
@@ -9831,8 +9829,8 @@ export default function UserIntroPage() {
                                 {hoveredProvisionItem.start_week_label} · 1일 추천
                               </span>
                             </div>
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div className="font-mono font-extrabold text-sm text-slate-900 tracking-tight">
+                            <div className="flex items-center justify-between gap-2 flex-nowrap">
+                              <div className="font-mono font-extrabold text-sm text-slate-900 tracking-tight whitespace-nowrap">
                                 {formatYmdWithWeekday(
                                   getEffectiveStageItemDate(
                                     provisionData.activeRequest?.request_no || selectedRequestNo,
@@ -9936,14 +9934,14 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap" onMouseDown={(e) => e.stopPropagation()}>
-                            <span className="px-2.5 py-1 rounded-lg bg-white text-emerald-800 border border-emerald-200 font-mono font-extrabold text-xs">
+                          <div className="flex items-center gap-2 flex-nowrap" onMouseDown={(e) => e.stopPropagation()}>
+                            <span className="px-2.5 py-1 rounded-lg bg-white text-emerald-800 border border-emerald-200 font-mono font-extrabold text-xs whitespace-nowrap">
                               📅 추천 진행일: {formatYmdWithWeekday(viewDate)}
                             </span>
                             {renderStageCompletionButton(
                               provisionData.activeRequest?.request_no || selectedRequestNo,
                               viewItem,
-                              { explicitDate: viewDate, showConfirmedBadge: true }
+                              { explicitDate: viewDate }
                             )}
                           </div>
 
