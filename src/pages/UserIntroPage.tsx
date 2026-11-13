@@ -3465,7 +3465,7 @@ export default function UserIntroPage() {
             </section>
 
             {/* 모바일 전용: 재배일정 요청 항목 위 실시간 재배일정 요청 목록 (최근 5건 · 회원명 보안 마스킹 · 지역 · 재배작물 표시) */}
-            <section className="lg:hidden bg-white rounded-[22px] border border-slate-200/85 px-4 py-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] space-y-2.5">
+            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] px-4 py-3.5 shadow-[0_4px_14px_rgba(15,81,50,0.12)] space-y-2.5">
               <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
