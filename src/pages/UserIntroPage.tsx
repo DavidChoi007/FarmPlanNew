@@ -1041,6 +1041,147 @@ export default function UserIntroPage() {
     return Math.max(1, Math.min(110, currentYear - birthYear));
   };
 
+  // 농자재 제품 썸네일 URL 정적 파일 안전 해석기 (깨진 이미지 방지: /images/fertilizers/* 실존 파일로 100% 매핑)
+  const resolveAgroProductThumbUrl = (input: any): string => {
+    const fertThumbs = [
+      '/images/fertilizers/FERT-PRD-01-thumb.png',
+      '/images/fertilizers/FERT-PRD-02-thumb.png',
+      '/images/fertilizers/FERT-PRD-03-thumb.png',
+      '/images/fertilizers/FERT-PRD-04-thumb.jpg',
+      '/images/fertilizers/FERT-PRD-05-thumb.jpg',
+    ];
+    const nutrThumbs = [
+      '/images/fertilizers/MAT-NUTR-01-thumb.png',
+      '/images/fertilizers/MAT-NUTR-02-thumb.png',
+      '/images/fertilizers/MAT-NUTR-03-thumb.png',
+      '/images/fertilizers/MAT-NUTR-04-thumb.png',
+      '/images/fertilizers/MAT-NUTR-05-thumb.jpg',
+    ];
+    const pestThumbs = [
+      '/images/fertilizers/MAT-PEST-01-thumb.jpg',
+      '/images/fertilizers/MAT-PEST-02-thumb.png',
+      '/images/fertilizers/MAT-PEST-03-thumb.png',
+      '/images/fertilizers/MAT-PEST-04-thumb.png',
+      '/images/fertilizers/MAT-PEST-05-thumb.png',
+      '/images/fertilizers/MAT-PEST-06-thumb.png',
+    ];
+    const sdlThumbs = [
+      '/images/fertilizers/MAT-SDL-01-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-02-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-03-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-04-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-05-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-06-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-07-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-08-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-09-thumb.jpg',
+      '/images/fertilizers/MAT-SDL-10-thumb.jpg',
+    ];
+    const seedThumbs = [
+      '/images/fertilizers/MAT-SEED-01-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-02-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-03-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-04-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-05-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-06-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-07-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-08-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-09-thumb.jpg',
+      '/images/fertilizers/MAT-SEED-10-thumb.jpg',
+    ];
+    const validStaticSet = new Set([
+      ...fertThumbs,
+      ...nutrThumbs,
+      ...pestThumbs,
+      ...sdlThumbs,
+      ...seedThumbs,
+    ]);
+
+    const rawUrl =
+      typeof input === 'string'
+        ? input.trim()
+        : String(input?.thumbnailUrl || input?.thumbnail_url || '').trim();
+    if (rawUrl && validStaticSet.has(rawUrl)) {
+      return rawUrl;
+    }
+
+    const idPool = `${String(input?.material_id || input?.id || '')} ${rawUrl}`.toUpperCase();
+
+    const sdlMatch = idPool.match(/(?:MAT-SDL-|SDL-PRD-)0*(\d+)/);
+    if (sdlMatch) {
+      const n = Math.max(1, parseInt(sdlMatch[1], 10) || 1);
+      return sdlThumbs[(n - 1) % sdlThumbs.length];
+    }
+    const seedMatch = idPool.match(/(?:MAT-SEED-|SEED-PRD-)0*(\d+)/);
+    if (seedMatch) {
+      const n = Math.max(1, parseInt(seedMatch[1], 10) || 1);
+      return seedThumbs[(n - 1) % seedThumbs.length];
+    }
+    const nutrMatch = idPool.match(/(?:MAT-NUTR-|NUTR-PRD-)0*(\d+)/);
+    if (nutrMatch) {
+      const n = Math.max(1, parseInt(nutrMatch[1], 10) || 1);
+      return nutrThumbs[(n - 1) % nutrThumbs.length];
+    }
+    const pestMatch = idPool.match(/(?:MAT-PEST-|PEST-PRD-)0*(\d+)/);
+    if (pestMatch) {
+      const n = Math.max(1, parseInt(pestMatch[1], 10) || 1);
+      return pestThumbs[(n - 1) % pestThumbs.length];
+    }
+    const fertMatch = idPool.match(/(?:FERT-PRD-|MAT-FERT-)0*(\d+)/);
+    if (fertMatch) {
+      const n = Math.max(1, parseInt(fertMatch[1], 10) || 1);
+      return fertThumbs[(n - 1) % fertThumbs.length];
+    }
+
+    const metaText = [
+      input?.material_category,
+      input?.category_label,
+      input?.subType,
+      input?.sub_type,
+      input?.productName,
+      input?.product_name,
+      input?.stageName,
+      input?.stageGroupName,
+      input?.stage_group_name,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    const nameKey = String(input?.productName || input?.product_name || metaText || 'default');
+    let hash = 0;
+    for (let i = 0; i < nameKey.length; i++) {
+      hash = (hash * 31 + nameKey.charCodeAt(i)) >>> 0;
+    }
+
+    if (/SEEDLING|모종|육묘묘|건묘|포트묘|트레이묘/i.test(metaText)) {
+      return sdlThumbs[hash % sdlThumbs.length];
+    }
+    if (/SEED|종자|씨앗|직파/i.test(metaText)) {
+      return seedThumbs[hash % seedThumbs.length];
+    }
+    if (
+      /PESTICIDE|병해충|살충|살균|제초|방제|약제|총채|나방|무름병|노균병|진딧물|클린팜|탄저|뿌리혹병/i.test(
+        metaText
+      )
+    ) {
+      return pestThumbs[hash % pestThumbs.length];
+    }
+    if (
+      /NUTRIENT|영양|발근|활착|칼슘|붕소|아미노산|해조|규산|뿌리왕|생리활성|미량요소/i.test(
+        metaText
+      )
+    ) {
+      return nutrThumbs[hash % nutrThumbs.length];
+    }
+    return fertThumbs[hash % fertThumbs.length];
+  };
+
+  const handleAgroThumbImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const img = e.currentTarget;
+    img.onerror = null;
+    img.src = '/images/fertilizers/FERT-PRD-01-thumb.png';
+  };
+
   // 마이페이지 통합 데이터 로드 (markLoggedIn이 true일 때만 로그인 상태로 전환)
   const applyMyPagePayload = (res: any, markLoggedIn?: boolean) => {
     if (!res) return;
@@ -1078,7 +1219,18 @@ export default function UserIntroPage() {
     }
     if (Array.isArray(res.farmlands)) setMyFarmlands(res.farmlands);
     if (Array.isArray(res.cropPlans)) setMyCropPlans(res.cropPlans);
-    if (Array.isArray(res.orders)) setMyOrders(res.orders);
+    if (Array.isArray(res.orders)) {
+      const sanitizedOrders = res.orders.map((ord: any) => ({
+        ...ord,
+        orderItems: Array.isArray(ord.orderItems)
+          ? ord.orderItems.map((it: any) => ({
+              ...it,
+              thumbnail_url: resolveAgroProductThumbUrl(it),
+            }))
+          : [],
+      }));
+      setMyOrders(sanitizedOrders);
+    }
   };
 
   const loadMyPageData = async (targetEmail?: string, markLoggedIn = false) => {
@@ -1638,8 +1790,8 @@ export default function UserIntroPage() {
         match_score: 98,
         categorySpecBadge: '유기물 60% 이상 · 부숙도 완료 특등급 · 토양 입단화 및 지력 증진',
         spec_summary: '유기물 60% 이상 · 부숙도 완료 특등급 · 토양 입단화 및 지력 증진',
-        thumbnailUrl: '/api/agro-materials/image/FERT-PRD-01/thumb',
-        thumbnail_url: '/api/agro-materials/image/FERT-PRD-01/thumb',
+        thumbnailUrl: '/images/fertilizers/FERT-PRD-01-thumb.png',
+        thumbnail_url: '/images/fertilizers/FERT-PRD-01-thumb.png',
         deliveryStatus: '구매완료 · 생육단계 적기 배송완료',
         delivery_status: '구매완료 · 생육단계 적기 배송완료',
         payment_method_label: 'NH농협 영농카드 간편결제',
@@ -1691,7 +1843,7 @@ export default function UserIntroPage() {
           '본엽 4~5매 건묘를 재식거리에 맞춰 정식하고 충분한 관수와 함께 뿌리 발근·활착 촉진제를 처리하여 초기 몸살을 예방합니다.',
         work_content:
           '본엽 4~5매 건묘를 재식거리에 맞춰 정식하고 충분한 관수와 함께 뿌리 발근·활착 촉진제를 처리하여 초기 몸살을 예방합니다.',
-        material_id: 'NUTR-PRD-01',
+        material_id: 'MAT-NUTR-01',
         material_category: 'NUTRIENT',
         subType: '발근·활착제',
         sub_type: '발근·활착제',
@@ -1714,8 +1866,8 @@ export default function UserIntroPage() {
         match_score: 97,
         categorySpecBadge: '유리아미노산 18% · 해조추출물 12% · 세근 발달 및 정식 몸살 경감',
         spec_summary: '유리아미노산 18% · 해조추출물 12% · 세근 발달 및 정식 몸살 경감',
-        thumbnailUrl: '/api/agro-materials/image/NUTR-PRD-01/thumb',
-        thumbnail_url: '/api/agro-materials/image/NUTR-PRD-01/thumb',
+        thumbnailUrl: '/images/fertilizers/MAT-NUTR-01-thumb.png',
+        thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
         deliveryStatus: '구매완료 · 생육단계 적기 배송완료',
         delivery_status: '구매완료 · 생육단계 적기 배송완료',
         payment_method_label: 'NH농협 영농카드 간편결제',
@@ -1729,7 +1881,18 @@ export default function UserIntroPage() {
       const saved = localStorage.getItem('hanfarm_stage_purchase_history_v1');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const repaired = parsed.map((item: any) => {
+            const safeThumb = resolveAgroProductThumbUrl(item);
+            return {
+              ...item,
+              thumbnailUrl: safeThumb,
+              thumbnail_url: safeThumb,
+            };
+          });
+          localStorage.setItem('hanfarm_stage_purchase_history_v1', JSON.stringify(repaired));
+          return repaired;
+        }
       }
     } catch {
       // ignore
@@ -1746,14 +1909,36 @@ export default function UserIntroPage() {
     setStagePurchaseHistory((prev) => {
       let changed = false;
       const next = prev.map((entry) => {
+        const currentSafeThumb = resolveAgroProductThumbUrl(entry);
+        const thumbNeedsRepair =
+          entry.thumbnailUrl !== currentSafeThumb || entry.thumbnail_url !== currentSafeThumb;
+
         if (entry.purchase_id !== 'SPUR-INIT-01' && entry.purchase_id !== 'SPUR-INIT-02') {
+          if (thumbNeedsRepair) {
+            changed = true;
+            return {
+              ...entry,
+              thumbnailUrl: currentSafeThumb,
+              thumbnail_url: currentSafeThumb,
+            };
+          }
           return entry;
         }
         const matchedItem = (provisionData.scheduleItems || []).find(
           (it: any) =>
             it.process_code === entry.process_code || it.item_id === entry.item_id
         );
-        if (!matchedItem) return entry;
+        if (!matchedItem) {
+          if (thumbNeedsRepair) {
+            changed = true;
+            return {
+              ...entry,
+              thumbnailUrl: currentSafeThumb,
+              thumbnail_url: currentSafeThumb,
+            };
+          }
+          return entry;
+        }
         const topMat = [...(matchedItem.materials || [])].sort(
           (a: any, b: any) => Number(b?.match_score || 0) - Number(a?.match_score || 0)
         )[0];
@@ -1769,10 +1954,13 @@ export default function UserIntroPage() {
         const cleanSub = String(matchedItem.sub_item_name || entry.sub_item_name || '')
           .replace(/\s*\([^)]*\)/g, '')
           .trim();
+        const resolvedTopThumb = resolveAgroProductThumbUrl(topMat);
 
         if (
           entry.product_name !== topMat.product_name ||
-          entry.item_id !== matchedItem.item_id
+          entry.item_id !== matchedItem.item_id ||
+          entry.thumbnailUrl !== resolvedTopThumb ||
+          entry.thumbnail_url !== resolvedTopThumb
         ) {
           changed = true;
           return {
@@ -1802,7 +1990,8 @@ export default function UserIntroPage() {
               topMat.category_spec_badge ||
               topMat.nutrient_ratio_summary ||
               entry.spec_summary,
-            thumbnail_url: topMat.thumbnail_url || entry.thumbnail_url,
+            thumbnailUrl: resolvedTopThumb,
+            thumbnail_url: resolvedTopThumb,
           };
         }
         return entry;
@@ -1972,7 +2161,7 @@ export default function UserIntroPage() {
       mat.core_Spec ||
       mat.core_spec ||
       `${mat.sub_type || '맞춤 농자재'} · ${unitSpec}`;
-    const thumbUrl = mat.thumbnail_url || '/api/agro-materials/image/FERT-PRD-01/thumb';
+    const thumbUrl = resolveAgroProductThumbUrl(mat);
     const recDefaultQty = parseRecommendedQuantity(mat, areaPyeong);
 
     const newPurchaseEntry = {
@@ -2418,6 +2607,7 @@ export default function UserIntroPage() {
               qty: 1,
               unit_price: unitPrice,
               subtotal: unitPrice,
+              thumbnail_url: resolveAgroProductThumbUrl(item),
             },
           ],
         }),
@@ -5641,11 +5831,9 @@ export default function UserIntroPage() {
                                                       className="w-6 h-6 rounded accent-emerald-600 cursor-pointer shrink-0"
                                                     />
                                                     <img
-                                                      src={
-                                                        topMat.thumbnail_url ||
-                                                        '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                                      }
+                                                      src={resolveAgroProductThumbUrl(topMat)}
                                                       alt={topMat.product_name}
+                                                      onError={handleAgroThumbImgError}
                                                       className="w-16 h-16 rounded-xl object-contain border border-slate-200 bg-white shrink-0"
                                                     />
                                                     <div className="min-w-0 flex-1">
@@ -6179,11 +6367,9 @@ export default function UserIntroPage() {
                                               className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
                                             />
                                             <img
-                                              src={
-                                                dTopMat.thumbnail_url ||
-                                                '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                              }
+                                              src={resolveAgroProductThumbUrl(dTopMat)}
                                               alt={dTopMat.product_name}
+                                              onError={handleAgroThumbImgError}
                                               className="w-12 h-12 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
                                             />
                                             <div className="min-w-0 flex-1">
@@ -6684,9 +6870,7 @@ export default function UserIntroPage() {
                                           mat.recommended_for_area ||
                                           `재배지 ${areaPyeong.toLocaleString()}평 계산: 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseRate}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${calcQty}개)`,
                                         nutrient_ratio_summary: mat.nutrient_ratio_summary || '',
-                                        thumbnail_url:
-                                          mat.thumbnail_url ||
-                                          '/api/agro-materials/image/FERT-PRD-01/thumb',
+                                        thumbnail_url: resolveAgroProductThumbUrl(mat),
                                         defaultQty: calcQty,
                                         subProcesses: [
                                           {
@@ -7222,8 +7406,9 @@ export default function UserIntroPage() {
 
                                                     {/* 제품 썸네일 */}
                                                     <img
-                                                      src={mat.thumbnail_url}
+                                                      src={resolveAgroProductThumbUrl(mat)}
                                                       alt={mat.product_name}
+                                                      onError={handleAgroThumbImgError}
                                                       onClick={() =>
                                                         handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
                                                       }
@@ -8105,11 +8290,9 @@ export default function UserIntroPage() {
 
                           <div className="flex items-start gap-3">
                             <img
-                              src={
-                                topMat.thumbnail_url ||
-                                '/api/agro-materials/image/FERT-PRD-01/thumb'
-                              }
+                              src={resolveAgroProductThumbUrl(topMat)}
                               alt={topMat.product_name}
+                              onError={handleAgroThumbImgError}
                               className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-white shrink-0"
                             />
                             <div className="min-w-0 flex-1 space-y-1">
@@ -8720,11 +8903,9 @@ export default function UserIntroPage() {
 
                                       <div className="flex flex-col sm:flex-row items-start gap-3">
                                         <img
-                                          src={
-                                            mat.thumbnail_url ||
-                                            '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                          }
+                                          src={resolveAgroProductThumbUrl(mat)}
                                           alt={mat.product_name}
+                                          onError={handleAgroThumbImgError}
                                           className="w-20 h-20 rounded-xl object-cover border border-slate-200 shrink-0 bg-slate-50"
                                         />
                                         <div className="min-w-0 flex-1 space-y-2 w-full">
@@ -9048,8 +9229,9 @@ export default function UserIntroPage() {
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <img
-                                  src={item.thumbnail_url}
+                                  src={resolveAgroProductThumbUrl(item)}
                                   alt={item.product_name}
+                                  onError={handleAgroThumbImgError}
                                   className="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0"
                                 />
                                 <div className="min-w-0">
@@ -10404,9 +10586,7 @@ export default function UserIntroPage() {
                           /(\d)-(\d)/g,
                           '$1\u2011$2'
                         );
-                        const thumbUrl =
-                          item.thumbnail_url ||
-                          `/api/agro-materials/image/${encodeURIComponent(item.material_id)}/thumb`;
+                        const thumbUrl = resolveAgroProductThumbUrl(item);
                         const detailImgs = [
                           item.detail_image_1 ||
                             `/api/agro-materials/image/${encodeURIComponent(item.material_id)}/detail1`,
@@ -10433,6 +10613,7 @@ export default function UserIntroPage() {
                               <img
                                 src={thumbUrl}
                                 alt={cleanMobileProductName}
+                                onError={handleAgroThumbImgError}
                                 className="w-full h-full object-contain scale-[1.18]"
                               />
                             </div>
@@ -10925,9 +11106,7 @@ export default function UserIntroPage() {
                         <div className="divide-y divide-slate-200">
                           {pagedItems.map((item: any, idxOnPage: number) => {
                             const rowNumber = startIdx + idxOnPage + 1;
-                            const thumbUrl =
-                              item.thumbnail_url ||
-                              `/api/agro-materials/image/${encodeURIComponent(item.material_id)}/thumb`;
+                            const thumbUrl = resolveAgroProductThumbUrl(item);
                             const detailImgs = [
                               item.detail_image_1 ||
                                 `/api/agro-materials/image/${encodeURIComponent(item.material_id)}/detail1`,
@@ -10960,6 +11139,7 @@ export default function UserIntroPage() {
                                     <img
                                       src={thumbUrl}
                                       alt={item.product_name}
+                                      onError={handleAgroThumbImgError}
                                       className="w-full h-full object-contain scale-[1.16] group-hover:scale-[1.22] transition"
                                     />
                                     <span className="sm:hidden absolute top-1.5 left-1.5 min-w-6 h-6 px-1.5 rounded-full bg-slate-900/80 text-white font-black text-xs flex items-center justify-center shadow-2xs">
@@ -13055,10 +13235,7 @@ export default function UserIntroPage() {
                 ),
                 matchScore: Number(p.matchScore ?? p.match_score ?? 96),
                 categorySpecBadge: p.categorySpecBadge || p.spec_summary || '',
-                thumbnailUrl:
-                  p.thumbnailUrl ||
-                  p.thumbnail_url ||
-                  '/api/agro-materials/image/FERT-PRD-01/thumb',
+                thumbnailUrl: resolveAgroProductThumbUrl(p),
                 deliveryStatus:
                   p.deliveryStatus || p.delivery_status || '구매완료 · 적기 배송예정',
               }));
@@ -13378,11 +13555,9 @@ export default function UserIntroPage() {
 
                                 <div className="flex items-start gap-3">
                                   <img
-                                    src={
-                                      entry.thumbnailUrl ||
-                                      '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                    }
+                                    src={resolveAgroProductThumbUrl(entry)}
                                     alt={entry.productName}
+                                    onError={handleAgroThumbImgError}
                                     className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
                                   />
                                   <div className="min-w-0 flex-1 space-y-1">
@@ -13530,11 +13705,9 @@ export default function UserIntroPage() {
                             >
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <img
-                                  src={
-                                    item.thumbnail_url ||
-                                    '/api/agro-materials/image/FERT-PRD-01/thumb'
-                                  }
+                                  src={resolveAgroProductThumbUrl(item)}
                                   alt={item.product_name}
+                                  onError={handleAgroThumbImgError}
                                   className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0"
                                 />
                                 <div className="min-w-0 flex-1">

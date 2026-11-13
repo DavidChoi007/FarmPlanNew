@@ -289,7 +289,7 @@ function initMemberAndMyPageTables() {
           qty: 6,
           subtotal: 57000,
           scheduledDeliveryDate: '2026-08-05',
-          thumbnail_url: '/api/agro-materials/image/FERT-PRD-01/thumb',
+          thumbnail_url: '/images/fertilizers/FERT-PRD-01-thumb.png',
         },
         {
           stageName: '파종·육묘',
@@ -299,7 +299,7 @@ function initMemberAndMyPageTables() {
           qty: 3,
           subtotal: 43500,
           scheduledDeliveryDate: '2026-08-10',
-          thumbnail_url: '/api/agro-materials/image/FERT-PRD-02/thumb',
+          thumbnail_url: '/images/fertilizers/FERT-PRD-02-thumb.png',
         },
         {
           stageName: '정식·활착',
@@ -309,7 +309,7 @@ function initMemberAndMyPageTables() {
           qty: 2,
           subtotal: 44000,
           scheduledDeliveryDate: '2026-08-22',
-          thumbnail_url: '/api/agro-materials/image/NUTR-PRD-01/thumb',
+          thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
         },
         {
           stageName: '생육 관리',
@@ -319,7 +319,7 @@ function initMemberAndMyPageTables() {
           qty: 3,
           subtotal: 73500,
           scheduledDeliveryDate: '2026-09-18',
-          thumbnail_url: '/api/agro-materials/image/NUTR-PRD-02/thumb',
+          thumbnail_url: '/images/fertilizers/MAT-NUTR-02-thumb.png',
         },
         {
           stageName: '병해충 예찰',
@@ -329,7 +329,7 @@ function initMemberAndMyPageTables() {
           qty: 2,
           subtotal: 50000,
           scheduledDeliveryDate: '2026-10-02',
-          thumbnail_url: '/api/agro-materials/image/PEST-PRD-01/thumb',
+          thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
         },
       ])
     );
@@ -356,7 +356,7 @@ function initMemberAndMyPageTables() {
           qty: 8,
           subtotal: 156000,
           scheduledDeliveryDate: '2026-05-09',
-          thumbnail_url: '/api/agro-materials/image/FERT-PRD-03/thumb',
+          thumbnail_url: '/images/fertilizers/FERT-PRD-03-thumb.png',
         },
         {
           stageName: '생육 관리',
@@ -366,10 +366,44 @@ function initMemberAndMyPageTables() {
           qty: 8,
           subtotal: 184000,
           scheduledDeliveryDate: '2026-05-09',
-          thumbnail_url: '/api/agro-materials/image/FERT-PRD-04/thumb',
+          thumbnail_url: '/images/fertilizers/FERT-PRD-04-thumb.jpg',
         },
       ])
     );
+  } else {
+    try {
+      const rows = db.prepare('SELECT order_no, items_json FROM member_agro_order').all() as Array<{
+        order_no: string;
+        items_json: string;
+      }>;
+      const updateOrderItemsStmt = db.prepare(
+        'UPDATE member_agro_order SET items_json = ? WHERE order_no = ?'
+      );
+      for (const r of rows) {
+        if (
+          r.items_json &&
+          (r.items_json.includes('NUTR-PRD-01') ||
+            r.items_json.includes('NUTR-PRD-02') ||
+            r.items_json.includes('PEST-PRD-01') ||
+            r.items_json.includes('/api/agro-materials/image/'))
+        ) {
+          const fixedJson = r.items_json
+            .replace(/\/api\/agro-materials\/image\/FERT-PRD-01\/thumb/g, '/images/fertilizers/FERT-PRD-01-thumb.png')
+            .replace(/\/api\/agro-materials\/image\/FERT-PRD-02\/thumb/g, '/images/fertilizers/FERT-PRD-02-thumb.png')
+            .replace(/\/api\/agro-materials\/image\/FERT-PRD-03\/thumb/g, '/images/fertilizers/FERT-PRD-03-thumb.png')
+            .replace(/\/api\/agro-materials\/image\/FERT-PRD-04\/thumb/g, '/images/fertilizers/FERT-PRD-04-thumb.jpg')
+            .replace(/\/api\/agro-materials\/image\/FERT-PRD-05\/thumb/g, '/images/fertilizers/FERT-PRD-05-thumb.jpg')
+            .replace(/\/api\/agro-materials\/image\/NUTR-PRD-01\/thumb/g, '/images/fertilizers/MAT-NUTR-01-thumb.png')
+            .replace(/\/api\/agro-materials\/image\/NUTR-PRD-02\/thumb/g, '/images/fertilizers/MAT-NUTR-02-thumb.png')
+            .replace(/\/api\/agro-materials\/image\/PEST-PRD-01\/thumb/g, '/images/fertilizers/MAT-PEST-01-thumb.jpg');
+          if (fixedJson !== r.items_json) {
+            updateOrderItemsStmt.run(fixedJson, r.order_no);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
 }
 initMemberAndMyPageTables();
@@ -2723,10 +2757,24 @@ const server = http.createServer(async (req, res) => {
       const parts = pathname.replace('/api/agro-materials/image/', '').split('/');
       const materialId = decodeURIComponent(parts[0] || 'FERT-PRD-01');
       const slot = decodeURIComponent(parts[1] || 'thumb');
-      const safeId = path.basename(materialId);
+      const rawSafeId = path.basename(materialId).toUpperCase();
       const safeSlot = path.basename(slot);
-      const pngPath = path.join(process.cwd(), 'public', 'images', 'fertilizers', `${safeId}-${safeSlot}.png`);
-      const jpgPath = path.join(process.cwd(), 'public', 'images', 'fertilizers', `${safeId}-${safeSlot}.jpg`);
+      let mappedId = path.basename(materialId);
+      const nutrM = rawSafeId.match(/^(?:MAT-NUTR-|NUTR-PRD-)0*(\d+)$/);
+      const pestM = rawSafeId.match(/^(?:MAT-PEST-|PEST-PRD-)0*(\d+)$/);
+      const fertM = rawSafeId.match(/^(?:FERT-PRD-|MAT-FERT-)0*(\d+)$/);
+      if (nutrM) {
+        const n = ((Math.max(1, parseInt(nutrM[1], 10) || 1) - 1) % 5) + 1;
+        mappedId = `MAT-NUTR-0${n}`;
+      } else if (pestM) {
+        const n = ((Math.max(1, parseInt(pestM[1], 10) || 1) - 1) % 6) + 1;
+        mappedId = `MAT-PEST-0${n}`;
+      } else if (fertM) {
+        const n = ((Math.max(1, parseInt(fertM[1], 10) || 1) - 1) % 5) + 1;
+        mappedId = `FERT-PRD-0${n}`;
+      }
+      const pngPath = path.join(process.cwd(), 'public', 'images', 'fertilizers', `${mappedId}-${safeSlot}.png`);
+      const jpgPath = path.join(process.cwd(), 'public', 'images', 'fertilizers', `${mappedId}-${safeSlot}.jpg`);
       if (fs.existsSync(pngPath)) {
         res.writeHead(200, {
           'Content-Type': 'image/png',
