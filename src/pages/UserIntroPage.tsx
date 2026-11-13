@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from '../router.tsx';
 import {
   Sprout,
@@ -930,10 +930,10 @@ export default function UserIntroPage() {
     }
 
     const msg = `[${cropTitle} · ${displayReqNo}] 재배일정 요청과 연관된 생육과정 일정 데이터 및 맞춤 추천 제품·근거 데이터가 모두 삭제되었습니다.`;
-    setOrderSuccessToast(msg);
+    setPurchaseToastMessage(msg);
     setMyPageToast(msg);
     setTimeout(() => {
-      setOrderSuccessToast('');
+      setPurchaseToastMessage('');
       setMyPageToast('');
     }, 4000);
   };
@@ -1530,6 +1530,27 @@ export default function UserIntroPage() {
   const [purchaseOrderReceipt, setPurchaseOrderReceipt] = useState<any>(null);
   const [purchaseToastMessage, setPurchaseToastMessage] = useState<string>('');
 
+  const handleToggleMaterialCheck = (selKey: string, defaultQty: number) => {
+    setPurchaseSelectionMap((prev) => {
+      const cur = prev[selKey] || { checked: true, qty: defaultQty };
+      return {
+        ...prev,
+        [selKey]: { ...cur, checked: !cur.checked },
+      };
+    });
+  };
+
+  const handleChangeMaterialQty = (selKey: string, defaultQty: number, delta: number) => {
+    setPurchaseSelectionMap((prev) => {
+      const cur = prev[selKey] || { checked: true, qty: defaultQty };
+      const nextQty = Math.max(1, Math.min(99, cur.qty + delta));
+      return {
+        ...prev,
+        [selKey]: { checked: true, qty: nextQty },
+      };
+    });
+  };
+
   // ==================== 생육과정별 세부보기 추천 제품 개별 구매 (갯수 설정 + 구매한 제품 표시 + 마이페이지 "농자재 구매 내역" 연동) ====================
   const STAGE_PURCHASE_STORAGE_KEY = 'hanfarm_stage_purchase_history_v1';
   const [stageDetailQtyMap, setStageDetailQtyMap] = useState<Record<string, number>>({});
@@ -1541,96 +1562,161 @@ export default function UserIntroPage() {
     unitLabel: string;
     finalAmount: number;
     stageName: string;
+    message: string;
   } | null>(null);
   const [myPagePurchaseCropFilter, setMyPagePurchaseCropFilter] = useState<string>('ALL');
 
   const defaultStagePurchases = useMemo(
     () => [
       {
+        id: 'SPUR-INIT-01',
         purchase_id: 'SPUR-INIT-01',
+        orderNo: 'ORD-20260820-CB101',
         order_no: 'ORD-20260820-CB101',
+        purchasedAt: '2026.08.20 14:22',
         ordered_at: '2026.08.20 14:22',
+        requestNo: 'REQ-20261106-009',
         request_no: 'REQ-20261106-009',
         display_request_no: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
         crop_title: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
         crop_name: '가을배추',
         cultivar_name: '불암3호',
+        plantingType: '모종',
         planting_type: '모종',
         region: '충청북도 충주시 단월동',
         region_address: '충청북도 충주시 단월동 412-5번지 일원 (배철민 농장)',
+        areaPyeong: 300,
         area_pyeong: 300,
+        plantingDate: '2026-08-25',
         planting_date: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
         expected_harvest_date: '2026-11-15',
         stage_group_id: 'STG-01',
+        stageGroupName: '01. 재배 준비',
         stage_group_name: '01. 재배 준비',
+        stageColor: '#16a34a',
         stage_color: '#16a34a',
+        stageItemId: 'SCH-01',
         item_id: 'SCH-01',
+        processCode: 'SCH-01',
         process_code: 'SCH-01',
+        subItemName: '퇴비 및 밑거름 살포',
         sub_item_name: '퇴비 및 밑거름 살포',
+        processName: '퇴비 및 밑거름 살포 (기비 처리)',
         process_name: '퇴비 및 밑거름 살포 (기비 처리)',
+        startDate: '2026-08-11',
         recommended_date: '2026-08-11',
+        startWeekLabel: '정식 2주전',
+        targetPgdd: 0,
         target_pgdd: 0,
+        workDescription:
+          '정식 2주 전 완숙 유기질 퇴비와 석회고토·붕사를 전면에 고르게 살포하고 깊이갈이하여 토양 물리성과 통기성을 개선합니다.',
         work_content:
           '정식 2주 전 완숙 유기질 퇴비와 석회고토·붕사를 전면에 고르게 살포하고 깊이갈이하여 토양 물리성과 통기성을 개선합니다.',
         material_id: 'FERT-PRD-01',
         material_category: 'FERTILIZER',
+        subType: '유기질퇴비',
         sub_type: '유기질퇴비',
         manufacturer: '흙살림',
+        productName: '흙살림 골드 유기질 퇴비 (특호)',
         product_name: '흙살림 골드 유기질 퇴비 (특호)',
+        unitSpec: '20Kg / 포',
         unit_spec: '20Kg / 포',
+        unitLabel: '포',
         unit_label: '포',
+        unitPrice: 9500,
         unit_price: 9500,
         qty: 6,
+        recommendedQty: 6,
         raw_subtotal: 57000,
         discount_amount: 2850,
+        totalPrice: 54150,
         final_subtotal: 54150,
+        matchScore: 98,
         match_score: 98,
+        categorySpecBadge: '유기물 60% 이상 · 부숙도 완료 특등급 · 토양 입단화 및 지력 증진',
         spec_summary: '유기물 60% 이상 · 부숙도 완료 특등급 · 토양 입단화 및 지력 증진',
+        thumbnailUrl: '/api/agro-materials/image/FERT-PRD-01/thumb',
         thumbnail_url: '/api/agro-materials/image/FERT-PRD-01/thumb',
+        deliveryStatus: '구매완료 · 생육단계 적기 배송완료',
         delivery_status: '구매완료 · 생육단계 적기 배송완료',
         payment_method_label: 'NH농협 영농카드 간편결제',
       },
       {
+        id: 'SPUR-INIT-02',
         purchase_id: 'SPUR-INIT-02',
+        orderNo: 'ORD-20260822-CB105',
         order_no: 'ORD-20260822-CB105',
+        purchasedAt: '2026.08.22 10:15',
         ordered_at: '2026.08.22 10:15',
+        requestNo: 'REQ-20261106-009',
         request_no: 'REQ-20261106-009',
         display_request_no: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
         crop_title: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
         crop_name: '가을배추',
         cultivar_name: '불암3호',
+        plantingType: '모종',
         planting_type: '모종',
         region: '충청북도 충주시 단월동',
         region_address: '충청북도 충주시 단월동 412-5번지 일원 (배철민 농장)',
+        areaPyeong: 300,
         area_pyeong: 300,
+        plantingDate: '2026-08-25',
         planting_date: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
         expected_harvest_date: '2026-11-15',
         stage_group_id: 'STG-03',
+        stageGroupName: '03. 정식·활착',
         stage_group_name: '03. 정식·활착',
+        stageColor: '#0d9488',
         stage_color: '#0d9488',
+        stageItemId: 'SCH-05',
         item_id: 'SCH-05',
+        processCode: 'SCH-05',
         process_code: 'SCH-05',
+        subItemName: '본포 정식',
         sub_item_name: '본포 정식',
+        processName: '본포 정식 및 초기 활착 유도',
         process_name: '본포 정식 및 초기 활착 유도',
+        startDate: '2026-08-25',
         recommended_date: '2026-08-25',
+        startWeekLabel: '정식 당일',
+        targetPgdd: 320,
         target_pgdd: 320,
+        workDescription:
+          '본엽 4~5매 건묘를 재식거리에 맞춰 정식하고 충분한 관수와 함께 뿌리 발근·활착 촉진제를 처리하여 초기 몸살을 예방합니다.',
         work_content:
           '본엽 4~5매 건묘를 재식거리에 맞춰 정식하고 충분한 관수와 함께 뿌리 발근·활착 촉진제를 처리하여 초기 몸살을 예방합니다.',
         material_id: 'NUTR-PRD-01',
         material_category: 'NUTRIENT',
+        subType: '발근·활착제',
         sub_type: '발근·활착제',
         manufacturer: '대유',
+        productName: '뿌리왕 발근·활착 촉진 영양제',
         product_name: '뿌리왕 발근·활착 촉진 영양제',
+        unitSpec: '500ml / 병',
         unit_spec: '500ml / 병',
+        unitLabel: '병',
         unit_label: '병',
+        unitPrice: 22000,
         unit_price: 22000,
         qty: 2,
+        recommendedQty: 2,
         raw_subtotal: 44000,
         discount_amount: 2200,
+        totalPrice: 41800,
         final_subtotal: 41800,
+        matchScore: 97,
         match_score: 97,
+        categorySpecBadge: '유리아미노산 18% · 해조추출물 12% · 세근 발달 및 정식 몸살 경감',
         spec_summary: '유리아미노산 18% · 해조추출물 12% · 세근 발달 및 정식 몸살 경감',
+        thumbnailUrl: '/api/agro-materials/image/NUTR-PRD-01/thumb',
         thumbnail_url: '/api/agro-materials/image/NUTR-PRD-01/thumb',
+        deliveryStatus: '구매완료 · 생육단계 적기 배송완료',
         delivery_status: '구매완료 · 생육단계 적기 배송완료',
         payment_method_label: 'NH농협 영농카드 간편결제',
       },
@@ -1879,52 +1965,87 @@ export default function UserIntroPage() {
       '0'
     )}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+    const entryId = `SPUR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const specBadge =
+      mat.category_spec_badge ||
+      mat.nutrient_ratio_summary ||
+      mat.core_Spec ||
+      mat.core_spec ||
+      `${mat.sub_type || '맞춤 농자재'} · ${unitSpec}`;
+    const thumbUrl = mat.thumbnail_url || '/api/agro-materials/image/FERT-PRD-01/thumb';
+    const recDefaultQty = parseRecommendedQuantity(mat, areaPyeong);
+
     const newPurchaseEntry = {
-      purchase_id: `SPUR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: entryId,
+      purchase_id: entryId,
+      orderNo,
       order_no: orderNo,
+      purchasedAt: orderedAt,
       ordered_at: orderedAt,
+      requestNo: reqNo,
       request_no: reqNo,
       display_request_no: displayReqNo,
+      cropTitle,
       crop_title: cropTitle,
+      cropCategory: activeReq.group_name || '엽채류',
       crop_name: cropName,
       cultivar_name: cultivarName,
+      plantingType,
       planting_type: plantingType,
       region,
       region_address: `${region} 412-5번지 일원 (${loggedInUser.name || '배철민'} 농장)`,
+      areaPyeong,
       area_pyeong: areaPyeong,
+      plantingDate,
       planting_date: plantingDate,
+      expectedHarvestDate,
       expected_harvest_date: expectedHarvestDate,
       stage_group_id: stageItem?.stage_group_code || stageItem?.stage_group_id || 'STG-01',
+      stageGroupName,
       stage_group_name: stageGroupName,
+      stageColor: stageItem?.stage_color || '#16a34a',
       stage_color: stageItem?.stage_color || '#16a34a',
+      stageItemId: stageItem?.item_id || processCode,
       item_id: stageItem?.item_id || processCode,
+      processCode,
       process_code: processCode,
+      subItemName: cleanSubName,
       sub_item_name: cleanSubName,
+      processName: stageItem?.process_name || stageItem?.sub_item_name || cleanSubName,
       process_name: stageItem?.process_name || stageItem?.sub_item_name || cleanSubName,
+      startDate: recommendedDate,
       recommended_date: recommendedDate,
+      startWeekLabel: stageItem?.start_week_label || '',
+      targetPgdd,
       target_pgdd: targetPgdd,
+      workDescription: workContent,
       work_content: workContent,
       material_id: mat.material_id || 'FERT-PRD-01',
       material_category: mat.material_category || 'FERTILIZER',
+      subType: mat.sub_type || '맞춤 농자재',
       sub_type: mat.sub_type || '맞춤 농자재',
       manufacturer: mat.manufacturer || '한팜인증',
+      productName: mat.product_name || '생육과정 맞춤 추천 농자재',
       product_name: mat.product_name || '생육과정 맞춤 추천 농자재',
+      unitSpec,
       unit_spec: unitSpec,
+      unitLabel,
       unit_label: unitLabel,
+      unitPrice,
       unit_price: unitPrice,
       qty: safeQty,
+      recommendedQty: recDefaultQty,
       raw_subtotal: rawSubtotal,
       discount_amount: discountAmount,
+      totalPrice: finalSubtotal,
       final_subtotal: finalSubtotal,
+      matchScore: Number(mat.match_score || 96),
       match_score: Number(mat.match_score || 96),
-      spec_summary:
-        mat.category_spec_badge ||
-        mat.nutrient_ratio_summary ||
-        mat.core_Spec ||
-        mat.core_spec ||
-        `${mat.sub_type || '맞춤 농자재'} · ${unitSpec}`,
-      thumbnail_url:
-        mat.thumbnail_url || '/api/agro-materials/image/FERT-PRD-01/thumb',
+      categorySpecBadge: specBadge,
+      spec_summary: specBadge,
+      thumbnailUrl: thumbUrl,
+      thumbnail_url: thumbUrl,
+      deliveryStatus: '구매완료 · 생육단계 적기 맞춤 배송예약',
       delivery_status: '구매완료 · 생육단계 적기 맞춤 배송예약',
       payment_method_label: 'NH농협 영농카드 간편결제 (5% 회원할인)',
     };
@@ -1948,6 +2069,7 @@ export default function UserIntroPage() {
       unitLabel,
       finalAmount: finalSubtotal,
       stageName: `${stageGroupName} · ${cleanSubName}`,
+      message: `${newPurchaseEntry.product_name} ${safeQty}${unitLabel} (${finalSubtotal.toLocaleString()}원) 구매가 완료되었습니다.`,
     });
 
     // 서버 및 마이페이지 주문 목록(myOrders)에도 동기화
@@ -7030,7 +7152,7 @@ export default function UserIntroPage() {
                                               const procInfo = mat.subProcesses?.[0];
                                               const reqNo =
                                                 provisionData.activeRequest?.request_no ||
-                                                selectedProvisionReqNo ||
+                                                selectedRequestNo ||
                                                 'REQ-20261106-009';
                                               const stageItemRef =
                                                 (provisionData.scheduleItems || []).find(
@@ -7868,7 +7990,7 @@ export default function UserIntroPage() {
                 const reqArea = Number(provisionData?.activeRequest?.area_pyeong || 300);
                 const reqNo =
                   provisionData?.activeRequest?.request_no ||
-                  selectedProvisionReqNo ||
+                  selectedRequestNo ||
                   'REQ-20261106-009';
                 const neededQty = topMat ? parseRecommendedQuantity(topMat, reqArea) : 1;
                 const unitSpec = String(topMat?.unit_spec || '1개');
@@ -8546,7 +8668,7 @@ export default function UserIntroPage() {
                                   const unitPrice = Number(mat.unit_price || 28000);
                                   const reqNo =
                                     provisionData.activeRequest?.request_no ||
-                                    selectedProvisionReqNo ||
+                                    selectedRequestNo ||
                                     'REQ-20261106-009';
                                   const recQty = getStageRecQty(reqNo, viewItem, mat, neededQty);
                                   const purchasedInfo = getPurchasedStageProductInfo(
@@ -12893,9 +13015,56 @@ export default function UserIntroPage() {
 
             {/* ④ 농자재 구매 내역 (생육과정별 세부보기 추천 제품 구매 — 재배일정 정보 · 생육과정 정보 · 제품정보 통합 표시) */}
             {(myPageTab === 'ALL' || myPageTab === 'PURCHASE_HISTORY') && (() => {
+              const normalizedHistory = stagePurchaseHistory.map((p: any, idx: number) => ({
+                ...p,
+                id: p.id || p.purchase_id || `SPUR-ROW-${idx}`,
+                orderNo: p.orderNo || p.order_no || 'ORD-2026-STG',
+                purchasedAt: p.purchasedAt || p.ordered_at || '2026.08.20 14:22',
+                requestNo: p.requestNo || p.request_no || 'REQ-20261106-009',
+                cropTitle: p.cropTitle || p.crop_title || '가을배추 (불암3호)',
+                cropCategory: p.cropCategory || '엽채류',
+                plantingType: p.plantingType || p.planting_type || '모종',
+                region: p.region || '충청북도 충주시 단월동',
+                areaPyeong: Number(p.areaPyeong ?? p.area_pyeong ?? 300),
+                plantingDate: p.plantingDate || p.planting_date || '2026-08-25',
+                expectedHarvestDate:
+                  p.expectedHarvestDate || p.expected_harvest_date || '2026-11-15',
+                stageGroupName: p.stageGroupName || p.stage_group_name || '생육 관리',
+                stageColor: p.stageColor || p.stage_color || '#16a34a',
+                stageItemId: p.stageItemId || p.item_id || p.process_code || 'SCH-01',
+                processCode: p.processCode || p.process_code || 'SCH-01',
+                subItemName: p.subItemName || p.sub_item_name || '생육과정',
+                processName: p.processName || p.process_name || p.sub_item_name || '생육과정',
+                startDate: p.startDate || p.recommended_date || '2026-08-25',
+                startWeekLabel: p.startWeekLabel || '',
+                targetPgdd: Number(p.targetPgdd ?? p.target_pgdd ?? 0),
+                workDescription:
+                  p.workDescription ||
+                  p.work_content ||
+                  '생육 단계별 기온·토양 수분 조건을 확인하고 권장 사용량에 맞춰 살포합니다.',
+                productName: p.productName || p.product_name || '맞춤 추천 농자재',
+                manufacturer: p.manufacturer || '한팜인증',
+                subType: p.subType || p.sub_type || '맞춤 농자재',
+                unitSpec: p.unitSpec || p.unit_spec || '1개',
+                unitLabel: p.unitLabel || p.unit_label || '개',
+                unitPrice: Number(p.unitPrice ?? p.unit_price ?? 18000),
+                qty: Number(p.qty ?? 1),
+                recommendedQty: Number(p.recommendedQty ?? p.qty ?? 1),
+                totalPrice: Number(
+                  p.totalPrice ?? p.final_subtotal ?? p.raw_subtotal ?? 18000
+                ),
+                matchScore: Number(p.matchScore ?? p.match_score ?? 96),
+                categorySpecBadge: p.categorySpecBadge || p.spec_summary || '',
+                thumbnailUrl:
+                  p.thumbnailUrl ||
+                  p.thumbnail_url ||
+                  '/api/agro-materials/image/FERT-PRD-01/thumb',
+                deliveryStatus:
+                  p.deliveryStatus || p.delivery_status || '구매완료 · 적기 배송예정',
+              }));
               const uniqueScheduleFilters = Array.from(
                 new Map(
-                  stagePurchaseHistory.map((p: any) => [
+                  normalizedHistory.map((p: any) => [
                     p.requestNo,
                     {
                       requestNo: p.requestNo,
@@ -12906,8 +13075,8 @@ export default function UserIntroPage() {
               );
               const filteredPurchases =
                 myPagePurchaseCropFilter === 'ALL'
-                  ? stagePurchaseHistory
-                  : stagePurchaseHistory.filter(
+                  ? normalizedHistory
+                  : normalizedHistory.filter(
                       (p: any) => p.requestNo === myPagePurchaseCropFilter
                     );
               const totalPurchasedQty = filteredPurchases.reduce(
@@ -13061,7 +13230,6 @@ export default function UserIntroPage() {
                                 onClick={() => {
                                   const reqNo = entry.requestNo || 'REQ-20261106-009';
                                   setSelectedRequestNo(reqNo);
-                                  setSelectedProvisionReqNo(reqNo);
                                   setExpandedScheduleRequestNo(reqNo);
                                   setActiveMenu('재배일정 확인');
                                   setMobileScheduleStep('detail');
