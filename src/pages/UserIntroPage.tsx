@@ -781,8 +781,8 @@ export default function UserIntroPage() {
     }
   });
 
-  // ==================== 생육관리 항목별 [완료] 버튼 기반 시작 인정 & 진행률 산출 로직 ====================
-  const STAGE_COMPLETION_STORAGE_KEY = 'hanfarm_stage_item_completions_v1';
+  // ==================== 생육관리 항목별 [작업완료] 버튼 기반 시작 인정 & 진행률 산출 로직 ====================
+  const STAGE_COMPLETION_STORAGE_KEY = 'hanfarm_stage_item_completions_v2';
 
   const STANDARD_16_STAGE_META = useMemo(
     () => [
@@ -806,6 +806,7 @@ export default function UserIntroPage() {
     []
   );
 
+  // 사용자가 직접 "작업완료" 버튼을 클릭하기 전에는 어떤 공정도 시작인정으로 자동 선반영하지 않음
   const defaultStageItemCompletions = useMemo(() => {
     const seedMap: Record<
       string,
@@ -823,36 +824,8 @@ export default function UserIntroPage() {
         }
       >
     > = {};
-
-    defaultCloudBaeCropList.forEach((c) => {
-      const reqNo = c.request_no;
-      const basePct = Number(c.progress_pct ?? 60);
-      const completedTargetCount = Math.max(
-        0,
-        Math.min(16, Math.round((basePct / 100) * 16))
-      );
-      const pDate = c.planting_date || '2026-08-25';
-      const reqMap: Record<string, any> = {};
-
-      STANDARD_16_STAGE_META.forEach((meta, idx) => {
-        if (idx < completedTargetCount) {
-          const estDate = addDaysToYmd(pDate, meta.offsetDays);
-          reqMap[meta.itemId] = {
-            itemId: meta.itemId,
-            stepOrder: meta.stepOrder,
-            stageGroupName: meta.stageGroupName,
-            subItemName: meta.subItemName,
-            completed: true,
-            confirmedDate: estDate,
-            completedAt: `${estDate.replace(/-/g, '.')} 09:00`,
-            isSeeded: true,
-          };
-        }
-      });
-      seedMap[reqNo] = reqMap;
-    });
     return seedMap;
-  }, [STANDARD_16_STAGE_META]);
+  }, []);
 
   const [stageItemCompletions, setStageItemCompletions] = useState<
     Record<
@@ -873,7 +846,7 @@ export default function UserIntroPage() {
     >
   >(() => {
     try {
-      const saved = localStorage.getItem('hanfarm_stage_item_completions_v1');
+      const saved = localStorage.getItem('hanfarm_stage_item_completions_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
@@ -1056,8 +1029,8 @@ export default function UserIntroPage() {
       const nextUncompleted =
         sItems.find((it: any) => !getStageItemCompletionState(rNo, it).isRecognized) || null;
 
-      let currentStageName = '01. 재배 준비 (시작 대기)';
-      let statusText = `완료 인정 0/${totalCount}건 · 완료 클릭 시 시작 인정`;
+      let currentStageName = '01. 재배 준비 (작업완료 처리 필요)';
+      let statusText = `완료 인정 0/${totalCount}건 · 작업완료 처리 필요`;
 
       if (completedCount >= totalCount) {
         currentStageName = '06. 수확 완료 (전 공정 완료 인정)';
@@ -1074,8 +1047,8 @@ export default function UserIntroPage() {
         currentStageName = `${stagePrefix}${grpName} (${cleanSub})`;
         statusText =
           pendingModifiedCount > 0
-            ? `완료 인정 ${completedCount}/${totalCount}건 (수정일 미확정 ${pendingModifiedCount}건)`
-            : `완료 인정 ${completedCount}/${totalCount}건 · 최근 ${lastCompleted.confirmedDate} 시작인정`;
+            ? `완료 인정 ${completedCount}/${totalCount}건 · 작업완료 처리 필요 (${pendingModifiedCount}건)`
+            : `완료 인정 ${completedCount}/${totalCount}건 · ${lastCompleted.confirmedDate} 시작인정`;
       }
 
       return {
@@ -1102,16 +1075,13 @@ export default function UserIntroPage() {
       const e = reqMap[m.itemId];
       return Boolean(e?.completed);
     });
-    const completedCount =
-      Object.keys(reqMap).length > 0
-        ? recognizedMetas.length
-        : Math.max(0, Math.min(16, Math.round((fallbackPct / 100) * 16)));
+    const completedCount = recognizedMetas.length;
     const progressPct = Math.round((completedCount / totalCount) * 100);
     const lastMeta = recognizedMetas[recognizedMetas.length - 1] || null;
     const nextMeta = STANDARD_16_STAGE_META.find((m) => !reqMap[m.itemId]?.completed) || null;
 
-    let currentStageName = '01. 재배 준비 (시작 대기)';
-    let statusText = `완료 인정 0/${totalCount}건 · 완료 클릭 시 시작 인정`;
+    let currentStageName = '01. 재배 준비 (작업완료 처리 필요)';
+    let statusText = `완료 인정 0/${totalCount}건 · 작업완료 처리 필요`;
 
     if (completedCount >= totalCount) {
       currentStageName = '06. 수확 완료 (전 공정 완료 인정)';
@@ -1119,7 +1089,7 @@ export default function UserIntroPage() {
     } else if (lastMeta) {
       const lastEntry = reqMap[lastMeta.itemId];
       currentStageName = `${lastMeta.stageNum}. ${lastMeta.stageGroupName} (${lastMeta.subItemName})`;
-      statusText = `완료 인정 ${completedCount}/${totalCount}건 · 최근 ${
+      statusText = `완료 인정 ${completedCount}/${totalCount}건 · ${
         lastEntry?.confirmedDate || ''
       } 시작인정`;
     }
@@ -4289,7 +4259,7 @@ export default function UserIntroPage() {
     setTimeout(() => setPurchaseToastMessage(''), 3500);
   };
 
-  // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료 / 완료] 버튼 렌더러
+  // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료] 버튼 + 상태 텍스트 렌더러
   const renderStageCompletionButton = (
     reqNoInput: string,
     item: any,
@@ -4306,49 +4276,62 @@ export default function UserIntroPage() {
       'REQ-20261106-009';
     const st = getStageItemCompletionState(rNo, item, opts?.explicitDate);
     const isSm = opts?.size === 'sm';
-    const isDateModified = st.isDateModifiedAfterConfirm || st.isDraftModified;
+    const isConfirmed = Boolean(st.isRecognized && !st.isDraftModified);
+    const showStatusText = opts?.showConfirmedBadge !== false;
 
     return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleConfirmStageItemCompletion(rNo, item, opts?.explicitDate, e);
-        }}
-        title={
-          st.isRecognized && !st.isDraftModified
-            ? `${st.confirmedDate} 작업완료 인정됨 (클릭 시 완료 취소)`
-            : isDateModified
-            ? `수정된 날짜(${st.effectiveDate})에 생육과정을 시작한 것으로 인정하려면 클릭하세요`
-            : `${st.effectiveDate}에 해당 생육과정을 시작한 것으로 인정하려면 클릭하세요`
-        }
-        className={`rounded-lg font-extrabold transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap shadow-2xs ${
-          isSm ? 'px-2 py-1 text-[11px] leading-none' : 'px-2.5 py-1.5 text-xs leading-none'
-        } ${
-          st.isRecognized && !st.isDraftModified
-            ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
-            : isDateModified
-            ? 'bg-amber-500 hover:bg-emerald-600 text-white border border-amber-600 ring-2 ring-amber-300/60'
-            : 'bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-500'
-        }`}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="inline-flex items-center gap-1.5 flex-nowrap shrink-0"
       >
-        {st.isRecognized && !st.isDraftModified ? (
-          <>
-            <Check className={isSm ? 'w-3 h-3 stroke-[3] shrink-0' : 'w-3.5 h-3.5 stroke-[3] shrink-0'} />
-            <span>작업완료</span>
-          </>
-        ) : isDateModified ? (
-          <>
-            <CheckCircle2 className={isSm ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />
-            <span>수정일 완료</span>
-          </>
-        ) : (
-          <>
-            <Check className={isSm ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />
-            <span>완료</span>
-          </>
-        )}
-      </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleConfirmStageItemCompletion(rNo, item, opts?.explicitDate, e);
+          }}
+          title={
+            isConfirmed
+              ? `${st.confirmedDate} 시작인정 완료 (클릭 시 작업완료 해제)`
+              : `${st.effectiveDate}에 해당 생육과정을 시작한 것으로 인정하려면 [작업완료]를 클릭하세요`
+          }
+          className={`rounded-lg font-extrabold transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 whitespace-nowrap shadow-2xs ${
+            isSm ? 'px-2 py-1 text-[11px] leading-none' : 'px-2.5 py-1.5 text-xs leading-none'
+          } ${
+            isConfirmed
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700'
+              : 'bg-white hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-500'
+          }`}
+        >
+          <Check
+            className={
+              isSm
+                ? `w-3 h-3 shrink-0 ${isConfirmed ? 'stroke-[3]' : ''}`
+                : `w-3.5 h-3.5 shrink-0 ${isConfirmed ? 'stroke-[3]' : ''}`
+            }
+          />
+          <span>작업완료</span>
+        </button>
+
+        {showStatusText &&
+          (isConfirmed ? (
+            <span
+              className={`rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-extrabold whitespace-nowrap shrink-0 ${
+                isSm ? 'px-1.5 py-0.5 text-[10.5px]' : 'px-2 py-1 text-[11px]'
+              }`}
+            >
+              {st.confirmedDate} 시작인정
+            </span>
+          ) : (
+            <span
+              className={`rounded-md bg-red-50 border border-red-200 text-red-600 font-extrabold whitespace-nowrap shrink-0 ${
+                isSm ? 'px-1.5 py-0.5 text-[10.5px]' : 'px-2 py-1 text-[11px]'
+              }`}
+            >
+              작업완료 처리 필요
+            </span>
+          ))}
+      </div>
     );
   };
 
@@ -6738,16 +6721,14 @@ export default function UserIntroPage() {
                                               : 'hover:bg-slate-50'
                                           }`}
                                         >
-                                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5 shrink-0">
+                                          <div className="min-w-0 flex-1 space-y-1.5">
+                                            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
                                               <span
-                                                className={`px-3 py-1.5 rounded-xl font-mono font-black text-[14px] shrink-0 ${
+                                                className={`px-2.5 py-1 rounded-xl font-mono font-black text-[13.5px] shrink-0 whitespace-nowrap ${
                                                   isSelected
                                                     ? 'bg-emerald-600 text-white'
                                                     : compState.isRecognized
                                                     ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                                    : compState.isDateModifiedAfterConfirm || compState.isDraftModified
-                                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
                                                     : 'bg-[#F4F6F8] text-slate-900'
                                                 }`}
                                               >
@@ -6755,18 +6736,17 @@ export default function UserIntroPage() {
                                               </span>
                                               {renderStageCompletionButton(crop.request_no, item, {
                                                 size: 'sm',
+                                                explicitDate: effectiveYmd,
                                               })}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className="font-black text-[16px] text-slate-950 truncate">
-                                                  {cleanName}
+                                              {item.stage_group_name && (
+                                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11.5px] font-extrabold shrink-0 whitespace-nowrap">
+                                                  {item.stage_group_name}
                                                 </span>
-                                                {item.stage_group_name && (
-                                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[12px] font-extrabold shrink-0">
-                                                    {item.stage_group_name}
-                                                  </span>
-                                                )}
+                                              )}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <div className="font-black text-[16px] text-slate-950 truncate">
+                                                {cleanName}
                                               </div>
                                               <div className="text-[13.5px] font-semibold text-slate-600 truncate mt-0.5">
                                                 {item.work_content ||
@@ -7773,11 +7753,11 @@ export default function UserIntroPage() {
 
                             {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
                             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
-                              <table className="w-full border-collapse table-fixed min-w-[1380px]">
+                              <table className="w-full border-collapse table-fixed min-w-[1440px]">
                                 <colgroup>
-                                  <col className="w-[145px]" />
-                                  <col className="w-[185px]" />
-                                  <col className="w-[275px]" />
+                                  <col className="w-[140px]" />
+                                  <col className="w-[180px]" />
+                                  <col className="w-[355px]" />
                                   <col />
                                 </colgroup>
                                 <thead>
@@ -9169,9 +9149,9 @@ export default function UserIntroPage() {
                                 : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/80'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0">
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+                                <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0 whitespace-nowrap">
                                   {formatShortMdWithWeekday(effYmd)}
                                 </span>
                                 {renderStageCompletionButton(activeReqNo, item, {
@@ -9179,7 +9159,7 @@ export default function UserIntroPage() {
                                   explicitDate: effYmd,
                                 })}
                               </div>
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0">
                                 <div className="font-extrabold text-sm text-slate-900 truncate">
                                   {item.sub_item_name}
                                 </div>
