@@ -4259,7 +4259,7 @@ export default function UserIntroPage() {
     setTimeout(() => setPurchaseToastMessage(''), 3500);
   };
 
-  // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료] 버튼 + 상태 텍스트 렌더러
+  // 각 생육관리 항목의 일자 표시 오른쪽에 부착되는 공통 [작업완료] 버튼 렌더러
   const renderStageCompletionButton = (
     reqNoInput: string,
     item: any,
@@ -4277,7 +4277,7 @@ export default function UserIntroPage() {
     const st = getStageItemCompletionState(rNo, item, opts?.explicitDate);
     const isSm = opts?.size === 'sm';
     const isConfirmed = Boolean(st.isRecognized && !st.isDraftModified);
-    const showStatusText = opts?.showConfirmedBadge !== false;
+    const showStatusText = opts?.showConfirmedBadge === true;
 
     return (
       <div
@@ -4328,10 +4328,53 @@ export default function UserIntroPage() {
                 isSm ? 'px-1.5 py-0.5 text-[10.5px]' : 'px-2 py-1 text-[11px]'
               }`}
             >
-              작업완료 처리 필요
+              완료작업 처리 필요
             </span>
           ))}
       </div>
+    );
+  };
+
+  // 생육과정명(예: 포장 정리) 오른쪽에 괄호로 표시하는 상태 텍스트 렌더러: "포장 정리 (완료작업 처리 필요)"
+  const renderStageInlineStatusText = (
+    reqNoInput: string,
+    item: any,
+    opts?: {
+      explicitDate?: string;
+      unconfirmedClassName?: string;
+      confirmedClassName?: string;
+    }
+  ) => {
+    const rNo =
+      reqNoInput ||
+      provisionData?.activeRequest?.request_no ||
+      selectedRequestNo ||
+      'REQ-20261106-009';
+    const st = getStageItemCompletionState(rNo, item, opts?.explicitDate);
+    const isConfirmed = Boolean(st.isRecognized && !st.isDraftModified);
+
+    if (isConfirmed) {
+      return (
+        <span
+          className={
+            opts?.confirmedClassName ||
+            'text-emerald-700 font-extrabold text-[13.5px] ml-1.5 whitespace-nowrap'
+          }
+        >
+          ({st.confirmedDate} 시작인정)
+        </span>
+      );
+    }
+
+    return (
+      <span
+        className={
+          opts?.unconfirmedClassName ||
+          'text-red-600 font-extrabold text-[14px] ml-1.5 whitespace-nowrap'
+        }
+      >
+        (완료작업 처리 필요)
+      </span>
     );
   };
 
@@ -6722,7 +6765,7 @@ export default function UserIntroPage() {
                                           }`}
                                         >
                                           <div className="min-w-0 flex-1 space-y-1.5">
-                                            <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
                                               <span
                                                 className={`px-2.5 py-1 rounded-xl font-mono font-black text-[13.5px] shrink-0 whitespace-nowrap ${
                                                   isSelected
@@ -6745,8 +6788,11 @@ export default function UserIntroPage() {
                                               )}
                                             </div>
                                             <div className="min-w-0">
-                                              <div className="font-black text-[16px] text-slate-950 truncate">
-                                                {cleanName}
+                                              <div className="font-black text-[16px] text-slate-950 leading-snug break-keep">
+                                                <span>{cleanName}</span>
+                                                {renderStageInlineStatusText(crop.request_no, item, {
+                                                  explicitDate: effectiveYmd,
+                                                })}
                                               </div>
                                               <div className="text-[13.5px] font-semibold text-slate-600 truncate mt-0.5">
                                                 {item.work_content ||
@@ -7177,8 +7223,15 @@ export default function UserIntroPage() {
                                                     }
                                                   )}
                                                 </div>
-                                                <span className="font-black text-[17px] text-slate-950 leading-snug">
+                                                <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
                                                   · {cleanName}
+                                                  {renderStageInlineStatusText(
+                                                    crop.request_no,
+                                                    item,
+                                                    {
+                                                      explicitDate: effDate,
+                                                    }
+                                                  )}
                                                 </span>
                                               </div>
                                               <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
@@ -7381,7 +7434,20 @@ export default function UserIntroPage() {
                                                         : 'bg-slate-50 border-slate-200/80 text-slate-800 font-bold hover:bg-slate-100'
                                                     }`}
                                                   >
-                                                    <span className="truncate">{cleanSub}</span>
+                                                    <div className="min-w-0 leading-snug break-keep">
+                                                      <span>{cleanSub}</span>
+                                                      {renderStageInlineStatusText(
+                                                        crop.request_no,
+                                                        it,
+                                                        {
+                                                          explicitDate: effSubDate,
+                                                          unconfirmedClassName:
+                                                            'text-red-600 font-extrabold text-[12.5px] ml-1 whitespace-nowrap',
+                                                          confirmedClassName:
+                                                            'text-emerald-700 font-extrabold text-[12.5px] ml-1 whitespace-nowrap',
+                                                        }
+                                                      )}
+                                                    </div>
                                                     <div className="flex items-center gap-1.5 shrink-0">
                                                       <span className="font-mono text-emerald-700 font-black text-[13.5px]">
                                                         {formatYmdWithWeekday(effSubDate)}
@@ -7434,14 +7500,21 @@ export default function UserIntroPage() {
 
                                 return (
                                   <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-[15px] font-black text-emerald-950">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <span className="text-[15px] font-black text-emerald-950 leading-snug break-keep">
                                         선택 공정:{' '}
                                         {String(detailItem.sub_item_name || '')
                                           .replace(/\s*\([^)]*\)/g, '')
                                           .trim()}
+                                        {renderStageInlineStatusText(
+                                          crop.request_no,
+                                          detailItem,
+                                          {
+                                            explicitDate: curStart,
+                                          }
+                                        )}
                                       </span>
-                                      <span className="px-2.5 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-[12.5px] font-extrabold">
+                                      <span className="px-2.5 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-[12.5px] font-extrabold shrink-0">
                                         PGDD {detailItem.target_pgdd || 0}℃
                                       </span>
                                     </div>
@@ -7755,9 +7828,9 @@ export default function UserIntroPage() {
                             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
                               <table className="w-full border-collapse table-fixed min-w-[1440px]">
                                 <colgroup>
-                                  <col className="w-[140px]" />
-                                  <col className="w-[180px]" />
-                                  <col className="w-[355px]" />
+                                  <col className="w-[130px]" />
+                                  <col className="w-[260px]" />
+                                  <col className="w-[255px]" />
                                   <col />
                                 </colgroup>
                                 <thead>
@@ -7887,15 +7960,27 @@ export default function UserIntroPage() {
                                           <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
                                             <div className="flex items-center justify-between gap-1.5">
                                               <span
-                                                className={
+                                                className={`leading-snug break-keep ${
                                                   isClickedOpen || isHovered || isSelectedStage
                                                     ? 'text-emerald-700 font-extrabold'
                                                     : ''
-                                                }
+                                                }`}
                                               >
                                                 {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
+                                                {renderStageInlineStatusText(
+                                                  provisionData.activeRequest?.request_no ||
+                                                    crop.request_no ||
+                                                    selectedRequestNo,
+                                                  enrichedItem,
+                                                  {
+                                                    unconfirmedClassName:
+                                                      'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                    confirmedClassName:
+                                                      'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                  }
+                                                )}
                                               </span>
-                                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
                                                 요약보기 ›
                                               </span>
                                             </div>
@@ -9150,7 +9235,7 @@ export default function UserIntroPage() {
                             }`}
                           >
                             <div className="min-w-0 flex-1 space-y-1.5">
-                              <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0 whitespace-nowrap">
                                   {formatShortMdWithWeekday(effYmd)}
                                 </span>
@@ -9160,8 +9245,15 @@ export default function UserIntroPage() {
                                 })}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-extrabold text-sm text-slate-900 truncate">
-                                  {item.sub_item_name}
+                                <div className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
+                                  <span>{item.sub_item_name}</span>
+                                  {renderStageInlineStatusText(activeReqNo, item, {
+                                    explicitDate: effYmd,
+                                    unconfirmedClassName:
+                                      'text-red-600 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                    confirmedClassName:
+                                      'text-emerald-700 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                  })}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate mt-0.5">
                                   {item.work_description || '기온·생육상태 확인 후 진행'}
@@ -9259,8 +9351,15 @@ export default function UserIntroPage() {
                                       explicitDate: effYmd,
                                     })}
                                   </div>
-                                  <span className="font-extrabold text-sm text-slate-900">
+                                  <span className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
                                     · {item.sub_item_name}
+                                    {renderStageInlineStatusText(activeReqNo, item, {
+                                      explicitDate: effYmd,
+                                      unconfirmedClassName:
+                                        'text-red-600 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                      confirmedClassName:
+                                        'text-emerald-700 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                    })}
                                   </span>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
@@ -9422,7 +9521,16 @@ export default function UserIntroPage() {
                                             : 'bg-slate-50 border-slate-200/70 text-slate-700 hover:bg-slate-100'
                                         }`}
                                       >
-                                        <span className="truncate">{it.sub_item_name}</span>
+                                        <div className="min-w-0 leading-snug break-keep">
+                                          <span>{it.sub_item_name}</span>
+                                          {renderStageInlineStatusText(activeReqNo, it, {
+                                            explicitDate: effYmd,
+                                            unconfirmedClassName:
+                                              'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                            confirmedClassName:
+                                              'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                          })}
+                                        </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
                                           <span className="font-mono text-emerald-700 font-bold">
                                             {formatYmdWithWeekday(effYmd)}
@@ -9496,8 +9604,11 @@ export default function UserIntroPage() {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
                       <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
                         <div>
-                          <h4 className="text-base sm:text-lg font-extrabold text-slate-900">
-                            {detailItem.sub_item_name}
+                          <h4 className="text-base sm:text-lg font-extrabold text-slate-900 leading-snug break-keep">
+                            <span>{detailItem.sub_item_name}</span>
+                            {renderStageInlineStatusText(reqNo, detailItem, {
+                              explicitDate: curStart,
+                            })}
                           </h4>
                           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
                             {detailItem.work_description || '기온 및 토양 조건에 맞춰 작업을 진행합니다.'}
@@ -9905,8 +10016,13 @@ export default function UserIntroPage() {
                               <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
                                 {viewItem.process_code}
                               </span>
-                              <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                                {viewItem.sub_item_name} ({viewItem.process_name})
+                              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 leading-snug break-keep">
+                                <span>{viewItem.sub_item_name}</span>
+                                {renderStageInlineStatusText(
+                                  provisionData.activeRequest?.request_no || selectedRequestNo,
+                                  viewItem,
+                                  { explicitDate: viewDate }
+                                )}
                               </h3>
                               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
                                 생육과정 세부 정보 및 처방 농자재 안내
