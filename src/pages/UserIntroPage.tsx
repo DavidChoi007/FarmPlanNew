@@ -15164,12 +15164,12 @@ export default function UserIntroPage() {
 
                             {/* 본문: 좌측 썸네일 + 제품/재배일정 정보 + 우측 수량/구매 컨트롤 */}
                             <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                              <div className="flex items-start sm:items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
                                 <img
                                   src={resolveAgroProductThumbUrl(item)}
                                   alt={item.productName}
                                   onError={handleAgroThumbImgError}
-                                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-slate-200 bg-white shrink-0"
+                                  className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-contain p-1.5 border border-slate-200 bg-white shadow-2xs shrink-0"
                                 />
                                 <div className="min-w-0 flex-1 space-y-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
