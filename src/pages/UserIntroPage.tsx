@@ -221,9 +221,9 @@ export default function UserIntroPage() {
     new_password_confirm: '',
   });
 
-  // 마이페이지 데이터 상태 (재배지 등록, 재배작물 등록, 작물재배현황 및 진행율, 농자재 구매 내역, 농자재 구매현황)
+  // 마이페이지 데이터 상태 (재배지 등록, 재배작물 등록, 작물재배현황 및 진행율, 농자재 구매 내역, 장바구니)
   const [myPageTab, setMyPageTab] = useState<
-    'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'PURCHASE_HISTORY' | 'ORDERS' | 'PROFILE'
+    'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'PURCHASE_HISTORY' | 'CART' | 'PROFILE'
   >('FARMLAND');
   const [isMobileGnbDrawerOpen, setIsMobileGnbDrawerOpen] = useState<boolean>(false);
   const [isMyPageMobileDrawerOpen, setIsMyPageMobileDrawerOpen] = useState<boolean>(false);
@@ -1705,6 +1705,7 @@ export default function UserIntroPage() {
 
   // ==================== 생육과정별 세부보기 추천 제품 개별 구매 (갯수 설정 + 구매한 제품 표시 + 마이페이지 "농자재 구매 내역" 연동) ====================
   const STAGE_PURCHASE_STORAGE_KEY = 'hanfarm_stage_purchase_history_v1';
+  const MYPAGE_CART_STORAGE_KEY = 'hanfarm_mypage_cart_items_v1';
   const [stageDetailQtyMap, setStageDetailQtyMap] = useState<Record<string, number>>({});
   const [stageDetailPurchaseNotice, setStageDetailPurchaseNotice] = useState<{
     key: string;
@@ -1717,6 +1718,364 @@ export default function UserIntroPage() {
     message: string;
   } | null>(null);
   const [myPagePurchaseCropFilter, setMyPagePurchaseCropFilter] = useState<string>('ALL');
+
+  const defaultMyCartItems = useMemo(
+    () => [
+      {
+        cartId: 'CART-INIT-01',
+        checked: true,
+        addedAt: '2026.08.23 09:30',
+        requestNo: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
+        plantingType: '모종',
+        region: '충청북도 충주시 단월동',
+        areaPyeong: 300,
+        plantingDate: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
+        stageGroupName: '04. 생육 관리',
+        stageColor: '#0284c7',
+        processCode: 'SCH-09',
+        subItemName: '1차 웃거름 및 칼슘제 살포',
+        processName: '초기 생육 촉진 추비 및 칼슘·붕소 엽면시비',
+        startDate: '2026-09-10',
+        startWeekLabel: '정식 2주후',
+        targetPgdd: 580,
+        workDescription:
+          '정식 후 새 뿌리 활착이 완료되는 시점에 맞춰 결구 내엽 갈변(꿀통배추) 예방용 고농축 칼슘·붕소제를 엽면 살포합니다.',
+        material_id: 'MAT-NUTR-02',
+        material_category: 'NUTRIENT',
+        subType: '칼슘·붕소 영양제',
+        manufacturer: '대유',
+        productName: '한팜 칼슘·붕소 결구강화 특호',
+        unitSpec: '1L / 병',
+        unitLabel: '병',
+        unitPrice: 24500,
+        qty: 3,
+        recommendedQty: 3,
+        matchScore: 98,
+        categorySpecBadge: '수용성 칼슘 18% · 붕소 1.5% · 팁번(내엽갈변) 및 무름 현상 예방',
+        thumbnailUrl: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+        thumbnail_url: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+      },
+      {
+        cartId: 'CART-INIT-02',
+        checked: true,
+        addedAt: '2026.08.23 11:15',
+        requestNo: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
+        plantingType: '모종',
+        region: '충청북도 충주시 단월동',
+        areaPyeong: 300,
+        plantingDate: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
+        stageGroupName: '04. 생육 관리',
+        stageColor: '#0284c7',
+        processCode: 'SCH-11',
+        subItemName: '결구 초기 비대 웃거름 시비',
+        processName: '결구 개시기 속효성 NK 추비 살포',
+        startDate: '2026-09-24',
+        startWeekLabel: '정식 4주후',
+        targetPgdd: 820,
+        workDescription:
+          '배추 속잎이 포개지기 시작하는 결구 초기에 질소·칼륨 균형 웃거름을 고랑에 시비하여 통배추 비대 속도를 높입니다.',
+        material_id: 'FERT-PRD-03',
+        material_category: 'FERTILIZER',
+        subType: 'NK 웃거름비료',
+        manufacturer: '누보',
+        productName: '엔케이(NK) 결구비대 속효성 웃거름 비료',
+        unitSpec: '20Kg / 포',
+        unitLabel: '포',
+        unitPrice: 19500,
+        qty: 4,
+        recommendedQty: 4,
+        matchScore: 97,
+        categorySpecBadge: 'N 18% · K₂O 16% + 고토·붕소 함유 · 결구기 급속 양분 공급',
+        thumbnailUrl: '/images/fertilizers/FERT-PRD-03-thumb.png',
+        thumbnail_url: '/images/fertilizers/FERT-PRD-03-thumb.png',
+      },
+      {
+        cartId: 'CART-INIT-03',
+        checked: true,
+        addedAt: '2026.08.24 15:40',
+        requestNo: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
+        plantingType: '모종',
+        region: '충청북도 충주시 단월동',
+        areaPyeong: 300,
+        plantingDate: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
+        stageGroupName: '05. 병해충 방제',
+        stageColor: '#e11d48',
+        processCode: 'SCH-13',
+        subItemName: '무름병 · 노균병 동시 방제',
+        processName: '가을 강우 후 무름병·노균병 예방 약제 살포',
+        startDate: '2026-10-05',
+        startWeekLabel: '정식 6주후',
+        targetPgdd: 980,
+        workDescription:
+          '일교차가 커지고 아침 안개가 잦은 10월 초순 무름병과 노균병이 동시 발생하지 않도록 잎 뒷면과 지제부에 충분히 살포합니다.',
+        material_id: 'MAT-PEST-01',
+        material_category: 'PESTICIDE',
+        subType: '전문 살균제',
+        manufacturer: '경농',
+        productName: '무름병·노균병 동시방제 살균제 클린팜',
+        unitSpec: '500ml / 병',
+        unitLabel: '병',
+        unitPrice: 25000,
+        qty: 2,
+        recommendedQty: 2,
+        matchScore: 96,
+        categorySpecBadge: '침투이행성 광범위 살균 · 강우 전후 약효 지속 · PLS 안전기준 준수',
+        thumbnailUrl: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
+        thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
+      },
+      {
+        cartId: 'CART-INIT-04',
+        checked: true,
+        addedAt: '2026.08.25 08:20',
+        requestNo: 'REQ-20261106-009',
+        cropTitle: '가을배추 (불암3호)',
+        cropCategory: '엽채류',
+        plantingType: '모종',
+        region: '충청북도 충주시 단월동',
+        areaPyeong: 300,
+        plantingDate: '2026-08-25',
+        expectedHarvestDate: '2026-11-15',
+        stageGroupName: '02. 파종·육묘',
+        stageColor: '#15803d',
+        processCode: 'SCH-04',
+        subItemName: '우량 건묘 보식용 모종 준비',
+        processName: '본밭 정식 및 결주 보식용 CR 내병계 배추 건묘',
+        startDate: '2026-08-25',
+        startWeekLabel: '정식 당일',
+        targetPgdd: 300,
+        workDescription:
+          '무사마귀병(뿌리혹병 CR) 저항성 원종으로 25일간 외기 순화를 마친 128구 우량 배추 프러그 모종입니다.',
+        material_id: 'MAT-SDL-01',
+        material_category: 'SEEDLING',
+        subType: '배추 우량모종',
+        manufacturer: '한팜스마트육묘장',
+        productName: '가을김장배추 불암3호 A급 건묘 모종 (128구 1판)',
+        unitSpec: '128구 트레이 / 판',
+        unitLabel: '판',
+        unitPrice: 13500,
+        qty: 3,
+        recommendedQty: 3,
+        matchScore: 95,
+        categorySpecBadge: 'CR 무사마귀병 저항성 · 본엽 4~5매 외기순화 완료 · A급 세근 발달',
+        thumbnailUrl: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
+        thumbnail_url: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
+      },
+    ],
+    []
+  );
+
+  const [myCartItems, setMyCartItems] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('hanfarm_mypage_cart_items_v1');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((item: any) => {
+            const safeThumb = resolveAgroProductThumbUrl(item);
+            return {
+              ...item,
+              thumbnailUrl: safeThumb,
+              thumbnail_url: safeThumb,
+            };
+          });
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return defaultMyCartItems;
+  });
+
+  const saveMyCartItems = (updater: (prev: any[]) => any[]) => {
+    setMyCartItems((prev) => {
+      const next = updater(prev);
+      try {
+        localStorage.setItem(MYPAGE_CART_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
+  const handleToggleCartItem = (cartId: string) => {
+    saveMyCartItems((prev) =>
+      prev.map((it) => (it.cartId === cartId ? { ...it, checked: !it.checked } : it))
+    );
+  };
+
+  const handleToggleAllCartItems = (checked: boolean) => {
+    saveMyCartItems((prev) => prev.map((it) => ({ ...it, checked })));
+  };
+
+  const handleChangeCartItemQty = (cartId: string, nextOrDelta: number, isDelta = false) => {
+    saveMyCartItems((prev) =>
+      prev.map((it) => {
+        if (it.cartId !== cartId) return it;
+        const cur = Math.max(1, Number(it.qty) || 1);
+        const target = isDelta ? cur + nextOrDelta : nextOrDelta;
+        return { ...it, qty: Math.max(1, Math.min(99, Number(target) || 1)) };
+      })
+    );
+  };
+
+  const handleRemoveCartItem = (cartId: string) => {
+    saveMyCartItems((prev) => prev.filter((it) => it.cartId !== cartId));
+    setMyPageToast('선택한 장바구니 품목이 삭제되었습니다.');
+    setTimeout(() => setMyPageToast(''), 3000);
+  };
+
+  const handleRemoveSelectedCartItems = () => {
+    const selectedCount = myCartItems.filter((it) => it.checked).length;
+    if (selectedCount === 0) return;
+    saveMyCartItems((prev) => prev.filter((it) => !it.checked));
+    setMyPageToast(`선택한 장바구니 품목 ${selectedCount}건이 삭제되었습니다.`);
+    setTimeout(() => setMyPageToast(''), 3000);
+  };
+
+  const handleResetSampleCartItems = () => {
+    saveMyCartItems(() => defaultMyCartItems);
+    setMyPageToast('생육단계별 맞춤 샘플 장바구니 품목 4건이 다시 담겼습니다.');
+    setTimeout(() => setMyPageToast(''), 3000);
+  };
+
+  const handleCheckoutCartItems = (targetCartIds?: string[]) => {
+    const itemsToBuy =
+      Array.isArray(targetCartIds) && targetCartIds.length > 0
+        ? myCartItems.filter((it) => targetCartIds.includes(it.cartId))
+        : myCartItems.filter((it) => it.checked);
+
+    if (itemsToBuy.length === 0) {
+      setMyPageToast('구매할 장바구니 품목을 먼저 선택해 주세요.');
+      setTimeout(() => setMyPageToast(''), 3000);
+      return;
+    }
+
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(
+      now.getDate()
+    ).padStart(2, '0')}`;
+    const orderedAt = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(
+      2,
+      '0'
+    )}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const newPurchases = itemsToBuy.map((it, idx) => {
+      const safeQty = Math.max(1, Number(it.qty) || 1);
+      const unitPrice = Number(it.unitPrice || 18000);
+      const rawSubtotal = unitPrice * safeQty;
+      const discountAmount = Math.round((rawSubtotal * 0.05) / 10) * 10;
+      const finalSubtotal = Math.max(0, rawSubtotal - discountAmount);
+      const orderNo = `ORD-${datePart}-CRT${String(Math.floor(100 + Math.random() * 900))}`;
+      const entryId = `SPUR-CRT-${Date.now()}-${idx}`;
+      const thumbUrl = resolveAgroProductThumbUrl(it);
+
+      return {
+        id: entryId,
+        purchase_id: entryId,
+        orderNo,
+        order_no: orderNo,
+        purchasedAt: orderedAt,
+        ordered_at: orderedAt,
+        requestNo: it.requestNo || 'REQ-20261106-009',
+        request_no: it.requestNo || 'REQ-20261106-009',
+        display_request_no: it.requestNo || 'REQ-20261106-009',
+        cropTitle: it.cropTitle || '가을배추 (불암3호)',
+        crop_title: it.cropTitle || '가을배추 (불암3호)',
+        cropCategory: it.cropCategory || '엽채류',
+        plantingType: it.plantingType || '모종',
+        planting_type: it.plantingType || '모종',
+        region: it.region || '충청북도 충주시 단월동',
+        region_address: `${it.region || '충청북도 충주시 단월동'} 412-5번지 일원 (${
+          loggedInUser.name || '배철민'
+        } 농장)`,
+        areaPyeong: Number(it.areaPyeong || 300),
+        area_pyeong: Number(it.areaPyeong || 300),
+        plantingDate: it.plantingDate || '2026-08-25',
+        planting_date: it.plantingDate || '2026-08-25',
+        expectedHarvestDate: it.expectedHarvestDate || '2026-11-15',
+        expected_harvest_date: it.expectedHarvestDate || '2026-11-15',
+        stageGroupName: it.stageGroupName || '04. 생육 관리',
+        stage_group_name: it.stageGroupName || '04. 생육 관리',
+        stageColor: it.stageColor || '#16a34a',
+        stage_color: it.stageColor || '#16a34a',
+        stageItemId: it.processCode || 'SCH-09',
+        item_id: it.processCode || 'SCH-09',
+        processCode: it.processCode || 'SCH-09',
+        process_code: it.processCode || 'SCH-09',
+        subItemName: it.subItemName || '생육과정',
+        sub_item_name: it.subItemName || '생육과정',
+        processName: it.processName || it.subItemName || '생육과정',
+        process_name: it.processName || it.subItemName || '생육과정',
+        startDate: it.startDate || '2026-09-10',
+        recommended_date: it.startDate || '2026-09-10',
+        startWeekLabel: it.startWeekLabel || '',
+        targetPgdd: Number(it.targetPgdd || 0),
+        target_pgdd: Number(it.targetPgdd || 0),
+        workDescription: it.workDescription || '',
+        work_content: it.workDescription || '',
+        material_id: it.material_id || 'FERT-PRD-01',
+        material_category: it.material_category || 'FERTILIZER',
+        subType: it.subType || '맞춤 농자재',
+        sub_type: it.subType || '맞춤 농자재',
+        manufacturer: it.manufacturer || '한팜인증',
+        productName: it.productName || '생육과정 추천 농자재',
+        product_name: it.productName || '생육과정 추천 농자재',
+        unitSpec: it.unitSpec || '1개',
+        unit_spec: it.unitSpec || '1개',
+        unitLabel: it.unitLabel || '개',
+        unit_label: it.unitLabel || '개',
+        unitPrice,
+        unit_price: unitPrice,
+        qty: safeQty,
+        recommendedQty: Number(it.recommendedQty || safeQty),
+        raw_subtotal: rawSubtotal,
+        discount_amount: discountAmount,
+        totalPrice: finalSubtotal,
+        final_subtotal: finalSubtotal,
+        matchScore: Number(it.matchScore || 96),
+        match_score: Number(it.matchScore || 96),
+        categorySpecBadge: it.categorySpecBadge || '',
+        spec_summary: it.categorySpecBadge || '',
+        thumbnailUrl: thumbUrl,
+        thumbnail_url: thumbUrl,
+        deliveryStatus: '구매완료 · 장바구니 주문 적기 배송예약',
+        delivery_status: '구매완료 · 장바구니 주문 적기 배송예약',
+        payment_method_label: 'NH농협 영농카드 간편결제 (5% 회원할인)',
+      };
+    });
+
+    setStagePurchaseHistory((prev) => {
+      const updated = [...newPurchases, ...prev];
+      try {
+        localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+
+    const boughtIdSet = new Set(itemsToBuy.map((it) => it.cartId));
+    saveMyCartItems((prev) => prev.filter((it) => !boughtIdSet.has(it.cartId)));
+
+    const totalPaid = newPurchases.reduce((s, p) => s + Number(p.totalPrice || 0), 0);
+    setMyPageToast(
+      `장바구니 선택 상품 ${newPurchases.length}건 (총 ${totalPaid.toLocaleString()}원) 구매가 완료되어 [④ 농자재 구매 내역]에 반영되었습니다.`
+    );
+    setTimeout(() => setMyPageToast(''), 4500);
+  };
 
   const defaultStagePurchases = useMemo(
     () => [
@@ -9292,11 +9651,11 @@ export default function UserIntroPage() {
                           onClick={() => {
                             setPurchaseOrderReceipt(null);
                             setActiveMenu('마이페이지');
-                            setMyPageTab('ORDERS');
+                            setMyPageTab('PURCHASE_HISTORY');
                           }}
                           className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-extrabold cursor-pointer"
                         >
-                          마이페이지 &gt; 농자재 구매현황 확인
+                          마이페이지 &gt; 농자재 구매 내역 확인
                         </button>
                         <button
                           type="button"
@@ -10436,12 +10795,12 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setMyPageTab('ORDERS');
+                        setMyPageTab('PURCHASE_HISTORY');
                         setActiveMenu('마이페이지');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
                     >
-                      구매현황 ›
+                      구매내역 ›
                     </button>
                   </div>
                 )}
@@ -10680,12 +11039,12 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setMyPageTab('ORDERS');
+                        setMyPageTab('PURCHASE_HISTORY');
                         setActiveMenu('마이페이지');
                       }}
                       className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
                     >
-                      구매현황 보기 ›
+                      구매내역 보기 ›
                     </button>
                     <button
                       type="button"
@@ -12058,74 +12417,52 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* 모바일 전용: 가로 스크롤 없이 화면 폭 안에 100% 들어오는 3열×2줄 내부 메뉴 그리드 바 */}
-            <div className="lg:hidden bg-white rounded-2xl border-2 border-emerald-600/80 p-2.5 shadow-xs space-y-2 overflow-hidden">
-              <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+            {/* 모바일 전용: 가로 스크롤 없이 화면 폭 안에 100% 들어오는 3열×2줄 내부 메뉴 그리드 바 (시안 동일 디자인 + 장바구니 적용) */}
+            <div className="lg:hidden bg-white rounded-3xl border-2 border-emerald-300/90 p-3.5 shadow-xs space-y-3 overflow-hidden">
+              <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => setIsMyPageMobileDrawerOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold shadow-2xs cursor-pointer transition shrink-0"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-900 hover:bg-emerald-950 text-white text-xs font-extrabold shadow-2xs cursor-pointer transition shrink-0"
                 >
                   <span className="flex flex-col gap-0.5 w-3.5" aria-hidden="true">
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                   </span>
-                  <span>전체 메뉴</span>
+                  <span>마이페이지 메뉴</span>
                 </button>
-
-                <div className="min-w-0 flex-1 text-center px-1">
-                  <div className="text-[10px] font-bold text-slate-400 leading-none">현재 선택 메뉴</div>
-                  <div className="text-xs font-extrabold text-emerald-800 truncate mt-0.5">
-                    {myPageTab === 'FARMLAND'
-                      ? '① 내 재배지 관리'
-                      : myPageTab === 'CROPS'
-                      ? '② 내 재배작물 등록'
-                      : myPageTab === 'PROGRESS'
-                      ? '③ 재배진행율 현황'
-                      : myPageTab === 'PURCHASE_HISTORY'
-                      ? '④ 농자재 구매 내역'
-                      : myPageTab === 'ORDERS'
-                      ? '⑤ 일괄구매 현황'
-                      : myPageTab === 'PROFILE'
-                      ? '⑥ 회원 기본정보'
-                      : '전체 항목 통합보기'}
-                  </div>
-                </div>
 
                 <button
                   type="button"
                   onClick={() => setMyPageTab('ALL')}
-                  className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold border transition cursor-pointer shrink-0 ${
+                  className={`px-4 py-2 rounded-full text-xs font-extrabold border transition cursor-pointer shrink-0 ${
                     myPageTab === 'ALL'
-                      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-slate-100 text-slate-800 border-slate-200 hover:bg-emerald-50'
                   }`}
                 >
                   전체 통합보기
                 </button>
               </div>
 
-              {/* 가로 스크롤 없는 3열 × 2줄 고정 그리드 내부 메뉴 (모바일 폭 맞춤 크기 조정) */}
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* 가로 스크롤 없는 3열 × 2줄 고정 그리드 내부 메뉴 (모바일 폭 맞춤 2줄 중앙 정렬 카드형) */}
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   {
                     code: 'FARMLAND',
-                    num: '①',
-                    label: '내 재배지',
-                    sub: `${myFarmlands.length}곳`,
+                    line1: '① 내 재배지',
+                    line2: `(${myFarmlands.length}곳)`,
                   },
                   {
                     code: 'CROPS',
-                    num: '②',
-                    label: '재배작물',
-                    sub: `${cloudBaeCropList.length}건`,
+                    line1: '② 내 재배작물',
+                    line2: `(${cloudBaeCropList.length}건)`,
                   },
                   {
                     code: 'PROGRESS',
-                    num: '③',
-                    label: '재배진행율',
-                    sub: `${
+                    line1: '③ 재배진행율',
+                    line2: `(${
                       cloudBaeCropList.length > 0
                         ? Math.round(
                             cloudBaeCropList.reduce(
@@ -12134,25 +12471,22 @@ export default function UserIntroPage() {
                             ) / cloudBaeCropList.length
                           )
                         : 0
-                    }%`,
+                    }%)`,
                   },
                   {
                     code: 'PURCHASE_HISTORY',
-                    num: '④',
-                    label: '구매내역',
-                    sub: `${stagePurchaseHistory.length}건`,
+                    line1: '④ 농자재',
+                    line2: `구매내역 (${stagePurchaseHistory.length}건)`,
                   },
                   {
-                    code: 'ORDERS',
-                    num: '⑤',
-                    label: '일괄주문',
-                    sub: `${myOrders.length}건`,
+                    code: 'CART',
+                    line1: '⑤ 장바구니',
+                    line2: `(${myCartItems.length}건)`,
                   },
                   {
                     code: 'PROFILE',
-                    num: '⑥',
-                    label: '회원정보',
-                    sub: '내 정보',
+                    line1: '⑥ 회원 기본정보',
+                    line2: '',
                   },
                 ].map((mTab) => {
                   const isActive = myPageTab === mTab.code;
@@ -12161,24 +12495,24 @@ export default function UserIntroPage() {
                       key={mTab.code}
                       type="button"
                       onClick={() => setMyPageTab(mTab.code as any)}
-                      className={`w-full min-w-0 px-2 py-2 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-1 ${
+                      className={`w-full min-w-0 px-2 py-2.5 min-h-[60px] rounded-2xl border text-center transition cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                         isActive
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                          : 'bg-slate-50/80 text-slate-800 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-slate-100/90 text-slate-900 border-slate-200/80 hover:bg-emerald-50 hover:border-emerald-300'
                       }`}
                     >
-                      <span className="text-[11px] font-extrabold truncate leading-tight">
-                        {mTab.num} {mTab.label}
+                      <span className="text-[12px] font-extrabold leading-tight break-keep">
+                        {mTab.line1}
                       </span>
-                      <span
-                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 leading-none ${
-                          isActive
-                            ? 'bg-white text-emerald-800'
-                            : 'bg-white text-emerald-700 border border-slate-200/80'
-                        }`}
-                      >
-                        {mTab.sub}
-                      </span>
+                      {mTab.line2 && (
+                        <span
+                          className={`text-[11.5px] font-extrabold leading-tight break-keep ${
+                            isActive ? 'text-white' : 'text-slate-800'
+                          }`}
+                        >
+                          {mTab.line2}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -12271,11 +12605,11 @@ export default function UserIntroPage() {
                       icon: PackageCheck,
                     },
                     {
-                      code: 'ORDERS',
-                      title: '⑤ 농자재 일괄구매 현황',
-                      desc: '생육단계별 원클릭 주문 · 배송 관제',
-                      badge: `${myOrders.length}건`,
-                      icon: ShoppingBag,
+                      code: 'CART',
+                      title: '⑤ 농자재 장바구니',
+                      desc: '생육과정별 담은 농자재 수량조절 · 주문',
+                      badge: `${myCartItems.length}건`,
+                      icon: ShoppingCart,
                     },
                     {
                       code: 'PROFILE',
@@ -12499,21 +12833,25 @@ export default function UserIntroPage() {
 
                     <button
                       type="button"
-                      onClick={() => setMyPageTab('ORDERS')}
+                      onClick={() => setMyPageTab('CART')}
                       className={`p-3.5 rounded-2xl border text-left transition cursor-pointer col-span-2 sm:col-span-1 ${
-                        myPageTab === 'ORDERS'
+                        myPageTab === 'CART'
                           ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-slate-500">⑤ 일괄구매 현황</div>
+                      <div className="text-xs font-bold text-slate-500">⑤ 농자재 장바구니</div>
                       <div className="text-xl font-extrabold text-slate-900 mt-1">
-                        {myOrders.length}건
+                        {myCartItems.length}건
                       </div>
                       <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                        누적{' '}
-                        {myOrders
-                          .reduce((s: number, o: any) => s + Number(o.final_total || 0), 0)
+                        담긴 금액{' '}
+                        {myCartItems
+                          .reduce(
+                            (s: number, it: any) =>
+                              s + Number(it.unitPrice || 0) * Number(it.qty || 1),
+                            0
+                          )
                           .toLocaleString()}
                         원
                       </div>
@@ -13681,126 +14019,287 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* ⑤ 농자재 일괄구매 현황 */}
-            {(myPageTab === 'ALL' || myPageTab === 'ORDERS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
-                  <div>
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold">
-                      생육단계별 원클릭 구매 내역 &amp; 배송 관제
-                    </span>
-                    <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                      ④ 농자재 구매현황 ({myOrders.length}건)
-                    </h3>
-                    <p className="text-xs text-slate-600">
-                      재배일정 확인 하단의 생육 단계별 추천 농자재 구매 모듈에서 주문한 모든 내역이 실시간으로 표시됩니다.
-                    </p>
+            {/* ⑤ 농자재 장바구니 */}
+            {(myPageTab === 'ALL' || myPageTab === 'CART') && (() => {
+              const checkedItems = myCartItems.filter((it: any) => it.checked);
+              const totalCartQty = myCartItems.reduce(
+                (acc: number, cur: any) => acc + Math.max(1, Number(cur.qty) || 1),
+                0
+              );
+              const selectedSubtotal = checkedItems.reduce(
+                (acc: number, cur: any) =>
+                  acc + (Number(cur.unitPrice) || 0) * Math.max(1, Number(cur.qty) || 1),
+                0
+              );
+              const selectedDiscount = Math.round(selectedSubtotal * 0.05);
+              const selectedFinalTotal = selectedSubtotal - selectedDiscount;
+              const allChecked =
+                myCartItems.length > 0 && myCartItems.every((it: any) => Boolean(it.checked));
+
+              return (
+                <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 pb-3.5">
+                    <div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                        재배일정 · 생육과정별 맞춤 농자재 장바구니
+                      </span>
+                      <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
+                        ⑤ 농자재 장바구니 ({myCartItems.length}건)
+                      </h3>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        재배일정 생육단계별 추천 제품과 농자재를 담아 수량을 조절하고, 선택 상품을 원클릭으로 구매할 수 있습니다.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap self-start sm:self-center">
+                      <button
+                        type="button"
+                        onClick={handleResetSampleCartItems}
+                        className="px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold cursor-pointer transition-colors"
+                      >
+                        샘플 장바구니 복원
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenu('농작물');
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer transition-colors"
+                      >
+                        + 농작물·농자재 더 담기 ›
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExpandedScheduleRequestNo(selectedRequestNo || 'REQ-20261106-009');
-                      setActiveMenu('재배일정 확인');
-                      setMobileScheduleStep('detail');
-                      setTimeout(() => {
-                        document
-                          .getElementById('stage-materials-bulk-purchase-section')
-                          ?.scrollIntoView({ behavior: 'smooth' });
-                      }, 150);
-                    }}
-                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer self-start sm:self-center"
-                  >
-                    + 생육단계별 농자재 추가 구매하기
-                  </button>
-                </div>
 
-                <div className="space-y-4">
-                  {myOrders.map((ord: any) => (
-                    <div
-                      key={ord.order_no}
-                      className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-2xs"
-                    >
-                      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-extrabold text-slate-900 bg-white px-2.5 py-0.5 rounded-md border border-slate-200">
-                            {ord.order_no}
-                          </span>
-                          <span className="text-xs text-slate-500 font-semibold">
-                            주문일시: {ord.ordered_at}
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                            {ord.delivery_status}
-                          </span>
-                        </div>
-                        <div className="text-xs font-extrabold text-emerald-800">
-                          최종 결제금액: {Number(ord.final_total || 0).toLocaleString()}원 (할인 -
-                          {Number(ord.discount_amount || 0).toLocaleString()}원)
-                        </div>
+                  {/* 장바구니 요약 KPI 바 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5">
+                      <div className="text-[11px] font-bold text-slate-500">담긴 품목 / 총 수량</div>
+                      <div className="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">
+                        {myCartItems.length}품목 · 총 {totalCartQty}개
                       </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        선택됨: {checkedItems.length}품목
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-3.5">
+                      <div className="text-[11px] font-bold text-emerald-700">선택 상품 합계</div>
+                      <div className="text-base sm:text-lg font-extrabold text-emerald-900 mt-0.5">
+                        {selectedSubtotal.toLocaleString()}원
+                      </div>
+                      <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
+                        회원 5% 즉시할인 -{selectedDiscount.toLocaleString()}원
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-amber-50/80 border border-amber-200 p-3.5">
+                      <div className="text-[11px] font-bold text-amber-800">예상 최종 결제금액</div>
+                      <div className="text-base sm:text-lg font-extrabold text-amber-900 mt-0.5">
+                        {selectedFinalTotal.toLocaleString()}원
+                      </div>
+                      <div className="text-[11px] text-amber-700 font-semibold mt-0.5">
+                        산지 직송 무료배송 혜택 적용
+                      </div>
+                    </div>
+                  </div>
 
-                      <div className="p-4 space-y-3">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div>
-                            <div className="font-extrabold text-slate-900 text-sm sm:text-base">
-                              {ord.purchase_title}
-                            </div>
-                            <div className="text-xs text-slate-600 mt-0.5">
-                              적용 작물: <span className="font-bold">{ord.crop_title}</span> · 배송지:{' '}
-                              <span className="font-bold">{ord.region_address}</span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-slate-600 font-semibold shrink-0">
-                            결제수단:{' '}
-                            <span className="font-bold text-slate-900">
-                              {ord.payment_method === 'NONGHYUP_CARD'
-                                ? 'NH농협 영농카드 간편결제'
-                                : ord.payment_method === 'BANK_TRANSFER'
-                                ? '법인계좌 무통장입금'
-                                : '농협 콕뱅크 · 지역사랑페이'}
-                            </span>
-                          </div>
-                        </div>
+                  {/* 전체선택 & 일괄 액션 바 */}
+                  <div className="rounded-2xl bg-slate-50 border border-slate-200 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={(e) => handleToggleAllCartItems(e.target.checked)}
+                        className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+                      />
+                      <span className="text-xs sm:text-sm font-extrabold text-slate-800">
+                        전체 선택 ({checkedItems.length}/{myCartItems.length})
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleRemoveSelectedCartItems}
+                        disabled={checkedItems.length === 0}
+                        className="px-3 py-1.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 disabled:opacity-40 text-rose-700 text-xs font-extrabold cursor-pointer transition-colors"
+                      >
+                        선택 삭제 ({checkedItems.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCheckoutCartItems()}
+                        disabled={checkedItems.length === 0}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-xs sm:text-sm font-extrabold cursor-pointer shadow-xs transition-colors"
+                      >
+                        선택 상품 구매하기 ({selectedFinalTotal.toLocaleString()}원)
+                      </button>
+                    </div>
+                  </div>
 
-                        {/* 주문 포함 농자재 아이템 리스트 (1줄에 1개 항목) */}
-                        <div className="grid grid-cols-1 gap-2 pt-1">
-                          {(ord.orderItems || []).map((item: any, idx: number) => (
-                            <div
-                              key={`${ord.order_no}-item-${idx}`}
-                              className="rounded-xl border border-slate-200 p-3 flex items-center justify-between gap-3 bg-slate-50/60 text-xs"
-                            >
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* 장바구니 아이템 목록 */}
+                  {myCartItems.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center space-y-3">
+                      <div className="text-sm font-extrabold text-slate-700">
+                        장바구니에 담긴 농자재 상품이 없습니다.
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        샘플 장바구니 항목을 다시 불러오거나 재배일정·농작물 메뉴에서 필요한 자재를 담아보세요.
+                      </p>
+                      <div className="flex items-center justify-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleResetSampleCartItems}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer"
+                        >
+                          샘플 장바구니 4종 불러오기
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {myCartItems.map((item: any) => {
+                        const qty = Math.max(1, Number(item.qty) || 1);
+                        const unitPrice = Number(item.unitPrice) || 0;
+                        const itemTotal = unitPrice * qty;
+                        return (
+                          <div
+                            key={item.cartId}
+                            className={`rounded-2xl border overflow-hidden transition-all ${
+                              item.checked
+                                ? 'border-emerald-300 bg-white shadow-2xs'
+                                : 'border-slate-200 bg-slate-50/50 opacity-80'
+                            }`}
+                          >
+                            {/* 상단 재배일정 & 생육단계 배지 바 */}
+                            <div className="bg-emerald-50/70 px-3.5 py-2 border-b border-emerald-100 flex flex-wrap items-center justify-between gap-2">
+                              <label className="inline-flex items-center gap-2 cursor-pointer min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(item.checked)}
+                                  onChange={() => handleToggleCartItem(item.cartId)}
+                                  className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                />
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[11px] font-extrabold shrink-0">
+                                  {item.cropTitle}
+                                </span>
+                                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-200 text-[11px] font-extrabold truncate">
+                                  {item.stageGroupName} · {item.subItemName}
+                                </span>
+                              </label>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                                <span>담은 날짜: {item.addedAt}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCartItem(item.cartId)}
+                                  className="text-rose-600 hover:text-rose-700 font-extrabold cursor-pointer px-1.5 py-0.5 rounded hover:bg-rose-50"
+                                >
+                                  삭제
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* 본문: 좌측 썸네일 + 제품/재배일정 정보 + 우측 수량/구매 컨트롤 */}
+                            <div className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
                                 <img
                                   src={resolveAgroProductThumbUrl(item)}
-                                  alt={item.product_name}
+                                  alt={item.productName}
                                   onError={handleAgroThumbImgError}
-                                  className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0"
+                                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-slate-200 bg-white shrink-0"
                                 />
-                                <div className="min-w-0 flex-1">
+                                <div className="min-w-0 flex-1 space-y-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">
-                                      {item.stageName || '맞춤단계'}
+                                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11px] font-extrabold">
+                                      {item.categoryName || '맞춤 농자재'}
                                     </span>
-                                    <span className="font-extrabold text-slate-900 truncate">
-                                      {item.product_name}
+                                    <span className="text-[11px] text-slate-500 font-semibold">
+                                      {item.brandName} · 규격 {item.spec}
                                     </span>
+                                    {item.stockBadge && (
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                                        {item.stockBadge}
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="text-[11px] text-slate-500 mt-0.5">
-                                    주문수량: {item.qty}개
+                                  <div className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug break-keep">
+                                    {item.productName}
+                                  </div>
+                                  <div className="text-xs text-slate-600 leading-relaxed break-keep">
+                                    {item.usageNote}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 pt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    <span>
+                                      적용 농지: <strong className="text-slate-700">{item.region}</strong> ({Number(item.areaPyeong || 0).toLocaleString()}평)
+                                    </span>
+                                    <span>·</span>
+                                    <span>
+                                      권장 투입일: <strong className="text-emerald-700">{item.startDate}</strong>
+                                    </span>
+                                    {item.targetPgdd && (
+                                      <>
+                                        <span>·</span>
+                                        <span>목표 적산온도: {item.targetPgdd}</span>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
-                              <div className="text-xs sm:text-sm font-extrabold text-emerald-700 shrink-0">
-                                {Number(item.subtotal || 0).toLocaleString()}원
+
+                              {/* 수량 조절 & 금액 & 개별 바로구매 */}
+                              <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2.5 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+                                <div className="text-left sm:text-right">
+                                  <div className="text-[11px] text-slate-500 font-semibold">
+                                    단가 {unitPrice.toLocaleString()}원
+                                  </div>
+                                  <div className="text-sm sm:text-base font-extrabold text-emerald-700">
+                                    합계 {itemTotal.toLocaleString()}원
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="inline-flex items-center rounded-xl border border-slate-300 bg-white overflow-hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleChangeCartItemQty(item.cartId, qty - 1)}
+                                      className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 font-extrabold text-sm cursor-pointer"
+                                    >
+                                      -
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={999}
+                                      value={qty}
+                                      onChange={(e) =>
+                                        handleChangeCartItemQty(item.cartId, Number(e.target.value) || 1)
+                                      }
+                                      className="w-11 h-7 text-center text-xs font-extrabold text-slate-900 border-x border-slate-200 focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleChangeCartItemQty(item.cartId, qty + 1)}
+                                      className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 font-extrabold text-sm cursor-pointer"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCheckoutCartItems([item.cartId])}
+                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer shadow-2xs transition-colors"
+                                  >
+                                    바로 구매
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
-              </section>
-            )}
+                  )}
+                </section>
+              );
+            })()}
               </div>
             </div>
           </div>
