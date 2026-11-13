@@ -3464,6 +3464,62 @@ export default function UserIntroPage() {
               </div>
             </section>
 
+            {/* 모바일 전용: 재배일정 요청 항목 위 실시간 재배일정 요청 목록 (최근 5건 · 회원명 보안 마스킹 · 지역 · 재배작물 표시) */}
+            <section className="lg:hidden bg-white rounded-[22px] border border-slate-200/85 px-4 py-3.5 shadow-[0_4px_14px_rgba(15,23,42,0.05)] space-y-2.5">
+              <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                  <h2 className="text-[16px] min-[390px]:text-[17px] font-black text-slate-900 tracking-tight truncate">
+                    실시간 재배일정 요청 목록
+                  </h2>
+                </div>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12px] font-extrabold shrink-0">
+                  최근 5건 현황
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {cloudBaeCropList.slice(0, 5).map((crop: any, idx: number) => {
+                  const defaultSurnames = ['최', '배', '김', '박', '이'];
+                  const rawName = String(crop.member_name || '').trim();
+                  const maskedMemberName = rawName
+                    ? `${rawName.slice(0, 1)}**`
+                    : `${defaultSurnames[idx % defaultSurnames.length]}**`;
+                  const compactRegion = String(crop.region || '충청북도 충주시 단월동')
+                    .replace('충청북도', '충북')
+                    .replace('충청남도', '충남')
+                    .replace('경상북도', '경북')
+                    .replace('경상남도', '경남')
+                    .replace('전라북도', '전북')
+                    .replace('전라남도', '전남')
+                    .replace('강원특별자치도', '강원')
+                    .replace('제주특별자치도', '제주')
+                    .replace('경기도', '경기');
+                  const cropDisplay =
+                    crop.crop_title || `${crop.crop_short || '가을배추'} (${crop.cultivar_name || '불암3호'})`;
+
+                  return (
+                    <div
+                      key={crop.request_no || idx}
+                      className="py-2 first:pt-1 last:pb-0.5 flex items-center justify-between gap-2 text-[14.5px] min-[390px]:text-[15.5px]"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-2 py-0.5 rounded-lg bg-[#DDF5E8] text-[#0E6B40] font-black text-[13.5px] min-[390px]:text-[14px] shrink-0">
+                          {maskedMemberName}
+                        </span>
+                        <span className="font-bold text-slate-700 truncate">
+                          {compactRegion}
+                        </span>
+                      </div>
+                      <span className="font-black text-slate-900 shrink-0 text-right">
+                        {cropDisplay}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
             {/* MODULE 3-B: 주요 서비스 바로가기 카드 (모바일 1개당 1라인 / 데스크톱 2열 매트릭스 + PC 상세 키워드) */}
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {/* 1. 재배일정 요청 */}
