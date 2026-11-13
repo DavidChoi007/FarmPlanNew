@@ -12058,65 +12058,130 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* 모바일 전용: 좌측 슬라이드 메뉴 열기 상단 컨트롤 바 + 빠른 메뉴 전환 탭바 */}
-            <div className="lg:hidden space-y-2.5">
-              <div className="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-200 px-3.5 py-3 shadow-xs">
+            {/* 모바일 전용: 가로 스크롤 없이 화면 폭 안에 100% 들어오는 3열×2줄 내부 메뉴 그리드 바 */}
+            <div className="lg:hidden bg-white rounded-2xl border-2 border-emerald-600/80 p-2.5 shadow-xs space-y-2 overflow-hidden">
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsMyPageMobileDrawerOpen(true)}
-                  className="inline-flex items-center gap-2.5 px-4 py-3 min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-extrabold shadow-xs cursor-pointer transition shrink-0"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold shadow-2xs cursor-pointer transition shrink-0"
                 >
-                  <span className="flex flex-col gap-1 w-4" aria-hidden="true">
+                  <span className="flex flex-col gap-0.5 w-3.5" aria-hidden="true">
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                     <span className="block h-0.5 w-full bg-white rounded-full" />
                   </span>
-                  <span>마이페이지 메뉴</span>
+                  <span>전체 메뉴</span>
                 </button>
-                <div className="min-w-0 flex-1 text-right">
-                  <div className="text-[11px] font-bold text-slate-500">현재 선택 메뉴</div>
-                  <div className="text-xs font-extrabold text-emerald-700 truncate">
+
+                <div className="min-w-0 flex-1 text-center px-1">
+                  <div className="text-[10px] font-bold text-slate-400 leading-none">현재 선택 메뉴</div>
+                  <div className="text-xs font-extrabold text-emerald-800 truncate mt-0.5">
                     {myPageTab === 'FARMLAND'
-                      ? '① 내 재배지 등록 · 관리'
+                      ? '① 내 재배지 관리'
                       : myPageTab === 'CROPS'
                       ? '② 내 재배작물 등록'
                       : myPageTab === 'PROGRESS'
-                      ? '③ 작물재배현황 및 진행율'
+                      ? '③ 재배진행율 현황'
                       : myPageTab === 'PURCHASE_HISTORY'
                       ? '④ 농자재 구매 내역'
                       : myPageTab === 'ORDERS'
-                      ? '⑤ 농자재 일괄구매 현황'
+                      ? '⑤ 일괄구매 현황'
                       : myPageTab === 'PROFILE'
-                      ? '⑥ 회원 기본정보 관리'
-                      : '전체 항목 한눈에 보기'}
+                      ? '⑥ 회원 기본정보'
+                      : '전체 항목 통합보기'}
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setMyPageTab('ALL')}
+                  className={`px-2.5 py-2 rounded-xl text-[11px] font-extrabold border transition cursor-pointer shrink-0 ${
+                    myPageTab === 'ALL'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-2xs'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  }`}
+                >
+                  전체 통합보기
+                </button>
               </div>
 
-              {/* 모바일 빠른 탭 스크롤 바 (농자재 구매 내역 등 즉시 전환) */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+              {/* 가로 스크롤 없는 3열 × 2줄 고정 그리드 내부 메뉴 (모바일 폭 맞춤 크기 조정) */}
+              <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { code: 'PURCHASE_HISTORY', label: `농자재 구매 내역 (${stagePurchaseHistory.length})` },
-                  { code: 'ALL', label: '전체 보기' },
-                  { code: 'FARMLAND', label: '① 내 재배지' },
-                  { code: 'CROPS', label: '② 재배작물' },
-                  { code: 'PROGRESS', label: '③ 재배진행율' },
-                  { code: 'ORDERS', label: '⑤ 일괄주문' },
-                  { code: 'PROFILE', label: '⑥ 회원정보' },
-                ].map((mTab) => (
-                  <button
-                    key={mTab.code}
-                    type="button"
-                    onClick={() => setMyPageTab(mTab.code as any)}
-                    className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap border transition cursor-pointer shrink-0 ${
-                      myPageTab === mTab.code
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
-                    }`}
-                  >
-                    {mTab.label}
-                  </button>
-                ))}
+                  {
+                    code: 'FARMLAND',
+                    num: '①',
+                    label: '내 재배지',
+                    sub: `${myFarmlands.length}곳`,
+                  },
+                  {
+                    code: 'CROPS',
+                    num: '②',
+                    label: '재배작물',
+                    sub: `${cloudBaeCropList.length}건`,
+                  },
+                  {
+                    code: 'PROGRESS',
+                    num: '③',
+                    label: '재배진행율',
+                    sub: `${
+                      cloudBaeCropList.length > 0
+                        ? Math.round(
+                            cloudBaeCropList.reduce(
+                              (s: number, c: any) => s + Number(c.progress_pct || 0),
+                              0
+                            ) / cloudBaeCropList.length
+                          )
+                        : 0
+                    }%`,
+                  },
+                  {
+                    code: 'PURCHASE_HISTORY',
+                    num: '④',
+                    label: '구매내역',
+                    sub: `${stagePurchaseHistory.length}건`,
+                  },
+                  {
+                    code: 'ORDERS',
+                    num: '⑤',
+                    label: '일괄주문',
+                    sub: `${myOrders.length}건`,
+                  },
+                  {
+                    code: 'PROFILE',
+                    num: '⑥',
+                    label: '회원정보',
+                    sub: '내 정보',
+                  },
+                ].map((mTab) => {
+                  const isActive = myPageTab === mTab.code;
+                  return (
+                    <button
+                      key={mTab.code}
+                      type="button"
+                      onClick={() => setMyPageTab(mTab.code as any)}
+                      className={`w-full min-w-0 px-2 py-2 rounded-xl border text-left transition cursor-pointer flex items-center justify-between gap-1 ${
+                        isActive
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                          : 'bg-slate-50/80 text-slate-800 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                      }`}
+                    >
+                      <span className="text-[11px] font-extrabold truncate leading-tight">
+                        {mTab.num} {mTab.label}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded-md text-[10px] font-extrabold shrink-0 leading-none ${
+                          isActive
+                            ? 'bg-white text-emerald-800'
+                            : 'bg-white text-emerald-700 border border-slate-200/80'
+                        }`}
+                      >
+                        {mTab.sub}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -12345,8 +12410,8 @@ export default function UserIntroPage() {
                   </div>
                 )}
 
-                {/* 우측 상단 5대 핵심 현황 KPI 요약 카드 (클릭 시 해당 메뉴 내용으로 즉시 전환) */}
-                <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-xs">
+                {/* 우측 상단 5대 핵심 현황 KPI 요약 카드 (PC 전용 · 모바일은 상단 3열×2줄 내부 메뉴 그리드에서 통합 제공) */}
+                <section className="hidden lg:block bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-xs">
                   <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
                     <button
                       type="button"
