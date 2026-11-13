@@ -3177,12 +3177,20 @@ export default function UserIntroPage() {
                 aria-hidden="true"
               />
 
-              {/* 상단 SMART FARM ENGINE 배지 & 메인 헤드라인 */}
+              {/* 상단 SMART FARM ENGINE 배지 (모바일 좌측 정렬 + 우측 스마트 재배 일정 요청 버튼) & 메인 헤드라인 */}
               <div className="relative z-10 flex flex-col items-center lg:items-start text-center lg:text-left">
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#22C55E] text-[#032211] font-black text-[13px] sm:text-xs tracking-wider uppercase shadow-xs">
+                <div className="w-full flex items-center justify-between lg:justify-start gap-2">
+                  <span className="inline-flex items-center h-[34px] px-3.5 sm:px-4 rounded-full bg-[#22C55E] text-[#032211] font-black text-[12.5px] min-[390px]:text-[13px] sm:text-xs tracking-wider uppercase shadow-xs shrink-0">
                     SMART FARM ENGINE
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('재배일정 요청')}
+                    className="lg:hidden inline-flex items-center gap-1 h-[34px] px-3.5 rounded-full bg-white hover:bg-emerald-50 active:scale-[0.98] text-[#05331C] border border-emerald-300/90 font-black text-[13px] min-[390px]:text-[13.5px] tracking-tight shadow-xs transition cursor-pointer shrink-0"
+                  >
+                    <span>스마트 재배 일정 요청</span>
+                    <ChevronRight className="w-4 h-4 text-emerald-700 stroke-[2.8] -mr-0.5" />
+                  </button>
                   <span className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-emerald-400/30 text-emerald-200 text-xs font-extrabold">
                     <span>📍 기후 빅데이터 · 적산온도(GDD/PGDD) · 토양검정 통합 알고리즘</span>
                   </span>
