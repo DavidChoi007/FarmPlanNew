@@ -3878,20 +3878,16 @@ export default function UserIntroPage() {
             </section>
 
             {/* ==================== 모바일 전용: "씨 · 모종 구매" 아래 농자재별 1줄 1개씩 추천 제품 소개 영역 ==================== */}
-            <section className="lg:hidden bg-white rounded-[24px] border border-slate-200/90 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] space-y-3.5">
-              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <ShoppingBag className="w-5 h-5" />
+            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] overflow-hidden shadow-[0_4px_14px_rgba(15,81,50,0.12)]">
+              {/* 상단 타이틀 헤더 영역 (어울리는 라이트 그린 배경 적용) */}
+              <div className="bg-[#E6F7EE] border-b border-[#B7E4CE] px-3.5 py-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-[#0F6E43] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <ShoppingBag className="w-4.5 h-4.5" />
                   </div>
-                  <div className="min-w-0">
-                    <h2 className="text-[18px] min-[390px]:text-[19px] font-black text-slate-900 tracking-tight leading-tight truncate">
-                      농자재별 맞춤 추천 제품
-                    </h2>
-                    <p className="text-[13px] min-[390px]:text-[13.5px] font-bold text-slate-500 mt-0.5 truncate">
-                      5대 농자재 대표 처방 · 터치 시 상세 구매 이동
-                    </p>
-                  </div>
+                  <h2 className="text-[19px] min-[390px]:text-[20.5px] sm:text-[21.5px] font-black text-[#0B3D24] tracking-tight leading-tight truncate">
+                    농자재 제품 추천
+                  </h2>
                 </div>
                 <button
                   type="button"
@@ -3899,15 +3895,15 @@ export default function UserIntroPage() {
                     setMobileAgroCategoryTab('FERTILIZER');
                     setActiveMenu('농작물 구매');
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] font-extrabold inline-flex items-center gap-0.5 shrink-0 cursor-pointer"
+                  className="px-3 py-1 rounded-full bg-white border border-[#95D5B6] text-[#0E6B40] text-[12.5px] min-[390px]:text-[13px] font-extrabold inline-flex items-center gap-0.5 shrink-0 cursor-pointer shadow-2xs"
                 >
                   <span>전체보기</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 -mr-0.5" />
                 </button>
               </div>
 
-              {/* 농자재 카테고리별 1줄 1개씩 추천 제품 카드 리스트 (5종) */}
-              <div className="space-y-3">
+              {/* 농자재 카테고리별 1줄 1개씩 추천 제품 카드 리스트 (좌측 여백 최소화 + 설명 텍스트 확장) */}
+              <div className="p-2.5 space-y-2.5">
                 {[
                   {
                     catKey: 'FERTILIZER' as const,
@@ -3918,7 +3914,7 @@ export default function UserIntroPage() {
                     img: '/images/fertilizers/FERT-PRD-01-thumb.png',
                     brand: '남해화학(주)',
                     name: '슈퍼원예복합 밑거름 특호 20kg',
-                    spec: '완효성 N-P-K + 고토·붕소 함유 맞춤 비료',
+                    spec: '완효성 N-P-K + 고토·붕소 함유로 초기 활착과 뿌리 발달을 돕는 맞춤 밑거름 비료',
                     dosage: '300평 기준 3포 권장',
                     price: '21,500원',
                   },
@@ -3931,7 +3927,7 @@ export default function UserIntroPage() {
                     img: '/images/fertilizers/MAT-NUTR-02-thumb.png',
                     brand: '(주)누보',
                     name: '엔플러스 튼튼칼슘 결구강화제',
-                    spec: '꿀통배추·석회결핍(팁번) 예방 액상 영양제',
+                    spec: '결구기 속잎 세포벽을 강화하고 꿀통배추·석회결핍(팁번)을 예방하는 고농축 액상 영양제',
                     dosage: '500ml (1,000배 희석)',
                     price: '16,800원',
                   },
@@ -3944,7 +3940,7 @@ export default function UserIntroPage() {
                     img: '/images/fertilizers/MAT-PEST-03-thumb.png',
                     brand: '인바이오 / 누보',
                     name: '펀지해머 무름병·노균병 살균제',
-                    spec: '고온다습·강우 예보 연동 사전 예방·치료',
+                    spec: '가을 강우·고온다습 예보 전후 배추 무름병과 노균병을 동시에 사전 예방·치료하는 전문 약제',
                     dosage: '500ml (경엽살포)',
                     price: '21,500원',
                   },
@@ -3957,7 +3953,7 @@ export default function UserIntroPage() {
                     img: '/images/fertilizers/MAT-SEED-01-thumb.jpg',
                     brand: '농우바이오',
                     name: '가을배추 불암3호 코팅종자',
-                    spec: 'CR 무사마귀병 내병계 · 결구력 우수 종자',
+                    spec: 'CR 무사마귀병 내병계 품종으로 초기 발아율이 균일하고 결구력과 저장성이 뛰어난 우량 종자',
                     dosage: '2,000립 (약 7g / 1봉)',
                     price: '15,000원',
                   },
@@ -3970,7 +3966,7 @@ export default function UserIntroPage() {
                     img: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
                     brand: '한팜스마트육묘장',
                     name: '불암3호 128구 트레이 건묘',
-                    spec: '25일 표준 육묘 · 외기순화 뿌리활착 최상',
+                    spec: '25일 표준 육묘와 외기순화를 거쳐 본밭 정식 직후 뿌리 활착이 빠르고 고온에 강한 규격 모종',
                     dosage: '128구 트레이 / 1판',
                     price: '13,500원/판',
                   },
@@ -3982,40 +3978,43 @@ export default function UserIntroPage() {
                       setMobileAgroCategoryTab(item.catKey);
                       setActiveMenu(item.menuName);
                     }}
-                    className="w-full text-left bg-white hover:bg-emerald-50/30 active:scale-[0.99] rounded-[22px] px-3 py-3 border border-slate-200/95 hover:border-emerald-400 flex items-center gap-3 transition cursor-pointer shadow-[0_3px_12px_rgba(15,23,42,0.05)]"
+                    className="w-full text-left bg-white hover:bg-emerald-50/30 active:scale-[0.99] rounded-[18px] pl-1 pr-2.5 py-2.5 border border-slate-200/95 hover:border-emerald-400 flex items-center gap-2 transition cursor-pointer shadow-[0_3px_12px_rgba(15,23,42,0.05)]"
                   >
-                    {/* 좌측 제품 실물 썸네일 이미지 (순백색 배경 + 이미지 크기 최대 확대) */}
-                    <div className="w-[114px] h-[114px] min-[390px]:w-[124px] min-[390px]:h-[124px] sm:w-[132px] sm:h-[132px] rounded-2xl bg-white shrink-0 flex items-center justify-center overflow-hidden">
+                    {/* 좌측 제품 실물 썸네일 이미지 (좌측 끝으로 밀착 배치 + 대형 스케일) */}
+                    <div className="w-[100px] h-[112px] min-[390px]:w-[108px] min-[390px]:h-[118px] sm:w-[118px] sm:h-[124px] rounded-xl bg-white shrink-0 flex items-center justify-center overflow-hidden -ml-0.5">
                       <img
                         src={item.img}
                         alt={item.name}
-                        className="w-full h-full object-contain scale-[1.22]"
+                        className="w-full h-full object-contain scale-[1.24]"
                       />
                     </div>
 
-                    {/* 중앙 농자재 구분 배지 + 제품명 + 핵심 특징 + 권장량/단가 */}
+                    {/* 우측 농자재 구분 배지 + 제품명 + 확장된 설명란(2줄 허용) + 권장량/단가 */}
                     <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12.5px] min-[390px]:text-[13px] font-black tracking-tight ${item.badgeBg}`}
-                        >
-                          {item.categoryLabel}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[12px] font-extrabold">
-                          {item.stageBadge}
-                        </span>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] min-[390px]:text-[12.5px] font-black tracking-tight ${item.badgeBg}`}
+                          >
+                            {item.categoryLabel}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[11.5px] min-[390px]:text-[12px] font-extrabold">
+                            {item.stageBadge}
+                          </span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
                       </div>
 
-                      <div className="text-[17px] min-[390px]:text-[18px] font-black text-slate-950 truncate leading-snug tracking-tight">
+                      <div className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-slate-950 truncate leading-snug tracking-tight">
                         {item.name}
                       </div>
 
-                      <div className="text-[13.5px] min-[390px]:text-[14.5px] font-bold text-slate-600 truncate leading-snug">
+                      <div className="text-[13.5px] min-[390px]:text-[14px] font-bold text-slate-600 leading-[1.35] line-clamp-2 break-keep">
                         {item.spec}
                       </div>
 
-                      <div className="pt-1 flex items-center justify-between gap-2">
-                        <span className="text-[12.5px] min-[390px]:text-[13px] font-bold text-slate-500 truncate">
+                      <div className="pt-0.5 flex items-center justify-between gap-2">
+                        <span className="text-[12px] min-[390px]:text-[12.5px] font-bold text-slate-500 truncate">
                           {item.brand} · {item.dosage}
                         </span>
                         <span className="text-[15.5px] min-[390px]:text-[16.5px] font-black text-emerald-700 font-mono shrink-0">
@@ -4023,9 +4022,6 @@ export default function UserIntroPage() {
                         </span>
                       </div>
                     </div>
-
-                    {/* 우측 화살표 */}
-                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
                 ))}
               </div>
