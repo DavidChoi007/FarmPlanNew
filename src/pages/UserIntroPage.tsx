@@ -2558,38 +2558,27 @@ export default function UserIntroPage() {
 
     return (
       <>
-        {/* ==================== [모바일 전용: 초슬림 상단 고정 화이트 플로팅 2분할 폴더/카드 탭] ==================== */}
-        <div
-          className={`lg:hidden sticky z-20 -mx-4 -mt-5 px-3 pt-1.5 pb-1.5 bg-[#F4F6F5]/95 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_8px_rgba(15,23,42,0.04)] space-y-1.5 ${
-            isLegacyAndroidWebView
-              ? 'top-[calc(max(34px,env(safe-area-inset-top,34px))+3.8rem)] sm:top-[calc(max(34px,env(safe-area-inset-top,34px))+5.3rem)]'
-              : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)]'
-          }`}
-        >
-          {/* 상단 타이틀 & 빠른 일정 요청 버튼 (컴팩트 높이) */}
-          <div className="flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-[17px] font-black tracking-tight text-slate-900 leading-none">
-                재배일정
-              </h2>
-              <span className="px-2 py-0.5 rounded-full bg-[#DDF5E8] text-[11px] font-extrabold text-[#11643C] leading-none">
-                총 {cloudBaeCropList.length}건
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setReqFormSubmitted(false);
-                setScheduleReqModalPos({ x: 0, y: 0 });
-                setIsScheduleReqModelessOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-xs shadow-emerald-600/20 transition cursor-pointer inline-flex items-center gap-1 leading-none"
-            >
-              <FileEdit className="w-3 h-3" />
-              <span>+ 일정 요청</span>
-            </button>
+        {/* ==================== [공통 (모바일 & PC): 홈과 동일한 위치의 메뉴별 3D 와이드 배너] ==================== */}
+        <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+          <div className="relative w-full">
+            <img
+              src={
+                isRequestTab
+                  ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
+                  : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+              }
+              alt={
+                isRequestTab
+                  ? '모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너'
+                  : '생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너'
+              }
+              className="w-full h-auto min-h-[115px] sm:min-h-[140px] object-cover object-center block"
+            />
           </div>
+        </section>
 
+        {/* ==================== [모바일 전용: 배너 아래 2분할 메뉴 버튼 바] ==================== */}
+        <div className="lg:hidden space-y-2.5">
           {/* 일체형 화이트 플로팅 카드 (재배일정 요청 / 재배일정 확인 좌측 정렬 초슬림 탭) */}
           <div className="bg-white rounded-2xl p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] border border-slate-200/85">
             <div className="flex items-stretch justify-start gap-1.5">
@@ -2706,28 +2695,34 @@ export default function UserIntroPage() {
               ))}
             </div>
           </div>
+
+          {/* 모바일 재배일정 요청 페이지 전용: 메뉴버튼 아래 오른쪽에 "재배 일정 요청" 기능 버튼 배치 */}
+          {isRequestTab && (
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-slate-900 truncate">
+                  요청한 내 재배일정 ({cloudBaeCropList.length}건)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReqFormSubmitted(false);
+                  setScheduleReqModalPos({ x: 0, y: 0 });
+                  setIsScheduleReqModelessOpen(true);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-black text-[14.5px] min-[390px]:text-[15.5px] shadow-xs shadow-emerald-600/20 transition cursor-pointer inline-flex items-center gap-1.5 shrink-0"
+              >
+                <FileEdit className="w-4 h-4" />
+                <span>재배 일정 요청</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* ==================== [PC 전용 (lg 이상): 3D 와이드 배너 + 좌측 정렬 1/3 폭 초슬림 폴더형 탭] ==================== */}
+        {/* ==================== [PC 전용 (lg 이상): 좌측 정렬 1/3 폭 초슬림 폴더형 탭] ==================== */}
         <div className="hidden lg:block space-y-4">
-          <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
-            <div className="relative w-full">
-              <img
-                src={
-                  isRequestTab
-                    ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
-                    : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
-                }
-                alt={
-                  isRequestTab
-                    ? '모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너'
-                    : '생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너'
-                }
-                className="w-full h-auto min-h-[140px] object-cover object-center block"
-              />
-            </div>
-          </section>
-
           <section className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
             <div className="bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex items-stretch justify-start gap-2">
               {[
@@ -7809,8 +7804,8 @@ export default function UserIntroPage() {
             {renderScheduleNavigationTabs()}
 
             {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
-            <section className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+            <section className="bg-white rounded-3xl border border-slate-200/90 p-3.5 sm:p-7 shadow-2xs space-y-5">
+              <div className="hidden lg:flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div className="flex items-start sm:items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
                     <FileEdit className="w-5 h-5" />
@@ -8532,8 +8527,29 @@ export default function UserIntroPage() {
                   : 'top-[calc(env(safe-area-inset-top,0px)+3.8rem)] sm:top-[calc(env(safe-area-inset-top,0px)+5.3rem)] bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)]'
               }`}
             >
-              {/* 1. 상단 고정 영역: 모바일 타이틀 + 일체형 화이트 플로팅 5대 카테고리 카드 독 (항상 고정 노출) */}
+              {/* 1. 상단 고정 영역: 홈과 동일한 상단 위치의 메뉴별 3D 와이드 배너 + 모바일 타이틀 + 일체형 화이트 플로팅 5대 카테고리 카드 독 */}
               <div className="shrink-0 px-3 pt-1.5 pb-1.5 bg-[#F4F6F5] z-10 space-y-1.5">
+                {/* 홈과 동일한 상단 위치의 농작물 구매 카테고리별 3D 와이드 배너 이미지 */}
+                <section className="rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+                  <div className="relative">
+                    <img
+                      src={
+                        mobileAgroCategoryTab === 'NUTRIENT' || activeMenu === '영양제'
+                          ? '/images/user-nutrient-3d-banner.jpg?v=20261109'
+                          : mobileAgroCategoryTab === 'PESTICIDE' || activeMenu === '병해충관리제' || activeMenu === '병해충방지제'
+                          ? '/images/user-pesticide-3d-banner.jpg?v=20261109'
+                          : mobileAgroCategoryTab === 'SEED' || activeMenu === '씨'
+                          ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
+                          : mobileAgroCategoryTab === 'SEEDLING' || activeMenu === '모종'
+                          ? '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+                          : '/images/user-fertilizer-3d-banner.jpg?v=20261109'
+                      }
+                      alt="농작물 구매 페이지 전용 3D 농부 캐릭터 와이드 배너"
+                      className="w-full h-auto min-h-[105px] sm:min-h-[135px] object-cover object-center block"
+                    />
+                  </div>
+                </section>
+
                 {/* 상단 타이틀 & 전체보기·검색 버튼 */}
                 <div className="flex items-center justify-between gap-2 px-1">
                   <div className="flex items-center gap-1.5">
