@@ -3465,20 +3465,20 @@ export default function UserIntroPage() {
             </section>
 
             {/* 모바일 전용: 재배일정 요청 항목 위 실시간 재배일정 요청 목록 (최근 5건 · 회원명 보안 마스킹 · 지역 · 재배작물 표시) */}
-            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] px-4 py-3.5 shadow-[0_4px_14px_rgba(15,81,50,0.12)] space-y-2.5">
-              <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100">
+            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] overflow-hidden shadow-[0_4px_14px_rgba(15,81,50,0.12)]">
+              <div className="bg-[#E6F7EE] border-b border-[#B7E4CE] px-4 py-3 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
-                  <h2 className="text-[16px] min-[390px]:text-[17px] font-black text-slate-900 tracking-tight truncate">
+                  <span className="w-3 h-3 rounded-full bg-[#0F6E43] shrink-0" />
+                  <h2 className="text-[18.5px] min-[390px]:text-[20px] sm:text-[21px] font-black text-[#0B3D24] tracking-tight truncate">
                     실시간 재배일정 요청 목록
                   </h2>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12px] font-extrabold shrink-0">
+                <span className="px-2.5 py-1 rounded-full bg-white border border-[#95D5B6] text-[#0E6B40] text-[12.5px] min-[390px]:text-[13px] font-extrabold shrink-0 shadow-2xs">
                   최근 5건 현황
                 </span>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="px-4 py-2.5 divide-y divide-slate-100">
                 {cloudBaeCropList.slice(0, 5).map((crop: any, idx: number) => {
                   const defaultSurnames = ['최', '배', '김', '박', '이'];
                   const rawName = String(crop.member_name || '').trim();
@@ -3501,7 +3501,7 @@ export default function UserIntroPage() {
                   return (
                     <div
                       key={crop.request_no || idx}
-                      className="py-2 first:pt-1 last:pb-0.5 flex items-center justify-between gap-2 text-[14.5px] min-[390px]:text-[15.5px]"
+                      className="py-2 first:pt-1 last:pb-1 flex items-center justify-between gap-2 text-[14.5px] min-[390px]:text-[15.5px]"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="px-2 py-0.5 rounded-lg bg-[#DDF5E8] text-[#0E6B40] font-black text-[13.5px] min-[390px]:text-[14px] shrink-0">
