@@ -6495,150 +6495,200 @@ export default function UserIntroPage() {
                 </button>
               </div>
 
-              {/* 작물재배 리스트 (한 라인에 1개씩 표시 + 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) */}
+              {/* 작물재배 리스트 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 표시 + 아코디언) */}
               <div className="space-y-3.5">
-                {cloudBaeCropList.map((crop, idx) => {
-                  const isSelected = crop.request_no === selectedRequestNo;
-                  const isExpanded = expandedScheduleRequestNo === crop.request_no;
-                  const toggleCropAccordion = () => {
-                    if (expandedScheduleRequestNo === crop.request_no) {
-                      setExpandedScheduleRequestNo(null);
-                      setHoveredProvisionItem(null);
-                      setClickedProvisionItem(null);
-                    } else {
-                      setSelectedRequestNo(crop.request_no);
-                      setExpandedScheduleRequestNo(crop.request_no);
-                      setMobileScheduleStep('detail');
+                {(() => {
+                  const rawActiveCropIdx = cloudBaeCropList.findIndex(
+                    (c) => c.request_no === selectedRequestNo
+                  );
+                  const activeMobileCropIdx = rawActiveCropIdx >= 0 ? rawActiveCropIdx : 0;
+                  const totalCropCount = cloudBaeCropList.length;
+
+                  const handleStepMobileCrop = (targetIdx: number) => {
+                    if (targetIdx < 0 || targetIdx >= totalCropCount) return;
+                    const targetCrop = cloudBaeCropList[targetIdx];
+                    if (!targetCrop) return;
+                    setSelectedRequestNo(targetCrop.request_no);
+                    if (expandedScheduleRequestNo) {
+                      setExpandedScheduleRequestNo(targetCrop.request_no);
                     }
+                    setHoveredProvisionItem(null);
+                    setClickedProvisionItem(null);
                   };
-                  return (
-                    <div key={crop.request_no} className="space-y-4">
+
+                  return cloudBaeCropList.map((crop, idx) => {
+                    const isSelected = crop.request_no === selectedRequestNo;
+                    const isExpanded = expandedScheduleRequestNo === crop.request_no;
+                    const isMobileVisible = idx === activeMobileCropIdx;
+                    const toggleCropAccordion = () => {
+                      if (expandedScheduleRequestNo === crop.request_no) {
+                        setExpandedScheduleRequestNo(null);
+                        setHoveredProvisionItem(null);
+                        setClickedProvisionItem(null);
+                      } else {
+                        setSelectedRequestNo(crop.request_no);
+                        setExpandedScheduleRequestNo(crop.request_no);
+                        setMobileScheduleStep('detail');
+                      }
+                    };
+                    return (
                       <div
-                        onClick={toggleCropAccordion}
-                        className={`w-full rounded-2xl px-4 sm:px-6 py-4 border-2 transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
-                          isExpanded
-                            ? 'border-emerald-600 bg-[#F2FBF7] shadow-xs'
-                            : isSelected
-                            ? 'border-emerald-400 bg-emerald-50/30'
-                            : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/70'
-                        }`}
+                        key={crop.request_no}
+                        className={`${isMobileVisible ? 'block' : 'hidden lg:block'} space-y-4`}
                       >
-                        {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 */}
-                        <div className="flex items-center gap-3.5 min-w-0 lg:w-[31%] shrink-0">
-                          <span
-                            className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
-                              isExpanded || isSelected
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-100 text-slate-700 border border-slate-200'
-                            }`}
-                          >
-                            {idx + 1}
-                          </span>
-
-                          <div
-                            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
-                          >
-                            <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
-                            <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[13px] sm:text-sm">
-                                {crop.badge}
-                              </span>
-                              {isExpanded && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[12.5px] sm:text-[13px]">
-                                  상세 타임라인 열림
-                                </span>
-                              )}
-                              {!isExpanded && isSelected && (
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[12.5px] sm:text-[13px]">
-                                  현재 선택됨
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 truncate leading-snug">
-                              {crop.crop_title}
-                            </h3>
-                          </div>
-                        </div>
-
-                        {/* 중앙 1: 재배 지역 · 평수 · 정식(파종)일 */}
-                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[32%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
-                          <div className="min-w-0">
-                            <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">재배지 · 면적</div>
-                            <div className="text-[16px] sm:text-[18px] font-black text-slate-900 truncate mt-0.5">
-                              {crop.region} · <span className="text-emerald-700">{crop.area_pyeong}평</span>
-                            </div>
-                          </div>
-                          <div className="shrink-0">
-                            <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">기준 정식일</div>
-                            <div className="text-[16px] sm:text-[18px] font-mono font-black text-emerald-700 mt-0.5">
-                              {crop.planting_label}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 중앙 2: 기상 요약 및 재배 진행상태 프로그레스 바 */}
-                        <div className="lg:w-[23%] space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
-                              완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정
-                            </span>
-                            <span className="text-[16px] sm:text-lg font-black text-emerald-700">
-                              {crop.progress_pct}%
-                            </span>
-                          </div>
-                          <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                            <div
-                              style={{ width: `${crop.progress_pct}%` }}
-                              className="h-full rounded-full bg-emerald-600 transition-all"
-                            />
-                          </div>
-                          <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate">
-                            진행상태: <strong className="text-slate-900 font-black">{crop.status_text}</strong>
-                            {Number(crop.pending_modified_count || 0) > 0 && (
-                              <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-black">
-                                수정일 미완료 {crop.pending_modified_count}건
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 우측: 일정 상세 열기/접기 + 삭제 액션 버튼 */}
-                        <div className="lg:w-auto shrink-0 flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleCropAccordion();
-                            }}
-                            className={`flex-1 lg:flex-none px-4 py-3 rounded-xl font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
-                              isExpanded
-                                ? 'bg-emerald-600 text-white shadow-2xs'
-                                : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
-                            }`}
-                          >
-                            <span>{isExpanded ? '일정 상세 접기' : '일정 상세 보기'}</span>
-                            <ChevronRight
-                              className={`w-4 h-4 transition-transform duration-200 ${
-                                isExpanded ? 'rotate-90' : ''
+                        <div
+                          onClick={toggleCropAccordion}
+                          className={`w-full rounded-2xl px-4 sm:px-6 py-4 border-2 transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                            isExpanded
+                              ? 'border-emerald-600 bg-[#F2FBF7] shadow-xs'
+                              : isSelected
+                              ? 'border-emerald-400 bg-emerald-50/30'
+                              : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/70'
+                          }`}
+                        >
+                          {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 */}
+                          <div className="flex items-center gap-3.5 min-w-0 lg:w-[31%] shrink-0">
+                            <span
+                              className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
+                                isExpanded || isSelected
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
                               }`}
-                            />
-                          </button>
+                            >
+                              {idx + 1}
+                            </span>
 
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
-                            title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
-                            className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>삭제</span>
-                          </button>
+                            <div
+                              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
+                            >
+                              <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
+                              <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[13px] sm:text-sm">
+                                  {crop.badge}
+                                </span>
+                                {isExpanded && (
+                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[12.5px] sm:text-[13px]">
+                                    상세 타임라인 열림
+                                  </span>
+                                )}
+                                {!isExpanded && isSelected && (
+                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[12.5px] sm:text-[13px]">
+                                    현재 선택됨
+                                  </span>
+                                )}
+                              </div>
+                              <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 truncate leading-snug">
+                                {crop.crop_title}
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* 중앙 1: 재배 지역 · 평수 · 정식(파종)일 */}
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[32%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
+                            <div className="min-w-0">
+                              <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">재배지 · 면적</div>
+                              <div className="text-[16px] sm:text-[18px] font-black text-slate-900 truncate mt-0.5">
+                                {crop.region} · <span className="text-emerald-700">{crop.area_pyeong}평</span>
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">기준 정식일</div>
+                              <div className="text-[16px] sm:text-[18px] font-mono font-black text-emerald-700 mt-0.5">
+                                {crop.planting_label}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 중앙 2: 기상 요약 및 재배 진행상태 프로그레스 바 */}
+                          <div className="lg:w-[23%] space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
+                                완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정
+                              </span>
+                              <span className="text-[16px] sm:text-lg font-black text-emerald-700">
+                                {crop.progress_pct}%
+                              </span>
+                            </div>
+                            <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                              <div
+                                style={{ width: `${crop.progress_pct}%` }}
+                                className="h-full rounded-full bg-emerald-600 transition-all"
+                              />
+                            </div>
+                            <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate">
+                              진행상태: <strong className="text-slate-900 font-black">{crop.status_text}</strong>
+                              {Number(crop.pending_modified_count || 0) > 0 && (
+                                <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-black">
+                                  수정일 미완료 {crop.pending_modified_count}건
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* 우측: 일정 상세 열기/접기 + 삭제 액션 버튼 */}
+                          <div className="lg:w-auto shrink-0 flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCropAccordion();
+                              }}
+                              className={`flex-1 lg:flex-none px-4 py-3 rounded-xl font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                                isExpanded
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
+                              }`}
+                            >
+                              <span>{isExpanded ? '일정 상세 접기' : '일정 상세 보기'}</span>
+                              <ChevronRight
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isExpanded ? 'rotate-90' : ''
+                                }`}
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                              title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
+                              className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>삭제</span>
+                            </button>
+                          </div>
                         </div>
-                      </div>
+
+                        {/* 모바일 전용: (현재 번호 / 전체 갯수) 표시 및 이전 / 다음 항목 로딩 버튼 */}
+                        <div className="lg:hidden rounded-2xl bg-slate-50 border border-slate-200/90 px-3.5 py-3 flex flex-col items-center gap-2.5 shadow-2xs">
+                          <div className="text-[15px] font-black text-slate-900 tracking-tight font-mono">
+                            ({idx + 1} / {totalCropCount})
+                          </div>
+                          <div className="w-full grid grid-cols-2 gap-2.5">
+                            <button
+                              type="button"
+                              disabled={idx <= 0}
+                              onClick={() => handleStepMobileCrop(idx - 1)}
+                              className="py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-400 active:scale-[0.99] text-slate-900 font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
+                            >
+                              <ChevronLeft className="w-4 h-4 text-emerald-700" />
+                              <span>이전</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx >= totalCropCount - 1}
+                              onClick={() => handleStepMobileCrop(idx + 1)}
+                              className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
+                            >
+                              <span>다음</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
 
                       {/* ==================== [리스트 항목 바로 아래 아코디언 확장 영역: ① 생육과정 정밀 타임라인(48주) & ② 전 생육과정 추천 농자재 단계별 리스트 & 단번에 구매하기] ==================== */}
                       {isExpanded && provisionData && (
@@ -9146,7 +9196,8 @@ export default function UserIntroPage() {
                       )}
                     </div>
                   );
-                })}
+                });
+                })()}
               </div>
             </section>
 
