@@ -5074,7 +5074,13 @@ export default function UserIntroPage() {
             <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
               <div className="relative w-full">
                 <img
-                  src="/images/user-intro-3d-farmers-banner.jpg?v=20261109-panoramic"
+                  src="/images/user-intro-3d-farmers-original.jpg?v=20261113-original"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.includes('user-intro-3d-farmers-banner.jpg')) {
+                      target.src = '/images/user-intro-3d-farmers-banner.jpg?v=20261113-original';
+                    }
+                  }}
                   alt="풍작을 기뻐하는 3인의 3D 농부 캐릭터와 멀리 배추밭에서 일하는 농부들"
                   className="w-full h-auto min-h-[115px] sm:min-h-[140px] object-cover object-center block"
                 />
