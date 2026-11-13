@@ -3869,6 +3869,160 @@ export default function UserIntroPage() {
               </button>
             </section>
 
+            {/* ==================== 모바일 전용: "씨 · 모종 구매" 아래 농자재별 1줄 1개씩 추천 제품 소개 영역 ==================== */}
+            <section className="lg:hidden bg-white rounded-[24px] border border-slate-200/90 p-4 shadow-[0_4px_14px_rgba(15,23,42,0.05)] space-y-3.5">
+              <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-[18px] min-[390px]:text-[19px] font-black text-slate-900 tracking-tight leading-tight truncate">
+                      농자재별 맞춤 추천 제품
+                    </h2>
+                    <p className="text-[13px] min-[390px]:text-[13.5px] font-bold text-slate-500 mt-0.5 truncate">
+                      5대 농자재 대표 처방 · 터치 시 상세 구매 이동
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileAgroCategoryTab('FERTILIZER');
+                    setActiveMenu('농작물 구매');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] font-extrabold inline-flex items-center gap-0.5 shrink-0 cursor-pointer"
+                >
+                  <span>전체보기</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* 농자재 카테고리별 1줄 1개씩 추천 제품 카드 리스트 (5종) */}
+              <div className="space-y-3">
+                {[
+                  {
+                    catKey: 'FERTILIZER' as const,
+                    menuName: '비료',
+                    categoryLabel: '비료 추천',
+                    badgeBg: 'bg-[#6E6235] text-white',
+                    stageBadge: '정식전 · 밑거름',
+                    img: '/images/fertilizers/FERT-PRD-01-thumb.png',
+                    brand: '남해화학(주)',
+                    name: '슈퍼원예복합 밑거름 특호 20kg',
+                    spec: '완효성 N-P-K + 고토·붕소 함유 맞춤 비료',
+                    dosage: '300평 기준 3포 권장',
+                    price: '21,500원',
+                  },
+                  {
+                    catKey: 'NUTRIENT' as const,
+                    menuName: '영양제',
+                    categoryLabel: '영양제 추천',
+                    badgeBg: 'bg-[#2E7D78] text-white',
+                    stageBadge: '결구중기 · 엽면시비',
+                    img: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+                    brand: '(주)누보',
+                    name: '엔플러스 튼튼칼슘 결구강화제',
+                    spec: '꿀통배추·석회결핍(팁번) 예방 액상 영양제',
+                    dosage: '500ml (1,000배 희석)',
+                    price: '16,800원',
+                  },
+                  {
+                    catKey: 'PESTICIDE' as const,
+                    menuName: '병해충관리제',
+                    categoryLabel: '병해충방지제 추천',
+                    badgeBg: 'bg-[#E57368] text-white',
+                    stageBadge: '강우전후 · 예방방제',
+                    img: '/images/fertilizers/MAT-PEST-03-thumb.png',
+                    brand: '인바이오 / 누보',
+                    name: '펀지해머 무름병·노균병 살균제',
+                    spec: '고온다습·강우 예보 연동 사전 예방·치료',
+                    dosage: '500ml (경엽살포)',
+                    price: '21,500원',
+                  },
+                  {
+                    catKey: 'SEED' as const,
+                    menuName: '씨',
+                    categoryLabel: '씨(종자) 추천',
+                    badgeBg: 'bg-[#C88A2B] text-white',
+                    stageBadge: '발아보증 · 내병성',
+                    img: '/images/fertilizers/MAT-SEED-01-thumb.jpg',
+                    brand: '농우바이오',
+                    name: '가을배추 불암3호 코팅종자',
+                    spec: 'CR 무사마귀병 내병계 · 결구력 우수 종자',
+                    dosage: '2,000립 (약 7g / 1봉)',
+                    price: '15,000원',
+                  },
+                  {
+                    catKey: 'SEEDLING' as const,
+                    menuName: '모종',
+                    categoryLabel: '모종 추천',
+                    badgeBg: 'bg-[#68B678] text-white',
+                    stageBadge: '정식적기 · 규격건묘',
+                    img: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
+                    brand: '한팜스마트육묘장',
+                    name: '불암3호 128구 트레이 건묘',
+                    spec: '25일 표준 육묘 · 외기순화 뿌리활착 최상',
+                    dosage: '128구 트레이 / 1판',
+                    price: '13,500원/판',
+                  },
+                ].map((item) => (
+                  <button
+                    key={item.catKey}
+                    type="button"
+                    onClick={() => {
+                      setMobileAgroCategoryTab(item.catKey);
+                      setActiveMenu(item.menuName);
+                    }}
+                    className="w-full text-left bg-slate-50/75 hover:bg-emerald-50/40 active:scale-[0.99] rounded-[20px] p-3 border border-slate-200/90 hover:border-emerald-400 flex items-center gap-3.5 transition cursor-pointer shadow-2xs"
+                  >
+                    {/* 좌측 제품 실물 썸네일 이미지 */}
+                    <div className="w-[88px] h-[88px] min-[390px]:w-[96px] min-[390px]:h-[96px] rounded-2xl bg-white border border-slate-200/80 p-1.5 shrink-0 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={item.img}
+                        alt={item.name}
+                        className="w-full h-full object-contain scale-105"
+                      />
+                    </div>
+
+                    {/* 중앙 농자재 구분 배지 + 제품명 + 핵심 특징 + 권장량/단가 */}
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12.5px] min-[390px]:text-[13px] font-black tracking-tight ${item.badgeBg}`}
+                        >
+                          {item.categoryLabel}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[12px] font-extrabold">
+                          {item.stageBadge}
+                        </span>
+                      </div>
+
+                      <div className="text-[17px] min-[390px]:text-[18px] font-black text-slate-950 truncate leading-snug tracking-tight">
+                        {item.name}
+                      </div>
+
+                      <div className="text-[13.5px] min-[390px]:text-[14.5px] font-bold text-slate-600 truncate leading-snug">
+                        {item.spec}
+                      </div>
+
+                      <div className="pt-1 flex items-center justify-between gap-2">
+                        <span className="text-[12.5px] min-[390px]:text-[13px] font-bold text-slate-500 truncate">
+                          {item.brand} · {item.dosage}
+                        </span>
+                        <span className="text-[15.5px] min-[390px]:text-[16.5px] font-black text-emerald-700 font-mono shrink-0">
+                          {item.price}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 우측 화살표 */}
+                    <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </section>
+
             {/* ==================== MODULE 4-A (PC 전용): 생육과정별 상세 재배일정 제공 & 지역별 추천 일정 현황 ==================== */}
             <section className="hidden lg:block bg-white rounded-3xl border border-slate-200/90 p-7 shadow-2xs space-y-6">
               {/* 상단 헤더 */}
