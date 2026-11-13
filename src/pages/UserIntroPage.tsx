@@ -6977,9 +6977,9 @@ export default function UserIntroPage() {
                                                       : 'border-[#0FA968]'
                                                   }`}
                                                 >
-                                                  {/* 상단 헤더 바: 좌측 체크박스 + 타이틀 / 우측 추천점수 배지 */}
-                                                  <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
-                                                    <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0">
+                                                  {/* 상단 헤더 바: 1라인 전체를 사용하여 체크박스 + 타이틀 배치 */}
+                                                  <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+                                                    <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
                                                       <input
                                                         type="checkbox"
                                                         checked={isChecked}
@@ -6988,25 +6988,20 @@ export default function UserIntroPage() {
                                                         }
                                                         className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
                                                       />
-                                                      <span className="text-[14.5px] font-black text-slate-950 leading-snug break-keep">
+                                                      <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
                                                         해당 생육과정 맞춤 추천상품 (1종)
                                                       </span>
-                                                    </label>
-                                                    <div className="flex items-center gap-1.5 shrink-0">
                                                       {purchasedInfo.isPurchased && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black shadow-2xs whitespace-nowrap">
+                                                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black shadow-2xs whitespace-nowrap shrink-0">
                                                           <CheckCircle2 className="w-3 h-3" />
                                                           <span>구매완료 ({purchasedInfo.totalQty}{unitLabel})</span>
                                                         </span>
                                                       )}
-                                                      <span className="px-2.5 py-1 rounded-full bg-[#C7F3DE] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
-                                                        추천점수 {topMat.match_score || 96}점
-                                                      </span>
-                                                    </div>
+                                                    </label>
                                                   </div>
 
                                                   {/* 본문 영역 */}
-                                                  <div className="p-3.5 space-y-3">
+                                                  <div className="p-3 sm:p-3.5 space-y-2.5">
                                                     {purchasedInfo.isPurchased && (
                                                       <div className="rounded-xl bg-emerald-50 border border-emerald-300 px-3 py-2 flex items-center justify-between gap-2 text-xs">
                                                         <div className="font-extrabold text-emerald-950 flex items-center gap-1.5 min-w-0">
@@ -7028,9 +7023,24 @@ export default function UserIntroPage() {
                                                       </div>
                                                     )}
 
-                                                    {/* 제품 썸네일(좌) + 핵심 상품정보(우) 2열 조화 배치 */}
-                                                    <div className="flex items-stretch gap-3">
-                                                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                                    {/* 상단: 제품명 상단 우측에 추천점수 배치 + 상품명을 1라인 전체 폭으로 사용 */}
+                                                    <div className="space-y-1">
+                                                      <div className="flex items-center justify-between gap-1.5">
+                                                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
+                                                          {prodDisp.categoryTag}
+                                                        </span>
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
+                                                          추천점수 {topMat.match_score || 96}점
+                                                        </span>
+                                                      </div>
+                                                      <div className="w-full font-black text-[15.5px] sm:text-[17px] text-slate-950 leading-snug truncate">
+                                                        {prodDisp.cleanTitle}
+                                                      </div>
+                                                    </div>
+
+                                                    {/* 중단: 좌측 제품 썸네일 + 우측 성분·권장수량·단가 조화 배치 */}
+                                                    <div className="flex items-center gap-3 pt-0.5">
+                                                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
                                                         <img
                                                           src={resolveAgroProductThumbUrl(topMat)}
                                                           alt={topMat.product_name}
@@ -7038,34 +7048,26 @@ export default function UserIntroPage() {
                                                           className="w-full h-full object-contain"
                                                         />
                                                       </div>
-                                                      <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
-                                                        <div>
-                                                          <span className="inline-block max-w-full px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11.5px] font-bold truncate">
-                                                            {prodDisp.categoryTag}
-                                                          </span>
-                                                          <div className="font-black text-[16px] sm:text-[17px] text-slate-950 leading-tight break-keep mt-1">
-                                                            {prodDisp.cleanTitle}
-                                                          </div>
-                                                          <div className="text-[12.5px] font-semibold text-slate-600 truncate mt-1">
-                                                            {prodDisp.formulaLine}
-                                                          </div>
+                                                      <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
+                                                        <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
+                                                          {prodDisp.formulaLine}
                                                         </div>
-                                                        <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1.5">
-                                                          <span className="px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                        <div>
+                                                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
                                                             {areaPyeongVal.toLocaleString()}평 권장 {defaultQty}
                                                             {unitLabel}
                                                           </span>
-                                                          <span className="text-[14px] font-black text-slate-950 whitespace-nowrap">
-                                                            단가 {unitPriceVal.toLocaleString()}원
-                                                          </span>
+                                                        </div>
+                                                        <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
+                                                          단가 {unitPriceVal.toLocaleString()}원
                                                         </div>
                                                       </div>
                                                     </div>
 
-                                                    {/* 구매 수량 스텝퍼 + 총액 단일 바 */}
-                                                    <div className="rounded-xl bg-[#EEF3F7] px-3.5 py-2.5 flex items-center justify-between gap-2 flex-nowrap">
-                                                      <div className="flex items-center gap-2 shrink-0">
-                                                        <span className="text-[13.5px] font-extrabold text-slate-900 whitespace-nowrap">
+                                                    {/* 구매 수량 스텝퍼 + 총액 박스 (모바일 영역 이탈 방지) */}
+                                                    <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
+                                                      <div className="flex items-center gap-1.5 shrink-0">
+                                                        <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
                                                           구매 수량
                                                         </span>
                                                         <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
@@ -7081,9 +7083,9 @@ export default function UserIntroPage() {
                                                                 true
                                                               )
                                                             }
-                                                            className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
+                                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
                                                           >
-                                                            <Minus className="w-3.5 h-3.5" />
+                                                            <Minus className="w-3 h-3" />
                                                           </button>
                                                           <input
                                                             type="number"
@@ -7100,7 +7102,7 @@ export default function UserIntroPage() {
                                                                 false
                                                               )
                                                             }
-                                                            className="w-10 h-8 text-center bg-white font-mono text-[14px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                                            className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
                                                           />
                                                           <button
                                                             type="button"
@@ -7114,18 +7116,18 @@ export default function UserIntroPage() {
                                                                 true
                                                               )
                                                             }
-                                                            className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
+                                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer font-black"
                                                           >
-                                                            <Plus className="w-3.5 h-3.5" />
+                                                            <Plus className="w-3 h-3" />
                                                           </button>
                                                         </div>
                                                       </div>
-                                                      <span className="text-[15.5px] font-black text-emerald-700 whitespace-nowrap">
+                                                      <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
                                                         총액 {(unitPriceVal * recQtyVal).toLocaleString()}원
                                                       </span>
                                                     </div>
 
-                                                    {/* 하단 액션 버튼 (좌측 30% 세부보기 / 우측 70% 추천 제품 구매) */}
+                                                    {/* 하단 액션 버튼 (좌측 세부보기 / 우측 제품 구매) */}
                                                     <div className="grid grid-cols-10 gap-2">
                                                       <button
                                                         type="button"
@@ -7133,7 +7135,7 @@ export default function UserIntroPage() {
                                                           setDetailModalPos({ x: 0, y: 0 });
                                                           setClickedProvisionItem(item);
                                                         }}
-                                                        className="col-span-3 py-2.5 px-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 text-[13.5px] font-extrabold cursor-pointer whitespace-nowrap text-center"
+                                                        className="col-span-3 py-2.5 px-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-900 text-[13px] font-extrabold cursor-pointer whitespace-nowrap text-center"
                                                       >
                                                         세부보기
                                                       </button>
@@ -7147,13 +7149,13 @@ export default function UserIntroPage() {
                                                             qty: recQtyVal,
                                                           })
                                                         }
-                                                        className="col-span-7 py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[14px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                                        className="col-span-7 py-2.5 px-2.5 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                                                       >
                                                         <ShoppingBag className="w-4 h-4 shrink-0" />
                                                         <span>
                                                           {purchasedInfo.isPurchased
                                                             ? `추가 구매 (${recQtyVal}${unitLabel})`
-                                                            : `추천 제품 구매 (${recQtyVal}${unitLabel})`}
+                                                            : `제품 구매 (${recQtyVal}${unitLabel})`}
                                                         </span>
                                                       </button>
                                                     </div>
@@ -7611,9 +7613,9 @@ export default function UserIntroPage() {
 
                                       return (
                                         <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
-                                          {/* 상단 헤더 바 */}
-                                          <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3.5 py-2.5 flex items-center justify-between gap-2">
-                                            <label className="flex items-center gap-2.5 cursor-pointer select-none min-w-0">
+                                          {/* 상단 헤더 바: 1라인 전체를 사용하여 체크박스 + 타이틀 배치 */}
+                                          <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+                                            <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
                                               <input
                                                 type="checkbox"
                                                 checked={dIsChecked}
@@ -7622,27 +7624,38 @@ export default function UserIntroPage() {
                                                 }
                                                 className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
                                               />
-                                              <span className="text-[14px] font-black text-slate-950 leading-snug break-keep">
+                                              <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
                                                 해당 생육과정 맞춤 추천상품 (1종)
                                               </span>
-                                            </label>
-                                            <div className="flex items-center gap-1.5 shrink-0">
                                               {dPurchasedInfo.isPurchased && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-black whitespace-nowrap">
+                                                <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black whitespace-nowrap shrink-0">
                                                   <CheckCircle2 className="w-3 h-3" />
                                                   <span>구매완료 ({dPurchasedInfo.totalQty}{dUnitLabel})</span>
                                                 </span>
                                               )}
-                                              <span className="px-2.5 py-1 rounded-full bg-[#C7F3DE] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
-                                                추천점수 {dTopMat.match_score || 96}점
-                                              </span>
-                                            </div>
+                                            </label>
                                           </div>
 
                                           {/* 본문 영역 */}
-                                          <div className="p-3.5 space-y-3">
-                                            <div className="flex items-stretch gap-3">
-                                              <div className="w-24 h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                          <div className="p-3 sm:p-3.5 space-y-2.5">
+                                            {/* 상단: 제품명 상단 우측에 추천점수 배치 + 상품명을 1라인 전체 폭으로 사용 */}
+                                            <div className="space-y-1">
+                                              <div className="flex items-center justify-between gap-1.5">
+                                                <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
+                                                  {dProdDisp.categoryTag}
+                                                </span>
+                                                <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
+                                                  추천점수 {dTopMat.match_score || 96}점
+                                                </span>
+                                              </div>
+                                              <div className="w-full font-black text-[15.5px] sm:text-[16.5px] text-slate-950 leading-snug truncate">
+                                                {dProdDisp.cleanTitle}
+                                              </div>
+                                            </div>
+
+                                            {/* 중단: 좌측 제품 썸네일 + 우측 성분·권장수량·단가 조화 배치 */}
+                                            <div className="flex items-center gap-3 pt-0.5">
+                                              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
                                                 <img
                                                   src={resolveAgroProductThumbUrl(dTopMat)}
                                                   alt={dTopMat.product_name}
@@ -7650,33 +7663,25 @@ export default function UserIntroPage() {
                                                   className="w-full h-full object-contain"
                                                 />
                                               </div>
-                                              <div className="min-w-0 flex-1 flex flex-col justify-between py-0.5">
-                                                <div>
-                                                  <span className="inline-block max-w-full px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11.5px] font-bold truncate">
-                                                    {dProdDisp.categoryTag}
-                                                  </span>
-                                                  <div className="font-black text-[15.5px] text-slate-950 leading-tight break-keep mt-1">
-                                                    {dProdDisp.cleanTitle}
-                                                  </div>
-                                                  <div className="text-[12px] font-semibold text-slate-600 truncate mt-1">
-                                                    {dProdDisp.formulaLine}
-                                                  </div>
+                                              <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
+                                                <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
+                                                  {dProdDisp.formulaLine}
                                                 </div>
-                                                <div className="flex items-center justify-between gap-1.5 flex-wrap pt-1.5">
-                                                  <span className="px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[12px] font-extrabold whitespace-nowrap">
+                                                <div>
+                                                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
                                                     {dAreaPyeong.toLocaleString()}평 권장 {dDefaultQty}
                                                     {dUnitLabel}
                                                   </span>
-                                                  <span className="text-[13.5px] font-black text-slate-950 whitespace-nowrap">
-                                                    단가 {dUnitPrice.toLocaleString()}원
-                                                  </span>
+                                                </div>
+                                                <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
+                                                  단가 {dUnitPrice.toLocaleString()}원
                                                 </div>
                                               </div>
                                             </div>
 
-                                            <div className="rounded-xl bg-[#EEF3F7] px-3.5 py-2.5 flex items-center justify-between gap-2 flex-nowrap">
-                                              <div className="flex items-center gap-2 shrink-0">
-                                                <span className="text-[13px] font-extrabold text-slate-900 whitespace-nowrap">
+                                            <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
                                                   구매 수량
                                                 </span>
                                                 <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
@@ -7692,9 +7697,9 @@ export default function UserIntroPage() {
                                                         true
                                                       )
                                                     }
-                                                    className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                                    className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
                                                   >
-                                                    <Minus className="w-3.5 h-3.5" />
+                                                    <Minus className="w-3 h-3" />
                                                   </button>
                                                   <input
                                                     type="number"
@@ -7711,7 +7716,7 @@ export default function UserIntroPage() {
                                                         false
                                                       )
                                                     }
-                                                    className="w-10 h-8 text-center bg-white font-mono text-[13.5px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                                    className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
                                                   />
                                                   <button
                                                     type="button"
@@ -7725,13 +7730,13 @@ export default function UserIntroPage() {
                                                         true
                                                       )
                                                     }
-                                                    className="w-8 h-8 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                                    className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
                                                   >
-                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <Plus className="w-3 h-3" />
                                                   </button>
                                                 </div>
                                               </div>
-                                              <span className="text-[15px] font-black text-emerald-700 whitespace-nowrap">
+                                              <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
                                                 총액 {(dUnitPrice * dRecQty).toLocaleString()}원
                                               </span>
                                             </div>
@@ -7757,13 +7762,13 @@ export default function UserIntroPage() {
                                                     qty: dRecQty,
                                                   })
                                                 }
-                                                className="col-span-7 py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                                className="col-span-7 py-2.5 px-2.5 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
                                               >
                                                 <ShoppingBag className="w-4 h-4 shrink-0" />
                                                 <span>
                                                   {dPurchasedInfo.isPurchased
                                                     ? `추가 구매 (${dRecQty}${dUnitLabel})`
-                                                    : `추천 제품 구매 (${dRecQty}${dUnitLabel})`}
+                                                    : `제품 구매 (${dRecQty}${dUnitLabel})`}
                                                 </span>
                                               </button>
                                             </div>
@@ -9898,7 +9903,7 @@ export default function UserIntroPage() {
                                 <span>
                                   {purchasedInfo.isPurchased
                                     ? `추가 구매 (${recQty}${unitLabel})`
-                                    : `추천 제품 구매 (${recQty}${unitLabel})`}
+                                    : `제품 구매 (${recQty}${unitLabel})`}
                                 </span>
                               </button>
                             </div>
