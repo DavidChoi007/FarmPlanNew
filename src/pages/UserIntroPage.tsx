@@ -14861,7 +14861,7 @@ export default function UserIntroPage() {
 
             {/* ③ 작물재배현황 및 진행율 */}
             {(myPageTab === 'ALL' || myPageTab === 'PROGRESS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-3 sm:p-6 shadow-xs flex flex-col gap-4">
+              <section className="lg:bg-white lg:rounded-3xl lg:border lg:border-slate-200 p-0 lg:p-6 lg:shadow-xs flex flex-col gap-4">
                 <div className="hidden lg:flex lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
@@ -14911,7 +14911,7 @@ export default function UserIntroPage() {
                       return (
                         <div
                           key={crop.crop_plan_id || `${crop.request_no}-${idx}`}
-                          className={`${isMobileVisible ? 'block' : 'hidden lg:block'} space-y-4`}
+                          className={`${isMobileVisible ? 'block' : 'hidden lg:block'} space-y-2.5 lg:space-y-4`}
                         >
                           <div
                             onClick={() => {
@@ -14919,10 +14919,10 @@ export default function UserIntroPage() {
                                 setSelectedRequestNo(crop.request_no);
                               }
                             }}
-                            className={`w-full rounded-2xl px-4 sm:px-6 py-4 border-2 transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                            className={`w-full rounded-3xl lg:rounded-2xl px-4 sm:px-6 py-4 border-2 bg-white shadow-xs lg:shadow-none transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
                               isSelected
-                                ? 'border-emerald-400 bg-emerald-50/30'
-                                : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50/70'
+                                ? 'border-emerald-400 lg:bg-emerald-50/30'
+                                : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50/70'
                             }`}
                           >
                             {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 (재배일정 확인 메뉴 동일 구성) */}
@@ -15080,7 +15080,7 @@ export default function UserIntroPage() {
                           </div>
 
                           {/* 모바일 전용: (현재 번호 / 전체 갯수) 표시 및 이전 / 다음 항목 로딩 버튼 (재배일정 확인 메뉴 동일 구성) */}
-                          <div className="lg:hidden rounded-2xl bg-slate-50 border border-slate-200/90 px-3.5 py-3 flex flex-col items-center gap-2.5 shadow-2xs">
+                          <div className="lg:hidden w-full rounded-3xl bg-white border-2 border-slate-200/90 px-3.5 py-3 flex flex-col items-center gap-2.5 shadow-xs">
                             <div className="text-[15px] font-black text-slate-900 tracking-tight font-mono">
                               ({idx + 1} / {totalProgressCropCount})
                             </div>
