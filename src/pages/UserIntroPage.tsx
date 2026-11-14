@@ -7553,7 +7553,7 @@ export default function UserIntroPage() {
                                       완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 · 진행률 {crop.progress_pct}%
                                     </span>
                                   </div>
-                                  <div className="space-y-3.5">
+                                  <div className="divide-y divide-slate-200">
                                     {(provisionData.scheduleItems || []).map(
                                       (item: any, idx: number) => {
                                         const cleanName = String(item.sub_item_name || '')
@@ -7578,60 +7578,64 @@ export default function UserIntroPage() {
                                         return (
                                           <div
                                             key={`mob-tl-${item.item_id}`}
-                                            onClick={() => {
-                                              handleSelectStageItem(item);
-                                            }}
-                                            className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
-                                              isSelected
-                                                ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
-                                                : 'hover:bg-slate-50'
-                                            }`}
+                                            className="py-2 first:pt-1 last:pb-1"
                                           >
-                                            <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
-                                              <span
-                                                className={`text-[16px] font-black leading-none ${
-                                                  isSelected
-                                                    ? 'text-emerald-700 font-black'
-                                                    : 'text-slate-800'
-                                                }`}
-                                              >
-                                                {idx + 1}
-                                              </span>
-                                              {idx <
-                                                (provisionData.scheduleItems?.length || 0) - 1 && (
-                                                <div className="w-px h-9 bg-slate-200 mt-1.5" />
-                                              )}
-                                            </div>
-                                            <div className="min-w-0 flex-1 pb-1">
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                                  <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
-                                                    {koreanDateLabel}
-                                                  </span>
-                                                  {renderStageCompletionButton(
-                                                    crop.request_no,
-                                                    item,
-                                                    {
-                                                      size: 'sm',
-                                                      explicitDate: effDate,
-                                                    }
-                                                  )}
-                                                </div>
-                                                <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
-                                                  · {cleanName}
-                                                  {renderStageInlineStatusText(
-                                                    crop.request_no,
-                                                    item,
-                                                    {
-                                                      explicitDate: effDate,
-                                                    }
-                                                  )}
+                                            <div
+                                              onClick={() => {
+                                                handleSelectStageItem(item);
+                                              }}
+                                              className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
+                                                isSelected
+                                                  ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                                                  : 'hover:bg-slate-50'
+                                              }`}
+                                            >
+                                              <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                                                <span
+                                                  className={`text-[16px] font-black leading-none ${
+                                                    isSelected
+                                                      ? 'text-emerald-700 font-black'
+                                                      : 'text-slate-800'
+                                                  }`}
+                                                >
+                                                  {idx + 1}
                                                 </span>
+                                                {idx <
+                                                  (provisionData.scheduleItems?.length || 0) - 1 && (
+                                                  <div className="w-px h-9 bg-slate-200 mt-1.5" />
+                                                )}
                                               </div>
-                                              <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
-                                                {item.work_content ||
-                                                  item.work_description ||
-                                                  '토양검정과 생육상태 확인 후 진행'}
+                                              <div className="min-w-0 flex-1 pb-1">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                  <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                                    <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                                      {koreanDateLabel}
+                                                    </span>
+                                                    {renderStageCompletionButton(
+                                                      crop.request_no,
+                                                      item,
+                                                      {
+                                                        size: 'sm',
+                                                        explicitDate: effDate,
+                                                      }
+                                                    )}
+                                                  </div>
+                                                  <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
+                                                    · {cleanName}
+                                                    {renderStageInlineStatusText(
+                                                      crop.request_no,
+                                                      item,
+                                                      {
+                                                        explicitDate: effDate,
+                                                      }
+                                                    )}
+                                                  </span>
+                                                </div>
+                                                <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                                                  {item.work_content ||
+                                                    item.work_description ||
+                                                    '토양검정과 생육상태 확인 후 진행'}
+                                                </div>
                                               </div>
                                             </div>
                                           </div>
@@ -16930,7 +16934,7 @@ export default function UserIntroPage() {
                 </div>
 
                 {/* 모달리스 창 본문: 농작업 타임라인 내용 */}
-                <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+                <div className="px-4 py-2 divide-y divide-slate-200 overflow-y-auto flex-1 bg-white">
                   {timelineItems.map((item: any, tIdx: number) => {
                     const cleanName = String(item.sub_item_name || '')
                       .replace(/\s*\([^)]*\)/g, '')
@@ -16946,64 +16950,68 @@ export default function UserIntroPage() {
                     return (
                       <div
                         key={`mypage-prog-tl-${item.item_id || tIdx}`}
-                        onClick={() => {
-                          handleSelectStageItem(item);
-                          setMyPageStageDetailItem(item);
-                        }}
-                        className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
-                          isSelected
-                            ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
-                            : 'hover:bg-slate-50'
-                        }`}
+                        className="py-2 first:pt-1 last:pb-1"
                       >
-                        <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
-                          <span
-                            className={`text-[16px] font-black leading-none ${
-                              isSelected ? 'text-emerald-700 font-black' : 'text-slate-800'
-                            }`}
-                          >
-                            {tIdx + 1}
-                          </span>
-                          {tIdx < timelineItems.length - 1 && (
-                            <div className="w-px h-9 bg-slate-200 mt-1.5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1 pb-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                              <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
-                                  {koreanDateLabel}
-                                </span>
-                                {renderStageCompletionButton(modalReqNo, item, {
-                                  size: 'sm',
-                                  explicitDate: effDate,
-                                })}
-                              </div>
-                              <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
-                                · {cleanName}
-                                {renderStageInlineStatusText(modalReqNo, item, {
-                                  explicitDate: effDate,
-                                })}
-                              </span>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSelectStageItem(item);
-                                setMyPageStageDetailItem(item);
-                              }}
-                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                        <div
+                          onClick={() => {
+                            handleSelectStageItem(item);
+                            setMyPageStageDetailItem(item);
+                          }}
+                          className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                              : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                            <span
+                              className={`text-[16px] font-black leading-none ${
+                                isSelected ? 'text-emerald-700 font-black' : 'text-slate-800'
+                              }`}
                             >
-                              작업상세
-                            </button>
+                              {tIdx + 1}
+                            </span>
+                            {tIdx < timelineItems.length - 1 && (
+                              <div className="w-px h-9 bg-slate-200 mt-1.5" />
+                            )}
                           </div>
-                          <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
-                            {item.work_content ||
-                              item.work_description ||
-                              '토양검정과 생육상태 확인 후 진행'}
+                          <div className="min-w-0 flex-1 pb-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                  <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                    {koreanDateLabel}
+                                  </span>
+                                  {renderStageCompletionButton(modalReqNo, item, {
+                                    size: 'sm',
+                                    explicitDate: effDate,
+                                  })}
+                                </div>
+                                <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
+                                  · {cleanName}
+                                  {renderStageInlineStatusText(modalReqNo, item, {
+                                    explicitDate: effDate,
+                                  })}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectStageItem(item);
+                                  setMyPageStageDetailItem(item);
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                              >
+                                작업상세
+                              </button>
+                            </div>
+                            <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                              {item.work_content ||
+                                item.work_description ||
+                                '토양검정과 생육상태 확인 후 진행'}
+                            </div>
                           </div>
                         </div>
                       </div>
