@@ -3605,7 +3605,8 @@ export default function UserIntroPage() {
     const pageKey = `${navMenuKey}||${navSubKey}`;
 
     const overlayKey = [
-      activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS')
+      activeMenu === '재배일정 확인' ||
+      (activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS'))
         ? `progReq:${myPageProgressDetailReqNo || ''}|stg:${
             myPageStageDetailItem ? resolveStageItemId(myPageStageDetailItem) : ''
           }`
@@ -6758,6 +6759,10 @@ export default function UserIntroPage() {
                     const targetCrop = cloudBaeCropList[targetIdx];
                     if (!targetCrop) return;
                     setSelectedRequestNo(targetCrop.request_no);
+                    setMyPageStageDetailItem(null);
+                    if (myPageProgressDetailReqNo) {
+                      setMyPageProgressDetailReqNo(targetCrop.request_no);
+                    }
                     if (expandedScheduleRequestNo) {
                       setExpandedScheduleRequestNo(targetCrop.request_no);
                     }
@@ -6770,6 +6775,13 @@ export default function UserIntroPage() {
                     const isExpanded = expandedScheduleRequestNo === crop.request_no;
                     const isMobileVisible = idx === activeMobileCropIdx;
                     const toggleCropAccordion = () => {
+                      const reqNo = crop.request_no || 'REQ-20261106-009';
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        setSelectedRequestNo(reqNo);
+                        setMyPageStageDetailItem(null);
+                        setMyPageProgressDetailReqNo((prev) => (prev === reqNo ? null : reqNo));
+                        return;
+                      }
                       if (expandedScheduleRequestNo === crop.request_no) {
                         setExpandedScheduleRequestNo(null);
                         setHoveredProvisionItem(null);
@@ -6887,15 +6899,20 @@ export default function UserIntroPage() {
                                 toggleCropAccordion();
                               }}
                               className={`flex-1 lg:flex-none px-4 py-3 rounded-xl font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
-                                isExpanded
-                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                myPageProgressDetailReqNo === crop.request_no
+                                  ? 'border border-emerald-600 bg-emerald-600 text-white shadow-2xs'
+                                  : isExpanded
+                                  ? 'border border-slate-300 bg-white text-slate-900 lg:border-emerald-600 lg:bg-emerald-600 lg:text-white shadow-2xs'
                                   : 'border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
                               }`}
                             >
-                              <span>{isExpanded ? '일정 상세 접기' : '일정 상세 보기'}</span>
+                              <span className="lg:hidden">일정 상세 보기</span>
+                              <span className="hidden lg:inline">
+                                {isExpanded ? '일정 상세 접기' : '일정 상세 보기'}
+                              </span>
                               <ChevronRight
                                 className={`w-4 h-4 transition-transform duration-200 ${
-                                  isExpanded ? 'rotate-90' : ''
+                                  isExpanded ? 'lg:rotate-90' : ''
                                 }`}
                               />
                             </button>
@@ -6939,9 +6956,9 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                      {/* ==================== [리스트 항목 바로 아래 아코디언 확장 영역: ① 생육과정 정밀 타임라인(48주) & ② 전 생육과정 추천 농자재 단계별 리스트 & 단번에 구매하기] ==================== */}
+                      {/* ==================== [리스트 항목 바로 아래 아코디언 확장 영역: PC 환경 전용 (모바일은 모달리스 창으로 표시)] ==================== */}
                       {isExpanded && provisionData && (
-                        <div className="pl-2 sm:pl-4 border-l-4 border-emerald-500 space-y-5 pt-1 pb-2">
+                        <div className="hidden lg:block pl-2 sm:pl-4 border-l-4 border-emerald-500 space-y-5 pt-1 pb-2">
                           {/* ①-M [모바일 환경 전용 (lg:hidden)]: 첨부 이미지 1~5번 방식 생육과정 정밀 타임라인 구성 */}
                           <div className="lg:hidden space-y-4">
                             {/* [모바일 카드 1 (첨부 이미지 1번)]: 한팜 내 재배작물 요약 + 진행 막대 + 기온·강수·다음작업 3열 카드 */}
@@ -15343,537 +15360,6 @@ export default function UserIntroPage() {
                     });
                   })()}
                 </div>
-
-                {/* ==================== [모바일 전용: 마이페이지 > 재배진행율 '일정 세부정보' (농작업 타임라인) 모달리스 창] ==================== */}
-                {myPageProgressDetailReqNo && (() => {
-                  const modalCrop =
-                    cloudBaeCropList.find(
-                      (c: any) => c.request_no === myPageProgressDetailReqNo
-                    ) ||
-                    activeCropCard ||
-                    cloudBaeCropList[0];
-                  if (!modalCrop) return null;
-
-                  const modalReqNo = modalCrop.request_no || 'REQ-20261106-009';
-                  const modalDisplayReqNo = modalCrop.display_request_no || modalReqNo;
-                  const hasActiveProvisionItems =
-                    Array.isArray(provisionData?.scheduleItems) &&
-                    provisionData.scheduleItems.length > 0 &&
-                    (provisionData?.activeRequest?.request_no === modalReqNo ||
-                      selectedRequestNo === modalReqNo);
-
-                  const timelineItems = hasActiveProvisionItems
-                    ? provisionData.scheduleItems
-                    : STANDARD_16_STAGE_META.map((meta) => ({
-                        item_id: meta.itemId,
-                        step_order: meta.stepOrder,
-                        stage_group_name: meta.stageGroupName,
-                        sub_item_name: meta.subItemName,
-                        start_date: addDaysToYmd(
-                          modalCrop.planting_date || '2026-08-25',
-                          meta.offsetDays
-                        ),
-                        work_content: `${meta.stageGroupName} 단계 ${meta.subItemName} 적기 작업 및 생육상태 확인`,
-                      }));
-
-                  return (
-                    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
-                      <div className="pointer-events-auto w-full max-w-lg max-h-[86vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
-                        {/* 모달리스 창 상단 헤더 */}
-                        <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-[19px] font-black text-slate-900">
-                              일정 세부정보
-                            </h3>
-                            <span className="text-xs font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                              완료 인정 {modalCrop.completed_stage_count ?? 0}/
-                              {modalCrop.total_stage_count ?? 16}개 · 진행률 {modalCrop.progress_pct}%
-                            </span>
-                          </div>
-                          <div className="text-xs font-extrabold text-slate-600 truncate">
-                            {modalDisplayReqNo} · {modalCrop.crop_title} ({modalCrop.region})
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMyPageStageDetailItem(null);
-                              setMyPageProgressDetailReqNo(null);
-                            }}
-                            className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                            <span>닫기</span>
-                          </button>
-                        </div>
-
-                        {/* 모달리스 창 본문: 농작업 타임라인 내용 */}
-                        <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
-                          {timelineItems.map((item: any, tIdx: number) => {
-                            const cleanName = String(item.sub_item_name || '')
-                              .replace(/\s*\([^)]*\)/g, '')
-                              .trim();
-                            const effDate = getEffectiveStageItemDate(modalReqNo, item);
-                            const mNum = Number(String(effDate || '').slice(5, 7));
-                            const dNum = Number(String(effDate || '').slice(8, 10));
-                            const koreanDateLabel =
-                              mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
-                            const isSelected =
-                              resolveStageItemId(selectedStageItem) ===
-                              resolveStageItemId(item, tIdx);
-
-                            return (
-                              <div
-                                key={`mypage-prog-tl-${item.item_id || tIdx}`}
-                                onClick={() => {
-                                  handleSelectStageItem(item);
-                                }}
-                                className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
-                                  isSelected
-                                    ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
-                                    : 'hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
-                                  <span
-                                    className={`text-[16px] font-black leading-none ${
-                                      isSelected
-                                        ? 'text-emerald-700 font-black'
-                                        : 'text-slate-800'
-                                    }`}
-                                  >
-                                    {tIdx + 1}
-                                  </span>
-                                  {tIdx < timelineItems.length - 1 && (
-                                    <div className="w-px h-9 bg-slate-200 mt-1.5" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1 pb-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                                      <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                        <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
-                                          {koreanDateLabel}
-                                        </span>
-                                        {renderStageCompletionButton(modalReqNo, item, {
-                                          size: 'sm',
-                                          explicitDate: effDate,
-                                        })}
-                                      </div>
-                                      <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
-                                        · {cleanName}
-                                        {renderStageInlineStatusText(modalReqNo, item, {
-                                          explicitDate: effDate,
-                                        })}
-                                      </span>
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSelectStageItem(item);
-                                        setMyPageStageDetailItem(item);
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
-                                    >
-                                      작업상세
-                                    </button>
-                                  </div>
-                                  <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
-                                    {item.work_content ||
-                                      item.work_description ||
-                                      '토양검정과 생육상태 확인 후 진행'}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* 모달리스 창 하단 닫기 바 */}
-                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMyPageStageDetailItem(null);
-                              setMyPageProgressDetailReqNo(null);
-                            }}
-                            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
-                          >
-                            일정 세부정보 창 닫기
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* ==================== [작업상세 버튼 클릭 시 열리는 '작업 세부정보' 모달리스 폼] ==================== */}
-                      {myPageStageDetailItem && (() => {
-                        const targetStageId = resolveStageItemId(myPageStageDetailItem);
-                        const liveStageItem =
-                          (provisionData?.scheduleItems || []).find(
-                            (si: any) => resolveStageItemId(si) === targetStageId
-                          ) || myPageStageDetailItem;
-                        const stageCleanName = String(liveStageItem.sub_item_name || '')
-                          .replace(/\s*\([^)]*\)/g, '')
-                          .trim();
-                        const stageEffDate = getEffectiveStageItemDate(modalReqNo, liveStageItem);
-                        const stageDayClimate = getDayClimate(stageEffDate);
-                        const topMat = [...(liveStageItem.materials || [])].sort(
-                          (a: any, b: any) =>
-                            Number(b?.match_score || 0) - Number(a?.match_score || 0)
-                        )[0];
-                        const stageGroupCode =
-                          liveStageItem.stage_group_code ||
-                          liveStageItem.stage_group_id ||
-                          liveStageItem.stage_group_name ||
-                          'STG-1';
-                        const matCode =
-                          topMat?.material_id || topMat?.product_name || 'MAT-1';
-                        const selKey = `${stageGroupCode}__${liveStageItem.item_id || targetStageId}__${matCode}`;
-                        const areaPyeong = Number(
-                          provisionData?.activeRequest?.area_pyeong ||
-                            modalCrop.area_pyeong ||
-                            300
-                        );
-                        const defaultQty = topMat
-                          ? parseRecommendedQuantity(topMat, areaPyeong)
-                          : 1;
-                        const isMatChecked =
-                          (purchaseSelectionMap[selKey]?.checked ?? true) === true;
-
-                        return (
-                          <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-3 sm:p-6">
-                            <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.45)] overflow-hidden">
-                              {/* 작업 세부정보 모달리스 폼 상단 헤더 */}
-                              <div className="relative bg-[#E9F7F1] border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-[19px] font-black text-slate-900">
-                                    작업 세부정보
-                                  </h3>
-                                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">
-                                    {liveStageItem.stage_group_name || '생육 관리'}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-xs font-mono font-extrabold">
-                                    PGDD {liveStageItem.target_pgdd ?? 0}℃
-                                  </span>
-                                </div>
-                                <div className="text-xs font-extrabold text-slate-700 truncate">
-                                  {modalDisplayReqNo} · {modalCrop.crop_title} &gt; {stageCleanName}
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() => setMyPageStageDetailItem(null)}
-                                  className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
-                                >
-                                  <X className="w-4 h-4" />
-                                  <span>닫기</span>
-                                </button>
-                              </div>
-
-                              {/* 작업 세부정보 모달리스 폼 본문 */}
-                              <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
-                                {/* 1. 선택 공정명 및 생육관리 일자 · 작업완료 인증 */}
-                                <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
-                                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                                    <span className="text-[16px] font-black text-emerald-950 leading-snug break-keep">
-                                      {stageCleanName}
-                                      {renderStageInlineStatusText(modalReqNo, liveStageItem, {
-                                        explicitDate: stageEffDate,
-                                      })}
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
-                                      {liveStageItem.process_code || targetStageId}
-                                    </span>
-                                  </div>
-
-                                  <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
-                                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                                      <span className="text-xs font-extrabold text-emerald-900">
-                                        📅 생육관리 일자 &amp; 작업완료 인증
-                                      </span>
-                                      <span className="font-mono font-extrabold text-xs text-emerald-800 whitespace-nowrap">
-                                        {formatYmdWithWeekday(stageEffDate)}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-nowrap">
-                                      <input
-                                        type="date"
-                                        value={stageEffDate}
-                                        onChange={(e) => {
-                                          const newYmd = e.target.value;
-                                          const draftKey = `${modalReqNo}__${targetStageId}`;
-                                          setInlineStageDateDrafts((prev) => ({
-                                            ...prev,
-                                            [draftKey]: newYmd,
-                                          }));
-                                          setEditDetailForm((prev: any) => ({
-                                            ...(prev || liveStageItem),
-                                            start_date: newYmd,
-                                          }));
-                                        }}
-                                        className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
-                                      />
-                                      {renderStageCompletionButton(modalReqNo, liveStageItem, {
-                                        explicitDate: stageEffDate,
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* 2. 생육과정 핵심 작업내용 & 기후 분석 · 영농 가이드 */}
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
-                                  <div className="space-y-1.5">
-                                    <div className="text-xs font-extrabold text-slate-900">
-                                      ① 생육과정 핵심 작업내용
-                                    </div>
-                                    <div className="text-[14px] font-semibold text-slate-800 bg-white rounded-xl p-3 border border-slate-200 leading-relaxed whitespace-pre-line">
-                                      {liveStageItem.work_content ||
-                                        liveStageItem.work_description ||
-                                        '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
-                                    </div>
-                                  </div>
-
-                                  <div className="space-y-1.5">
-                                    <div className="text-xs font-extrabold text-slate-900">
-                                      ② 추천 진행일 재배지 기후 대입 분석
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                      <div className="rounded-xl bg-white border border-slate-200 p-2.5">
-                                        <div className="text-[11px] font-bold text-slate-500">
-                                          추천일 기온 (최저~최고 / 평균)
-                                        </div>
-                                        <div className="font-extrabold text-slate-900 mt-0.5">
-                                          {stageDayClimate.temp_min}~{stageDayClimate.temp_max}℃ (평균{' '}
-                                          <span className="text-emerald-700">
-                                            {stageDayClimate.temp_avg}℃
-                                          </span>
-                                          )
-                                        </div>
-                                      </div>
-                                      <div className="rounded-xl bg-white border border-slate-200 p-2.5">
-                                        <div className="text-[11px] font-bold text-slate-500">
-                                          평균습도 · 강수량
-                                        </div>
-                                        <div className="font-extrabold text-slate-900 mt-0.5">
-                                          습도 {stageDayClimate.humidity_avg}% · 강수{' '}
-                                          {stageDayClimate.precipitation_mm}mm
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {(liveStageItem.climate_rule ||
-                                      liveStageItem.ai_analysis_reason) && (
-                                      <div className="rounded-xl bg-sky-50 border border-sky-200 p-2.5 text-xs text-sky-950 font-semibold leading-relaxed">
-                                        🌦️{' '}
-                                        {liveStageItem.climate_rule ||
-                                          liveStageItem.ai_analysis_reason}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {(liveStageItem.usage_tip || liveStageItem.action_tip) && (
-                                    <div className="space-y-1.5">
-                                      <div className="text-xs font-extrabold text-amber-950">
-                                        ③ 농자재 사용팁 및 영농 노하우
-                                      </div>
-                                      <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-xs text-slate-800 font-semibold leading-relaxed whitespace-pre-line">
-                                        {liveStageItem.usage_tip || liveStageItem.action_tip}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* 3. 해당 생육과정 맞춤 추천상품 (1종) */}
-                                {topMat && (() => {
-                                  const unitSpec = String(topMat.unit_spec || '1개');
-                                  const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
-                                  const unitLabel =
-                                    topMat.unit_label || (unitMatch ? unitMatch[1] : '개');
-                                  const unitPrice = Number(topMat.unit_price || 15000);
-                                  const recQty = getStageRecQty(
-                                    modalReqNo,
-                                    liveStageItem,
-                                    topMat,
-                                    defaultQty
-                                  );
-                                  const purchasedInfo = getPurchasedStageProductInfo(
-                                    modalReqNo,
-                                    liveStageItem,
-                                    topMat
-                                  );
-                                  const prodDisp = parseStageRecommendedProductDisplay(topMat);
-
-                                  return (
-                                    <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
-                                      <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
-                                        <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
-                                          <input
-                                            type="checkbox"
-                                            checked={isMatChecked}
-                                            onChange={() =>
-                                              handleToggleMaterialCheck(selKey, defaultQty)
-                                            }
-                                            className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
-                                          />
-                                          <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
-                                            해당 생육과정 맞춤 추천상품 (1종)
-                                          </span>
-                                          {purchasedInfo.isPurchased && (
-                                            <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black whitespace-nowrap shrink-0">
-                                              <CheckCircle2 className="w-3 h-3" />
-                                              <span>
-                                                구매완료 ({purchasedInfo.totalQty}
-                                                {unitLabel})
-                                              </span>
-                                            </span>
-                                          )}
-                                        </label>
-                                      </div>
-
-                                      <div className="p-3 sm:p-3.5 space-y-2.5">
-                                        <div className="space-y-1">
-                                          <div className="flex items-center justify-between gap-1.5">
-                                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
-                                              {prodDisp.categoryTag}
-                                            </span>
-                                            <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
-                                              추천점수 {topMat.match_score || 96}점
-                                            </span>
-                                          </div>
-                                          <div className="w-full font-black text-[15.5px] sm:text-[16.5px] text-slate-950 leading-snug truncate">
-                                            {prodDisp.cleanTitle}
-                                          </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 pt-0.5">
-                                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
-                                            <img
-                                              src={resolveAgroProductThumbUrl(topMat)}
-                                              alt={topMat.product_name}
-                                              onError={handleAgroThumbImgError}
-                                              className="w-full h-full object-contain"
-                                            />
-                                          </div>
-                                          <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
-                                            <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
-                                              {prodDisp.formulaLine}
-                                            </div>
-                                            <div>
-                                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
-                                                {areaPyeong.toLocaleString()}평 권장 {defaultQty}
-                                                {unitLabel}
-                                              </span>
-                                            </div>
-                                            <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
-                                              단가 {unitPrice.toLocaleString()}원
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
-                                          <div className="flex items-center gap-1.5 shrink-0">
-                                            <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
-                                              구매 수량
-                                            </span>
-                                            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSetStageRecQty(
-                                                    modalReqNo,
-                                                    liveStageItem,
-                                                    topMat,
-                                                    defaultQty,
-                                                    -1,
-                                                    true
-                                                  )
-                                                }
-                                                className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
-                                              >
-                                                <Minus className="w-3 h-3" />
-                                              </button>
-                                              <input
-                                                type="number"
-                                                min={1}
-                                                max={99}
-                                                value={recQty}
-                                                onChange={(e) =>
-                                                  handleSetStageRecQty(
-                                                    modalReqNo,
-                                                    liveStageItem,
-                                                    topMat,
-                                                    defaultQty,
-                                                    Number(e.target.value) || 1,
-                                                    false
-                                                  )
-                                                }
-                                                className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
-                                              />
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSetStageRecQty(
-                                                    modalReqNo,
-                                                    liveStageItem,
-                                                    topMat,
-                                                    defaultQty,
-                                                    1,
-                                                    true
-                                                  )
-                                                }
-                                                className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
-                                              >
-                                                <Plus className="w-3 h-3" />
-                                              </button>
-                                            </div>
-                                          </div>
-                                          <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
-                                            총액 {(unitPrice * recQty).toLocaleString()}원
-                                          </span>
-                                        </div>
-
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handlePurchaseStageRecommendedProduct({
-                                              cropObj: modalCrop,
-                                              stageItem: liveStageItem,
-                                              mat: topMat,
-                                              qty: recQty,
-                                            })
-                                          }
-                                          className="w-full py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
-                                        >
-                                          <ShoppingBag className="w-4 h-4 shrink-0" />
-                                          <span>
-                                            {purchasedInfo.isPurchased
-                                              ? `추가 구매 (${recQty}${unitLabel})`
-                                              : `제품 구매 (${recQty}${unitLabel})`}
-                                          </span>
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })()}
-                              </div>
-
-                              {/* 작업 세부정보 모달리스 폼 하단 닫기 바 */}
-                              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setMyPageStageDetailItem(null)}
-                                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
-                                >
-                                  작업 세부정보 창 닫기
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  );
-                })()}
               </section>
             )}
 
@@ -17380,6 +16866,531 @@ export default function UserIntroPage() {
           </div>
         </div>
       </footer>
+
+      {/* ==================== [모바일 전용 공통 모달리스 창: 재배일정 확인 & 마이페이지>재배진행율 '일정 세부정보' (농작업 타임라인) 및 '작업 세부정보'] ==================== */}
+      {(activeMenu === '재배일정 확인' ||
+        (activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS'))) &&
+        myPageProgressDetailReqNo &&
+        (() => {
+          const modalCrop =
+            cloudBaeCropList.find((c: any) => c.request_no === myPageProgressDetailReqNo) ||
+            activeCropCard ||
+            cloudBaeCropList[0];
+          if (!modalCrop) return null;
+
+          const modalReqNo = modalCrop.request_no || 'REQ-20261106-009';
+          const modalDisplayReqNo = modalCrop.display_request_no || modalReqNo;
+          const hasActiveProvisionItems =
+            Array.isArray(provisionData?.scheduleItems) &&
+            provisionData.scheduleItems.length > 0 &&
+            (provisionData?.activeRequest?.request_no === modalReqNo ||
+              selectedRequestNo === modalReqNo);
+
+          const timelineItems = hasActiveProvisionItems
+            ? provisionData.scheduleItems
+            : STANDARD_16_STAGE_META.map((meta) => ({
+                item_id: meta.itemId,
+                step_order: meta.stepOrder,
+                stage_group_name: meta.stageGroupName,
+                sub_item_name: meta.subItemName,
+                start_date: addDaysToYmd(
+                  modalCrop.planting_date || '2026-08-25',
+                  meta.offsetDays
+                ),
+                work_content: `${meta.stageGroupName} 단계 ${meta.subItemName} 적기 작업 및 생육상태 확인`,
+              }));
+
+          return (
+            <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
+              <div className="pointer-events-auto w-full max-w-lg max-h-[86vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
+                {/* 모달리스 창 상단 헤더 */}
+                <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-[19px] font-black text-slate-900">일정 세부정보</h3>
+                    <span className="text-xs font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                      완료 인정 {modalCrop.completed_stage_count ?? 0}/
+                      {modalCrop.total_stage_count ?? 16}개 · 진행률 {modalCrop.progress_pct}%
+                    </span>
+                  </div>
+                  <div className="text-xs font-extrabold text-slate-600 truncate">
+                    {modalDisplayReqNo} · {modalCrop.crop_title} ({modalCrop.region})
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMyPageStageDetailItem(null);
+                      setMyPageProgressDetailReqNo(null);
+                    }}
+                    className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>닫기</span>
+                  </button>
+                </div>
+
+                {/* 모달리스 창 본문: 농작업 타임라인 내용 */}
+                <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+                  {timelineItems.map((item: any, tIdx: number) => {
+                    const cleanName = String(item.sub_item_name || '')
+                      .replace(/\s*\([^)]*\)/g, '')
+                      .trim();
+                    const effDate = getEffectiveStageItemDate(modalReqNo, item);
+                    const mNum = Number(String(effDate || '').slice(5, 7));
+                    const dNum = Number(String(effDate || '').slice(8, 10));
+                    const koreanDateLabel =
+                      mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
+                    const isSelected =
+                      resolveStageItemId(selectedStageItem) === resolveStageItemId(item, tIdx);
+
+                    return (
+                      <div
+                        key={`mypage-prog-tl-${item.item_id || tIdx}`}
+                        onClick={() => {
+                          handleSelectStageItem(item);
+                          setMyPageStageDetailItem(item);
+                        }}
+                        className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                            : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                          <span
+                            className={`text-[16px] font-black leading-none ${
+                              isSelected ? 'text-emerald-700 font-black' : 'text-slate-800'
+                            }`}
+                          >
+                            {tIdx + 1}
+                          </span>
+                          {tIdx < timelineItems.length - 1 && (
+                            <div className="w-px h-9 bg-slate-200 mt-1.5" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1 pb-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                  {koreanDateLabel}
+                                </span>
+                                {renderStageCompletionButton(modalReqNo, item, {
+                                  size: 'sm',
+                                  explicitDate: effDate,
+                                })}
+                              </div>
+                              <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
+                                · {cleanName}
+                                {renderStageInlineStatusText(modalReqNo, item, {
+                                  explicitDate: effDate,
+                                })}
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSelectStageItem(item);
+                                setMyPageStageDetailItem(item);
+                              }}
+                              className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                            >
+                              작업상세
+                            </button>
+                          </div>
+                          <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                            {item.work_content ||
+                              item.work_description ||
+                              '토양검정과 생육상태 확인 후 진행'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* 모달리스 창 하단 닫기 바 */}
+                <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMyPageStageDetailItem(null);
+                      setMyPageProgressDetailReqNo(null);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
+                  >
+                    일정 세부정보 창 닫기
+                  </button>
+                </div>
+              </div>
+
+              {/* ==================== [작업상세 또는 세부일정 클릭 시 열리는 '작업 세부정보' 모달리스 폼] ==================== */}
+              {myPageStageDetailItem &&
+                (() => {
+                  const targetStageId = resolveStageItemId(myPageStageDetailItem);
+                  const liveStageItem =
+                    (provisionData?.scheduleItems || []).find(
+                      (si: any) => resolveStageItemId(si) === targetStageId
+                    ) || myPageStageDetailItem;
+                  const stageCleanName = String(liveStageItem.sub_item_name || '')
+                    .replace(/\s*\([^)]*\)/g, '')
+                    .trim();
+                  const stageEffDate = getEffectiveStageItemDate(modalReqNo, liveStageItem);
+                  const stageDayClimate = getDayClimate(stageEffDate);
+                  const topMat = [...(liveStageItem.materials || [])].sort(
+                    (a: any, b: any) =>
+                      Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                  )[0];
+                  const stageGroupCode =
+                    liveStageItem.stage_group_code ||
+                    liveStageItem.stage_group_id ||
+                    liveStageItem.stage_group_name ||
+                    'STG-1';
+                  const matCode = topMat?.material_id || topMat?.product_name || 'MAT-1';
+                  const selKey = `${stageGroupCode}__${liveStageItem.item_id || targetStageId}__${matCode}`;
+                  const areaPyeong = Number(
+                    provisionData?.activeRequest?.area_pyeong || modalCrop.area_pyeong || 300
+                  );
+                  const defaultQty = topMat
+                    ? parseRecommendedQuantity(topMat, areaPyeong)
+                    : 1;
+                  const isMatChecked =
+                    (purchaseSelectionMap[selKey]?.checked ?? true) === true;
+
+                  return (
+                    <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-3 sm:p-6">
+                      <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.45)] overflow-hidden">
+                        {/* 작업 세부정보 모달리스 폼 상단 헤더 */}
+                        <div className="relative bg-[#E9F7F1] border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-[19px] font-black text-slate-900">작업 세부정보</h3>
+                            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">
+                              {liveStageItem.stage_group_name || '생육 관리'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-xs font-mono font-extrabold">
+                              PGDD {liveStageItem.target_pgdd ?? 0}℃
+                            </span>
+                          </div>
+                          <div className="text-xs font-extrabold text-slate-700 truncate">
+                            {modalDisplayReqNo} · {modalCrop.crop_title} &gt; {stageCleanName}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setMyPageStageDetailItem(null)}
+                            className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>닫기</span>
+                          </button>
+                        </div>
+
+                        {/* 작업 세부정보 모달리스 폼 본문 */}
+                        <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+                          {/* 1. 선택 공정명 및 생육관리 일자 · 작업완료 인증 */}
+                          <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-[16px] font-black text-emerald-950 leading-snug break-keep">
+                                {stageCleanName}
+                                {renderStageInlineStatusText(modalReqNo, liveStageItem, {
+                                  explicitDate: stageEffDate,
+                                })}
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
+                                {liveStageItem.process_code || targetStageId}
+                              </span>
+                            </div>
+
+                            <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className="text-xs font-extrabold text-emerald-900">
+                                  📅 생육관리 일자 &amp; 작업완료 인증
+                                </span>
+                                <span className="font-mono font-extrabold text-xs text-emerald-800 whitespace-nowrap">
+                                  {formatYmdWithWeekday(stageEffDate)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 flex-nowrap">
+                                <input
+                                  type="date"
+                                  value={stageEffDate}
+                                  onChange={(e) => {
+                                    const newYmd = e.target.value;
+                                    const draftKey = `${modalReqNo}__${targetStageId}`;
+                                    setInlineStageDateDrafts((prev) => ({
+                                      ...prev,
+                                      [draftKey]: newYmd,
+                                    }));
+                                    setEditDetailForm((prev: any) => ({
+                                      ...(prev || liveStageItem),
+                                      start_date: newYmd,
+                                    }));
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                />
+                                {renderStageCompletionButton(modalReqNo, liveStageItem, {
+                                  explicitDate: stageEffDate,
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. 생육과정 핵심 작업내용 & 기후 분석 · 영농 가이드 */}
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                            <div className="space-y-1.5">
+                              <div className="text-xs font-extrabold text-slate-900">
+                                ① 생육과정 핵심 작업내용
+                              </div>
+                              <div className="text-[14px] font-semibold text-slate-800 bg-white rounded-xl p-3 border border-slate-200 leading-relaxed whitespace-pre-line">
+                                {liveStageItem.work_content ||
+                                  liveStageItem.work_description ||
+                                  '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="text-xs font-extrabold text-slate-900">
+                                ② 추천 진행일 재배지 기후 대입 분석
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="rounded-xl bg-white border border-slate-200 p-2.5">
+                                  <div className="text-[11px] font-bold text-slate-500">
+                                    추천일 기온 (최저~최고 / 평균)
+                                  </div>
+                                  <div className="font-extrabold text-slate-900 mt-0.5">
+                                    {stageDayClimate.temp_min}~{stageDayClimate.temp_max}℃ (평균{' '}
+                                    <span className="text-emerald-700">
+                                      {stageDayClimate.temp_avg}℃
+                                    </span>
+                                    )
+                                  </div>
+                                </div>
+                                <div className="rounded-xl bg-white border border-slate-200 p-2.5">
+                                  <div className="text-[11px] font-bold text-slate-500">
+                                    평균습도 · 강수량
+                                  </div>
+                                  <div className="font-extrabold text-slate-900 mt-0.5">
+                                    습도 {stageDayClimate.humidity_avg}% · 강수{' '}
+                                    {stageDayClimate.precipitation_mm}mm
+                                  </div>
+                                </div>
+                              </div>
+                              {(liveStageItem.climate_rule ||
+                                liveStageItem.ai_analysis_reason) && (
+                                <div className="rounded-xl bg-sky-50 border border-sky-200 p-2.5 text-xs text-sky-950 font-semibold leading-relaxed">
+                                  🌦️{' '}
+                                  {liveStageItem.climate_rule ||
+                                    liveStageItem.ai_analysis_reason}
+                                </div>
+                              )}
+                            </div>
+
+                            {(liveStageItem.usage_tip || liveStageItem.action_tip) && (
+                              <div className="space-y-1.5">
+                                <div className="text-xs font-extrabold text-amber-950">
+                                  ③ 농자재 사용팁 및 영농 노하우
+                                </div>
+                                <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-xs text-slate-800 font-semibold leading-relaxed whitespace-pre-line">
+                                  {liveStageItem.usage_tip || liveStageItem.action_tip}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3. 해당 생육과정 맞춤 추천상품 (1종) */}
+                          {topMat &&
+                            (() => {
+                              const unitSpec = String(topMat.unit_spec || '1개');
+                              const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+                              const unitLabel =
+                                topMat.unit_label || (unitMatch ? unitMatch[1] : '개');
+                              const unitPrice = Number(topMat.unit_price || 15000);
+                              const recQty = getStageRecQty(
+                                modalReqNo,
+                                liveStageItem,
+                                topMat,
+                                defaultQty
+                              );
+                              const purchasedInfo = getPurchasedStageProductInfo(
+                                modalReqNo,
+                                liveStageItem,
+                                topMat
+                              );
+                              const prodDisp = parseStageRecommendedProductDisplay(topMat);
+
+                              return (
+                                <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
+                                  <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+                                    <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
+                                      <input
+                                        type="checkbox"
+                                        checked={isMatChecked}
+                                        onChange={() =>
+                                          handleToggleMaterialCheck(selKey, defaultQty)
+                                        }
+                                        className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                      />
+                                      <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
+                                        해당 생육과정 맞춤 추천상품 (1종)
+                                      </span>
+                                      {purchasedInfo.isPurchased && (
+                                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black whitespace-nowrap shrink-0">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          <span>
+                                            구매완료 ({purchasedInfo.totalQty}
+                                            {unitLabel})
+                                          </span>
+                                        </span>
+                                      )}
+                                    </label>
+                                  </div>
+
+                                  <div className="p-3 sm:p-3.5 space-y-2.5">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center justify-between gap-1.5">
+                                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
+                                          {prodDisp.categoryTag}
+                                        </span>
+                                        <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
+                                          추천점수 {topMat.match_score || 96}점
+                                        </span>
+                                      </div>
+                                      <div className="w-full font-black text-[15.5px] sm:text-[16.5px] text-slate-950 leading-snug truncate">
+                                        {prodDisp.cleanTitle}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3 pt-0.5">
+                                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                        <img
+                                          src={resolveAgroProductThumbUrl(topMat)}
+                                          alt={topMat.product_name}
+                                          onError={handleAgroThumbImgError}
+                                          className="w-full h-full object-contain"
+                                        />
+                                      </div>
+                                      <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
+                                        <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
+                                          {prodDisp.formulaLine}
+                                        </div>
+                                        <div>
+                                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
+                                            {areaPyeong.toLocaleString()}평 권장 {defaultQty}
+                                            {unitLabel}
+                                          </span>
+                                        </div>
+                                        <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
+                                          단가 {unitPrice.toLocaleString()}원
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
+                                          구매 수량
+                                        </span>
+                                        <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleSetStageRecQty(
+                                                modalReqNo,
+                                                liveStageItem,
+                                                topMat,
+                                                defaultQty,
+                                                -1,
+                                                true
+                                              )
+                                            }
+                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                          >
+                                            <Minus className="w-3 h-3" />
+                                          </button>
+                                          <input
+                                            type="number"
+                                            min={1}
+                                            max={99}
+                                            value={recQty}
+                                            onChange={(e) =>
+                                              handleSetStageRecQty(
+                                                modalReqNo,
+                                                liveStageItem,
+                                                topMat,
+                                                defaultQty,
+                                                Number(e.target.value) || 1,
+                                                false
+                                              )
+                                            }
+                                            className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                          />
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleSetStageRecQty(
+                                                modalReqNo,
+                                                liveStageItem,
+                                                topMat,
+                                                defaultQty,
+                                                1,
+                                                true
+                                              )
+                                            }
+                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                      <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
+                                        총액 {(unitPrice * recQty).toLocaleString()}원
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handlePurchaseStageRecommendedProduct({
+                                          cropObj: modalCrop,
+                                          stageItem: liveStageItem,
+                                          mat: topMat,
+                                          qty: recQty,
+                                        })
+                                      }
+                                      className="w-full py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                    >
+                                      <ShoppingBag className="w-4 h-4 shrink-0" />
+                                      <span>
+                                        {purchasedInfo.isPurchased
+                                          ? `추가 구매 (${recQty}${unitLabel})`
+                                          : `제품 구매 (${recQty}${unitLabel})`}
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                        </div>
+
+                        {/* 작업 세부정보 모달리스 폼 하단 닫기 바 */}
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setMyPageStageDetailItem(null)}
+                            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
+                          >
+                            작업 세부정보 창 닫기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+            </div>
+          );
+        })()}
 
       {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 페이지에서는 숨김, 내부 서브 페이지에서만 노출) ==================== */}
       {activeMenu !== '홈' && (
