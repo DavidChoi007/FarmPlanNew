@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
+  ChevronDown,
   MapPin,
   Thermometer,
   CloudSun,
@@ -544,7 +546,7 @@ export default function UserIntroPage() {
 
   const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '농작물 구매', '마이페이지'];
 
-  // CloudBae@naver.com (배철민) 회원의 전체 등록 재배작물 리스트 (관리자 페이지의 재배일정 요청 9건 & 제공 일정 데이터와 1:1 매칭)
+  // CloudBae@naver.com (배철민) 회원의 등록 재배작물 리스트 (충청북도 충주시 단월동 1건과 1:1 매칭)
   const defaultCloudBaeCropList = [
     {
       crop_plan_id: 'CPLAN-CB-01',
@@ -558,191 +560,15 @@ export default function UserIntroPage() {
       planting_type: '모종',
       planting_label: '정식 2026.08.25 (화)',
       planting_date: '2026-08-25',
-      expected_harvest_date: '2026-11-15',
-      current_stage_name: '04. 생육 관리 (2차 웃거름·결구중기)',
+      expected_harvest_date: '2026-11-25',
+      current_stage_name: '05. 병해충 예찰 · 수확 준비',
       progress_pct: 60,
       status_text: '생육 확인 필요 · 결구 진행중',
       temp_avg: '18.5°C',
       rain_mm: '5mm',
-      next_task_dday: '2일 후',
+      next_task_dday: '오늘 진행',
       opt_temp: '18~20℃ 적온',
       thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-02',
-      request_no: 'REQ-20261106-008',
-      crop_title: '시금치 (포항초)',
-      crop_short: '시금치',
-      cultivar_name: '포항초 (재래종)',
-      badge: '노지 직파(씨)',
-      region: '제주특별자치도 서귀포시 성산읍',
-      area_pyeong: 3500,
-      planting_type: '씨 (적정발아 20℃)',
-      planting_label: '파종 2026.09.25 (금)',
-      planting_date: '2026-09-25',
-      expected_harvest_date: '2026-12-20',
-      current_stage_name: '04. 생육 관리 (초기 생육·추비관리)',
-      progress_pct: 55,
-      status_text: '생육 양호 · 적기 관수중',
-      temp_avg: '19.2°C',
-      rain_mm: '3mm',
-      next_task_dday: '3일 후',
-      opt_temp: '15~20℃ 적온',
-      thumb_gradient: 'from-green-700 via-emerald-600 to-lime-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-03',
-      request_no: 'REQ-20261105-007',
-      crop_title: '감자 (두백)',
-      crop_short: '감자',
-      cultivar_name: '두백',
-      badge: '노지 직파(종서)',
-      region: '경상남도 밀양시 하남읍',
-      area_pyeong: 1800,
-      planting_type: '씨 (종서파종)',
-      planting_label: '파종 2026.03.10 (화)',
-      planting_date: '2026-03-10',
-      expected_harvest_date: '2026-06-25',
-      current_stage_name: '06. 수확 완료',
-      progress_pct: 100,
-      status_text: '수확 완료 · 이력 반영',
-      temp_avg: '17.4°C',
-      rain_mm: '0mm',
-      next_task_dday: '완료',
-      opt_temp: '15~18℃ 적온',
-      thumb_gradient: 'from-teal-700 via-emerald-600 to-cyan-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-04',
-      request_no: 'REQ-20261104-006',
-      crop_title: '감자 (설봉)',
-      crop_short: '감자',
-      cultivar_name: '설봉',
-      badge: '노지 직파(종서)',
-      region: '경기도 이천시 장호원읍',
-      area_pyeong: 1500,
-      planting_type: '씨 (종서파종)',
-      planting_label: '파종 2026.08.15 (토)',
-      planting_date: '2026-08-15',
-      expected_harvest_date: '2026-11-10',
-      current_stage_name: '05. 병해충 예찰 (결구·비대후기 방제)',
-      progress_pct: 75,
-      status_text: '비대 진행 양호',
-      temp_avg: '18.0°C',
-      rain_mm: '2mm',
-      next_task_dday: '4일 후',
-      opt_temp: '16~20℃ 적온',
-      thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-05',
-      request_no: 'REQ-20261104-005',
-      crop_title: '상추 (청치마상추)',
-      crop_short: '상추',
-      cultivar_name: '청치마상추',
-      badge: '시설 정식(모종)',
-      region: '충청남도 논산시 연무읍',
-      area_pyeong: 600,
-      planting_type: '모종',
-      planting_label: '정식 2026.09.05 (토)',
-      planting_date: '2026-09-05',
-      expected_harvest_date: '2026-10-25',
-      current_stage_name: '06. 수확 완료',
-      progress_pct: 100,
-      status_text: '수확 완료 · 출하 완료',
-      temp_avg: '18.8°C',
-      rain_mm: '0mm',
-      next_task_dday: '완료',
-      opt_temp: '15~20℃ 적온',
-      thumb_gradient: 'from-green-700 via-emerald-600 to-lime-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-06',
-      request_no: 'REQ-20261103-004',
-      crop_title: '가을배추 (휘파람골드)',
-      crop_short: '가을배추',
-      cultivar_name: '휘파람골드',
-      badge: '노지 정식(모종)',
-      region: '경상북도 안동시 풍산읍',
-      area_pyeong: 850,
-      planting_type: '모종',
-      planting_label: '정식 2026.08.28 (금)',
-      planting_date: '2026-08-28',
-      expected_harvest_date: '2026-11-15',
-      current_stage_name: '05. 병해충 예찰 (결구기 칼슘·살균방제)',
-      progress_pct: 72,
-      status_text: '결구 진행 양호',
-      temp_avg: '17.9°C',
-      rain_mm: '4mm',
-      next_task_dday: '3일 후',
-      opt_temp: '18~20℃ 적온',
-      thumb_gradient: 'from-teal-700 via-emerald-600 to-cyan-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-07',
-      request_no: 'REQ-20261102-003',
-      crop_title: '감자 (수미)',
-      crop_short: '감자',
-      cultivar_name: '수미 (Superior)',
-      badge: '고랭지 직파(종서)',
-      region: '강원특별자치도 평창군 대관령면',
-      area_pyeong: 3000,
-      planting_type: '씨 (종서파종)',
-      planting_label: '파종 2026.04.15 (수)',
-      planting_date: '2026-04-15',
-      expected_harvest_date: '2026-07-28',
-      current_stage_name: '06. 수확 완료',
-      progress_pct: 100,
-      status_text: '수확 완료 · 이력 반영',
-      temp_avg: '16.5°C',
-      rain_mm: '0mm',
-      next_task_dday: '완료',
-      opt_temp: '15~18℃ 적온',
-      thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-08',
-      request_no: 'REQ-20261102-002',
-      crop_title: '가을배추 (휘파람)',
-      crop_short: '가을배추',
-      cultivar_name: '휘파람',
-      badge: '유기농 정식(모종)',
-      region: '전라남도 해남군 옥천면',
-      area_pyeong: 2500,
-      planting_type: '모종',
-      planting_label: '정식 2026.09.05 (토)',
-      planting_date: '2026-09-05',
-      expected_harvest_date: '2026-12-05',
-      current_stage_name: '04. 생육 관리 (친환경 유박 추비기)',
-      progress_pct: 58,
-      status_text: '친환경 생육 관리중',
-      temp_avg: '19.0°C',
-      rain_mm: '5mm',
-      next_task_dday: '2일 후',
-      opt_temp: '18~20℃ 적온',
-      thumb_gradient: 'from-green-700 via-emerald-600 to-lime-800',
-    },
-    {
-      crop_plan_id: 'CPLAN-CB-09',
-      request_no: 'REQ-20261101-001',
-      crop_title: '가을배추 (불암플러스)',
-      crop_short: '가을배추',
-      cultivar_name: '불암플러스',
-      badge: '노지 정식(모종)',
-      region: '충청북도 충주시 산척면',
-      area_pyeong: 1200,
-      planting_type: '모종',
-      planting_label: '정식 2026.08.25 (화)',
-      planting_date: '2026-08-25',
-      expected_harvest_date: '2026-11-16',
-      current_stage_name: '05. 병해충 예찰 (결구후기 수확대비)',
-      progress_pct: 80,
-      status_text: '수확 예정 대기중',
-      temp_avg: '18.3°C',
-      rain_mm: '4mm',
-      next_task_dday: '3일 후',
-      opt_temp: '18~20℃ 적온',
-      thumb_gradient: 'from-teal-700 via-emerald-600 to-cyan-800',
     },
   ];
 
@@ -796,22 +622,22 @@ export default function UserIntroPage() {
 
   const STANDARD_16_STAGE_META = useMemo(
     () => [
-      { itemId: 'SCH-01', stepOrder: 1, stageNum: '01', stageGroupName: '재배 준비', subItemName: '포장 정리', offsetDays: -32 },
-      { itemId: 'SCH-02', stepOrder: 2, stageNum: '01', stageGroupName: '재배 준비', subItemName: '토양 개량(시비)', offsetDays: -18 },
-      { itemId: 'SCH-03', stepOrder: 3, stageNum: '01', stageGroupName: '재배 준비', subItemName: '이랑 만들기', offsetDays: -9 },
-      { itemId: 'SCH-04', stepOrder: 4, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '파종(종자 준비)', offsetDays: -25 },
-      { itemId: 'SCH-05', stepOrder: 5, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '육묘 관리(관수·온도)', offsetDays: -19 },
-      { itemId: 'SCH-06', stepOrder: 6, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '묘 관리(시비·병해충)', offsetDays: -9 },
+      { itemId: 'SCH-01', stepOrder: 1, stageNum: '01', stageGroupName: '재배 준비', subItemName: '포장 정리', offsetDays: -20 },
+      { itemId: 'SCH-02', stepOrder: 2, stageNum: '01', stageGroupName: '재배 준비', subItemName: '토양 개량(시비)', offsetDays: -13 },
+      { itemId: 'SCH-03', stepOrder: 3, stageNum: '01', stageGroupName: '재배 준비', subItemName: '이랑 만들기', offsetDays: -5 },
+      { itemId: 'SCH-04', stepOrder: 4, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '파종(종자 준비)', offsetDays: -17 },
+      { itemId: 'SCH-05', stepOrder: 5, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '육묘 관리(관수·온도)', offsetDays: -14 },
+      { itemId: 'SCH-06', stepOrder: 6, stageNum: '02', stageGroupName: '파종·육묘', subItemName: '묘 관리(시비·병해충)', offsetDays: -7 },
       { itemId: 'SCH-07', stepOrder: 7, stageNum: '03', stageGroupName: '정식·활착', subItemName: '정식(본밭 이식)', offsetDays: 0 },
-      { itemId: 'SCH-08', stepOrder: 8, stageNum: '03', stageGroupName: '정식·활착', subItemName: '활착 관리(관수·차광)', offsetDays: 2 },
-      { itemId: 'SCH-09', stepOrder: 9, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생장 관리(시비·관수)', offsetDays: 9 },
-      { itemId: 'SCH-10', stepOrder: 10, stageNum: '04', stageGroupName: '생육 관리', subItemName: '줄기·잎 관리(정지·유인)', offsetDays: 16 },
-      { itemId: 'SCH-11', stepOrder: 11, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생육 점검(생육량·생육상태)', offsetDays: 28 },
-      { itemId: 'SCH-12', stepOrder: 12, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '병해충 예찰(정기 점검)', offsetDays: -10 },
-      { itemId: 'SCH-13', stepOrder: 13, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '방제(필요 시)', offsetDays: 9 },
-      { itemId: 'SCH-14', stepOrder: 14, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '예방 관리(환경·위생)', offsetDays: 36 },
-      { itemId: 'SCH-15', stepOrder: 15, stageNum: '06', stageGroupName: '수확', subItemName: '수확 적기 확인', offsetDays: 65 },
-      { itemId: 'SCH-16', stepOrder: 16, stageNum: '06', stageGroupName: '수확', subItemName: '본 수확 및 예건·저장', offsetDays: 68 },
+      { itemId: 'SCH-08', stepOrder: 8, stageNum: '03', stageGroupName: '정식·활착', subItemName: '활착 관리(관수·차광)', offsetDays: 5 },
+      { itemId: 'SCH-09', stepOrder: 9, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생장 관리(시비·관수)', offsetDays: 18 },
+      { itemId: 'SCH-10', stepOrder: 10, stageNum: '04', stageGroupName: '생육 관리', subItemName: '줄기·잎 관리(정지·유인)', offsetDays: 31 },
+      { itemId: 'SCH-11', stepOrder: 11, stageNum: '04', stageGroupName: '생육 관리', subItemName: '생육 점검(생육량·생육상태)', offsetDays: 46 },
+      { itemId: 'SCH-12', stepOrder: 12, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '병해충 예찰(정기 점검)', offsetDays: 54 },
+      { itemId: 'SCH-13', stepOrder: 13, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '방제(필요 시)', offsetDays: 64 },
+      { itemId: 'SCH-14', stepOrder: 14, stageNum: '05', stageGroupName: '병해충 예찰', subItemName: '예방 관리(환경·위생)', offsetDays: 82 },
+      { itemId: 'SCH-15', stepOrder: 15, stageNum: '06', stageGroupName: '수확', subItemName: '수확(적기 판단)', offsetDays: 85 },
+      { itemId: 'SCH-16', stepOrder: 16, stageNum: '06', stageGroupName: '수확', subItemName: '수확 후 처리(선별·저장)', offsetDays: 92 },
     ],
     []
   );
@@ -972,8 +798,156 @@ export default function UserIntroPage() {
     ) {
       return editDetailForm.start_date;
     }
+    if (rNo === 'REQ-20261106-009' && !item?.is_admin_customized) {
+      if (itemId === 'SCH-13' && item?.start_date === '2026-09-02') return '2026-10-28';
+      if (itemId === 'SCH-14' && item?.start_date === '2026-09-28') return '2026-11-15';
+      if (itemId === 'SCH-15' && item?.start_date === '2026-11-02') return '2026-11-18';
+      if (itemId === 'SCH-16' && item?.start_date === '2026-11-05') return '2026-11-25';
+    }
     return String(item?.start_date || '2026-08-25');
   };
+
+  // 재배일정별 "이전 생육과정 보기" 펼침/접힘 상태 (기본값 false: 현재 날짜 이전 생육과정 숨김)
+  const [showPastStagesByReqNo, setShowPastStagesByReqNo] = useState<Record<string, boolean>>({});
+
+  const getTodayKstYmd = (): string =>
+    new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
+  const formatKoreanMonthDayLabel = (ymd: string): string => {
+    const m = Number(String(ymd || '').slice(5, 7));
+    const d = Number(String(ymd || '').slice(8, 10));
+    return m && d ? `${m}월 ${d}일` : ymd || '-';
+  };
+
+  const formatShortSlashMonthDay = (ymd: string): string => {
+    const m = Number(String(ymd || '').slice(5, 7));
+    const d = Number(String(ymd || '').slice(8, 10));
+    return m && d ? `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}` : ymd || '-';
+  };
+
+  const isPastStagesShownForReq = (reqNo: string): boolean => {
+    const key = reqNo || selectedRequestNo || 'REQ-20261106-009';
+    return Boolean(showPastStagesByReqNo[key]);
+  };
+
+  const togglePastStagesShownForReq = (reqNo: string) => {
+    const key = reqNo || selectedRequestNo || 'REQ-20261106-009';
+    setShowPastStagesByReqNo((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const partitionStageItemsByToday = (reqNo: string, items: any[]) => {
+    const rNo = reqNo || selectedRequestNo || 'REQ-20261106-009';
+    const todayYmd = getTodayKstYmd();
+    const todayKoreanLabel = formatKoreanMonthDayLabel(todayYmd);
+    const allEntries = (items || []).map((item: any, origIdx: number) => {
+      const effDate = getEffectiveStageItemDate(rNo, item);
+      const isPast = Boolean(effDate && /^\d{4}-\d{2}-\d{2}$/.test(effDate) && effDate < todayYmd);
+      return {
+        item,
+        origIdx,
+        effDate,
+        isPast,
+      };
+    });
+    const pastEntries = allEntries.filter((e) => e.isPast);
+    const upcomingEntries = allEntries.filter((e) => !e.isPast);
+    const sortedPastDates = pastEntries
+      .map((e) => e.effDate)
+      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort();
+    const firstPastDate = sortedPastDates[0] || pastEntries[0]?.effDate || '';
+    const lastPastDate =
+      sortedPastDates[sortedPastDates.length - 1] ||
+      pastEntries[pastEntries.length - 1]?.effDate ||
+      '';
+    const pastRangeLabel =
+      pastEntries.length > 1
+        ? `${formatShortSlashMonthDay(firstPastDate)} ~ ${formatShortSlashMonthDay(lastPastDate)}`
+        : pastEntries.length === 1
+        ? formatShortSlashMonthDay(firstPastDate)
+        : '';
+
+    return {
+      todayYmd,
+      todayKoreanLabel,
+      allEntries,
+      pastEntries,
+      upcomingEntries,
+      pastCount: pastEntries.length,
+      totalCount: allEntries.length,
+      pastRangeLabel,
+      isPastExpanded: isPastStagesShownForReq(rNo),
+    };
+  };
+
+  const renderPastStagesToggleControls = (
+    reqNo: string,
+    partition: ReturnType<typeof partitionStageItemsByToday>
+  ) => {
+    if (partition.pastCount <= 0) return null;
+    const { pastCount, totalCount, pastRangeLabel, isPastExpanded, todayKoreanLabel } = partition;
+    return (
+      <div className="w-full max-w-full min-w-0 box-border overflow-hidden space-y-2 pt-1 pb-2">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePastStagesShownForReq(reqNo);
+          }}
+          className={`w-full max-w-full min-w-0 box-border overflow-hidden py-2.5 px-3 rounded-xl border-2 font-black text-[13px] sm:text-[14px] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs ${
+            isPastExpanded
+              ? 'bg-[#A6DFC7] hover:bg-[#92D6BA] border-[#1B7B54] text-slate-950'
+              : 'bg-[#DDF5EA] hover:bg-[#CBECE0] border-[#259668] text-slate-950'
+          }`}
+        >
+          {isPastExpanded ? (
+            <>
+              <ChevronDown className="w-4 h-4 text-emerald-950 shrink-0 stroke-[2.5]" />
+              <span className="min-w-0 max-w-full text-center leading-snug break-keep overflow-hidden">
+                이전 생육과정 접기{' '}
+                <span className="font-extrabold text-[11.5px] sm:text-[13px] text-emerald-950">
+                  (전체 {totalCount}개 공정 모두 표시중)
+                </span>
+              </span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className="w-4 h-4 text-emerald-950 shrink-0 stroke-[2.5]" />
+              <span className="min-w-0 max-w-full text-center leading-snug break-keep overflow-hidden">
+                이전 생육과정 보기{' '}
+                <span className="font-extrabold text-[11.5px] sm:text-[13px] text-emerald-950">
+                  (지난 {pastCount}개 공정 숨김중{pastRangeLabel ? ` · ${pastRangeLabel}` : ''})
+                </span>
+              </span>
+            </>
+          )}
+        </button>
+
+        {!isPastExpanded && (
+          <div className="w-full max-w-full min-w-0 box-border overflow-hidden rounded-xl bg-[#DDF5EA]/85 border border-emerald-300 px-3 py-2 flex items-center gap-1.5 text-slate-950 font-black text-[12.5px] sm:text-[13.5px]">
+            <span className="text-rose-600 shrink-0">📍</span>
+            <span className="min-w-0 break-keep leading-snug">
+              오늘({todayKoreanLabel}) 기준 진행 및 예정 생육과정
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTodayBaselineDivider = (todayKoreanLabel: string) => (
+    <div className="w-full max-w-full min-w-0 box-border overflow-hidden py-2.5 flex items-center gap-2">
+      <div className="h-[2px] w-4 sm:w-8 bg-emerald-700/70 rounded-full shrink-0" />
+      <div className="inline-flex items-center gap-1 text-[12.5px] sm:text-[13.5px] font-black text-emerald-950 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-full shrink-0 max-w-full overflow-hidden">
+        <span className="text-rose-600 shrink-0">📍</span>
+        <span className="truncate">현재 날짜 ({todayKoreanLabel}) 기준선</span>
+      </div>
+      <div className="h-[2px] flex-1 bg-emerald-700/70 rounded-full min-w-[12px]" />
+    </div>
+  );
 
   // 특정 생육관리 항목의 완료 인정 상태 조회
   // 핵심 규칙: [완료] 버튼을 클릭해야 해당 날짜(수정 시 수정된 날짜)에 그 생육과정을 시작한 것으로 인정!
@@ -7212,12 +7186,12 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 오늘 처리할 일정 이후에 진행될 일정 (예정된 농작업 심플 리스트 & 선택 시 관련 정보 + 추천상품 1개 인라인 표시) */}
-                              <div className="space-y-2.5">
+                              {/* 오늘 처리할 일정 이후에 진행될 일정 (일정 세부정보 리스트 & 선택 시 관련 정보 + 추천상품 1개 인라인 표시) */}
+                              <div className="w-full max-w-full min-w-0 overflow-hidden space-y-2.5">
                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                   <div>
                                     <h4 className="text-[19px] font-black text-slate-900">
-                                      예정된 농작업 (생육관리 공정별 시작 완료 체크)
+                                      일정 세부정보 리스트
                                     </h4>
                                     <p className="text-[13px] font-semibold text-slate-600 mt-0.5">
                                       일자 옆 <strong>[완료]</strong> 버튼을 눌러야 해당 날짜(수정일 포함)에 생육과정을 시작한 것으로 인정되어 진행률({crop.progress_pct}%)에 반영됩니다.
@@ -7228,12 +7202,44 @@ export default function UserIntroPage() {
                                   </span>
                                 </div>
 
+                                {renderPastStagesToggleControls(
+                                  crop.request_no,
+                                  partitionStageItemsByToday(
+                                    crop.request_no,
+                                    provisionData.scheduleItems || []
+                                  )
+                                )}
+
                                 <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 overflow-hidden bg-white">
                                   {(provisionData.scheduleItems || []).map((item: any, idx: number) => {
+                                    const allSchedItems = provisionData.scheduleItems || [];
+                                    const todayYmdVal = getTodayKstYmd();
+                                    const isPastExpandedVal = isPastStagesShownForReq(crop.request_no);
                                     const cleanName = String(item.sub_item_name || '')
                                       .replace(/\s*\([^)]*\)/g, '')
                                       .trim();
                                     const effectiveYmd = getEffectiveStageItemDate(crop.request_no, item);
+                                    const isPastItem = Boolean(
+                                      effectiveYmd &&
+                                        /^\d{4}-\d{2}-\d{2}$/.test(effectiveYmd) &&
+                                        effectiveYmd < todayYmdVal
+                                    );
+                                    if (isPastItem && !isPastExpandedVal) {
+                                      return null;
+                                    }
+                                    const nextItem = allSchedItems[idx + 1];
+                                    const nextEffYmd = nextItem
+                                      ? getEffectiveStageItemDate(crop.request_no, nextItem)
+                                      : '';
+                                    const isNextUpcoming =
+                                      !nextItem ||
+                                      !(
+                                        nextEffYmd &&
+                                        /^\d{4}-\d{2}-\d{2}$/.test(nextEffYmd) &&
+                                        nextEffYmd < todayYmdVal
+                                      );
+                                    const shouldShowBaselineAfterThis =
+                                      isPastExpandedVal && isPastItem && isNextUpcoming;
                                     const shortMd = effectiveYmd
                                       ? `${effectiveYmd.slice(5, 7)}/${effectiveYmd.slice(8, 10)}`
                                       : '-';
@@ -7263,69 +7269,88 @@ export default function UserIntroPage() {
                                       (purchaseSelectionMap[selKey]?.checked ?? true) === true;
 
                                     return (
-                                      <div key={`mob-up-${item.item_id || idx}`} className="bg-white">
-                                        {/* 심플 리스트 행 */}
-                                        <div
-                                          onClick={() => {
-                                            if (isSelected) {
-                                              setSelectedStageItem(null);
-                                            } else {
-                                              handleSelectStageItem(item);
-                                            }
-                                          }}
-                                          className={`p-3.5 flex items-center justify-between gap-2.5 transition cursor-pointer ${
-                                            isSelected
-                                              ? 'bg-emerald-50/80'
-                                              : compState.isRecognized
-                                              ? 'bg-emerald-50/25 hover:bg-slate-50'
-                                              : 'hover:bg-slate-50'
-                                          }`}
-                                        >
-                                          <div className="min-w-0 flex-1 space-y-1.5">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                              <span
-                                                className={`px-2.5 py-1 rounded-xl font-mono font-black text-[13.5px] shrink-0 whitespace-nowrap ${
-                                                  isSelected
-                                                    ? 'bg-emerald-600 text-white'
-                                                    : compState.isRecognized
-                                                    ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                                                    : 'bg-[#F4F6F8] text-slate-900'
-                                                }`}
-                                              >
-                                                {shortMd}
-                                              </span>
-                                              {renderStageCompletionButton(crop.request_no, item, {
-                                                size: 'sm',
-                                                explicitDate: effectiveYmd,
-                                              })}
-                                              {item.stage_group_name && (
-                                                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11.5px] font-extrabold shrink-0 whitespace-nowrap">
-                                                  {item.stage_group_name}
+                                      <React.Fragment key={`mob-up-${item.item_id || idx}`}>
+                                        <div className="bg-white">
+                                          {/* 심플 리스트 행 */}
+                                          <div
+                                            onClick={() => {
+                                              if (isSelected) {
+                                                setSelectedStageItem(null);
+                                              } else {
+                                                handleSelectStageItem(item);
+                                              }
+                                            }}
+                                            className={`p-3.5 flex items-center justify-between gap-2.5 transition cursor-pointer ${
+                                              isSelected
+                                                ? 'bg-emerald-50/85'
+                                                : isPastItem
+                                                ? 'bg-[#EEF8F3]/75 hover:bg-[#E2F3EA]'
+                                                : compState.isRecognized
+                                                ? 'bg-emerald-50/25 hover:bg-slate-50'
+                                                : 'hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            <div className="min-w-0 flex-1 space-y-1.5">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span
+                                                  className={`px-2.5 py-1 rounded-xl font-mono font-black text-[13.5px] shrink-0 whitespace-nowrap ${
+                                                    isSelected
+                                                      ? 'bg-emerald-600 text-white'
+                                                      : isPastItem || compState.isRecognized
+                                                      ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                                                      : 'bg-[#F4F6F8] text-slate-900'
+                                                  }`}
+                                                >
+                                                  {shortMd}
                                                 </span>
-                                              )}
-                                            </div>
-                                            <div className="min-w-0">
-                                              <div className="font-black text-[16px] text-slate-950 leading-snug break-keep">
-                                                <span>{cleanName}</span>
-                                                {renderStageInlineStatusText(crop.request_no, item, {
+                                                {renderStageCompletionButton(crop.request_no, item, {
+                                                  size: 'sm',
                                                   explicitDate: effectiveYmd,
                                                 })}
+                                                {item.stage_group_name && (
+                                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[11.5px] font-extrabold shrink-0 whitespace-nowrap">
+                                                    {item.stage_group_name}
+                                                  </span>
+                                                )}
                                               </div>
-                                              <div className="text-[13.5px] font-semibold text-slate-600 truncate mt-0.5">
-                                                {item.work_content ||
-                                                  item.work_description ||
-                                                  '생육상태 및 기온 확인 후 진행'}
+                                              <div className="min-w-0">
+                                                <div className="font-black text-[16px] text-slate-950 leading-snug break-keep">
+                                                  <span>
+                                                    {idx + 1}. {cleanName}
+                                                  </span>
+                                                  {renderStageInlineStatusText(crop.request_no, item, {
+                                                    explicitDate: effectiveYmd,
+                                                  })}
+                                                </div>
+                                                <div className="text-[13.5px] font-semibold text-slate-600 truncate mt-0.5">
+                                                  {item.work_content ||
+                                                    item.work_description ||
+                                                    '생육상태 및 기온 확인 후 진행'}
+                                                </div>
                                               </div>
                                             </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleSelectStageItem(item);
+                                                  setMyPageProgressDetailReqNo(crop.request_no);
+                                                  setMyPageStageDetailItem(item);
+                                                }}
+                                                className="px-2.5 py-1.5 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs"
+                                              >
+                                                세부보기
+                                              </button>
+                                              <ChevronRight
+                                                className={`w-5 h-5 shrink-0 transition-transform duration-200 ${
+                                                  isSelected
+                                                    ? 'rotate-90 text-emerald-700'
+                                                    : 'text-slate-400'
+                                                }`}
+                                              />
+                                            </div>
                                           </div>
-                                          <ChevronRight
-                                            className={`w-5 h-5 shrink-0 transition-transform duration-200 ${
-                                              isSelected
-                                                ? 'rotate-90 text-emerald-700'
-                                                : 'text-slate-400'
-                                            }`}
-                                          />
-                                        </div>
 
                                         {/* 리스트 항목 선택 시 열리는 관련 정보 + 생육과정별 추천상품 1개 (제품이미지 + 제품명 + 선택된 체크박스) */}
                                         {isSelected && (
@@ -7643,7 +7668,13 @@ export default function UserIntroPage() {
                                             })()}
                                           </div>
                                         )}
-                                      </div>
+                                        </div>
+                                        {shouldShowBaselineAfterThis && (
+                                          <div className="px-3.5 bg-white">
+                                            {renderTodayBaselineDivider(formatKoreanMonthDayLabel(todayYmdVal))}
+                                          </div>
+                                        )}
+                                      </React.Fragment>
                                     );
                                   })}
                                 </div>
@@ -7680,7 +7711,7 @@ export default function UserIntroPage() {
 
                               {/* [탭 1: 타임라인 — 첨부 이미지 3번 '농작업 타임라인'] */}
                               {scheduleViewMode === 'timeline' && (
-                                <div className="rounded-2xl border border-slate-200 p-4 space-y-4">
+                                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                   <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <h4 className="text-[19px] font-black text-slate-900">
                                       농작업 타임라인
@@ -7689,60 +7720,56 @@ export default function UserIntroPage() {
                                       완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 · 진행률 {crop.progress_pct}%
                                     </span>
                                   </div>
-                                  <div className="divide-y divide-slate-200">
-                                    {(provisionData.scheduleItems || []).map(
-                                      (item: any, idx: number) => {
-                                        const cleanName = String(item.sub_item_name || '')
-                                          .replace(/\s*\([^)]*\)/g, '')
-                                          .trim();
-                                        const effDate = getEffectiveStageItemDate(
-                                          crop.request_no,
-                                          item
-                                        );
-                                        const mNum = Number(
-                                          String(effDate || '').slice(5, 7)
-                                        );
-                                        const dNum = Number(
-                                          String(effDate || '').slice(8, 10)
-                                        );
-                                        const koreanDateLabel =
-                                          mNum && dNum
-                                            ? `${mNum}월 ${dNum}일`
-                                            : effDate || '-';
-                                        const isSelected =
-                                          selectedStageItem?.item_id === item.item_id;
-                                        return (
+                                  {(() => {
+                                    const mobTlPartition = partitionStageItemsByToday(
+                                      crop.request_no,
+                                      provisionData.scheduleItems || []
+                                    );
+                                    const renderMobTlEntry = (
+                                      entry: { item: any; origIdx: number; effDate: string; isPast: boolean },
+                                      isLastVisible: boolean
+                                    ) => {
+                                      const { item, origIdx, effDate } = entry;
+                                      const cleanName = String(item.sub_item_name || '')
+                                        .replace(/\s*\([^)]*\)/g, '')
+                                        .trim();
+                                      const mNum = Number(String(effDate || '').slice(5, 7));
+                                      const dNum = Number(String(effDate || '').slice(8, 10));
+                                      const koreanDateLabel =
+                                        mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
+                                      const isSelected = selectedStageItem?.item_id === item.item_id;
+                                      return (
+                                        <div
+                                          key={`mob-tl-${item.item_id || origIdx}`}
+                                          className="py-2 first:pt-1 last:pb-1"
+                                        >
                                           <div
-                                            key={`mob-tl-${item.item_id}`}
-                                            className="py-2 first:pt-1 last:pb-1"
+                                            onClick={() => {
+                                              handleSelectStageItem(item);
+                                            }}
+                                            className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
+                                              isSelected
+                                                ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                                                : 'hover:bg-slate-50'
+                                            }`}
                                           >
-                                            <div
-                                              onClick={() => {
-                                                handleSelectStageItem(item);
-                                              }}
-                                              className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
-                                                isSelected
-                                                  ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
-                                                  : 'hover:bg-slate-50'
-                                              }`}
-                                            >
-                                              <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
-                                                <span
-                                                  className={`text-[16px] font-black leading-none ${
-                                                    isSelected
-                                                      ? 'text-emerald-700 font-black'
-                                                      : 'text-slate-800'
-                                                  }`}
-                                                >
-                                                  {idx + 1}
-                                                </span>
-                                                {idx <
-                                                  (provisionData.scheduleItems?.length || 0) - 1 && (
-                                                  <div className="w-px h-9 bg-slate-200 mt-1.5" />
-                                                )}
-                                              </div>
-                                              <div className="min-w-0 flex-1 pb-1">
-                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                            <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                                              <span
+                                                className={`text-[16px] font-black leading-none ${
+                                                  isSelected
+                                                    ? 'text-emerald-700 font-black'
+                                                    : 'text-slate-800'
+                                                }`}
+                                              >
+                                                {origIdx + 1}
+                                              </span>
+                                              {!isLastVisible && (
+                                                <div className="w-px h-9 bg-slate-200 mt-1.5" />
+                                              )}
+                                            </div>
+                                            <div className="min-w-0 flex-1 pb-1">
+                                              <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                                                   <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
                                                     <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
                                                       {koreanDateLabel}
@@ -7767,18 +7794,73 @@ export default function UserIntroPage() {
                                                     )}
                                                   </span>
                                                 </div>
-                                                <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
-                                                  {item.work_content ||
-                                                    item.work_description ||
-                                                    '토양검정과 생육상태 확인 후 진행'}
-                                                </div>
+
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelectStageItem(item);
+                                                    setMyPageProgressDetailReqNo(crop.request_no);
+                                                    setMyPageStageDetailItem(item);
+                                                  }}
+                                                  className="px-2.5 py-1 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                                                >
+                                                  세부보기
+                                                </button>
+                                              </div>
+                                              <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                                                {item.work_content ||
+                                                  item.work_description ||
+                                                  '토양검정과 생육상태 확인 후 진행'}
                                               </div>
                                             </div>
                                           </div>
-                                        );
-                                      }
-                                    )}
-                                  </div>
+                                        </div>
+                                      );
+                                    };
+
+                                    return (
+                                      <div>
+                                        {renderPastStagesToggleControls(crop.request_no, mobTlPartition)}
+
+                                        {mobTlPartition.isPastExpanded &&
+                                          mobTlPartition.pastEntries.length > 0 && (
+                                            <div className="divide-y divide-slate-200">
+                                              {mobTlPartition.pastEntries.map((entry, idx) =>
+                                                renderMobTlEntry(
+                                                  entry,
+                                                  idx === mobTlPartition.pastEntries.length - 1 &&
+                                                    mobTlPartition.upcomingEntries.length === 0
+                                                )
+                                              )}
+                                            </div>
+                                          )}
+
+                                        {mobTlPartition.isPastExpanded &&
+                                          mobTlPartition.pastEntries.length > 0 &&
+                                          renderTodayBaselineDivider(mobTlPartition.todayKoreanLabel)}
+
+                                        {mobTlPartition.upcomingEntries.length > 0 ? (
+                                          <div className="divide-y divide-slate-200">
+                                            {mobTlPartition.upcomingEntries.map((entry, idx) =>
+                                              renderMobTlEntry(
+                                                entry,
+                                                idx === mobTlPartition.upcomingEntries.length - 1
+                                              )
+                                            )}
+                                          </div>
+                                        ) : (
+                                          !mobTlPartition.isPastExpanded && (
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-600">
+                                              현재 날짜({mobTlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
+                                              <br />
+                                              상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {mobTlPartition.totalCount}개 공정을 확인할 수 있습니다.
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               )}
 
@@ -7886,18 +7968,35 @@ export default function UserIntroPage() {
 
                               {/* [탭 3: 생육단계 — 첨부 이미지 5번 '배추 생육단계'] */}
                               {scheduleViewMode === 'stages' && (
-                                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 p-4 space-y-3">
                                   <h4 className="text-[19px] font-black text-slate-900">
                                     {crop.crop_short || '배추'} 생육단계
                                   </h4>
+                                  {renderPastStagesToggleControls(
+                                    crop.request_no,
+                                    partitionStageItemsByToday(
+                                      crop.request_no,
+                                      provisionData.scheduleItems || []
+                                    )
+                                  )}
                                   <div className="space-y-2.5">
                                     {(provisionData.stageGroups || []).map((grp: any) => {
+                                      const todayYmdStg = getTodayKstYmd();
+                                      const isPastExpandedStg = isPastStagesShownForReq(crop.request_no);
+                                      const visibleGroupItems = isPastExpandedStg
+                                        ? grp.items || []
+                                        : (grp.items || []).filter((it: any) => {
+                                            const d = getEffectiveStageItemDate(crop.request_no, it);
+                                            return !(d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d < todayYmdStg);
+                                          });
+                                      if (visibleGroupItems.length === 0) return null;
                                       const isStageOpen =
+                                        expandedStageGroupCode === 'ALL' ||
                                         expandedStageGroupCode === grp.stage_group_id;
                                       const isHarvestStage =
                                         String(grp.stage_group_name || '').includes('수확') ||
                                         String(grp.stage_slot_key || '').includes('HARVEST');
-                                      const subNamesSummary = (grp.items || [])
+                                      const subNamesSummary = visibleGroupItems
                                         .map((i: any) =>
                                           String(i.sub_item_name || '')
                                             .replace(/\s*\([^)]*\)/g, '')
@@ -7945,8 +8044,8 @@ export default function UserIntroPage() {
                                           </button>
 
                                           {isStageOpen && (
-                                            <div className="pl-12 space-y-2 pb-1">
-                                              {(grp.items || []).map((it: any) => {
+                                            <div className="pl-6 sm:pl-12 space-y-2 pb-1">
+                                              {visibleGroupItems.map((it: any) => {
                                                 const cleanSub = String(it.sub_item_name || '')
                                                   .replace(/\s*\([^)]*\)/g, '')
                                                   .trim();
@@ -7962,7 +8061,7 @@ export default function UserIntroPage() {
                                                     onClick={() => {
                                                       handleSelectStageItem(it);
                                                     }}
-                                                    className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-[15px] flex items-center justify-between gap-2 transition cursor-pointer ${
+                                                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-[14.5px] flex items-center justify-between gap-2 transition cursor-pointer ${
                                                       isSel
                                                         ? 'bg-emerald-50 border-emerald-300 text-emerald-950 font-black'
                                                         : 'bg-slate-50 border-slate-200/80 text-slate-800 font-bold hover:bg-slate-100'
@@ -7976,14 +8075,14 @@ export default function UserIntroPage() {
                                                         {
                                                           explicitDate: effSubDate,
                                                           unconfirmedClassName:
-                                                            'text-red-600 font-extrabold text-[12.5px] ml-1 whitespace-nowrap',
+                                                            'text-red-600 font-extrabold text-[12px] ml-1 whitespace-nowrap',
                                                           confirmedClassName:
-                                                            'text-emerald-700 font-extrabold text-[12.5px] ml-1 whitespace-nowrap',
+                                                            'text-emerald-700 font-extrabold text-[12px] ml-1 whitespace-nowrap',
                                                         }
                                                       )}
                                                     </div>
                                                     <div className="flex items-center gap-1.5 shrink-0">
-                                                      <span className="font-mono text-emerald-700 font-black text-[13.5px]">
+                                                      <span className="font-mono text-emerald-700 font-black text-[12.5px]">
                                                         {formatYmdWithWeekday(effSubDate)}
                                                       </span>
                                                       {renderStageCompletionButton(
@@ -7994,6 +8093,18 @@ export default function UserIntroPage() {
                                                           explicitDate: effSubDate,
                                                         }
                                                       )}
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          handleSelectStageItem(it);
+                                                          setMyPageProgressDetailReqNo(crop.request_no);
+                                                          setMyPageStageDetailItem(it);
+                                                        }}
+                                                        className="px-2 py-1 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs"
+                                                      >
+                                                        세부보기
+                                                      </button>
                                                     </div>
                                                   </div>
                                                 );
@@ -8392,12 +8503,21 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
+                            {/* 이전 생육과정 보기 / 접기 토글 바 (PC 48주 타임라인 연동) */}
+                            {renderPastStagesToggleControls(
+                              provisionData.activeRequest?.request_no || crop.request_no || selectedRequestNo,
+                              partitionStageItemsByToday(
+                                provisionData.activeRequest?.request_no || crop.request_no || selectedRequestNo,
+                                provisionData.scheduleItems || []
+                              )
+                            )}
+
                             {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
                             <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
                               <table className="w-full border-collapse table-fixed min-w-[1440px]">
                                 <colgroup>
                                   <col className="w-[130px]" />
-                                  <col className="w-[260px]" />
+                                  <col className="w-[290px]" />
                                   <col className="w-[255px]" />
                                   <col />
                                 </colgroup>
@@ -8460,185 +8580,238 @@ export default function UserIntroPage() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {(provisionData.stageGroups || []).map((group: any) => {
-                                    const groupItems = group.items || [];
-                                    const stageColor = group.stage_color || '#16a34a';
-                                    return groupItems.map((item: any, idxInGroup: number) => {
-                                      const enrichedItem = {
-                                        ...item,
-                                        stage_group_name: group.stage_group_name,
-                                        stage_color: stageColor,
-                                      };
-                                      const isSelectedStage = selectedStageItem?.item_id === item.item_id;
-                                      const isHovered = hoveredProvisionItem?.item_id === item.item_id;
-                                      const isClickedOpen = clickedProvisionItem?.item_id === item.item_id;
-                                      const isLastInGroup = idxInGroup === groupItems.length - 1;
-                                      const leftPct =
-                                        pcTimelineMode === 'calendar'
-                                          ? Number(item.calendar_left_pct ?? 50)
-                                          : Number(item.diagram_left_pct ?? 50);
-                                      const widthPct = Math.max(
-                                        3.5,
-                                        pcTimelineMode === 'calendar'
-                                          ? Number(item.calendar_width_pct ?? 4)
-                                          : Number(item.diagram_width_pct ?? 4)
-                                      );
-                                      return (
-                                        <tr
-                                          key={item.item_id}
-                                          data-growth-trigger="true"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            const barEl = e.currentTarget.querySelector(
-                                              '[data-gantt-bar="true"]'
-                                            ) as HTMLElement | null;
-                                            const targetEl = barEl || e.currentTarget;
-                                            const rect = targetEl.getBoundingClientRect();
-                                            setHoverAnchorPos({
-                                              top: rect.top,
-                                              left: rect.left,
-                                              width: rect.width,
-                                              height: rect.height,
-                                              showAbove: rect.top > 240,
-                                            });
-                                            setHoveredProvisionItem(enrichedItem);
-                                            handleSelectStageItem(enrichedItem);
-                                          }}
-                                          className={`cursor-pointer transition ${
-                                            isLastInGroup ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
-                                          } ${
-                                            isClickedOpen || isHovered || isSelectedStage
-                                              ? 'bg-emerald-50/85'
-                                              : 'bg-white hover:bg-slate-50/90'
-                                          }`}
-                                        >
-                                          {idxInGroup === 0 && (
-                                            <td
-                                              rowSpan={groupItems.length}
-                                              className="p-2 border-r border-slate-200 align-middle bg-slate-50/40"
-                                            >
-                                              <div
-                                                style={{ backgroundColor: stageColor }}
-                                                className="w-full min-h-[68px] rounded-xl px-2.5 py-2 flex items-center justify-center text-white font-extrabold text-xs shadow-2xs"
-                                              >
-                                                {group.stage_group_name}
-                                              </div>
-                                            </td>
-                                          )}
-                                          <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
-                                            <div className="flex items-center justify-between gap-1.5">
-                                              <span
-                                                className={`leading-snug break-keep ${
-                                                  isClickedOpen || isHovered || isSelectedStage
-                                                    ? 'text-emerald-700 font-extrabold'
-                                                    : ''
-                                                }`}
-                                              >
-                                                {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
-                                                {renderStageInlineStatusText(
-                                                  provisionData.activeRequest?.request_no ||
-                                                    crop.request_no ||
-                                                    selectedRequestNo,
-                                                  enrichedItem,
-                                                  {
-                                                    unconfirmedClassName:
-                                                      'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                    confirmedClassName:
-                                                      'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                  }
-                                                )}
-                                              </span>
-                                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
-                                                요약보기 ›
-                                              </span>
-                                            </div>
-                                          </td>
-                                          <td
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
-                                          >
-                                            {(() => {
-                                              const rowReqNo =
-                                                provisionData.activeRequest?.request_no ||
-                                                crop.request_no ||
-                                                selectedRequestNo;
-                                              const effRowDate = getEffectiveStageItemDate(
-                                                rowReqNo,
-                                                enrichedItem
-                                              );
-                                              return (
-                                                <div className="flex items-center justify-between gap-1.5 flex-nowrap">
-                                                  <div className="flex items-center gap-1 min-w-0 flex-nowrap">
-                                                    <input
-                                                      type="date"
-                                                      value={effRowDate}
-                                                      onChange={(e) =>
-                                                        handleInlineStageDateChange(
-                                                          rowReqNo,
-                                                          enrichedItem,
-                                                          e.target.value
-                                                        )
-                                                      }
-                                                      className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
-                                                    />
-                                                    <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
-                                                      ({getWeekdayNameFromYmd(effRowDate)})
-                                                    </span>
-                                                  </div>
-                                                  {renderStageCompletionButton(
-                                                    rowReqNo,
-                                                    enrichedItem,
-                                                    {
-                                                      size: 'sm',
-                                                      explicitDate: effRowDate,
-                                                    }
-                                                  )}
-                                                </div>
-                                              );
-                                            })()}
-                                          </td>
-                                          <td className="p-0 relative h-[36px] align-middle">
-                                            <div
-                                              style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
-                                              className="absolute inset-0 grid w-full pointer-events-none"
-                                            >
-                                              {Array.from({ length: 48 }, (_, cIdx) => {
-                                                const isMonthBorder = (cIdx + 1) % 4 === 0;
-                                                const isLastCol = cIdx === 47;
-                                                return (
-                                                  <div
-                                                    key={cIdx}
-                                                    className={`h-full ${
-                                                      isLastCol
-                                                        ? ''
-                                                        : isMonthBorder
-                                                        ? 'border-r border-slate-300'
-                                                        : 'border-r border-slate-100'
-                                                    }`}
-                                                  />
-                                                );
-                                              })}
-                                            </div>
-                                            <div
-                                              data-gantt-bar="true"
-                                              style={{
-                                                left: `${leftPct}%`,
-                                                width: `${widthPct}%`,
-                                                backgroundColor: stageColor,
-                                                clipPath:
-                                                  'polygon(5px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 5px 100%, 0% 50%)',
+                                  {(() => {
+                                    const tableReqNo =
+                                      provisionData.activeRequest?.request_no ||
+                                      crop.request_no ||
+                                      selectedRequestNo;
+                                    const todayYmdForTable = getTodayKstYmd();
+                                    const isPastExpandedForTable = isPastStagesShownForReq(tableReqNo);
+                                    const flatAllItems: any[] = [];
+                                    (provisionData.stageGroups || []).forEach((g: any) => {
+                                      (g.items || []).forEach((it: any) => flatAllItems.push(it));
+                                    });
+                                    let lastPastItemId = '';
+                                    flatAllItems.forEach((it: any) => {
+                                      const d = getEffectiveStageItemDate(tableReqNo, it);
+                                      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d < todayYmdForTable) {
+                                        lastPastItemId = String(it.item_id || '');
+                                      }
+                                    });
+
+                                    return (provisionData.stageGroups || []).map((group: any) => {
+                                      const rawGroupItems = group.items || [];
+                                      const groupItems = isPastExpandedForTable
+                                        ? rawGroupItems
+                                        : rawGroupItems.filter((it: any) => {
+                                            const effD = getEffectiveStageItemDate(tableReqNo, it);
+                                            return !(
+                                              effD &&
+                                              /^\d{4}-\d{2}-\d{2}$/.test(effD) &&
+                                              effD < todayYmdForTable
+                                            );
+                                          });
+                                      if (groupItems.length === 0) return null;
+                                      const stageColor = group.stage_color || '#16a34a';
+                                      return groupItems.map((item: any, idxInGroup: number) => {
+                                        const enrichedItem = {
+                                          ...item,
+                                          stage_group_name: group.stage_group_name,
+                                          stage_color: stageColor,
+                                        };
+                                        const isSelectedStage = selectedStageItem?.item_id === item.item_id;
+                                        const isHovered = hoveredProvisionItem?.item_id === item.item_id;
+                                        const isClickedOpen = clickedProvisionItem?.item_id === item.item_id;
+                                        const isLastInGroup = idxInGroup === groupItems.length - 1;
+                                        const showBaselineRowAfter =
+                                          isPastExpandedForTable &&
+                                          lastPastItemId &&
+                                          String(item.item_id || '') === lastPastItemId;
+                                        const leftPct =
+                                          pcTimelineMode === 'calendar'
+                                            ? Number(item.calendar_left_pct ?? 50)
+                                            : Number(item.diagram_left_pct ?? 50);
+                                        const widthPct = Math.max(
+                                          3.5,
+                                          pcTimelineMode === 'calendar'
+                                            ? Number(item.calendar_width_pct ?? 4)
+                                            : Number(item.diagram_width_pct ?? 4)
+                                        );
+                                        return (
+                                          <React.Fragment key={item.item_id}>
+                                            <tr
+                                              data-growth-trigger="true"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                const barEl = e.currentTarget.querySelector(
+                                                  '[data-gantt-bar="true"]'
+                                                ) as HTMLElement | null;
+                                                const targetEl = barEl || e.currentTarget;
+                                                const rect = targetEl.getBoundingClientRect();
+                                                setHoverAnchorPos({
+                                                  top: rect.top,
+                                                  left: rect.left,
+                                                  width: rect.width,
+                                                  height: rect.height,
+                                                  showAbove: rect.top > 240,
+                                                });
+                                                setHoveredProvisionItem(enrichedItem);
+                                                handleSelectStageItem(enrichedItem);
                                               }}
-                                              className={`relative z-10 h-[23px] my-[6px] flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
-                                                isHovered || isClickedOpen ? 'scale-[1.03] ring-2 ring-emerald-700/40' : ''
+                                              className={`cursor-pointer transition ${
+                                                isLastInGroup ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
+                                              } ${
+                                                isClickedOpen || isHovered || isSelectedStage
+                                                  ? 'bg-emerald-50/85'
+                                                  : 'bg-white hover:bg-slate-50/90'
                                               }`}
                                             >
-                                              <span className="truncate">{item.bar_label || item.sub_item_name}</span>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
+                                              {idxInGroup === 0 && (
+                                                <td
+                                                  rowSpan={groupItems.length}
+                                                  className="p-2 border-r border-slate-200 align-middle bg-slate-50/40"
+                                                >
+                                                  <div
+                                                    style={{ backgroundColor: stageColor }}
+                                                    className="w-full min-h-[68px] rounded-xl px-2.5 py-2 flex items-center justify-center text-white font-extrabold text-xs shadow-2xs"
+                                                  >
+                                                    {group.stage_group_name}
+                                                  </div>
+                                                </td>
+                                              )}
+                                              <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
+                                                <div className="flex items-center justify-between gap-1.5">
+                                                  <span
+                                                    className={`leading-snug break-keep ${
+                                                      isClickedOpen || isHovered || isSelectedStage
+                                                        ? 'text-emerald-700 font-extrabold'
+                                                        : ''
+                                                    }`}
+                                                  >
+                                                    {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
+                                                    {renderStageInlineStatusText(
+                                                      tableReqNo,
+                                                      enrichedItem,
+                                                      {
+                                                        unconfirmedClassName:
+                                                          'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                        confirmedClassName:
+                                                          'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                      }
+                                                    )}
+                                                  </span>
+                                                  <div className="inline-flex items-center gap-1 shrink-0">
+                                                    <button
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleSelectStageItem(enrichedItem);
+                                                        setDetailModalPos({ x: 0, y: 0 });
+                                                        setClickedProvisionItem(enrichedItem);
+                                                      }}
+                                                      className="px-2 py-0.5 rounded border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[10.5px] font-extrabold transition cursor-pointer shadow-2xs"
+                                                    >
+                                                      세부보기
+                                                    </button>
+                                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
+                                                      요약보기 ›
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                              </td>
+                                              <td
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
+                                              >
+                                                {(() => {
+                                                  const effRowDate = getEffectiveStageItemDate(
+                                                    tableReqNo,
+                                                    enrichedItem
+                                                  );
+                                                  return (
+                                                    <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                                                      <div className="flex items-center gap-1 min-w-0 flex-nowrap">
+                                                        <input
+                                                          type="date"
+                                                          value={effRowDate}
+                                                          onChange={(e) =>
+                                                            handleInlineStageDateChange(
+                                                              tableReqNo,
+                                                              enrichedItem,
+                                                              e.target.value
+                                                            )
+                                                          }
+                                                          className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
+                                                        />
+                                                        <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
+                                                          ({getWeekdayNameFromYmd(effRowDate)})
+                                                        </span>
+                                                      </div>
+                                                      {renderStageCompletionButton(
+                                                        tableReqNo,
+                                                        enrichedItem,
+                                                        {
+                                                          size: 'sm',
+                                                          explicitDate: effRowDate,
+                                                        }
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })()}
+                                              </td>
+                                              <td className="p-0 relative h-[36px] align-middle">
+                                                <div
+                                                  style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
+                                                  className="absolute inset-0 grid w-full pointer-events-none"
+                                                >
+                                                  {Array.from({ length: 48 }, (_, cIdx) => {
+                                                    const isMonthBorder = (cIdx + 1) % 4 === 0;
+                                                    const isLastCol = cIdx === 47;
+                                                    return (
+                                                      <div
+                                                        key={cIdx}
+                                                        className={`h-full ${
+                                                          isLastCol
+                                                            ? ''
+                                                            : isMonthBorder
+                                                            ? 'border-r border-slate-300'
+                                                            : 'border-r border-slate-100'
+                                                        }`}
+                                                      />
+                                                    );
+                                                  })}
+                                                </div>
+                                                <div
+                                                  data-gantt-bar="true"
+                                                  style={{
+                                                    left: `${leftPct}%`,
+                                                    width: `${widthPct}%`,
+                                                    backgroundColor: stageColor,
+                                                    clipPath:
+                                                      'polygon(5px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 5px 100%, 0% 50%)',
+                                                  }}
+                                                  className={`relative z-10 h-[23px] my-[6px] flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
+                                                    isHovered || isClickedOpen ? 'scale-[1.03] ring-2 ring-emerald-700/40' : ''
+                                                  }`}
+                                                >
+                                                  <span className="truncate">{item.bar_label || item.sub_item_name}</span>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                            {showBaselineRowAfter && (
+                                              <tr className="bg-emerald-50/75 border-b-2 border-emerald-500">
+                                                <td colSpan={4} className="px-4 py-1.5">
+                                                  {renderTodayBaselineDivider(
+                                                    formatKoreanMonthDayLabel(todayYmdForTable)
+                                                  )}
+                                                </td>
+                                              </tr>
+                                            )}
+                                          </React.Fragment>
+                                        );
+                                      });
                                     });
-                                  })}
+                                  })()}
                                 </tbody>
                               </table>
                             </div>
@@ -9772,10 +9945,10 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 예정된 농작업 */}
-                  <div className="space-y-3 pt-1">
+                  {/* 예정된 농작업 (일정 세부정보 리스트) */}
+                  <div className="w-full max-w-full min-w-0 overflow-hidden space-y-3 pt-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-extrabold text-slate-900">예정된 농작업</h3>
+                      <h3 className="text-lg font-extrabold text-slate-900">일정 세부정보 리스트</h3>
                       <button
                         type="button"
                         onClick={() => setScheduleViewMode('timeline')}
@@ -9785,39 +9958,62 @@ export default function UserIntroPage() {
                       </button>
                     </div>
 
-                    <div className="space-y-2.5">
-                      {(provisionData?.scheduleItems || []).slice(0, 4).map((item: any) => {
+                    {(() => {
+                      const activeReqNo =
+                        provisionData?.activeRequest?.request_no ||
+                        selectedRequestNo ||
+                        activeCropCard.request_no;
+                      const pcUpPartition = partitionStageItemsByToday(
+                        activeReqNo,
+                        provisionData?.scheduleItems || []
+                      );
+                      const renderPcUpCard = ({
+                        item,
+                        origIdx,
+                        effDate,
+                        isPast,
+                      }: {
+                        item: any;
+                        origIdx: number;
+                        effDate: string;
+                        isPast: boolean;
+                      }) => {
                         const isSelected = selectedStageItem?.item_id === item.item_id;
-                        const activeReqNo =
-                          provisionData?.activeRequest?.request_no ||
-                          selectedRequestNo ||
-                          activeCropCard.request_no;
-                        const effYmd = getEffectiveStageItemDate(activeReqNo, item);
                         return (
                           <div
-                            key={item.item_id}
+                            key={item.item_id || origIdx}
                             onClick={() => handleSelectStageItem(item)}
                             className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 transition cursor-pointer ${
                               isSelected
-                                ? 'border-emerald-500 bg-emerald-50/50'
+                                ? 'border-emerald-500 bg-emerald-50/60'
+                                : isPast
+                                ? 'border-emerald-200/80 bg-[#EEF8F3]/75 hover:bg-[#E2F3EA]'
                                 : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/80'
                             }`}
                           >
                             <div className="min-w-0 flex-1 space-y-1.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200/80 font-mono font-extrabold text-xs text-slate-900 shrink-0 whitespace-nowrap">
-                                  {formatShortMdWithWeekday(effYmd)}
+                                <span
+                                  className={`px-2.5 py-1 rounded-xl border font-mono font-extrabold text-xs shrink-0 whitespace-nowrap ${
+                                    isPast
+                                      ? 'bg-emerald-100 border-emerald-300 text-emerald-950'
+                                      : 'bg-white border-slate-200/80 text-slate-900'
+                                  }`}
+                                >
+                                  {formatShortMdWithWeekday(effDate)}
                                 </span>
                                 {renderStageCompletionButton(activeReqNo, item, {
                                   size: 'sm',
-                                  explicitDate: effYmd,
+                                  explicitDate: effDate,
                                 })}
                               </div>
                               <div className="min-w-0">
                                 <div className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
-                                  <span>{item.sub_item_name}</span>
+                                  <span>
+                                    {origIdx + 1}. {item.sub_item_name}
+                                  </span>
                                   {renderStageInlineStatusText(activeReqNo, item, {
-                                    explicitDate: effYmd,
+                                    explicitDate: effDate,
                                     unconfirmedClassName:
                                       'text-red-600 font-extrabold text-xs ml-1.5 whitespace-nowrap',
                                     confirmedClassName:
@@ -9825,15 +10021,46 @@ export default function UserIntroPage() {
                                   })}
                                 </div>
                                 <div className="text-xs text-slate-500 truncate mt-0.5">
-                                  {item.work_description || '기온·생육상태 확인 후 진행'}
+                                  {item.work_content || item.work_description || '기온·생육상태 확인 후 진행'}
                                 </div>
                               </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectStageItem(item);
+                                  setDetailModalPos({ x: 0, y: 0 });
+                                  setClickedProvisionItem(item);
+                                }}
+                                className="px-2.5 py-1 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs"
+                              >
+                                세부보기
+                              </button>
+                              <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                            </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      };
+
+                      return (
+                        <div className="w-full max-w-full min-w-0 overflow-hidden space-y-2.5">
+                          {renderPastStagesToggleControls(activeReqNo, pcUpPartition)}
+                          {pcUpPartition.isPastExpanded && pcUpPartition.pastEntries.length > 0 && (
+                            <div className="space-y-2">
+                              {pcUpPartition.pastEntries.map((entry) => renderPcUpCard(entry))}
+                            </div>
+                          )}
+                          {pcUpPartition.isPastExpanded &&
+                            pcUpPartition.pastEntries.length > 0 &&
+                            renderTodayBaselineDivider(pcUpPartition.todayKoreanLabel)}
+                          <div className="space-y-2">
+                            {pcUpPartition.upcomingEntries.map((entry) => renderPcUpCard(entry))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -9872,27 +10099,38 @@ export default function UserIntroPage() {
 
                   {/* 보기 1: 농작업 타임라인 (샘플 이미지 3번) */}
                   {scheduleViewMode === 'timeline' && (
-                    <div className="rounded-2xl border border-slate-200 p-4 space-y-3 max-h-[380px] overflow-y-auto">
+                    <div className="w-full max-w-full min-w-0 overflow-x-hidden rounded-2xl border border-slate-200 p-4 space-y-3 max-h-[420px] overflow-y-auto">
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-extrabold text-base text-slate-900">농작업 타임라인</div>
                         <span className="text-[11px] font-extrabold text-emerald-700">
                           완료 {activeCropCard.completed_stage_count ?? 0}/{activeCropCard.total_stage_count ?? 16}개 ({activeCropCard.progress_pct}%)
                         </span>
                       </div>
-                      <div className="space-y-3">
-                        {(provisionData?.scheduleItems || []).map((item: any, idx: number) => {
+                      {(() => {
+                        const activeReqNo =
+                          provisionData?.activeRequest?.request_no ||
+                          selectedRequestNo ||
+                          activeCropCard.request_no;
+                        const pcTlPartition = partitionStageItemsByToday(
+                          activeReqNo,
+                          provisionData?.scheduleItems || []
+                        );
+                        const renderPcTlEntry = (
+                          entry: { item: any; origIdx: number; effDate: string; isPast: boolean },
+                          isLastVisible: boolean
+                        ) => {
+                          const { item, origIdx, effDate, isPast } = entry;
                           const isSelected = selectedStageItem?.item_id === item.item_id;
-                          const activeReqNo =
-                            provisionData?.activeRequest?.request_no ||
-                            selectedRequestNo ||
-                            activeCropCard.request_no;
-                          const effYmd = getEffectiveStageItemDate(activeReqNo, item);
                           return (
                             <div
-                              key={item.item_id}
+                              key={item.item_id || origIdx}
                               onClick={() => handleSelectStageItem(item)}
                               className={`flex items-start gap-3 p-2.5 rounded-xl transition cursor-pointer ${
-                                isSelected ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-slate-50'
+                                isSelected
+                                  ? 'bg-emerald-50 border border-emerald-200'
+                                  : isPast
+                                  ? 'bg-[#EEF8F3]/75 border border-emerald-200/70 hover:bg-[#E2F3EA]'
+                                  : 'hover:bg-slate-50'
                               }`}
                             >
                               <div className="flex flex-col items-center">
@@ -9900,45 +10138,103 @@ export default function UserIntroPage() {
                                   className={`w-6 h-6 rounded-full text-xs font-extrabold flex items-center justify-center ${
                                     isSelected
                                       ? 'bg-emerald-600 text-white'
+                                      : isPast
+                                      ? 'bg-emerald-600 text-white'
                                       : 'bg-slate-100 text-slate-700'
                                   }`}
                                 >
-                                  {idx + 1}
+                                  {origIdx + 1}
                                 </span>
-                                {idx < (provisionData?.scheduleItems?.length || 0) - 1 && (
+                                {!isLastVisible && (
                                   <div className="w-px h-7 bg-slate-200 mt-1" />
                                 )}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                    <span className="font-extrabold text-sm text-slate-900 whitespace-nowrap">
-                                      {formatKoreanMdWithWeekday(effYmd)}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                    <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                      <span className="font-extrabold text-sm text-slate-900 whitespace-nowrap">
+                                        {formatKoreanMdWithWeekday(effDate)}
+                                      </span>
+                                      {renderStageCompletionButton(activeReqNo, item, {
+                                        size: 'sm',
+                                        explicitDate: effDate,
+                                      })}
+                                    </div>
+                                    <span className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
+                                      · {item.sub_item_name}
+                                      {renderStageInlineStatusText(activeReqNo, item, {
+                                        explicitDate: effDate,
+                                        unconfirmedClassName:
+                                          'text-red-600 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                        confirmedClassName:
+                                          'text-emerald-700 font-extrabold text-xs ml-1.5 whitespace-nowrap',
+                                      })}
                                     </span>
-                                    {renderStageCompletionButton(activeReqNo, item, {
-                                      size: 'sm',
-                                      explicitDate: effYmd,
-                                    })}
                                   </div>
-                                  <span className="font-extrabold text-sm text-slate-900 leading-snug break-keep">
-                                    · {item.sub_item_name}
-                                    {renderStageInlineStatusText(activeReqNo, item, {
-                                      explicitDate: effYmd,
-                                      unconfirmedClassName:
-                                        'text-red-600 font-extrabold text-xs ml-1.5 whitespace-nowrap',
-                                      confirmedClassName:
-                                        'text-emerald-700 font-extrabold text-xs ml-1.5 whitespace-nowrap',
-                                    })}
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectStageItem(item);
+                                      setDetailModalPos({ x: 0, y: 0 });
+                                      setClickedProvisionItem(item);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                                  >
+                                    세부보기
+                                  </button>
                                 </div>
                                 <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-                                  {item.work_description || item.action_tip || '기온 및 토양 수분 확인 후 작업 진행'}
+                                  {item.work_content || item.work_description || item.action_tip || '기온 및 토양 수분 확인 후 작업 진행'}
                                 </div>
                               </div>
                             </div>
                           );
-                        })}
-                      </div>
+                        };
+
+                        return (
+                          <div className="w-full max-w-full min-w-0 overflow-hidden space-y-2">
+                            {renderPastStagesToggleControls(activeReqNo, pcTlPartition)}
+
+                            {pcTlPartition.isPastExpanded &&
+                              pcTlPartition.pastEntries.length > 0 && (
+                                <div className="space-y-2">
+                                  {pcTlPartition.pastEntries.map((entry, idx) =>
+                                    renderPcTlEntry(
+                                      entry,
+                                      idx === pcTlPartition.pastEntries.length - 1 &&
+                                        pcTlPartition.upcomingEntries.length === 0
+                                    )
+                                  )}
+                                </div>
+                              )}
+
+                            {pcTlPartition.isPastExpanded &&
+                              pcTlPartition.pastEntries.length > 0 &&
+                              renderTodayBaselineDivider(pcTlPartition.todayKoreanLabel)}
+
+                            {pcTlPartition.upcomingEntries.length > 0 ? (
+                              <div className="space-y-2">
+                                {pcTlPartition.upcomingEntries.map((entry, idx) =>
+                                  renderPcTlEntry(
+                                    entry,
+                                    idx === pcTlPartition.upcomingEntries.length - 1
+                                  )
+                                )}
+                              </div>
+                            ) : (
+                              !pcTlPartition.isPastExpanded && (
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-600">
+                                  현재 날짜({pcTlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
+                                  <br />
+                                  상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {pcTlPartition.totalCount}개 공정을 확인할 수 있습니다.
+                                </div>
+                              )
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -10036,88 +10332,125 @@ export default function UserIntroPage() {
 
                   {/* 보기 3: 배추 생육단계 보기 (샘플 이미지 5번) */}
                   {scheduleViewMode === 'stages' && (
-                    <div className="rounded-2xl border border-slate-200 p-4 space-y-2.5 max-h-[380px] overflow-y-auto">
+                    <div className="w-full max-w-full min-w-0 overflow-x-hidden rounded-2xl border border-slate-200 p-4 space-y-2.5 max-h-[380px] overflow-y-auto">
                       <div className="font-extrabold text-base text-slate-900">
                         {activeCropCard.crop_short} 생육단계
                       </div>
-                      <div className="divide-y divide-slate-100">
-                        {(provisionData?.stageGroups || []).map((grp: any) => {
-                          const isExpanded =
-                            expandedStageGroupCode === 'ALL' ||
-                            expandedStageGroupCode === grp.stage_group_id;
-                          return (
-                            <div key={grp.stage_group_id} className="py-2.5 space-y-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpandedStageGroupCode((prev) =>
-                                    prev === grp.stage_group_id ? 'ALL' : grp.stage_group_id
-                                  )
-                                }
-                                className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
-                                    <Sprout className="w-4 h-4 text-emerald-600" />
-                                  </span>
-                                  <div>
-                                    <div className="font-extrabold text-sm text-slate-900">
-                                      {grp.stage_group_name}
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                      {(grp.items || []).map((i: any) => i.sub_item_name).join(' · ')}
-                                    </div>
-                                  </div>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-                              </button>
+                      {(() => {
+                        const activeReqNo =
+                          provisionData?.activeRequest?.request_no ||
+                          selectedRequestNo ||
+                          activeCropCard.request_no;
+                        const pcStgPartition = partitionStageItemsByToday(
+                          activeReqNo,
+                          provisionData?.scheduleItems || []
+                        );
+                        const todayYmdPcStg = pcStgPartition.todayYmd;
+                        const isPastExpandedPcStg = pcStgPartition.isPastExpanded;
 
-                              {isExpanded && (
-                                <div className="pl-12 space-y-1.5">
-                                  {(grp.items || []).map((it: any) => {
-                                    const activeReqNo =
-                                      provisionData?.activeRequest?.request_no ||
-                                      selectedRequestNo ||
-                                      activeCropCard.request_no;
-                                    const effYmd = getEffectiveStageItemDate(activeReqNo, it);
-                                    return (
-                                      <div
-                                        key={it.item_id}
-                                        onClick={() => handleSelectStageItem(it)}
-                                        className={`w-full text-left px-3 py-2 rounded-xl border text-xs flex items-center justify-between gap-2 transition cursor-pointer ${
-                                          selectedStageItem?.item_id === it.item_id
-                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
-                                            : 'bg-slate-50 border-slate-200/70 text-slate-700 hover:bg-slate-100'
-                                        }`}
-                                      >
-                                        <div className="min-w-0 leading-snug break-keep">
-                                          <span>{it.sub_item_name}</span>
-                                          {renderStageInlineStatusText(activeReqNo, it, {
-                                            explicitDate: effYmd,
-                                            unconfirmedClassName:
-                                              'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                            confirmedClassName:
-                                              'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                          })}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 shrink-0">
-                                          <span className="font-mono text-emerald-700 font-bold">
-                                            {formatYmdWithWeekday(effYmd)}
-                                          </span>
-                                          {renderStageCompletionButton(activeReqNo, it, {
-                                            size: 'sm',
-                                            explicitDate: effYmd,
-                                          })}
+                        return (
+                          <>
+                            {renderPastStagesToggleControls(activeReqNo, pcStgPartition)}
+                            <div className="divide-y divide-slate-100">
+                              {(provisionData?.stageGroups || []).map((grp: any) => {
+                                const visibleItems = isPastExpandedPcStg
+                                  ? grp.items || []
+                                  : (grp.items || []).filter((it: any) => {
+                                      const effD = getEffectiveStageItemDate(activeReqNo, it);
+                                      return !(
+                                        effD &&
+                                        /^\d{4}-\d{2}-\d{2}$/.test(effD) &&
+                                        effD < todayYmdPcStg
+                                      );
+                                    });
+                                if (visibleItems.length === 0) return null;
+                                const isExpanded =
+                                  expandedStageGroupCode === 'ALL' ||
+                                  expandedStageGroupCode === grp.stage_group_id;
+                                return (
+                                  <div key={grp.stage_group_id} className="py-2.5 space-y-2">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedStageGroupCode((prev) =>
+                                          prev === grp.stage_group_id ? 'ALL' : grp.stage_group_id
+                                        )
+                                      }
+                                      className="w-full flex items-center justify-between gap-3 text-left cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <span className="w-9 h-9 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center shrink-0">
+                                          <Sprout className="w-4 h-4 text-emerald-600" />
+                                        </span>
+                                        <div className="min-w-0">
+                                          <div className="font-extrabold text-sm text-slate-900 truncate">
+                                            {grp.stage_group_name}
+                                          </div>
+                                          <div className="text-xs text-slate-500 truncate">
+                                            {visibleItems.map((i: any) => i.sub_item_name).join(' · ')}
+                                          </div>
                                         </div>
                                       </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                                      <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+                                    </button>
+
+                                    {isExpanded && (
+                                      <div className="pl-6 sm:pl-12 space-y-1.5">
+                                        {visibleItems.map((it: any) => {
+                                          const effYmd = getEffectiveStageItemDate(activeReqNo, it);
+                                          return (
+                                            <div
+                                              key={it.item_id}
+                                              onClick={() => handleSelectStageItem(it)}
+                                              className={`w-full text-left px-3 py-2 rounded-xl border text-xs flex items-center justify-between gap-2 transition cursor-pointer ${
+                                                selectedStageItem?.item_id === it.item_id
+                                                  ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-extrabold'
+                                                  : 'bg-slate-50 border-slate-200/70 text-slate-700 hover:bg-slate-100'
+                                              }`}
+                                            >
+                                              <div className="min-w-0 leading-snug break-keep">
+                                                <span>{it.sub_item_name}</span>
+                                                {renderStageInlineStatusText(activeReqNo, it, {
+                                                  explicitDate: effYmd,
+                                                  unconfirmedClassName:
+                                                    'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                  confirmedClassName:
+                                                    'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                })}
+                                              </div>
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="font-mono text-emerald-700 font-bold">
+                                                  {formatYmdWithWeekday(effYmd)}
+                                                </span>
+                                                {renderStageCompletionButton(activeReqNo, it, {
+                                                  size: 'sm',
+                                                  explicitDate: effYmd,
+                                                })}
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSelectStageItem(it);
+                                                    setDetailModalPos({ x: 0, y: 0 });
+                                                    setClickedProvisionItem(it);
+                                                  }}
+                                                  className="px-2 py-0.5 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[11px] font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs"
+                                                >
+                                                  세부보기
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
-                      </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -17432,7 +17765,7 @@ export default function UserIntroPage() {
                 {/* 모달리스 창 상단 헤더 */}
                 <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-[19px] font-black text-slate-900">일정 세부정보</h3>
+                    <h3 className="text-[19px] font-black text-slate-900">일정 세부정보 리스트</h3>
                     <span className="text-xs font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
                       완료 인정 {modalCrop.completed_stage_count ?? 0}/
                       {modalCrop.total_stage_count ?? 16}개 · 진행률 {modalCrop.progress_pct}%
@@ -17456,89 +17789,139 @@ export default function UserIntroPage() {
                 </div>
 
                 {/* 모달리스 창 본문: 농작업 타임라인 내용 */}
-                <div className="px-4 py-2 divide-y divide-slate-200 overflow-y-auto flex-1 bg-white">
-                  {timelineItems.map((item: any, tIdx: number) => {
-                    const cleanName = String(item.sub_item_name || '')
-                      .replace(/\s*\([^)]*\)/g, '')
-                      .trim();
-                    const effDate = getEffectiveStageItemDate(modalReqNo, item);
-                    const mNum = Number(String(effDate || '').slice(5, 7));
-                    const dNum = Number(String(effDate || '').slice(8, 10));
-                    const koreanDateLabel =
-                      mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
-                    const isSelected =
-                      resolveStageItemId(selectedStageItem) === resolveStageItemId(item, tIdx);
+                <div className="w-full max-w-full min-w-0 overflow-x-hidden px-4 py-2 overflow-y-auto flex-1 bg-white">
+                  {(() => {
+                    const tlPartition = partitionStageItemsByToday(modalReqNo, timelineItems);
+                    const renderModalTimelineEntry = (
+                      entry: { item: any; origIdx: number; effDate: string; isPast: boolean },
+                      isLastVisible: boolean
+                    ) => {
+                      const { item, origIdx, effDate, isPast } = entry;
+                      const cleanName = String(item.sub_item_name || '')
+                        .replace(/\s*\([^)]*\)/g, '')
+                        .trim();
+                      const mNum = Number(String(effDate || '').slice(5, 7));
+                      const dNum = Number(String(effDate || '').slice(8, 10));
+                      const koreanDateLabel =
+                        mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
+                      const isSelected =
+                        resolveStageItemId(selectedStageItem) === resolveStageItemId(item, origIdx);
 
-                    return (
-                      <div
-                        key={`mypage-prog-tl-${item.item_id || tIdx}`}
-                        className="py-2 first:pt-1 last:pb-1"
-                      >
+                      return (
                         <div
-                          onClick={() => {
-                            handleSelectStageItem(item);
-                            setMyPageStageDetailItem(item);
-                          }}
-                          className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
-                              : 'hover:bg-slate-50'
-                          }`}
+                          key={`mypage-prog-tl-${item.item_id || origIdx}`}
+                          className="py-1.5 first:pt-1 last:pb-1"
                         >
-                          <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
-                            <span
-                              className={`text-[16px] font-black leading-none ${
-                                isSelected ? 'text-emerald-700 font-black' : 'text-slate-800'
-                              }`}
-                            >
-                              {tIdx + 1}
-                            </span>
-                            {tIdx < timelineItems.length - 1 && (
-                              <div className="w-px h-9 bg-slate-200 mt-1.5" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1 pb-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                                <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                  <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
-                                    {koreanDateLabel}
-                                  </span>
-                                  {renderStageCompletionButton(modalReqNo, item, {
-                                    size: 'sm',
-                                    explicitDate: effDate,
-                                  })}
-                                </div>
-                                <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
-                                  · {cleanName}
-                                  {renderStageInlineStatusText(modalReqNo, item, {
-                                    explicitDate: effDate,
-                                  })}
-                                </span>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSelectStageItem(item);
-                                  setMyPageStageDetailItem(item);
-                                }}
-                                className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                          <div
+                            onClick={() => {
+                              handleSelectStageItem(item);
+                              setMyPageStageDetailItem(item);
+                            }}
+                            className={`flex items-start gap-3 rounded-xl p-2.5 border transition cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-50/90 border-emerald-500 ring-1 ring-emerald-300'
+                                : isPast
+                                ? 'bg-[#EEF8F3]/85 border-emerald-200/85 hover:bg-[#E2F3EA]'
+                                : 'bg-white border-slate-200/80 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                              <span
+                                className={`w-6 h-6 rounded-full text-[13px] font-black flex items-center justify-center leading-none ${
+                                  isSelected || isPast
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-100 text-slate-800'
+                                }`}
                               >
-                                작업상세
-                              </button>
+                                {origIdx + 1}
+                              </span>
+                              {!isLastVisible && (
+                                <div className="w-px h-8 bg-slate-200 mt-1.5" />
+                              )}
                             </div>
-                            <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
-                              {item.work_content ||
-                                item.work_description ||
-                                '토양검정과 생육상태 확인 후 진행'}
+                            <div className="min-w-0 flex-1 pb-0.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                  <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                    <span className="font-black text-[16px] text-slate-950 whitespace-nowrap">
+                                      {koreanDateLabel}
+                                    </span>
+                                    {renderStageCompletionButton(modalReqNo, item, {
+                                      size: 'sm',
+                                      explicitDate: effDate,
+                                    })}
+                                  </div>
+                                  <span className="font-black text-[16px] text-slate-950 leading-snug break-keep">
+                                    · {cleanName}
+                                    {renderStageInlineStatusText(modalReqNo, item, {
+                                      explicitDate: effDate,
+                                    })}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectStageItem(item);
+                                    setMyPageStageDetailItem(item);
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                                >
+                                  세부보기
+                                </button>
+                              </div>
+                              <div className="text-[13.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                                {item.work_content ||
+                                  item.work_description ||
+                                  '토양검정과 생육상태 확인 후 진행'}
+                              </div>
                             </div>
                           </div>
                         </div>
+                      );
+                    };
+
+                    return (
+                      <div className="w-full max-w-full min-w-0 overflow-hidden">
+                        {renderPastStagesToggleControls(modalReqNo, tlPartition)}
+
+                        {tlPartition.isPastExpanded && tlPartition.pastEntries.length > 0 && (
+                          <div className="space-y-1">
+                            {tlPartition.pastEntries.map((entry, idx) =>
+                              renderModalTimelineEntry(
+                                entry,
+                                idx === tlPartition.pastEntries.length - 1 &&
+                                  tlPartition.upcomingEntries.length === 0
+                              )
+                            )}
+                          </div>
+                        )}
+
+                        {tlPartition.isPastExpanded && tlPartition.pastEntries.length > 0 &&
+                          renderTodayBaselineDivider(tlPartition.todayKoreanLabel)}
+
+                        {tlPartition.upcomingEntries.length > 0 ? (
+                          <div className="space-y-1">
+                            {tlPartition.upcomingEntries.map((entry, idx) =>
+                              renderModalTimelineEntry(
+                                entry,
+                                idx === tlPartition.upcomingEntries.length - 1
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          !tlPartition.isPastExpanded && (
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-600">
+                              현재 날짜({tlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
+                              <br />
+                              상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {tlPartition.totalCount}개 공정을 모두 확인할 수 있습니다.
+                            </div>
+                          )
+                        )}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
 
                 {/* 모달리스 창 하단 닫기 바 */}

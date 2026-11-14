@@ -113,6 +113,29 @@ if (typeof window !== 'undefined') {
       }
       localStorage.setItem(CAT_PURGE_MIGRATION_KEY, '1');
     }
+
+    const DANWOL_ONLY_MIGRATION_KEY = 'hanfarm_member_danwol_only_v1';
+    if (!localStorage.getItem(DANWOL_ONLY_MIGRATION_KEY)) {
+      localStorage.removeItem(MYPAGE_STORAGE_KEY);
+      localStorage.removeItem(MEMBERS_STORAGE_KEY);
+      localStorage.removeItem('hanfarm_deleted_schedule_keys_v1');
+      const savedOvRaw = localStorage.getItem(OVERVIEW_STORAGE_KEY);
+      if (savedOvRaw) {
+        const parsedOv = JSON.parse(savedOvRaw);
+        if (Array.isArray(parsedOv?.scheduleRequests)) {
+          parsedOv.scheduleRequests = parsedOv.scheduleRequests.filter(
+            (r: any) => r?.request_no === 'REQ-20261106-009' || r?.eupmyeondong === '단월동'
+          );
+        }
+        if (Array.isArray(parsedOv?.cultivationRecords)) {
+          parsedOv.cultivationRecords = parsedOv.cultivationRecords.filter(
+            (r: any) => r?.record_id === 'CULT-2026-000123' || r?.eupmyeondong === '단월동'
+          );
+        }
+        localStorage.setItem(OVERVIEW_STORAGE_KEY, JSON.stringify(parsedOv));
+      }
+      localStorage.setItem(DANWOL_ONLY_MIGRATION_KEY, '1');
+    }
   } catch {
     // ignore migration errors
   }

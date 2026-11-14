@@ -1728,286 +1728,14 @@ function ensureMemberScheduleRequests() {
     );
   `);
 
-  // 기존 구형 하드코딩 데이터('배추', '엽근채류', '마늘', '무' 등 기초 코드에 없는 작물명) 또는 잘못된 읍면동 매핑이 있으면 정규 기초 코드 및 실제 읍면동 주소로 일괄 갱신
-  const legacyCheck = db
-    .prepare(
-      "SELECT COUNT(*) as cnt FROM member_schedule_request WHERE crop_name = '배추' OR group_name = '엽근채류' OR (request_no = 'REQ-20261102-003' AND eupmyeondong != '대관령면')"
-    )
-    .get() as { cnt: number };
-  const cntRow = db.prepare('SELECT COUNT(*) as cnt FROM member_schedule_request').get() as { cnt: number };
-  if (cntRow.cnt >= 9 && legacyCheck.cnt === 0) return;
-
-  const findAddr = (
-    sidoLike: string,
-    sigunguLike?: string,
-    eupmyeondongLike?: string
-  ): { bjd_code: string; sido: string; sigungu: string; eupmyeondong: string } => {
-    if (sigunguLike && eupmyeondongLike) {
-      const exact = db
-        .prepare(
-          'SELECT bjd_code, sido, sigungu, eupmyeondong FROM cultivation_address WHERE sido LIKE ? AND sigungu LIKE ? AND eupmyeondong LIKE ? ORDER BY address_id ASC LIMIT 1'
-        )
-        .get(`%${sidoLike}%`, `%${sigunguLike}%`, `%${eupmyeondongLike}%`) as any;
-      if (exact) return exact;
-    }
-    if (sigunguLike) {
-      const r = db
-        .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong FROM cultivation_address WHERE sido LIKE ? AND sigungu LIKE ? ORDER BY address_id ASC LIMIT 1')
-        .get(`%${sidoLike}%`, `%${sigunguLike}%`) as any;
-      if (r) return r;
-    }
-    const fallback = db
-      .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong FROM cultivation_address WHERE sido LIKE ? ORDER BY address_id ASC LIMIT 1')
-      .get(`%${sidoLike}%`) as any;
-    return fallback || { bjd_code: '1101000100', sido: '서울특별시', sigungu: '종로구', eupmyeondong: '청운동' };
-  };
-
-  const a1 = findAddr('충청북도', '충주', '산척');
-  const a2 = findAddr('전라남도', '해남', '옥천');
-  const a3 = findAddr('강원특별자치도', '평창', '대관령');
-  const a4 = findAddr('경상북도', '안동', '풍산');
-  const a5 = findAddr('충청남도', '논산', '연무');
-  const a6 = findAddr('경기도', '이천', '장호원');
-  const a8 = findAddr('경상남도', '밀양', '하남');
-  const a9 = findAddr('제주특별자치도', '서귀포', '성산');
+  // 충청북도 충주시 단월동에 재배지가 있는 배철민(CloudBae@naver.com) 1명의 요청(REQ-20261106-009)만 유지하고 나머지 요청 데이터 삭제
+  db.prepare("DELETE FROM member_schedule_request WHERE request_no != 'REQ-20261106-009'").run();
 
   const seedRows = [
     {
-      request_no: 'REQ-20261101-001',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-3421-8890',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-CABBAGE',
-      crop_name: '가을배추',
-      cultivar_id: 'CV-BRMP',
-      item_name_3rd: '불암플러스',
-      system_id: 'SYS-CAB-AUT',
-      system_name: '노지 가을재배',
-      ...a1,
-      detail_address: '산척면 송강리 412-3 제1영농포전',
-      area_pyeong: 1200,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-08-25',
-      expected_harvest_date: '2026-11-16',
-      mulching_yn: 1,
-      irrigation_type: '점적관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 18500,
-      etc_notes: '결구기 칼슘 결핍(꿀통배추) 예방을 위한 엽면시비 일정과 가을 폭우 대비 배수로 정비 일정을 함께 요청함.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-01 09:20:15',
-    },
-    {
-      request_no: 'REQ-20261102-002',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-5812-3304',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-CABBAGE',
-      crop_name: '가을배추',
-      cultivar_id: 'CV-HPRM',
-      item_name_3rd: '휘파람',
-      system_id: 'SYS-CAB-AUT',
-      system_name: '노지 가을재배',
-      ...a2,
-      detail_address: '옥천면 영신리 208-1 해남배추단지',
-      area_pyeong: 2500,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-09-05',
-      expected_harvest_date: '2026-12-05',
-      mulching_yn: 1,
-      irrigation_type: '스프링클러',
-      is_organic: 1,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 32000,
-      etc_notes: '친환경 유기농 인증 농가로 화학비료 대신 유박·유기농 칼슘제를 활용한 결구기 추비 일정을 희망함.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-02 11:05:40',
-    },
-    {
-      request_no: 'REQ-20261102-003',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-7745-1920',
-      group_id: 'GRP-FOOD',
-      group_name: '식량작물 (서류·곡류)',
-      crop_id: 'CRP-POTATO',
-      crop_name: '감자',
-      cultivar_id: 'CV-SUMI',
-      item_name_3rd: '수미 (Superior)',
-      system_id: 'SYS-POT-SPR',
-      system_name: '노지 봄재배',
-      ...a3,
-      detail_address: '대관령면 횡계리 654-2 고랭지채소포전',
-      area_pyeong: 3000,
-      cultivation_type: '고랭지노지',
-      land_category: '전(밭)',
-      planting_method: '종서파종(직파)',
-      desired_start_date: '2026-04-15',
-      expected_harvest_date: '2026-07-28',
-      mulching_yn: 1,
-      irrigation_type: '스프링클러',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 27000,
-      etc_notes: '해발 700m 준고랭지 구역으로 봄철 늦서리 피해 회피 파종적기와 장마기 역병 예방 방제 일정 포함 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-02 15:42:10',
-    },
-    {
-      request_no: 'REQ-20261103-004',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-9012-4411',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-CABBAGE',
-      crop_name: '가을배추',
-      cultivar_id: 'CV-HPRG',
-      item_name_3rd: '휘파람골드',
-      system_id: 'SYS-CAB-AUT',
-      system_name: '노지 가을재배',
-      ...a4,
-      detail_address: '풍산읍 안교리 119-7',
-      area_pyeong: 850,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-08-28',
-      expected_harvest_date: '2026-11-15',
-      mulching_yn: 1,
-      irrigation_type: '고랑관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 13000,
-      etc_notes: '모래참흙(사양토) 필지로 붕소·칼슘 결핍 예방 엽면시비 시기 및 무름병 방제 알림 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-03 10:18:33',
-    },
-    {
-      request_no: 'REQ-20261104-005',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-6234-7788',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-LETTUCE',
-      crop_name: '상추',
-      cultivar_id: 'CV-CHEONGCHIMA',
-      item_name_3rd: '청치마상추',
-      system_id: 'SYS-LET-SPR',
-      system_name: '노지 봄·가을재배',
-      ...a5,
-      detail_address: '연무읍 마전리 88-4 시설하우스 3~6동',
-      area_pyeong: 600,
-      cultivation_type: '비닐하우스(무가온)',
-      land_category: '시설재배지',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-09-05',
-      expected_harvest_date: '2026-10-25',
-      mulching_yn: 1,
-      irrigation_type: '점적관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 4800,
-      etc_notes: '연작 하우스 포전으로 정식 전 토양소독 및 염류집적(EC) 완화 관수 스케줄과 추대(꽃대) 방지 온도관리 기준 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-04 14:05:22',
-    },
-    {
-      request_no: 'REQ-20261104-006',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-4119-2039',
-      group_id: 'GRP-FOOD',
-      group_name: '식량작물 (서류·곡류)',
-      crop_id: 'CRP-POTATO',
-      crop_name: '감자',
-      cultivar_id: 'CV-SEOLBONG',
-      item_name_3rd: '설봉',
-      system_id: 'SYS-POT-AUT',
-      system_name: '노지 가을재배',
-      ...a6,
-      detail_address: '장호원읍 진암리 302-9',
-      area_pyeong: 1500,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '종서파종(직파)',
-      desired_start_date: '2026-08-15',
-      expected_harvest_date: '2026-11-10',
-      mulching_yn: 1,
-      irrigation_type: '점적관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 13500,
-      etc_notes: '더뎅이병 예방을 위해 토양 산도(pH)를 5.5~6.2 수준으로 유지하는 밑거름 처방 및 배토 작업 적기 산출 희망.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-04 17:30:00',
-    },
-    {
-      request_no: 'REQ-20261105-007',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-8831-5560',
-      group_id: 'GRP-FOOD',
-      group_name: '식량작물 (서류·곡류)',
-      crop_id: 'CRP-POTATO',
-      crop_name: '감자',
-      cultivar_id: 'CV-DUBAEK',
-      item_name_3rd: '두백',
-      system_id: 'SYS-POT-SPR',
-      system_name: '노지 봄재배',
-      ...a8,
-      detail_address: '하남읍 수산리 511-2 수산뜰 제4구획',
-      area_pyeong: 1800,
-      cultivation_type: '노지재배',
-      land_category: '답(논)',
-      planting_method: '종서파종(직파)',
-      desired_start_date: '2026-03-10',
-      expected_harvest_date: '2026-06-25',
-      mulching_yn: 1,
-      irrigation_type: '스프링클러',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 16200,
-      etc_notes: '논(답리작) 봄감자 재배지로 습해 방지를 위한 고휴(높은이랑) 성형 및 역병 방제 일정 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-05 11:12:48',
-    },
-    {
-      request_no: 'REQ-20261106-008',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-2940-6612',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-SPINACH',
-      crop_name: '시금치',
-      cultivar_id: 'CV-POHANGCHO',
-      item_name_3rd: '포항초 (재래종)',
-      system_id: 'SYS-SPI-AUT',
-      system_name: '노지 가을·월동재배',
-      ...a9,
-      detail_address: '성산읍 오조리 914-5 화산회토 영농지',
-      area_pyeong: 3500,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '점파(직파)',
-      desired_start_date: '2026-09-25',
-      expected_harvest_date: '2026-12-20',
-      mulching_yn: 0,
-      irrigation_type: '스프링클러',
-      is_organic: 1,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 14000,
-      etc_notes: '제주 화산회토 특성상 유기물 함량이 높고 인산 고정력이 강하므로 맞춤형 인산 시비량 및 겨울철 한파 대비 수확적기 산출 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-06 08:45:19',
-    },
-    {
       request_no: 'REQ-20261106-009',
       member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-4820-7150',
+      member_contact: '010-2026-0109',
       group_id: 'GRP-LEAF',
       group_name: '엽채류 (잎채소)',
       crop_id: 'CRP-CABBAGE',
@@ -3293,7 +3021,7 @@ function seedInitialData() {
   `);
   insertSyncLog.run('SYNC-20261105-01', 'STN-127', 'SEED', '2026-01-01 ~ 2026-12-31', 365, 2, 'SUCCESS', '2026-11-05 03:00:00', '초기 내부 기상 테이블 시드 데이터 생성 (추후 공공DB 기상청 Open API 자동 수집 전환 대기)');
 
-  // 9. 농가 작물재배 일정 요청 및 재배이력 시드 (도 2, 도 3, 특허 도 7 반영)
+  // 9. 농가 작물재배 일정 요청 및 재배이력 시드 (충청북도 충주시 단월동 배철민 1명만 유지)
   const insertReq = db.prepare(`
     INSERT INTO schedule_request (
       request_id, farmer_name, region_name, station_id, group_id, crop_id, cultivar_id, system_id,
@@ -3303,28 +3031,10 @@ function seedInitialData() {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   insertReq.run(
-    'CULT-2026-000123', '김한팜 농가', '충북 충주시', 'STN-127',
+    'CULT-2026-000123', '배철민 (CloudBae@naver.com)', '충청북도 충주시 단월동', 'STN-127',
     'GRP-LEAF', 'CRP-CABBAGE', 'CV-BULAM3', 'SYS-CAB-AUT',
-    'NEW_PLAN', 50, '2026-08-25', '2026-11-15', 1, 1,
-    0, 1, 6.4, 0.65, 28.0, 520, 265, 38, 'S150_COMPLETED', '2026-08-20 09:15:00'
-  );
-  insertReq.run(
-    'CULT-2026-000124', '박충주 농가', '충북 충주시 단월동 274-3', 'STN-127',
-    'GRP-FOOD', 'CRP-POTATO', 'CV-SUMI', 'SYS-POT-SPR',
-    'CLIMATE_READJUST', 100, '2026-03-15', '2026-07-15', 1, 0,
-    0, 1, 7.4, 0.11, 15.0, 100, 900, 45, 'S230_READJUSTED', '2026-04-05 14:20:00'
-  );
-  insertReq.run(
-    'CULT-2026-000125', '이해남 농가', '전남 해남군', 'STN-261',
-    'GRP-SPICE', 'CRP-GARLIC', 'CV-NAMDO', 'SYS-GAR-WIN',
-    'NEW_PLAN', 300, '2026-10-02', '2027-05-18', 1, 1,
-    1, 1, 6.2, 0.55, 30.0, 290, 1160, 25, 'S150_COMPLETED', '2026-09-25 11:05:00'
-  );
-  insertReq.run(
-    'CULT-2026-000126', '최평창 농가', '강원 평창군', 'STN-100',
-    'GRP-ROOT', 'CRP-RADISH', 'CV-CHEONGA', 'SYS-RAD-AUT',
-    'DELAY_READJUST', 150, '2026-08-28', '2026-11-08', 0, 1,
-    0, 0, null, null, null, 610, 70, 82, 'S220_ALERT_SENT', '2026-11-04 18:40:00'
+    'NEW_PLAN', 1000, '2026-08-25', '2026-11-15', 1, 1,
+    0, 1, 6.5, 0.65, 28.0, 520, 265, 60, 'S150_COMPLETED', '2026-08-20 09:15:00'
   );
 
   // 재배이력 자동 생성 데이터 시드 (도 3의 ③ 영역 반영)
@@ -3340,7 +3050,6 @@ function seedInitialData() {
   insertHist.run('HIST-002', 'CULT-2026-000123', 'STAGE', 'STG_ROOTING', '활착 확인 (정식→활착 구간)', '2026-09-01', '2026-09-02', '2026-09-02 10:15:00', '-', 136.0, 'PASS', 'PASS', 0, 0.96, 'NORMAL', 1);
   insertHist.run('HIST-003', 'CULT-2026-000123', 'WORK', 'OP_TOPDRESS_1', '1차 웃거름 실행', '2026-09-10', '2026-09-10', '2026-09-10 10:24:00', 'NK복합비료(20-10-10) 20kg/10a 살포', 0, 'PASS', 'PASS', 0, 0.95, 'NORMAL', 1);
   insertHist.run('HIST-004', 'CULT-2026-000123', 'STAGE', 'STG_HEADING_START', '결구 시작 확인 (활착→결구 구간)', '2026-09-28', '2026-09-30', '2026-09-30 16:40:00', '-', 296.0, 'PASS', 'PASS', 0, 0.94, 'NORMAL', 1);
-  insertHist.run('HIST-005', 'CULT-2026-000126', 'STAGE', 'STG_ROOTING', '발아/솎음 확인 (날짜 역전 오류 예시)', '2026-09-05', '2026-08-20', '2026-10-15 22:00:00', '-', 45.0, 'FAIL_ORDER', 'OUT_OF_RANGE', 1, 0.32, 'OUTLIER', 0);
 
   // 10. 생육예측모델(GDD) 엔진 A안/B안 버전 시드
   const insertModelVer = db.prepare(`

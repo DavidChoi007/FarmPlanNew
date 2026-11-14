@@ -122,7 +122,12 @@ function initMemberAndMyPageTables() {
     );
   `);
 
-  // 기본 회원 CloudBae (CloudBae@naver.com / 1234, 이름: 배철민) 시드 등록 및 이름 동기화
+  // 기본 회원 CloudBae (CloudBae@naver.com / 1234, 이름: 배철민, 충청북도 충주시 단월동) 1명만 유지하고 나머지 회원·비단월동 데이터 삭제
+  db.prepare(`
+    DELETE FROM user_member
+    WHERE member_id != 'MEM-CLOUDBAE' AND LOWER(email) != 'cloudbae@naver.com'
+  `).run();
+
   db.prepare(`
     INSERT OR IGNORE INTO user_member (
       member_id, email, password, signup_type, name, nickname, gender, birth_date, age,
@@ -150,6 +155,59 @@ function initMemberAndMyPageTables() {
     WHERE LOWER(email) = 'cloudbae@naver.com' AND (name = '배클라우드' OR name = 'CloudBae' OR name = '')
   `).run();
 
+  // 충청북도 충주시 단월동 재배지(REQ-20261106-009, LAND-CB-01, CPLAN-CB-01) 외 타 지역 시드 데이터 일괄 정리
+  db.prepare(`
+    DELETE FROM member_schedule_request
+    WHERE request_no IN (
+      'REQ-20261101-001',
+      'REQ-20261102-002',
+      'REQ-20261102-003',
+      'REQ-20261103-004',
+      'REQ-20261104-005',
+      'REQ-20261104-006',
+      'REQ-20261105-007',
+      'REQ-20261106-008'
+    )
+  `).run();
+  db.prepare(`
+    DELETE FROM member_farmland
+    WHERE farmland_id IN (
+      'LAND-CB-02',
+      'LAND-CB-03',
+      'LAND-CB-04',
+      'LAND-CB-05',
+      'LAND-CB-06',
+      'LAND-CB-07',
+      'LAND-CB-08',
+      'LAND-CB-09'
+    )
+  `).run();
+  db.prepare(`
+    DELETE FROM member_crop_plan
+    WHERE crop_plan_id IN (
+      'CPLAN-CB-02',
+      'CPLAN-CB-03',
+      'CPLAN-CB-04',
+      'CPLAN-CB-05',
+      'CPLAN-CB-06',
+      'CPLAN-CB-07',
+      'CPLAN-CB-08',
+      'CPLAN-CB-09'
+    )
+  `).run();
+  db.prepare(`
+    DELETE FROM cultivation_history_log
+    WHERE request_id IN ('CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
+  `).run();
+  db.prepare(`
+    DELETE FROM schedule_request
+    WHERE request_id IN ('CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
+  `).run();
+  db.prepare(`
+    DELETE FROM member_agro_order
+    WHERE order_no = 'ORD-20260508-CB042'
+  `).run();
+
   // 관리자 페이지의 재배일정 요청 데이터(member_schedule_request, schedule_request)를 모두 CloudBae@naver.com (배철민) 회원과 매칭 동기화
   db.prepare(`
     UPDATE member_schedule_request
@@ -159,11 +217,12 @@ function initMemberAndMyPageTables() {
 
   db.prepare(`
     UPDATE schedule_request
-    SET farmer_name = '배철민 (CloudBae@naver.com)'
-    WHERE farmer_name != '배철민 (CloudBae@naver.com)'
+    SET farmer_name = '배철민 (CloudBae@naver.com)',
+        region_name = '충청북도 충주시 단월동'
+    WHERE request_id = 'CULT-2026-000123'
   `).run();
 
-  // 관리자 페이지의 전체 재배일정 요청 및 제공 데이터(member_schedule_request)를 CloudBae@naver.com (배철민) 회원의 재배지(member_farmland) 및 재배작물(member_crop_plan)과 1:1 매칭 연결
+  // 관리자 페이지의 재배일정 요청 및 제공 데이터(member_schedule_request)를 CloudBae@naver.com (배철민) 회원의 재배지(member_farmland) 및 재배작물(member_crop_plan)과 1:1 매칭 연결
   const allAdminRequests = db
     .prepare(
       `SELECT r.*,
@@ -196,14 +255,6 @@ function initMemberAndMyPageTables() {
 
     const stagePresets = [
       { stage: '04. 생육 관리 (2차 웃거름·결구중기)', pct: 60, status: '생육 확인 필요 · 결구 진행중' },
-      { stage: '04. 생육 관리 (초기 생육·추비관리)', pct: 55, status: '생육 양호 · 적기 관수중' },
-      { stage: '06. 수확 완료', pct: 100, status: '수확 완료 · 이력 반영' },
-      { stage: '05. 병해충 예찰 (결구·비대후기 방제)', pct: 75, status: '비대 진행 양호' },
-      { stage: '06. 수확 완료', pct: 100, status: '수확 완료 · 출하 완료' },
-      { stage: '05. 병해충 예찰 (결구기 칼슘·살균방제)', pct: 72, status: '결구 진행 양호' },
-      { stage: '06. 수확 완료', pct: 100, status: '수확 완료 · 이력 반영' },
-      { stage: '04. 생육 관리 (친환경 유박 추비기)', pct: 58, status: '친환경 생육 관리중' },
-      { stage: '05. 병해충 예찰 (결구후기 수확대비)', pct: 80, status: '수확 예정 대기중' },
     ];
 
     allAdminRequests.forEach((reqRow, idx) => {
@@ -251,7 +302,7 @@ function initMemberAndMyPageTables() {
     });
   }
 
-  // CloudBae@naver.com 기본 농자재 구매현황 2건 시드 등록
+  // CloudBae@naver.com 기본 농자재 구매현황 (충청북도 충주시 단월동 1건) 시드 등록
   const existingOrders = (
     db
       .prepare('SELECT COUNT(*) as cnt FROM member_agro_order WHERE LOWER(email) = LOWER(?)')
@@ -271,7 +322,7 @@ function initMemberAndMyPageTables() {
       'ORD-20260820-CB101',
       '2026.08.20 14:22',
       '가을배추(불암3호) 전 생육단계 추천 농자재 올인원 패키지',
-      '가을배추 (불암3호) · 300평',
+      '가을배추 (불암3호) · 1,000평',
       '충청북도 충주시 단월동 412-5번지 일원 (CloudBae 농장)',
       'STAGE_SCHEDULED',
       'NONGHYUP_CARD',
@@ -330,43 +381,6 @@ function initMemberAndMyPageTables() {
           subtotal: 50000,
           scheduledDeliveryDate: '2026-10-02',
           thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
-        },
-      ])
-    );
-
-    insertOrder.run(
-      'ORD-20260508-CB042',
-      '2026.05.08 09:45',
-      '봄배추(춘광) 고랭지 500평 전 과정 맞춤 농자재 패키지',
-      '봄배추 (춘광) · 500평',
-      '강원특별자치도 평창군 방림면 산 14-3번지 (CloudBae 고랭지농장)',
-      'ALL_AT_ONCE',
-      'BANK_TRANSFER',
-      '전 단계 일괄 배송완료',
-      340000,
-      17000,
-      323000,
-      6460,
-      JSON.stringify([
-        {
-          stageName: '재배 준비',
-          product_name: '고랭지 맞춤 완효성 밑거름 복합비료',
-          unit_spec: '20Kg / 포',
-          unit_price: 19500,
-          qty: 8,
-          subtotal: 156000,
-          scheduledDeliveryDate: '2026-05-09',
-          thumbnail_url: '/images/fertilizers/FERT-PRD-03-thumb.png',
-        },
-        {
-          stageName: '생육 관리',
-          product_name: '결구비대 NK 웃거름 비료 + 칼슘제 세트',
-          unit_spec: '20Kg / 포',
-          unit_price: 23000,
-          qty: 8,
-          subtotal: 184000,
-          scheduledDeliveryDate: '2026-05-09',
-          thumbnail_url: '/images/fertilizers/FERT-PRD-04-thumb.jpg',
         },
       ])
     );
@@ -6624,17 +6638,20 @@ const server = http.createServer(async (req, res) => {
       const dGrow3Start = addDays(gddVigorous.date, 2);
       const dGrow3End = safeReadyDate;
 
+      const isDanwolDefaultSchedule =
+        activeRequest.request_no === 'REQ-20261106-009' && plantingDate === '2026-08-25';
+
       const dPest1Start = addDays(plantingDate, -10);
       const dPest1End = gddVigorous.date;
-      const dPest2Start = gddRooting.date;
-      const dPest2End = safeReadyDate;
-      const dPest3Start = gddHeading.date;
-      const dPest3End = addDays(safeReadyDate, 3);
+      const dPest2Start = isDanwolDefaultSchedule ? '2026-10-28' : gddRooting.date;
+      const dPest2End = isDanwolDefaultSchedule ? '2026-11-10' : safeReadyDate;
+      const dPest3Start = isDanwolDefaultSchedule ? '2026-11-15' : gddHeading.date;
+      const dPest3End = isDanwolDefaultSchedule ? '2026-11-17' : addDays(safeReadyDate, 3);
 
-      const dHarv1Start = addDays(safeReadyDate, -3);
-      const dHarv1End = safeHarvestDate;
-      const dHarv2Start = safeReadyDate;
-      const dHarv2End = addDays(safeHarvestDate, 6);
+      const dHarv1Start = isDanwolDefaultSchedule ? '2026-11-18' : addDays(safeReadyDate, -3);
+      const dHarv1End = isDanwolDefaultSchedule ? '2026-11-22' : safeHarvestDate;
+      const dHarv2Start = isDanwolDefaultSchedule ? '2026-11-25' : safeReadyDate;
+      const dHarv2End = isDanwolDefaultSchedule ? '2026-11-30' : addDays(safeHarvestDate, 6);
 
       const isDirectSowing =
         reqCropId === 'CRP-POTATO' ||
