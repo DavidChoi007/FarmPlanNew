@@ -14861,8 +14861,8 @@ export default function UserIntroPage() {
 
             {/* ③ 작물재배현황 및 진행율 */}
             {(myPageTab === 'ALL' || myPageTab === 'PROGRESS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
+              <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
+                <div className="hidden lg:flex lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
                       생육관리 항목별 일자 [완료] 시작 인정 기반 진행율 산출
