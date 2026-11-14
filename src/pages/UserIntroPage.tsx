@@ -1712,7 +1712,27 @@ export default function UserIntroPage() {
       if (q.trim()) params.set('q', q.trim());
       const r = await fetch(`/api/addresses?${params.toString()}`);
       const res = await r.json();
-      setAdminDbAddresses(res?.items || []);
+      const items = res?.items || [];
+      setAdminDbAddresses(items);
+      if (items.length > 0) {
+        const first = items[0];
+        setNewFarmlandForm((prev) => ({
+          ...prev,
+          sido: first.sido,
+          sigungu: first.sigungu,
+          eupmyeondong: first.eupmyeondong,
+          bjd_code: first.bjd_code,
+          farmland_title: `${first.sigungu} ${first.eupmyeondong} 농장`,
+        }));
+      } else if (s && s !== 'ALL') {
+        setNewFarmlandForm((prev) => ({
+          ...prev,
+          sido: s,
+          sigungu: sg && sg !== 'ALL' ? sg : prev.sigungu,
+          eupmyeondong: q.trim() || prev.eupmyeondong,
+          farmland_title: `${sg && sg !== 'ALL' ? sg : prev.sigungu} ${q.trim() || prev.eupmyeondong} 농장`,
+        }));
+      }
     } catch {
       // ignore
     }
@@ -14749,45 +14769,6 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 관리자 DB 검색 결과 읍면동 선택 버튼 목록 */}
-                  <div className="space-y-1.5">
-                    <div className="text-[11px] font-bold text-slate-500">
-                      검색된 관리자 재배지 DB 목록 ({adminDbAddresses.length}건) — 클릭하면 아래 등록 폼에 자동 입력됩니다:
-                    </div>
-                    <div className="flex items-center gap-1.5 flex-wrap max-h-28 overflow-y-auto p-2 rounded-xl bg-white border border-slate-200">
-                      {adminDbAddresses.map((addr: any) => {
-                        const isSelected =
-                          newFarmlandForm.sido === addr.sido &&
-                          newFarmlandForm.sigungu === addr.sigungu &&
-                          newFarmlandForm.eupmyeondong === addr.eupmyeondong;
-                        return (
-                          <button
-                            key={addr.bjd_code || `${addr.sido}-${addr.sigungu}-${addr.eupmyeondong}`}
-                            type="button"
-                            onClick={() =>
-                              setNewFarmlandForm((prev) => ({
-                                ...prev,
-                                sido: addr.sido,
-                                sigungu: addr.sigungu,
-                                eupmyeondong: addr.eupmyeondong,
-                                bjd_code: addr.bjd_code,
-                                farmland_title: `${addr.sigungu} ${addr.eupmyeondong} 농장`,
-                              }))
-                            }
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                              isSelected
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
-                            }`}
-                          >
-                            {addr.sido} {addr.sigungu} {addr.eupmyeondong}{' '}
-                            <span className="opacity-70 text-[10px]">({addr.bjd_code})</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
                   {/* 선택된 재배지 상세 입력 및 추가 버튼 */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2.5 pt-2 border-t border-slate-200 text-xs items-end">
                     <div className="lg:col-span-2">
@@ -17144,44 +17125,6 @@ export default function UserIntroPage() {
                     >
                       DB 검색
                     </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-500">
-                    검색된 관리자 재배지 DB 목록 ({adminDbAddresses.length}건) — 터치 시 자동 입력:
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap max-h-32 overflow-y-auto p-2 rounded-xl bg-white border border-slate-200">
-                    {adminDbAddresses.map((addr: any) => {
-                      const isSelected =
-                        newFarmlandForm.sido === addr.sido &&
-                        newFarmlandForm.sigungu === addr.sigungu &&
-                        newFarmlandForm.eupmyeondong === addr.eupmyeondong;
-                      return (
-                        <button
-                          key={`modal-addr-${addr.bjd_code || `${addr.sido}-${addr.sigungu}-${addr.eupmyeondong}`}`}
-                          type="button"
-                          onClick={() =>
-                            setNewFarmlandForm((prev) => ({
-                              ...prev,
-                              sido: addr.sido,
-                              sigungu: addr.sigungu,
-                              eupmyeondong: addr.eupmyeondong,
-                              bjd_code: addr.bjd_code,
-                              farmland_title: `${addr.sigungu} ${addr.eupmyeondong} 농장`,
-                            }))
-                          }
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            isSelected
-                              ? 'bg-emerald-600 text-white border-emerald-600'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
-                          }`}
-                        >
-                          {addr.sido} {addr.sigungu} {addr.eupmyeondong}{' '}
-                          <span className="opacity-70 text-[10px]">({addr.bjd_code})</span>
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               </div>
