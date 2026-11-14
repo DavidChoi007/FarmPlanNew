@@ -431,6 +431,7 @@ export default function UserIntroPage() {
   } | null>(null);
   const [selectedReqDetailCrop, setSelectedReqDetailCrop] = useState<any | null>(null);
   const [myPageProgressDetailReqNo, setMyPageProgressDetailReqNo] = useState<string | null>(null);
+  const [myPageStageDetailItem, setMyPageStageDetailItem] = useState<any | null>(null);
   const [reqDetailModalPos, setReqDetailModalPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDraggingReqDetailModal, setIsDraggingReqDetailModal] = useState<boolean>(false);
   const reqDetailDragStartRef = React.useRef<{
@@ -1236,6 +1237,7 @@ export default function UserIntroPage() {
 
     if (myPageProgressDetailReqNo && keysToDelete.includes(myPageProgressDetailReqNo)) {
       setMyPageProgressDetailReqNo(null);
+      setMyPageStageDetailItem(null);
     }
 
     if (keysToDelete.includes(selectedRequestNo)) {
@@ -14906,6 +14908,7 @@ export default function UserIntroPage() {
                       const targetCrop = cloudBaeCropList[targetIdx];
                       if (!targetCrop) return;
                       setSelectedRequestNo(targetCrop.request_no);
+                      setMyPageStageDetailItem(null);
                       if (myPageProgressDetailReqNo) {
                         setMyPageProgressDetailReqNo(targetCrop.request_no);
                       }
@@ -15181,7 +15184,10 @@ export default function UserIntroPage() {
 
                           <button
                             type="button"
-                            onClick={() => setMyPageProgressDetailReqNo(null)}
+                            onClick={() => {
+                              setMyPageStageDetailItem(null);
+                              setMyPageProgressDetailReqNo(null);
+                            }}
                             className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
                           >
                             <X className="w-4 h-4" />
@@ -15200,7 +15206,9 @@ export default function UserIntroPage() {
                             const dNum = Number(String(effDate || '').slice(8, 10));
                             const koreanDateLabel =
                               mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
-                            const isSelected = selectedStageItem?.item_id === item.item_id;
+                            const isSelected =
+                              resolveStageItemId(selectedStageItem) ===
+                              resolveStageItemId(item, tIdx);
 
                             return (
                               <div
@@ -15229,22 +15237,36 @@ export default function UserIntroPage() {
                                   )}
                                 </div>
                                 <div className="min-w-0 flex-1 pb-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
-                                      <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
-                                        {koreanDateLabel}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                      <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                        <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                          {koreanDateLabel}
+                                        </span>
+                                        {renderStageCompletionButton(modalReqNo, item, {
+                                          size: 'sm',
+                                          explicitDate: effDate,
+                                        })}
+                                      </div>
+                                      <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
+                                        · {cleanName}
+                                        {renderStageInlineStatusText(modalReqNo, item, {
+                                          explicitDate: effDate,
+                                        })}
                                       </span>
-                                      {renderStageCompletionButton(modalReqNo, item, {
-                                        size: 'sm',
-                                        explicitDate: effDate,
-                                      })}
                                     </div>
-                                    <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
-                                      · {cleanName}
-                                      {renderStageInlineStatusText(modalReqNo, item, {
-                                        explicitDate: effDate,
-                                      })}
-                                    </span>
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleSelectStageItem(item);
+                                        setMyPageStageDetailItem(item);
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-extrabold whitespace-nowrap shrink-0 transition cursor-pointer shadow-2xs ml-auto self-start"
+                                    >
+                                      작업상세
+                                    </button>
                                   </div>
                                   <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
                                     {item.work_content ||
@@ -15261,13 +15283,382 @@ export default function UserIntroPage() {
                         <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
                           <button
                             type="button"
-                            onClick={() => setMyPageProgressDetailReqNo(null)}
+                            onClick={() => {
+                              setMyPageStageDetailItem(null);
+                              setMyPageProgressDetailReqNo(null);
+                            }}
                             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
                           >
                             일정 세부정보 창 닫기
                           </button>
                         </div>
                       </div>
+
+                      {/* ==================== [작업상세 버튼 클릭 시 열리는 '작업 세부정보' 모달리스 폼] ==================== */}
+                      {myPageStageDetailItem && (() => {
+                        const targetStageId = resolveStageItemId(myPageStageDetailItem);
+                        const liveStageItem =
+                          (provisionData?.scheduleItems || []).find(
+                            (si: any) => resolveStageItemId(si) === targetStageId
+                          ) || myPageStageDetailItem;
+                        const stageCleanName = String(liveStageItem.sub_item_name || '')
+                          .replace(/\s*\([^)]*\)/g, '')
+                          .trim();
+                        const stageEffDate = getEffectiveStageItemDate(modalReqNo, liveStageItem);
+                        const stageDayClimate = getDayClimate(stageEffDate);
+                        const topMat = [...(liveStageItem.materials || [])].sort(
+                          (a: any, b: any) =>
+                            Number(b?.match_score || 0) - Number(a?.match_score || 0)
+                        )[0];
+                        const stageGroupCode =
+                          liveStageItem.stage_group_code ||
+                          liveStageItem.stage_group_id ||
+                          liveStageItem.stage_group_name ||
+                          'STG-1';
+                        const matCode =
+                          topMat?.material_id || topMat?.product_name || 'MAT-1';
+                        const selKey = `${stageGroupCode}__${liveStageItem.item_id || targetStageId}__${matCode}`;
+                        const areaPyeong = Number(
+                          provisionData?.activeRequest?.area_pyeong ||
+                            modalCrop.area_pyeong ||
+                            300
+                        );
+                        const defaultQty = topMat
+                          ? parseRecommendedQuantity(topMat, areaPyeong)
+                          : 1;
+                        const isMatChecked =
+                          (purchaseSelectionMap[selKey]?.checked ?? true) === true;
+
+                        return (
+                          <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-3 sm:p-6">
+                            <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.45)] overflow-hidden">
+                              {/* 작업 세부정보 모달리스 폼 상단 헤더 */}
+                              <div className="relative bg-[#E9F7F1] border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h3 className="text-[19px] font-black text-slate-900">
+                                    작업 세부정보
+                                  </h3>
+                                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">
+                                    {liveStageItem.stage_group_name || '생육 관리'}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-xs font-mono font-extrabold">
+                                    PGDD {liveStageItem.target_pgdd ?? 0}℃
+                                  </span>
+                                </div>
+                                <div className="text-xs font-extrabold text-slate-700 truncate">
+                                  {modalDisplayReqNo} · {modalCrop.crop_title} &gt; {stageCleanName}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setMyPageStageDetailItem(null)}
+                                  className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                                >
+                                  <X className="w-4 h-4" />
+                                  <span>닫기</span>
+                                </button>
+                              </div>
+
+                              {/* 작업 세부정보 모달리스 폼 본문 */}
+                              <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+                                {/* 1. 선택 공정명 및 생육관리 일자 · 작업완료 인증 */}
+                                <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                                    <span className="text-[16px] font-black text-emerald-950 leading-snug break-keep">
+                                      {stageCleanName}
+                                      {renderStageInlineStatusText(modalReqNo, liveStageItem, {
+                                        explicitDate: stageEffDate,
+                                      })}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
+                                      {liveStageItem.process_code || targetStageId}
+                                    </span>
+                                  </div>
+
+                                  <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                      <span className="text-xs font-extrabold text-emerald-900">
+                                        📅 생육관리 일자 &amp; 작업완료 인증
+                                      </span>
+                                      <span className="font-mono font-extrabold text-xs text-emerald-800 whitespace-nowrap">
+                                        {formatYmdWithWeekday(stageEffDate)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-nowrap">
+                                      <input
+                                        type="date"
+                                        value={stageEffDate}
+                                        onChange={(e) => {
+                                          const newYmd = e.target.value;
+                                          const draftKey = `${modalReqNo}__${targetStageId}`;
+                                          setInlineStageDateDrafts((prev) => ({
+                                            ...prev,
+                                            [draftKey]: newYmd,
+                                          }));
+                                          setEditDetailForm((prev: any) => ({
+                                            ...(prev || liveStageItem),
+                                            start_date: newYmd,
+                                          }));
+                                        }}
+                                        className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
+                                      />
+                                      {renderStageCompletionButton(modalReqNo, liveStageItem, {
+                                        explicitDate: stageEffDate,
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 2. 생육과정 핵심 작업내용 & 기후 분석 · 영농 가이드 */}
+                                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
+                                  <div className="space-y-1.5">
+                                    <div className="text-xs font-extrabold text-slate-900">
+                                      ① 생육과정 핵심 작업내용
+                                    </div>
+                                    <div className="text-[14px] font-semibold text-slate-800 bg-white rounded-xl p-3 border border-slate-200 leading-relaxed whitespace-pre-line">
+                                      {liveStageItem.work_content ||
+                                        liveStageItem.work_description ||
+                                        '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <div className="text-xs font-extrabold text-slate-900">
+                                      ② 추천 진행일 재배지 기후 대입 분석
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      <div className="rounded-xl bg-white border border-slate-200 p-2.5">
+                                        <div className="text-[11px] font-bold text-slate-500">
+                                          추천일 기온 (최저~최고 / 평균)
+                                        </div>
+                                        <div className="font-extrabold text-slate-900 mt-0.5">
+                                          {stageDayClimate.temp_min}~{stageDayClimate.temp_max}℃ (평균{' '}
+                                          <span className="text-emerald-700">
+                                            {stageDayClimate.temp_avg}℃
+                                          </span>
+                                          )
+                                        </div>
+                                      </div>
+                                      <div className="rounded-xl bg-white border border-slate-200 p-2.5">
+                                        <div className="text-[11px] font-bold text-slate-500">
+                                          평균습도 · 강수량
+                                        </div>
+                                        <div className="font-extrabold text-slate-900 mt-0.5">
+                                          습도 {stageDayClimate.humidity_avg}% · 강수{' '}
+                                          {stageDayClimate.precipitation_mm}mm
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {(liveStageItem.climate_rule ||
+                                      liveStageItem.ai_analysis_reason) && (
+                                      <div className="rounded-xl bg-sky-50 border border-sky-200 p-2.5 text-xs text-sky-950 font-semibold leading-relaxed">
+                                        🌦️{' '}
+                                        {liveStageItem.climate_rule ||
+                                          liveStageItem.ai_analysis_reason}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {(liveStageItem.usage_tip || liveStageItem.action_tip) && (
+                                    <div className="space-y-1.5">
+                                      <div className="text-xs font-extrabold text-amber-950">
+                                        ③ 농자재 사용팁 및 영농 노하우
+                                      </div>
+                                      <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-xs text-slate-800 font-semibold leading-relaxed whitespace-pre-line">
+                                        {liveStageItem.usage_tip || liveStageItem.action_tip}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 3. 해당 생육과정 맞춤 추천상품 (1종) */}
+                                {topMat && (() => {
+                                  const unitSpec = String(topMat.unit_spec || '1개');
+                                  const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+                                  const unitLabel =
+                                    topMat.unit_label || (unitMatch ? unitMatch[1] : '개');
+                                  const unitPrice = Number(topMat.unit_price || 15000);
+                                  const recQty = getStageRecQty(
+                                    modalReqNo,
+                                    liveStageItem,
+                                    topMat,
+                                    defaultQty
+                                  );
+                                  const purchasedInfo = getPurchasedStageProductInfo(
+                                    modalReqNo,
+                                    liveStageItem,
+                                    topMat
+                                  );
+                                  const prodDisp = parseStageRecommendedProductDisplay(topMat);
+
+                                  return (
+                                    <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
+                                      <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+                                        <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
+                                          <input
+                                            type="checkbox"
+                                            checked={isMatChecked}
+                                            onChange={() =>
+                                              handleToggleMaterialCheck(selKey, defaultQty)
+                                            }
+                                            className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                          />
+                                          <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
+                                            해당 생육과정 맞춤 추천상품 (1종)
+                                          </span>
+                                          {purchasedInfo.isPurchased && (
+                                            <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black whitespace-nowrap shrink-0">
+                                              <CheckCircle2 className="w-3 h-3" />
+                                              <span>
+                                                구매완료 ({purchasedInfo.totalQty}
+                                                {unitLabel})
+                                              </span>
+                                            </span>
+                                          )}
+                                        </label>
+                                      </div>
+
+                                      <div className="p-3 sm:p-3.5 space-y-2.5">
+                                        <div className="space-y-1">
+                                          <div className="flex items-center justify-between gap-1.5">
+                                            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
+                                              {prodDisp.categoryTag}
+                                            </span>
+                                            <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
+                                              추천점수 {topMat.match_score || 96}점
+                                            </span>
+                                          </div>
+                                          <div className="w-full font-black text-[15.5px] sm:text-[16.5px] text-slate-950 leading-snug truncate">
+                                            {prodDisp.cleanTitle}
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 pt-0.5">
+                                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
+                                            <img
+                                              src={resolveAgroProductThumbUrl(topMat)}
+                                              alt={topMat.product_name}
+                                              onError={handleAgroThumbImgError}
+                                              className="w-full h-full object-contain"
+                                            />
+                                          </div>
+                                          <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
+                                            <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
+                                              {prodDisp.formulaLine}
+                                            </div>
+                                            <div>
+                                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
+                                                {areaPyeong.toLocaleString()}평 권장 {defaultQty}
+                                                {unitLabel}
+                                              </span>
+                                            </div>
+                                            <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
+                                              단가 {unitPrice.toLocaleString()}원
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
+                                              구매 수량
+                                            </span>
+                                            <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleSetStageRecQty(
+                                                    modalReqNo,
+                                                    liveStageItem,
+                                                    topMat,
+                                                    defaultQty,
+                                                    -1,
+                                                    true
+                                                  )
+                                                }
+                                                className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                              >
+                                                <Minus className="w-3 h-3" />
+                                              </button>
+                                              <input
+                                                type="number"
+                                                min={1}
+                                                max={99}
+                                                value={recQty}
+                                                onChange={(e) =>
+                                                  handleSetStageRecQty(
+                                                    modalReqNo,
+                                                    liveStageItem,
+                                                    topMat,
+                                                    defaultQty,
+                                                    Number(e.target.value) || 1,
+                                                    false
+                                                  )
+                                                }
+                                                className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  handleSetStageRecQty(
+                                                    modalReqNo,
+                                                    liveStageItem,
+                                                    topMat,
+                                                    defaultQty,
+                                                    1,
+                                                    true
+                                                  )
+                                                }
+                                                className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
+                                              >
+                                                <Plus className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
+                                            총액 {(unitPrice * recQty).toLocaleString()}원
+                                          </span>
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handlePurchaseStageRecommendedProduct({
+                                              cropObj: modalCrop,
+                                              stageItem: liveStageItem,
+                                              mat: topMat,
+                                              qty: recQty,
+                                            })
+                                          }
+                                          className="w-full py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                        >
+                                          <ShoppingBag className="w-4 h-4 shrink-0" />
+                                          <span>
+                                            {purchasedInfo.isPurchased
+                                              ? `추가 구매 (${recQty}${unitLabel})`
+                                              : `제품 구매 (${recQty}${unitLabel})`}
+                                          </span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+
+                              {/* 작업 세부정보 모달리스 폼 하단 닫기 바 */}
+                              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setMyPageStageDetailItem(null)}
+                                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
+                                >
+                                  작업 세부정보 창 닫기
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
