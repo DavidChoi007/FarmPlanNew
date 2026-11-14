@@ -14253,7 +14253,7 @@ export default function UserIntroPage() {
                     {
                       code: 'FARMLAND',
                       title: '① 내 재배지 등록 · 관리',
-                      desc: '관리자 재배지 DB 검색 · 농지 등록',
+                      desc: '시/도 · 시/군/구 · 읍/면/동 농지 등록',
                       badge: `${myFarmlands.length}곳`,
                       icon: MapPin,
                     },
@@ -14666,11 +14666,11 @@ export default function UserIntroPage() {
             {/* ① 재배지 등록·관리 (관리자 페이지 재배지 관리 DB `시도, 시군구, 읍면동` 검색 연동 · 복수 등록) */}
             {(myPageTab === 'ALL' || myPageTab === 'FARMLAND') && (
               <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
-                {/* 관리자 재배지 관리 DB 검색 & 신규 재배지 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배지 등록' 버튼 모달리스 창에서 등록) */}
+                {/* 재배지 검색 & 신규 재배지 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배지 등록' 버튼 모달리스 창에서 등록) */}
                 <div className="hidden lg:block rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-4">
                   <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-emerald-600" />
-                    <span>관리자 재배지 관리 DB 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
+                    <span>재배지 지역 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
@@ -17007,9 +17007,6 @@ export default function UserIntroPage() {
             <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-[18px] font-black text-slate-900">내 재배지 등록</h3>
-                <span className="text-[11px] font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-full">
-                  관리자 재배지 DB 연동
-                </span>
               </div>
               <div className="text-xs font-bold text-slate-600">
                 시/도 · 시/군/구 · 읍/면/동을 검색하여 내 농지를 복수로 추가 등록합니다.
@@ -17029,7 +17026,7 @@ export default function UserIntroPage() {
               <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 space-y-3">
                 <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>1. 관리자 재배지 관리 DB 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
+                  <span>1. 재배지 지역 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
