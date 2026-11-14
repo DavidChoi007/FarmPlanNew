@@ -798,7 +798,7 @@ export default function UserIntroPage() {
     ) {
       return editDetailForm.start_date;
     }
-    if (rNo === 'REQ-20261106-009' && !item?.is_admin_customized) {
+    if (rNo === 'REQ-20261106-009') {
       if (itemId === 'SCH-13' && item?.start_date === '2026-09-02') return '2026-10-28';
       if (itemId === 'SCH-14' && item?.start_date === '2026-09-28') return '2026-11-15';
       if (itemId === 'SCH-15' && item?.start_date === '2026-11-02') return '2026-11-18';
@@ -807,7 +807,7 @@ export default function UserIntroPage() {
     return String(item?.start_date || '2026-08-25');
   };
 
-  // 재배일정별 "이전 생육과정 보기" 펼침/접힘 상태 (기본값 false: 현재 날짜 이전 생육과정 숨김)
+  // 재배일정별 "지난 생육과정 보기" 펼침/접힘 상태 (기본값 false: 현재 날짜 이전 생육과정 숨김)
   const [showPastStagesByReqNo, setShowPastStagesByReqNo] = useState<Record<string, boolean>>({});
 
   const getTodayKstYmd = (): string =>
@@ -907,7 +907,7 @@ export default function UserIntroPage() {
             <>
               <ChevronDown className="w-4 h-4 text-emerald-950 shrink-0 stroke-[2.5]" />
               <span className="min-w-0 max-w-full text-center leading-snug break-keep overflow-hidden">
-                이전 생육과정 접기{' '}
+                지난 생육과정 접기{' '}
                 <span className="font-extrabold text-[11.5px] sm:text-[13px] text-emerald-950">
                   (전체 {totalCount}개 공정 모두 표시중)
                 </span>
@@ -917,7 +917,7 @@ export default function UserIntroPage() {
             <>
               <ChevronUp className="w-4 h-4 text-emerald-950 shrink-0 stroke-[2.5]" />
               <span className="min-w-0 max-w-full text-center leading-snug break-keep overflow-hidden">
-                이전 생육과정 보기{' '}
+                지난 생육과정 보기{' '}
                 <span className="font-extrabold text-[11.5px] sm:text-[13px] text-emerald-950">
                   (지난 {pastCount}개 공정 숨김중{pastRangeLabel ? ` · ${pastRangeLabel}` : ''})
                 </span>
@@ -7854,7 +7854,7 @@ export default function UserIntroPage() {
                                             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-600">
                                               현재 날짜({mobTlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
                                               <br />
-                                              상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {mobTlPartition.totalCount}개 공정을 확인할 수 있습니다.
+                                              상단 <strong className="text-emerald-700">[지난 생육과정 보기]</strong> 버튼을 클릭하면 전체 {mobTlPartition.totalCount}개 공정을 확인할 수 있습니다.
                                             </div>
                                           )
                                         )}
@@ -10228,7 +10228,7 @@ export default function UserIntroPage() {
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-600">
                                   현재 날짜({pcTlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
                                   <br />
-                                  상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {pcTlPartition.totalCount}개 공정을 확인할 수 있습니다.
+                                  상단 <strong className="text-emerald-700">[지난 생육과정 보기]</strong> 버튼을 클릭하면 전체 {pcTlPartition.totalCount}개 공정을 확인할 수 있습니다.
                                 </div>
                               )
                             )}
@@ -15650,9 +15650,12 @@ export default function UserIntroPage() {
                         >
                           <div
                             onClick={() => {
-                              if (crop.request_no) {
-                                setSelectedRequestNo(crop.request_no);
-                              }
+                              const reqNo = crop.request_no || 'REQ-20261106-009';
+                              setSelectedRequestNo(reqNo);
+                              setMyPageStageDetailItem(null);
+                              setMyPageProgressDetailReqNo((prev) =>
+                                prev === reqNo ? null : reqNo
+                              );
                             }}
                             className={`w-full rounded-3xl lg:rounded-2xl px-4 sm:px-5 py-4 border-2 bg-white shadow-xs lg:shadow-none transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 lg:gap-4 overflow-hidden ${
                               isSelected
@@ -15752,7 +15755,7 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 우측: 일정 상세 보기 + 삭제 액션 버튼 (영역 이탈 방지 컴팩트 정렬) */}
+                            {/* 우측: 세부보기 (일정 세부정보 모달리스 창) + 삭제 액션 버튼 */}
                             <div className="lg:w-auto shrink-0 flex flex-col lg:items-end gap-1.5">
                               <div className="flex items-center justify-end gap-2">
                                 <button
@@ -15761,15 +15764,10 @@ export default function UserIntroPage() {
                                     e.stopPropagation();
                                     const reqNo = crop.request_no || 'REQ-20261106-009';
                                     setSelectedRequestNo(reqNo);
-                                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                                      setMyPageProgressDetailReqNo((prev) =>
-                                        prev === reqNo ? null : reqNo
-                                      );
-                                      return;
-                                    }
-                                    setExpandedScheduleRequestNo(reqNo);
-                                    setActiveMenu('재배일정 확인');
-                                    setMobileScheduleStep('detail');
+                                    setMyPageStageDetailItem(null);
+                                    setMyPageProgressDetailReqNo((prev) =>
+                                      prev === reqNo ? null : reqNo
+                                    );
                                   }}
                                   className={`flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl border font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 ${
                                     myPageProgressDetailReqNo === crop.request_no
@@ -15777,7 +15775,7 @@ export default function UserIntroPage() {
                                       : 'border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
                                   }`}
                                 >
-                                  <span>일정 상세 보기</span>
+                                  <span>세부보기</span>
                                   <ChevronRight className="w-4 h-4 shrink-0" />
                                 </button>
 
@@ -17915,7 +17913,7 @@ export default function UserIntroPage() {
                             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-center text-sm font-bold text-slate-600">
                               현재 날짜({tlPartition.todayKoreanLabel}) 이후 예정된 생육과정이 없습니다.
                               <br />
-                              상단 <strong className="text-emerald-700">[이전 생육과정 보기]</strong> 버튼을 클릭하면 전체 {tlPartition.totalCount}개 공정을 모두 확인할 수 있습니다.
+                              상단 <strong className="text-emerald-700">[지난 생육과정 보기]</strong> 버튼을 클릭하면 전체 {tlPartition.totalCount}개 공정을 모두 확인할 수 있습니다.
                             </div>
                           )
                         )}
