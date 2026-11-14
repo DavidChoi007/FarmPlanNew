@@ -9487,9 +9487,384 @@ const server = http.createServer(async (req, res) => {
 
     // 5. 마이페이지 통합 조회 API
     if (pathname === '/api/mypage' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
       const email = String(parsedUrl.searchParams.get('email') || 'CloudBae@naver.com').trim();
       const payload = buildMemberMyPagePayload(email) || buildMemberMyPagePayload('CloudBae@naver.com');
       sendJson(res, { ok: true, ...payload });
+      return;
+    }
+
+    // ==================== [관리자 회원정보 관리 (회원 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) API] ====================
+    const buildAdminMembersPayload = () => {
+      const members = db
+        .prepare('SELECT * FROM user_member ORDER BY created_at DESC, member_id ASC')
+        .all() as Record<string, any>[];
+      const farmlands = db
+        .prepare('SELECT * FROM member_farmland ORDER BY created_at ASC, farmland_id ASC')
+        .all() as Record<string, any>[];
+      const cropPlans = db
+        .prepare('SELECT * FROM member_crop_plan ORDER BY created_at ASC, crop_plan_id ASC')
+        .all() as Record<string, any>[];
+      return {
+        ok: true,
+        members,
+        farmlands,
+        cropPlans,
+      };
+    };
+
+    const syncAdminMemberTablesFromSupabase = async () => {
+      try {
+        const [sbMembers, sbLands, sbPlans] = await Promise.all([
+          supabaseRestSelect('user_member'),
+          supabaseRestSelect('member_farmland'),
+          supabaseRestSelect('member_crop_plan'),
+        ]);
+        if (Array.isArray(sbMembers)) {
+          db.prepare('DELETE FROM user_member').run();
+          const stmt = db.prepare(`
+            INSERT OR REPLACE INTO user_member (
+              member_id, email, password, signup_type, name, nickname,
+              gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const m of sbMembers) {
+            if (!m?.member_id) continue;
+            stmt.run(
+              String(m.member_id),
+              String(m.email || ''),
+              String(m.password || '1234'),
+              String(m.signup_type || 'EMAIL'),
+              String(m.name || ''),
+              String(m.nickname || ''),
+              String(m.gender || '남성'),
+              String(m.birth_date || '1980-01-01'),
+              Number(m.age) || 46,
+              String(m.road_address || ''),
+              String(m.road_address_detail || ''),
+              String(m.postal_code || '27481'),
+              String(m.phone || '010-0000-0000'),
+              String(m.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+            );
+          }
+        }
+        if (Array.isArray(sbLands)) {
+          db.prepare('DELETE FROM member_farmland').run();
+          const stmt = db.prepare(`
+            INSERT OR REPLACE INTO member_farmland (
+              farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+              detail_jibun, area_pyeong, soil_ph, soil_ec, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const f of sbLands) {
+            if (!f?.farmland_id) continue;
+            stmt.run(
+              String(f.farmland_id),
+              String(f.email || 'CloudBae@naver.com'),
+              String(f.farmland_title || '신규 재배지'),
+              String(f.bjd_code || '4313010700'),
+              String(f.sido || '충청북도'),
+              String(f.sigungu || '충주시'),
+              String(f.eupmyeondong || '단월동'),
+              String(f.detail_jibun || ''),
+              Number(f.area_pyeong) || 300,
+              Number(f.soil_ph) || 6.2,
+              Number(f.soil_ec) || 1.1,
+              String(f.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+            );
+          }
+        }
+        if (Array.isArray(sbPlans)) {
+          db.prepare('DELETE FROM member_crop_plan').run();
+          const stmt = db.prepare(`
+            INSERT OR REPLACE INTO member_crop_plan (
+              crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
+              crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
+              expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const cp of sbPlans) {
+            if (!cp?.crop_plan_id) continue;
+            stmt.run(
+              String(cp.crop_plan_id),
+              String(cp.email || 'CloudBae@naver.com'),
+              String(cp.request_no || 'REQ-20261106-009'),
+              String(cp.farmland_id || ''),
+              String(cp.sido || '충청북도'),
+              String(cp.sigungu || '충주시'),
+              String(cp.eupmyeondong || '단월동'),
+              String(cp.crop_name || '가을배추'),
+              String(cp.cultivar_name || '불암3호'),
+              String(cp.planting_type || '모종'),
+              Number(cp.area_pyeong) || 300,
+              String(cp.planting_date || '2026-08-25'),
+              String(cp.expected_harvest_date || '2026-11-15'),
+              String(cp.current_stage_name || '04. 생육 관리'),
+              Number(cp.progress_pct ?? 25),
+              String(cp.status_text || '기후 연동 생육 관리중'),
+              String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+            );
+          }
+        }
+      } catch {
+        // ignore network errors
+      }
+    };
+
+    if (pathname === '/api/admin/members' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
+      sendJson(res, buildAdminMembersPayload());
+      return;
+    }
+
+    if (pathname === '/api/admin/members/save' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      const memberId = String(body.member_id || `MEM-${Date.now()}`).trim();
+      const prevEmail = String(body.prev_email || '').trim();
+      const email = String(body.email || '').trim();
+      if (!email || !email.includes('@')) {
+        sendJson(res, { ok: false, message: '올바른 이메일 주소를 입력해 주세요.' }, 400);
+        return;
+      }
+      const existingById = db.prepare('SELECT * FROM user_member WHERE member_id = ?').get(memberId) as Record<string, any> | undefined;
+      const password = String(body.password || existingById?.password || '1234').trim();
+      const signupType =
+        String(body.signup_type || existingById?.signup_type || 'EMAIL').toUpperCase() === 'GOOGLE_GMAIL'
+          ? 'GOOGLE_GMAIL'
+          : 'EMAIL';
+      const name = String(body.name || existingById?.name || '신규회원').trim();
+      const nickname = String(body.nickname || email.split('@')[0] || name).trim();
+      const gender = String(body.gender || existingById?.gender || '남성').trim();
+      const birthDate = String(body.birth_date || existingById?.birth_date || '1980-05-15').trim();
+      const age = Number(body.age) || Number(existingById?.age) || 46;
+      const roadAddress = String(body.road_address || existingById?.road_address || '충청북도 충주시 충원대로 268 (단월동)').trim();
+      const roadAddressDetail = String(body.road_address_detail ?? existingById?.road_address_detail ?? '').trim();
+      const postalCode = String(body.postal_code || existingById?.postal_code || '27481').trim();
+      const phone = String(body.phone || existingById?.phone || '010-0000-0000').trim();
+      const createdAt = String(body.created_at || existingById?.created_at || nowStr).trim();
+
+      db.prepare(`
+        INSERT OR REPLACE INTO user_member (
+          member_id, email, password, signup_type, name, nickname,
+          gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        memberId,
+        email,
+        password,
+        signupType,
+        name,
+        nickname,
+        gender,
+        birthDate,
+        age,
+        roadAddress,
+        roadAddressDetail,
+        postalCode,
+        phone,
+        createdAt
+      );
+
+      const savedMem = db.prepare('SELECT * FROM user_member WHERE member_id = ?').get(memberId) as Record<string, any> | undefined;
+      if (savedMem) {
+        await supabaseRestUpsert('user_member', savedMem, 'member_id');
+      }
+
+      if (prevEmail && prevEmail.toLowerCase() !== email.toLowerCase()) {
+        db.prepare('UPDATE member_farmland SET email = ? WHERE LOWER(email) = LOWER(?)').run(email, prevEmail);
+        db.prepare('UPDATE member_crop_plan SET email = ? WHERE LOWER(email) = LOWER(?)').run(email, prevEmail);
+        const updatedLands = db.prepare('SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?)').all(email) as Record<string, any>[];
+        for (const fl of updatedLands) {
+          await supabaseRestUpsert('member_farmland', fl, 'farmland_id');
+        }
+        const updatedPlans = db.prepare('SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?)').all(email) as Record<string, any>[];
+        for (const cp of updatedPlans) {
+          await supabaseRestUpsert('member_crop_plan', cp, 'crop_plan_id');
+        }
+      }
+
+      sendJson(res, { ok: true, member: savedMem, ...buildAdminMembersPayload() });
+      return;
+    }
+
+    if (pathname === '/api/admin/members/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const memberId = String(body.member_id || '').trim();
+      const existing = memberId
+        ? (db.prepare('SELECT * FROM user_member WHERE member_id = ?').get(memberId) as Record<string, any> | undefined)
+        : undefined;
+      const email = String(body.email || existing?.email || '').trim();
+
+      if (memberId) {
+        db.prepare('DELETE FROM user_member WHERE member_id = ?').run(memberId);
+        await supabaseRestDelete('user_member', `member_id=eq.${encodeURIComponent(memberId)}`);
+      }
+      if (email) {
+        db.prepare('DELETE FROM user_member WHERE LOWER(email) = LOWER(?)').run(email);
+        db.prepare('DELETE FROM member_farmland WHERE LOWER(email) = LOWER(?)').run(email);
+        db.prepare('DELETE FROM member_crop_plan WHERE LOWER(email) = LOWER(?)').run(email);
+        await Promise.all([
+          supabaseRestDelete('user_member', `email=eq.${encodeURIComponent(email)}`),
+          supabaseRestDelete('member_farmland', `email=eq.${encodeURIComponent(email)}`),
+          supabaseRestDelete('member_crop_plan', `email=eq.${encodeURIComponent(email)}`),
+        ]);
+      }
+
+      sendJson(res, buildAdminMembersPayload());
+      return;
+    }
+
+    if (pathname === '/api/admin/member-farmlands/save' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      const farmlandId = String(body.farmland_id || `LAND-${Date.now()}`).trim();
+      const existing = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(farmlandId) as Record<string, any> | undefined;
+      const email = String(body.email || existing?.email || 'CloudBae@naver.com').trim();
+      const sido = String(body.sido || existing?.sido || '충청북도').trim();
+      const sigungu = String(body.sigungu || existing?.sigungu || '충주시').trim();
+      const eupmyeondong = String(body.eupmyeondong || existing?.eupmyeondong || '단월동').trim();
+      const farmlandTitle = String(body.farmland_title || existing?.farmland_title || `${sigungu} ${eupmyeondong} 농장`).trim();
+      const detailJibun = String(body.detail_jibun ?? existing?.detail_jibun ?? '100-1번지 일원').trim();
+      const areaPyeong = Math.max(10, Number(body.area_pyeong) || Number(existing?.area_pyeong) || 300);
+      const soilPh = Number(body.soil_ph) || Number(existing?.soil_ph) || 6.2;
+      const soilEc = Number(body.soil_ec) || Number(existing?.soil_ec) || 1.1;
+      const addrRow = db
+        .prepare('SELECT bjd_code FROM cultivation_address WHERE sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1')
+        .get(sido, sigungu, eupmyeondong) as { bjd_code: string } | undefined;
+      const bjdCode = String(body.bjd_code || addrRow?.bjd_code || existing?.bjd_code || '4313010700').trim();
+      const createdAt = String(body.created_at || existing?.created_at || nowStr).trim();
+
+      db.prepare(`
+        INSERT OR REPLACE INTO member_farmland (
+          farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+          detail_jibun, area_pyeong, soil_ph, soil_ec, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        farmlandId,
+        email,
+        farmlandTitle,
+        bjdCode,
+        sido,
+        sigungu,
+        eupmyeondong,
+        detailJibun,
+        areaPyeong,
+        soilPh,
+        soilEc,
+        createdAt
+      );
+      const savedLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(farmlandId) as Record<string, any> | undefined;
+      if (savedLand) {
+        await supabaseRestUpsert('member_farmland', savedLand, 'farmland_id');
+      }
+      sendJson(res, { ok: true, farmland: savedLand, ...buildAdminMembersPayload() });
+      return;
+    }
+
+    if (pathname === '/api/admin/member-farmlands/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const farmlandId = String(body.farmland_id || '').trim();
+      if (farmlandId) {
+        db.prepare('DELETE FROM member_farmland WHERE farmland_id = ?').run(farmlandId);
+        await supabaseRestDelete('member_farmland', `farmland_id=eq.${encodeURIComponent(farmlandId)}`);
+      }
+      sendJson(res, buildAdminMembersPayload());
+      return;
+    }
+
+    if (pathname === '/api/admin/member-crops/save' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      const cropPlanId = String(body.crop_plan_id || `CPLAN-${Date.now()}`).trim();
+      const existing = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(cropPlanId) as Record<string, any> | undefined;
+      const email = String(body.email || existing?.email || 'CloudBae@naver.com').trim();
+      const farmlandId = String(body.farmland_id ?? existing?.farmland_id ?? 'LAND-CB-01').trim();
+      const sido = String(body.sido || existing?.sido || '충청북도').trim();
+      const sigungu = String(body.sigungu || existing?.sigungu || '충주시').trim();
+      const eupmyeondong = String(body.eupmyeondong || existing?.eupmyeondong || '단월동').trim();
+      const cropName = String(body.crop_name || existing?.crop_name || '가을배추').trim();
+      const cultivarName = String(body.cultivar_name || existing?.cultivar_name || '불암3호').trim();
+      const plantingType = String(body.planting_type || existing?.planting_type || '모종').trim();
+      const areaPyeong = Math.max(10, Number(body.area_pyeong) || Number(existing?.area_pyeong) || 300);
+      const plantingDate = String(body.planting_date || existing?.planting_date || '2026-08-25').trim();
+      const progressPct = Math.max(0, Math.min(100, Number(body.progress_pct ?? existing?.progress_pct ?? 25)));
+
+      const [y, m, d] = plantingDate.split('-').map(Number);
+      const dt = new Date(y || 2026, (m || 8) - 1, d || 25);
+      dt.setDate(dt.getDate() + 80);
+      const expectedHarvestDate =
+        String(body.expected_harvest_date || existing?.expected_harvest_date || '').trim() ||
+        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+
+      const requestNo =
+        String(body.request_no || existing?.request_no || '').trim() ||
+        (plantingType.includes('씨')
+          ? 'REQ-20261106-008'
+          : cropName.includes('봄')
+          ? 'REQ-20261106-005'
+          : 'REQ-20261106-009');
+
+      const stageByPct =
+        String(body.current_stage_name || '').trim() ||
+        (progressPct >= 100
+          ? '06. 수확 완료'
+          : progressPct >= 80
+          ? '05. 병해충 예찰 (수확전 후기관리)'
+          : progressPct >= 50
+          ? '04. 생육 관리 (웃거름·결구기)'
+          : progressPct >= 30
+          ? '03. 정식·활착 (집중관수)'
+          : progressPct >= 15
+          ? '02. 파종·육묘 (육묘 환경관리)'
+          : '01. 재배 준비 (토양개량·밑거름)');
+
+      const statusText =
+        String(body.status_text || '').trim() ||
+        (progressPct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 생육 관리중');
+      const createdAt = String(body.created_at || existing?.created_at || nowStr).trim();
+
+      db.prepare(`
+        INSERT OR REPLACE INTO member_crop_plan (
+          crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
+          crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
+          expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        cropPlanId,
+        email,
+        requestNo,
+        farmlandId,
+        sido,
+        sigungu,
+        eupmyeondong,
+        cropName,
+        cultivarName,
+        plantingType,
+        areaPyeong,
+        plantingDate,
+        expectedHarvestDate,
+        stageByPct,
+        progressPct,
+        statusText,
+        createdAt
+      );
+      const savedCropPlan = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(cropPlanId) as Record<string, any> | undefined;
+      if (savedCropPlan) {
+        await supabaseRestUpsert('member_crop_plan', savedCropPlan, 'crop_plan_id');
+      }
+      sendJson(res, { ok: true, cropPlan: savedCropPlan, ...buildAdminMembersPayload() });
+      return;
+    }
+
+    if (pathname === '/api/admin/member-crops/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const cropPlanId = String(body.crop_plan_id || '').trim();
+      if (cropPlanId) {
+        db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(cropPlanId);
+        await supabaseRestDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(cropPlanId)}`);
+      }
+      sendJson(res, buildAdminMembersPayload());
       return;
     }
 

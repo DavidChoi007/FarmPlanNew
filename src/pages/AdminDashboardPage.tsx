@@ -32,6 +32,7 @@ import {
   CloudRain,
   Droplets,
   Calendar,
+  Users,
 } from 'lucide-react';
 
 type AdminTab =
@@ -67,7 +68,8 @@ type AdminTab =
   | 'purchase_intent_content'
   | 'purchase_intent_status'
   | 'addresses_road'
-  | 'addresses';
+  | 'addresses'
+  | 'member_management';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -5000,6 +5002,341 @@ export default function AdminDashboardPage() {
     loadAllData();
   };
 
+  // ==================== 12. 회원정보 관리 (회원 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) 상태 및 핸들러 ====================
+  const [adminMembers, setAdminMembers] = useState<any[]>([
+    {
+      member_id: 'MEM-CLOUDBAE',
+      email: 'CloudBae@naver.com',
+      password: '1234',
+      signup_type: 'EMAIL',
+      name: '배철민',
+      nickname: 'CloudBae',
+      gender: '남성',
+      birth_date: '1978-05-15',
+      age: 48,
+      road_address: '충청북도 충주시 충원대로 268 (단월동)',
+      road_address_detail: '한팜스마트농원 101호',
+      postal_code: '27481',
+      phone: '010-2026-0109',
+      created_at: '2026-11-01 09:00:00',
+    },
+  ]);
+  const [adminMemberFarmlands, setAdminMemberFarmlands] = useState<any[]>([
+    {
+      farmland_id: 'LAND-CB-01',
+      email: 'CloudBae@naver.com',
+      farmland_title: '충주 단월 제1배추밭 (주력포전)',
+      bjd_code: '4313010700',
+      sido: '충청북도',
+      sigungu: '충주시',
+      eupmyeondong: '단월동',
+      detail_jibun: '412-5번지 일원',
+      area_pyeong: 300,
+      soil_ph: 6.3,
+      soil_ec: 1.1,
+      created_at: '2026-11-01 09:05:00',
+    },
+    {
+      farmland_id: 'LAND-CB-02',
+      email: 'CloudBae@naver.com',
+      farmland_title: '충주 산척 제2고랭지포전',
+      bjd_code: '4313038000',
+      sido: '충청북도',
+      sigungu: '충주시',
+      eupmyeondong: '산척면',
+      detail_jibun: '송강리 412-3번지',
+      area_pyeong: 450,
+      soil_ph: 6.1,
+      soil_ec: 1.2,
+      created_at: '2026-11-02 10:15:00',
+    },
+  ]);
+  const [adminMemberCropPlans, setAdminMemberCropPlans] = useState<any[]>([
+    {
+      crop_plan_id: 'CPLAN-CB-01',
+      email: 'CloudBae@naver.com',
+      request_no: 'REQ-20261106-009',
+      farmland_id: 'LAND-CB-01',
+      sido: '충청북도',
+      sigungu: '충주시',
+      eupmyeondong: '단월동',
+      crop_name: '가을배추',
+      cultivar_name: '불암3호',
+      planting_type: '모종',
+      area_pyeong: 300,
+      planting_date: '2026-08-25',
+      expected_harvest_date: '2026-11-15',
+      current_stage_name: '04. 생육 관리 (웃거름·결구기)',
+      progress_pct: 44,
+      status_text: '기후 연동 생육 관리중',
+      created_at: '2026-11-01 09:10:00',
+    },
+  ]);
+  const [isAdminMemberLoading, setIsAdminMemberLoading] = useState<boolean>(false);
+  const [selectedMemberEmailFilter, setSelectedMemberEmailFilter] = useState<string>('ALL');
+  const [memberSearchKeyword, setMemberSearchKeyword] = useState<string>('');
+  const [memberSignupTypeFilter, setMemberSignupTypeFilter] = useState<'ALL' | 'EMAIL' | 'GOOGLE_GMAIL'>('ALL');
+  const [memberSubSectionTab, setMemberSubSectionTab] = useState<'ALL' | 'MEMBERS' | 'FARMLANDS' | 'CROPS'>('ALL');
+
+  const [editingMemberModal, setEditingMemberModal] = useState<null | {
+    isNew: boolean;
+    prev_email?: string;
+    member_id: string;
+    email: string;
+    password: string;
+    signup_type: 'EMAIL' | 'GOOGLE_GMAIL';
+    name: string;
+    nickname: string;
+    gender: string;
+    birth_date: string;
+    age: number;
+    road_address: string;
+    road_address_detail: string;
+    postal_code: string;
+    phone: string;
+  }>(null);
+
+  const [editingFarmlandModal, setEditingFarmlandModal] = useState<null | {
+    isNew: boolean;
+    farmland_id: string;
+    email: string;
+    farmland_title: string;
+    bjd_code: string;
+    sido: string;
+    sigungu: string;
+    eupmyeondong: string;
+    detail_jibun: string;
+    area_pyeong: number;
+    soil_ph: number;
+    soil_ec: number;
+  }>(null);
+
+  const [editingCropPlanModal, setEditingCropPlanModal] = useState<null | {
+    isNew: boolean;
+    crop_plan_id: string;
+    email: string;
+    request_no: string;
+    farmland_id: string;
+    sido: string;
+    sigungu: string;
+    eupmyeondong: string;
+    crop_name: string;
+    cultivar_name: string;
+    planting_type: string;
+    area_pyeong: number;
+    planting_date: string;
+    expected_harvest_date: string;
+    current_stage_name: string;
+    progress_pct: number;
+    status_text: string;
+  }>(null);
+
+  const loadAdminMembersData = async () => {
+    setIsAdminMemberLoading(true);
+    try {
+      const res = await fetch('/api/admin/members').then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members) && res.members.length > 0) {
+          setAdminMembers(res.members);
+        }
+        if (Array.isArray(res.farmlands)) {
+          setAdminMemberFarmlands(res.farmlands);
+        }
+        if (Array.isArray(res.cropPlans)) {
+          setAdminMemberCropPlans(res.cropPlans);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsAdminMemberLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'member_management') {
+      loadAdminMembersData();
+    }
+  }, [activeTab]);
+
+  const handleSaveAdminMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMemberModal) return;
+    if (!editingMemberModal.email || !editingMemberModal.email.includes('@')) {
+      window.alert('올바른 이메일 주소를 입력해 주세요.');
+      return;
+    }
+    if (!editingMemberModal.name.trim()) {
+      window.alert('회원 성명을 입력해 주세요.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/members/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingMemberModal),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        showToast(
+          editingMemberModal.isNew
+            ? `신규 회원 [${editingMemberModal.name} (${editingMemberModal.email})] 등록 완료`
+            : `회원 [${editingMemberModal.name} (${editingMemberModal.email})] 정보 수정 완료`
+        );
+        setEditingMemberModal(null);
+      } else {
+        window.alert(res?.message || '회원 저장 중 오류가 발생했습니다.');
+      }
+    } catch {
+      window.alert('회원 저장 중 네트워크 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteAdminMember = async (member: any) => {
+    if (
+      !window.confirm(
+        `회원 [${member.name} (${member.email})] 정보와 연결된 작물 재배지·재배작물 데이터를 삭제하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/members/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: member.member_id, email: member.email }),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        if (
+          selectedMemberEmailFilter !== 'ALL' &&
+          selectedMemberEmailFilter.toLowerCase() === String(member.email || '').toLowerCase()
+        ) {
+          setSelectedMemberEmailFilter('ALL');
+        }
+        showToast(`회원 [${member.name} (${member.email})] 삭제 완료`);
+      }
+    } catch {
+      window.alert('회원 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSaveAdminFarmland = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFarmlandModal) return;
+    if (!editingFarmlandModal.farmland_title.trim()) {
+      window.alert('재배지 별칭(농장명)을 입력해 주세요.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/member-farmlands/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingFarmlandModal),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        showToast(
+          editingFarmlandModal.isNew
+            ? `작물 재배지 [${editingFarmlandModal.farmland_title}] 추가 완료`
+            : `작물 재배지 [${editingFarmlandModal.farmland_title}] 수정 완료`
+        );
+        setEditingFarmlandModal(null);
+      }
+    } catch {
+      window.alert('작물 재배지 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteAdminFarmland = async (land: any) => {
+    if (
+      !window.confirm(
+        `작물 재배지 [${land.farmland_title} (${land.sido} ${land.sigungu} ${land.eupmyeondong})] 항목을 삭제하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/member-farmlands/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmland_id: land.farmland_id, email: land.email }),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        showToast(`작물 재배지 [${land.farmland_title}] 삭제 완료`);
+      }
+    } catch {
+      window.alert('작물 재배지 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleSaveAdminCropPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCropPlanModal) return;
+    if (!editingCropPlanModal.crop_name.trim()) {
+      window.alert('재배 작물명을 입력해 주세요.');
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/member-crops/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingCropPlanModal),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        showToast(
+          editingCropPlanModal.isNew
+            ? `재배작물 [${editingCropPlanModal.crop_name} (${editingCropPlanModal.cultivar_name})] 추가 완료`
+            : `재배작물 [${editingCropPlanModal.crop_name} (${editingCropPlanModal.cultivar_name})] 수정 완료`
+        );
+        setEditingCropPlanModal(null);
+      }
+    } catch {
+      window.alert('재배작물 저장 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleDeleteAdminCropPlan = async (plan: any) => {
+    if (
+      !window.confirm(
+        `재배작물 [${plan.crop_name} (${plan.cultivar_name}) · ${plan.crop_plan_id}] 항목을 삭제하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/member-crops/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          crop_plan_id: plan.crop_plan_id,
+          request_no: plan.request_no,
+          email: plan.email,
+        }),
+      }).then((r) => r.json());
+      if (res && res.ok) {
+        if (Array.isArray(res.members)) setAdminMembers(res.members);
+        if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
+        if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
+        showToast(`재배작물 [${plan.crop_name} (${plan.cultivar_name})] 삭제 완료`);
+      }
+    } catch {
+      window.alert('재배작물 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   const navItems: { id: AdminTab; label: string; sub: string; icon: any }[] = [
     { id: 'dashboard', label: '1. 통합 대시보드', sub: '운영 현황 · 모델 KPI', icon: LayoutDashboard },
     { id: 'basic_crop_codes', label: '2. 기초 코드 관리 > 농작물 기초 코드', sub: '1단계 작물군 · 2단계 작물 기초 코드 관리', icon: Database },
@@ -5032,7 +5369,8 @@ export default function AdminDashboardPage() {
     { id: 'survey_management', label: '10. 설문조사 관리', sub: '한팜 맞춤형 재배관리 서비스 수요조사 URL 배포 · 응답 수집 · 통계', icon: ClipboardList },
     { id: 'purchase_intent_content', label: '11. 구매의향서 관리 > 구매의향서 내용', sub: '한팜 맞춤형 재배관리 플랫폼 구독의향서 본문 · 최종 확인 폼 · URL 배포', icon: ClipboardList },
     { id: 'purchase_intent_status', label: '11. 구매의향서 관리 > 구매의향서 수집 현황', sub: '접수된 구매·구독의향서 응답 수집 현황 · 통계 · CSV 다운로드', icon: ListChecks },
-    { id: 'settings', label: '12. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
+    { id: 'member_management', label: '12. 회원정보 관리', sub: '회원가입 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 관리', icon: Users },
+    { id: 'settings', label: '13. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
   ];
 
   // 1단계(작물군) & 2단계(작물 및 세부 품종) 통합 관리 섹션 렌더러 (기초 코드 관리 > 농작물 기초 코드 및 2. 농작물 3단계 마스터 공용)
@@ -30217,6 +30555,1728 @@ export default function AdminDashboardPage() {
               )}
             </div>
           )}
+
+          {/* ==================== 12. 회원정보 관리 (회원가입 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) ==================== */}
+          {activeTab === 'member_management' && (() => {
+            const kw = memberSearchKeyword.trim().toLowerCase();
+            const filteredMembers = adminMembers.filter((m: any) => {
+              if (
+                memberSignupTypeFilter !== 'ALL' &&
+                String(m.signup_type || 'EMAIL').toUpperCase() !== memberSignupTypeFilter
+              ) {
+                return false;
+              }
+              if (kw) {
+                const hay = [
+                  m.member_id,
+                  m.email,
+                  m.name,
+                  m.nickname,
+                  m.phone,
+                  m.road_address,
+                  m.road_address_detail,
+                  m.postal_code,
+                  m.birth_date,
+                ]
+                  .join(' ')
+                  .toLowerCase();
+                const hasMatchingLand = adminMemberFarmlands.some(
+                  (f: any) =>
+                    String(f.email || '').toLowerCase() === String(m.email || '').toLowerCase() &&
+                    `${f.farmland_title} ${f.sido} ${f.sigungu} ${f.eupmyeondong} ${f.detail_jibun}`
+                      .toLowerCase()
+                      .includes(kw)
+                );
+                const hasMatchingCrop = adminMemberCropPlans.some(
+                  (c: any) =>
+                    String(c.email || '').toLowerCase() === String(m.email || '').toLowerCase() &&
+                    `${c.crop_name} ${c.cultivar_name} ${c.sido} ${c.sigungu} ${c.eupmyeondong} ${c.request_no}`
+                      .toLowerCase()
+                      .includes(kw)
+                );
+                if (!hay.includes(kw) && !hasMatchingLand && !hasMatchingCrop) return false;
+              }
+              return true;
+            });
+
+            const filteredFarmlands = adminMemberFarmlands.filter((f: any) => {
+              if (
+                selectedMemberEmailFilter !== 'ALL' &&
+                String(f.email || '').toLowerCase() !== selectedMemberEmailFilter.toLowerCase()
+              ) {
+                return false;
+              }
+              if (kw) {
+                const owner = adminMembers.find(
+                  (m: any) => String(m.email || '').toLowerCase() === String(f.email || '').toLowerCase()
+                );
+                const hay = [
+                  f.farmland_id,
+                  f.email,
+                  owner?.name || '',
+                  f.farmland_title,
+                  f.bjd_code,
+                  f.sido,
+                  f.sigungu,
+                  f.eupmyeondong,
+                  f.detail_jibun,
+                ]
+                  .join(' ')
+                  .toLowerCase();
+                if (!hay.includes(kw)) return false;
+              }
+              return true;
+            });
+
+            const filteredCropPlans = adminMemberCropPlans.filter((c: any) => {
+              if (
+                selectedMemberEmailFilter !== 'ALL' &&
+                String(c.email || '').toLowerCase() !== selectedMemberEmailFilter.toLowerCase()
+              ) {
+                return false;
+              }
+              if (kw) {
+                const owner = adminMembers.find(
+                  (m: any) => String(m.email || '').toLowerCase() === String(c.email || '').toLowerCase()
+                );
+                const hay = [
+                  c.crop_plan_id,
+                  c.request_no,
+                  c.email,
+                  owner?.name || '',
+                  c.farmland_id,
+                  c.sido,
+                  c.sigungu,
+                  c.eupmyeondong,
+                  c.crop_name,
+                  c.cultivar_name,
+                  c.planting_type,
+                  c.current_stage_name,
+                  c.status_text,
+                ]
+                  .join(' ')
+                  .toLowerCase();
+                if (!hay.includes(kw)) return false;
+              }
+              return true;
+            });
+
+            const totalFarmlandPyeong = adminMemberFarmlands.reduce(
+              (acc: number, f: any) => acc + (Number(f.area_pyeong) || 0),
+              0
+            );
+            const totalCropPlanPyeong = adminMemberCropPlans.reduce(
+              (acc: number, c: any) => acc + (Number(c.area_pyeong) || 0),
+              0
+            );
+
+            const selectedMemberObj =
+              selectedMemberEmailFilter === 'ALL'
+                ? null
+                : adminMembers.find(
+                    (m: any) =>
+                      String(m.email || '').toLowerCase() === selectedMemberEmailFilter.toLowerCase()
+                  ) || null;
+
+            const openNewMemberModal = () => {
+              setEditingMemberModal({
+                isNew: true,
+                member_id: `MEM-${Date.now()}`,
+                email: '',
+                password: '1234',
+                signup_type: 'EMAIL',
+                name: '',
+                nickname: '',
+                gender: '남성',
+                birth_date: '1980-05-15',
+                age: 46,
+                road_address: '충청북도 충주시 충원대로 268 (단월동)',
+                road_address_detail: '',
+                postal_code: '27481',
+                phone: '010-0000-0000',
+              });
+            };
+
+            const openEditMemberModal = (m: any) => {
+              setEditingMemberModal({
+                isNew: false,
+                prev_email: m.email,
+                member_id: m.member_id || `MEM-${Date.now()}`,
+                email: m.email || '',
+                password: m.password || '1234',
+                signup_type:
+                  String(m.signup_type || 'EMAIL').toUpperCase() === 'GOOGLE_GMAIL'
+                    ? 'GOOGLE_GMAIL'
+                    : 'EMAIL',
+                name: m.name || '',
+                nickname: m.nickname || (m.email ? m.email.split('@')[0] : ''),
+                gender: m.gender || '남성',
+                birth_date: m.birth_date || '1980-05-15',
+                age: Number(m.age) || 46,
+                road_address: m.road_address || '',
+                road_address_detail: m.road_address_detail || '',
+                postal_code: m.postal_code || '27481',
+                phone: m.phone || '010-0000-0000',
+              });
+            };
+
+            const openNewFarmlandModal = (presetEmail?: string) => {
+              const targetEmail =
+                presetEmail ||
+                (selectedMemberEmailFilter !== 'ALL'
+                  ? selectedMemberEmailFilter
+                  : adminMembers[0]?.email || 'CloudBae@naver.com');
+              setEditingFarmlandModal({
+                isNew: true,
+                farmland_id: `LAND-${Date.now()}`,
+                email: targetEmail,
+                farmland_title: '',
+                bjd_code: '4313010700',
+                sido: '충청북도',
+                sigungu: '충주시',
+                eupmyeondong: '단월동',
+                detail_jibun: '100-1번지 일원',
+                area_pyeong: 300,
+                soil_ph: 6.3,
+                soil_ec: 1.1,
+              });
+            };
+
+            const openEditFarmlandModal = (f: any) => {
+              setEditingFarmlandModal({
+                isNew: false,
+                farmland_id: f.farmland_id,
+                email: f.email || 'CloudBae@naver.com',
+                farmland_title: f.farmland_title || '',
+                bjd_code: f.bjd_code || '4313010700',
+                sido: f.sido || '충청북도',
+                sigungu: f.sigungu || '충주시',
+                eupmyeondong: f.eupmyeondong || '단월동',
+                detail_jibun: f.detail_jibun || '',
+                area_pyeong: Number(f.area_pyeong) || 300,
+                soil_ph: Number(f.soil_ph) || 6.3,
+                soil_ec: Number(f.soil_ec) || 1.1,
+              });
+            };
+
+            const openNewCropPlanModal = (presetEmail?: string) => {
+              const targetEmail =
+                presetEmail ||
+                (selectedMemberEmailFilter !== 'ALL'
+                  ? selectedMemberEmailFilter
+                  : adminMembers[0]?.email || 'CloudBae@naver.com');
+              const memberLands = adminMemberFarmlands.filter(
+                (f: any) => String(f.email || '').toLowerCase() === targetEmail.toLowerCase()
+              );
+              const firstLand = memberLands[0] || adminMemberFarmlands[0];
+              setEditingCropPlanModal({
+                isNew: true,
+                crop_plan_id: `CPLAN-${Date.now()}`,
+                email: targetEmail,
+                request_no: 'REQ-20261106-009',
+                farmland_id: firstLand?.farmland_id || 'LAND-CB-01',
+                sido: firstLand?.sido || '충청북도',
+                sigungu: firstLand?.sigungu || '충주시',
+                eupmyeondong: firstLand?.eupmyeondong || '단월동',
+                crop_name: '가을배추',
+                cultivar_name: '불암3호',
+                planting_type: '모종',
+                area_pyeong: Number(firstLand?.area_pyeong) || 300,
+                planting_date: '2026-08-25',
+                expected_harvest_date: '2026-11-15',
+                current_stage_name: '04. 생육 관리 (웃거름·결구기)',
+                progress_pct: 44,
+                status_text: '기후 연동 생육 관리중',
+              });
+            };
+
+            const openEditCropPlanModal = (c: any) => {
+              setEditingCropPlanModal({
+                isNew: false,
+                crop_plan_id: c.crop_plan_id,
+                email: c.email || 'CloudBae@naver.com',
+                request_no: c.request_no || 'REQ-20261106-009',
+                farmland_id: c.farmland_id || 'LAND-CB-01',
+                sido: c.sido || '충청북도',
+                sigungu: c.sigungu || '충주시',
+                eupmyeondong: c.eupmyeondong || '단월동',
+                crop_name: c.crop_name || '가을배추',
+                cultivar_name: c.cultivar_name || '불암3호',
+                planting_type: c.planting_type || '모종',
+                area_pyeong: Number(c.area_pyeong) || 300,
+                planting_date: c.planting_date || '2026-08-25',
+                expected_harvest_date: c.expected_harvest_date || '2026-11-15',
+                current_stage_name: c.current_stage_name || '04. 생육 관리 (웃거름·결구기)',
+                progress_pct: Number(c.progress_pct ?? 44),
+                status_text: c.status_text || '기후 연동 생육 관리중',
+              });
+            };
+
+            return (
+              <div className="w-full p-6 space-y-6">
+                {/* 상단 안내 배너 및 KPI 카드 */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-extrabold">
+                          Supabase 실시간 연동 (SSOT)
+                        </span>
+                        <h2 className="text-base font-extrabold text-slate-900">
+                          회원가입 정보 · 마이페이지(나의 작물 재배지 · 나의 재배작물) 통합 관리
+                        </h2>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        회원가입 데이터(`user_member`), 마이페이지 &gt; 나의 작물 재배지(`member_farmland`), 마이페이지 &gt; 나의 재배작물(`member_crop_plan`)을 실시간 조회·추가·수정·삭제합니다.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openNewMemberModal()}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        신규 회원 등록
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openNewFarmlandModal()}
+                        className="px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        나의 작물 재배지 추가
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openNewCropPlanModal()}
+                        className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        나의 재배작물 추가
+                      </button>
+                      <button
+                        type="button"
+                        onClick={loadAdminMembersData}
+                        className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isAdminMemberLoading ? 'animate-spin' : ''}`} />
+                        새로고침
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* KPI 요약 4단 카드 */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-emerald-800">가입 회원 수 (user_member)</div>
+                        <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                          {adminMembers.length}
+                          <span className="text-xs font-semibold text-slate-500 ml-1">명</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          이메일 {adminMembers.filter((m) => m.signup_type !== 'GOOGLE_GMAIL').length}명 · Gmail{' '}
+                          {adminMembers.filter((m) => m.signup_type === 'GOOGLE_GMAIL').length}명
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
+                        <Users className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-teal-50/70 border border-teal-200 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-teal-800">나의 작물 재배지 (member_farmland)</div>
+                        <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                          {adminMemberFarmlands.length}
+                          <span className="text-xs font-semibold text-slate-500 ml-1">곳</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          총 등록 농지면적 {totalFarmlandPyeong.toLocaleString()}평
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-indigo-800">나의 재배작물 (member_crop_plan)</div>
+                        <div className="text-2xl font-extrabold text-slate-900 mt-1">
+                          {adminMemberCropPlans.length}
+                          <span className="text-xs font-semibold text-slate-500 ml-1">건</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          총 작물 재배면적 {totalCropPlanPyeong.toLocaleString()}평
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+                        <Sprout className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-amber-900">현재 선택된 관리 대상 회원</div>
+                        <div className="text-base font-extrabold text-slate-900 mt-1 truncate max-w-[200px]">
+                          {selectedMemberObj
+                            ? `${selectedMemberObj.name} (${selectedMemberObj.email})`
+                            : '전체 회원 통합 보기'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {selectedMemberObj
+                            ? `재배지 ${filteredFarmlands.length}곳 · 재배작물 ${filteredCropPlans.length}건`
+                            : '회원 행 클릭 시 해당 회원 데이터만 필터링'}
+                        </div>
+                      </div>
+                      {selectedMemberEmailFilter !== 'ALL' && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMemberEmailFilter('ALL')}
+                          className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
+                        >
+                          전체 해제
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 검색 및 섹션 전환 필터 바 */}
+                  <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(
+                        [
+                          { id: 'ALL', label: `전체 통합 보기` },
+                          { id: 'MEMBERS', label: `1. 회원가입 기본정보 (${filteredMembers.length})` },
+                          { id: 'FARMLANDS', label: `2. 나의 작물 재배지 (${filteredFarmlands.length})` },
+                          { id: 'CROPS', label: `3. 나의 재배작물 (${filteredCropPlans.length})` },
+                        ] as const
+                      ).map((tab) => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setMemberSubSectionTab(tab.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                            memberSubSectionTab === tab.id
+                              ? 'bg-slate-900 text-white shadow-2xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={selectedMemberEmailFilter}
+                        onChange={(e) => setSelectedMemberEmailFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800"
+                      >
+                        <option value="ALL">전체 회원 선택 (재배지·재배작물 전체)</option>
+                        {adminMembers.map((m: any) => (
+                          <option key={m.member_id || m.email} value={m.email}>
+                            {m.name} ({m.email})
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={memberSignupTypeFilter}
+                        onChange={(e) =>
+                          setMemberSignupTypeFilter(e.target.value as 'ALL' | 'EMAIL' | 'GOOGLE_GMAIL')
+                        }
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-800"
+                      >
+                        <option value="ALL">가입유형 전체</option>
+                        <option value="EMAIL">이메일 가입 (EMAIL)</option>
+                        <option value="GOOGLE_GMAIL">Google Gmail 가입</option>
+                      </select>
+
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={memberSearchKeyword}
+                          onChange={(e) => setMemberSearchKeyword(e.target.value)}
+                          placeholder="이름, 이메일, 연락처, 주소, 재배지, 작물 검색..."
+                          className="pl-8 pr-3 py-1.5 w-64 rounded-xl border border-slate-300 text-xs font-semibold text-slate-800 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ==================== 섹션 1: 가입 회원 기본정보 리스트 (user_member) ==================== */}
+                {(memberSubSectionTab === 'ALL' || memberSubSectionTab === 'MEMBERS') && (
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-extrabold flex items-center justify-center">
+                          1
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">
+                            회원가입 기본정보 리스트 (`user_member` 테이블 · 총 {filteredMembers.length}명)
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
+                            행의 [재배지·작물 보기]를 클릭하면 하단 재배지·재배작물 목록이 해당 회원 기준으로 필터링됩니다.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openNewMemberModal()}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        신규 회원 추가
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/80 text-slate-700 border-b border-slate-200 font-extrabold">
+                            <th className="py-3 px-3 whitespace-nowrap">회원코드</th>
+                            <th className="py-3 px-3 whitespace-nowrap">가입유형</th>
+                            <th className="py-3 px-3 whitespace-nowrap">이메일 (ID) / 비밀번호</th>
+                            <th className="py-3 px-3 whitespace-nowrap">성명 / 닉네임</th>
+                            <th className="py-3 px-3 whitespace-nowrap">성별 · 생년월일 (나이)</th>
+                            <th className="py-3 px-3 whitespace-nowrap">연락처</th>
+                            <th className="py-3 px-3">도로명 주소 (우편번호)</th>
+                            <th className="py-3 px-3 text-center whitespace-nowrap">보유 재배지 / 재배작물</th>
+                            <th className="py-3 px-3 whitespace-nowrap">가입일시</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">관리 (추가·수정·삭제)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredMembers.length === 0 ? (
+                            <tr>
+                              <td colSpan={10} className="py-8 text-center text-slate-400 font-semibold">
+                                조건에 해당하는 가입 회원 정보가 없습니다.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredMembers.map((m: any) => {
+                              const mLands = adminMemberFarmlands.filter(
+                                (f: any) =>
+                                  String(f.email || '').toLowerCase() === String(m.email || '').toLowerCase()
+                              );
+                              const mCrops = adminMemberCropPlans.filter(
+                                (c: any) =>
+                                  String(c.email || '').toLowerCase() === String(m.email || '').toLowerCase()
+                              );
+                              const isSelected =
+                                selectedMemberEmailFilter.toLowerCase() ===
+                                String(m.email || '').toLowerCase();
+                              return (
+                                <tr
+                                  key={m.member_id || m.email}
+                                  className={`transition ${
+                                    isSelected ? 'bg-emerald-50/70' : 'hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <td className="py-3 px-3 font-mono font-bold text-slate-700 whitespace-nowrap">
+                                    {m.member_id}
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                        m.signup_type === 'GOOGLE_GMAIL'
+                                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                      }`}
+                                    >
+                                      {m.signup_type === 'GOOGLE_GMAIL' ? 'Google Gmail' : '이메일 가입'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-extrabold text-slate-900">{m.email}</div>
+                                    <div className="text-[11px] text-slate-400 font-mono">
+                                      PW: {m.password || '1234'}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-extrabold text-slate-900">{m.name}</div>
+                                    <div className="text-[11px] text-slate-500">{m.nickname || '-'}</div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap text-slate-700">
+                                    <div>
+                                      {m.gender || '남성'} · {m.birth_date || '-'}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">만 {m.age || '-'}세</div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap font-semibold text-slate-800">
+                                    {m.phone || '-'}
+                                  </td>
+                                  <td className="py-3 px-3 max-w-[280px]">
+                                    <div className="font-semibold text-slate-800 truncate">
+                                      [{m.postal_code || '27481'}] {m.road_address || '-'}
+                                    </div>
+                                    {m.road_address_detail && (
+                                      <div className="text-[11px] text-slate-500 truncate">
+                                        {m.road_address_detail}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200 font-extrabold">
+                                        재배지 {mLands.length}곳
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-800 border border-indigo-200 font-extrabold">
+                                        작물 {mCrops.length}건
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap text-[11px] text-slate-500 font-mono">
+                                    {String(m.created_at || '-').slice(0, 16)}
+                                  </td>
+                                  <td className="py-3 px-3 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setSelectedMemberEmailFilter(isSelected ? 'ALL' : m.email)
+                                        }
+                                        className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold border transition cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-emerald-600 text-white border-emerald-600'
+                                            : 'bg-white hover:bg-emerald-50 text-emerald-700 border-emerald-300'
+                                        }`}
+                                      >
+                                        {isSelected ? '필터 해제' : '재배지·작물 보기'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openNewFarmlandModal(m.email)}
+                                        className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-[11px] font-bold cursor-pointer"
+                                        title="이 회원의 작물 재배지 추가"
+                                      >
+                                        +재배지
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openNewCropPlanModal(m.email)}
+                                        className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-[11px] font-bold cursor-pointer"
+                                        title="이 회원의 재배작물 추가"
+                                      >
+                                        +작물
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditMemberModal(m)}
+                                        className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        수정
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteAdminMember(m)}
+                                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ==================== 섹션 2: 마이페이지 > 나의 작물 재배지 관리 (member_farmland) ==================== */}
+                {(memberSubSectionTab === 'ALL' || memberSubSectionTab === 'FARMLANDS') && (
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <div className="px-5 py-4 bg-teal-50/50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-teal-600 text-white text-xs font-extrabold flex items-center justify-center">
+                          2
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">
+                            마이페이지 &gt; 나의 작물 재배지 리스트 (`member_farmland` 테이블 · 총 {filteredFarmlands.length}곳)
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
+                            회원이 등록한 농장·포전 주소(시/도·시/군/구·읍/면/동·상세지번), 경작면적(평), 토양 pH·EC 정보를 관리합니다.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openNewFarmlandModal()}
+                        className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        작물 재배지 추가
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/80 text-slate-700 border-b border-slate-200 font-extrabold">
+                            <th className="py-3 px-3 whitespace-nowrap">재배지 ID</th>
+                            <th className="py-3 px-3 whitespace-nowrap">소속 회원 (이메일)</th>
+                            <th className="py-3 px-3 whitespace-nowrap">재배지 별칭 (농장명)</th>
+                            <th className="py-3 px-3 whitespace-nowrap">법정동코드</th>
+                            <th className="py-3 px-3">재배지 주소 (시/도 · 시/군/구 · 읍/면/동 · 상세지번)</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">재배면적 (평)</th>
+                            <th className="py-3 px-3 text-center whitespace-nowrap">토양 pH / EC</th>
+                            <th className="py-3 px-3 text-center whitespace-nowrap">연결 재배작물</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">관리 (수정·삭제)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredFarmlands.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold">
+                                등록된 작물 재배지 데이터가 없습니다. 우측 상단 [작물 재배지 추가] 버튼으로 등록해 주세요.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredFarmlands.map((f: any) => {
+                              const owner = adminMembers.find(
+                                (m: any) =>
+                                  String(m.email || '').toLowerCase() === String(f.email || '').toLowerCase()
+                              );
+                              const linkedCrops = adminMemberCropPlans.filter(
+                                (c: any) => c.farmland_id === f.farmland_id
+                              );
+                              return (
+                                <tr key={f.farmland_id} className="hover:bg-slate-50 transition">
+                                  <td className="py-3 px-3 font-mono font-bold text-slate-700 whitespace-nowrap">
+                                    {f.farmland_id}
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-extrabold text-slate-900">
+                                      {owner?.name || '회원'}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">{f.email}</div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap font-extrabold text-teal-900">
+                                    {f.farmland_title}
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap font-mono text-slate-600">
+                                    {f.bjd_code || '4313010700'}
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className="font-bold text-slate-800">
+                                      {f.sido} {f.sigungu} {f.eupmyeondong}
+                                    </span>{' '}
+                                    <span className="text-slate-600">{f.detail_jibun}</span>
+                                  </td>
+                                  <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-slate-900">
+                                    {Number(f.area_pyeong || 0).toLocaleString()}평
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold">
+                                      pH {f.soil_ph ?? 6.2} · EC {f.soil_ec ?? 1.1}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold text-[11px]">
+                                      {linkedCrops.length}건
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditFarmlandModal(f)}
+                                        className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        수정
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteAdminFarmland(f)}
+                                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ==================== 섹션 3: 마이페이지 > 나의 재배작물 관리 (member_crop_plan) ==================== */}
+                {(memberSubSectionTab === 'ALL' || memberSubSectionTab === 'CROPS') && (
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <div className="px-5 py-4 bg-indigo-50/50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="w-6 h-6 rounded-lg bg-indigo-600 text-white text-xs font-extrabold flex items-center justify-center">
+                          3
+                        </span>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-slate-900">
+                            마이페이지 &gt; 나의 재배작물 리스트 (`member_crop_plan` 테이블 · 총 {filteredCropPlans.length}건)
+                          </h3>
+                          <p className="text-[11px] text-slate-500">
+                            회원의 재배작물·품종·심는방식(모종/씨)·재배지·면적·정식/파종일·수확예정일·현재 생육단계 및 진행률(%)을 관리합니다.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openNewCropPlanModal()}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        나의 재배작물 추가
+                      </button>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-100/80 text-slate-700 border-b border-slate-200 font-extrabold">
+                            <th className="py-3 px-3 whitespace-nowrap">작물플랜 ID / 일정번호</th>
+                            <th className="py-3 px-3 whitespace-nowrap">소속 회원</th>
+                            <th className="py-3 px-3 whitespace-nowrap">작물명 (품종) · 방식</th>
+                            <th className="py-3 px-3">재배지 지역 (연결 재배지)</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">면적 (평)</th>
+                            <th className="py-3 px-3 whitespace-nowrap">정식/파종일 → 수확예정일</th>
+                            <th className="py-3 px-3 whitespace-nowrap">현재 생육단계 / 상태</th>
+                            <th className="py-3 px-3 text-center whitespace-nowrap">진행율 (%)</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">관리 (수정·삭제)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {filteredCropPlans.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="py-8 text-center text-slate-400 font-semibold">
+                                등록된 나의 재배작물 데이터가 없습니다. 우측 상단 [나의 재배작물 추가] 버튼으로 등록해 주세요.
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredCropPlans.map((c: any) => {
+                              const owner = adminMembers.find(
+                                (m: any) =>
+                                  String(m.email || '').toLowerCase() === String(c.email || '').toLowerCase()
+                              );
+                              const linkedLand = adminMemberFarmlands.find(
+                                (f: any) => f.farmland_id === c.farmland_id
+                              );
+                              return (
+                                <tr key={c.crop_plan_id} className="hover:bg-slate-50 transition">
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-mono font-bold text-slate-800">{c.crop_plan_id}</div>
+                                    <div className="text-[11px] font-mono text-indigo-600">{c.request_no}</div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-extrabold text-slate-900">
+                                      {owner?.name || '회원'}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">{c.email}</div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-extrabold text-slate-900">
+                                      {c.crop_name}{' '}
+                                      <span className="text-emerald-700">({c.cultivar_name})</span>
+                                    </div>
+                                    <span
+                                      className={`inline-block mt-0.5 px-2 py-0.2 rounded text-[10px] font-extrabold ${
+                                        String(c.planting_type).includes('씨')
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : 'bg-emerald-100 text-emerald-800'
+                                      }`}
+                                    >
+                                      {c.planting_type || '모종'}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <div className="font-bold text-slate-800">
+                                      {c.sido} {c.sigungu} {c.eupmyeondong}
+                                    </div>
+                                    <div className="text-[11px] text-slate-500">
+                                      {linkedLand
+                                        ? `${linkedLand.farmland_title} (${c.farmland_id})`
+                                        : c.farmland_id || '-'}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-slate-900">
+                                    {Number(c.area_pyeong || 0).toLocaleString()}평
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap font-mono text-slate-700">
+                                    <div>시작: {c.planting_date}</div>
+                                    <div className="text-emerald-700 font-bold">
+                                      수확: {c.expected_harvest_date}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3 whitespace-nowrap">
+                                    <div className="font-bold text-slate-800">{c.current_stage_name}</div>
+                                    <div className="text-[11px] text-slate-500">{c.status_text}</div>
+                                  </td>
+                                  <td className="py-3 px-3 text-center whitespace-nowrap">
+                                    <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-xs">
+                                      {Number(c.progress_pct ?? 0)}%
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-3 text-right whitespace-nowrap">
+                                    <div className="inline-flex items-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => openEditCropPlanModal(c)}
+                                        className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        수정
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteAdminCropPlan(c)}
+                                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-extrabold cursor-pointer"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* ==================== 모달 1: 회원 기본정보 추가 / 수정 모달 ==================== */}
+                {editingMemberModal && (
+                  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden">
+                      <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+                        <div>
+                          <h3 className="text-base font-extrabold">
+                            {editingMemberModal.isNew ? '신규 회원 등록 (user_member)' : '회원 기본정보 수정 (user_member)'}
+                          </h3>
+                          <p className="text-xs text-slate-300 mt-0.5">
+                            저장 즉시 Supabase 클라우드 DB 및 마이페이지 회원 프로필에 실시간 반영됩니다.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingMemberModal(null)}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSaveAdminMember} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">회원 고유코드</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.member_id}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, member_id: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono font-bold text-slate-800"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">가입 유형</label>
+                            <select
+                              value={editingMemberModal.signup_type}
+                              onChange={(e) =>
+                                setEditingMemberModal({
+                                  ...editingMemberModal,
+                                  signup_type: e.target.value as 'EMAIL' | 'GOOGLE_GMAIL',
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            >
+                              <option value="EMAIL">이메일 일반가입 (EMAIL)</option>
+                              <option value="GOOGLE_GMAIL">Google Gmail 연동 (GOOGLE_GMAIL)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">비밀번호</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.password}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, password: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold text-slate-800"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2">
+                            <label className="block font-bold text-slate-700 mb-1">이메일 (로그인 ID)</label>
+                            <input
+                              type="email"
+                              value={editingMemberModal.email}
+                              onChange={(e) => {
+                                const emailVal = e.target.value;
+                                setEditingMemberModal({
+                                  ...editingMemberModal,
+                                  email: emailVal,
+                                  nickname:
+                                    editingMemberModal.nickname || (emailVal.includes('@') ? emailVal.split('@')[0] : ''),
+                                });
+                              }}
+                              placeholder="example@naver.com"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">닉네임</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.nickname}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, nickname: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">성명</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.name}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, name: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-slate-900"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">성별</label>
+                            <select
+                              value={editingMemberModal.gender}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, gender: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            >
+                              <option value="남성">남성</option>
+                              <option value="여성">여성</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">생년월일</label>
+                            <input
+                              type="date"
+                              value={editingMemberModal.birth_date}
+                              onChange={(e) => {
+                                const bDate = e.target.value;
+                                const birthYear = Number(bDate.split('-')[0]) || 1980;
+                                const calcAge = Math.max(1, 2026 - birthYear);
+                                setEditingMemberModal({
+                                  ...editingMemberModal,
+                                  birth_date: bDate,
+                                  age: calcAge,
+                                });
+                              }}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">나이 (세)</label>
+                            <input
+                              type="number"
+                              value={editingMemberModal.age}
+                              onChange={(e) =>
+                                setEditingMemberModal({
+                                  ...editingMemberModal,
+                                  age: Number(e.target.value) || 46,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">연락처</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.phone}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, phone: e.target.value })
+                              }
+                              placeholder="010-0000-0000"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">우편번호</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.postal_code}
+                              onChange={(e) =>
+                                setEditingMemberModal({ ...editingMemberModal, postal_code: e.target.value })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-bold text-slate-700 mb-1">상세 주소 (동·호수·농원명)</label>
+                            <input
+                              type="text"
+                              value={editingMemberModal.road_address_detail}
+                              onChange={(e) =>
+                                setEditingMemberModal({
+                                  ...editingMemberModal,
+                                  road_address_detail: e.target.value,
+                                })
+                              }
+                              placeholder="한팜스마트농원 101호"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-slate-700 mb-1">도로명 주소</label>
+                          <input
+                            type="text"
+                            value={editingMemberModal.road_address}
+                            onChange={(e) =>
+                              setEditingMemberModal({ ...editingMemberModal, road_address: e.target.value })
+                            }
+                            placeholder="충청북도 충주시 충원대로 268 (단월동)"
+                            className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                            required
+                          />
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingMemberModal(null)}
+                            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer"
+                          >
+                            {editingMemberModal.isNew ? '회원 등록 저장' : '회원 수정 저장'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* ==================== 모달 2: 나의 작물 재배지 추가 / 수정 모달 ==================== */}
+                {editingFarmlandModal && (() => {
+                  const sidos = addressMeta.sidos || [];
+                  const sigungus = addressMeta.sigungusBySido[editingFarmlandModal.sido] || ['충주시'];
+                  const dongs = getKoreaDongs(editingFarmlandModal.sido, editingFarmlandModal.sigungu);
+                  return (
+                    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-xl overflow-hidden">
+                        <div className="px-6 py-4 bg-teal-900 text-white flex items-center justify-between">
+                          <div>
+                            <h3 className="text-base font-extrabold">
+                              {editingFarmlandModal.isNew
+                                ? '나의 작물 재배지 추가 (member_farmland)'
+                                : '나의 작물 재배지 수정 (member_farmland)'}
+                            </h3>
+                            <p className="text-xs text-teal-100 mt-0.5">
+                              마이페이지 &gt; 나의 작물 재배지 목록과 실시간 동기화됩니다.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingFarmlandModal(null)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleSaveAdminFarmland} className="p-6 space-y-4 text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">소속 회원 선택</label>
+                              <select
+                                value={editingFarmlandModal.email}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({ ...editingFarmlandModal, email: e.target.value })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900"
+                              >
+                                {adminMembers.map((m: any) => (
+                                  <option key={m.member_id || m.email} value={m.email}>
+                                    {m.name} ({m.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">재배지 별칭 (농장명)</label>
+                              <input
+                                type="text"
+                                value={editingFarmlandModal.farmland_title}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    farmland_title: e.target.value,
+                                  })
+                                }
+                                placeholder="예: 충주 단월 제1배추밭"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-slate-900"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">시/도</label>
+                              <select
+                                value={editingFarmlandModal.sido}
+                                onChange={(e) => {
+                                  const nextSido = e.target.value;
+                                  const nextSigungu =
+                                    (addressMeta.sigungusBySido[nextSido] || [])[0] || '';
+                                  const nextDongs = getKoreaDongs(nextSido, nextSigungu);
+                                  const firstDong = nextDongs[0];
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    sido: nextSido,
+                                    sigungu: nextSigungu,
+                                    eupmyeondong: firstDong?.eupmyeondong || '',
+                                    bjd_code: firstDong?.bjd_code || editingFarmlandModal.bjd_code,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              >
+                                {sidos.map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">시/군/구</label>
+                              <select
+                                value={editingFarmlandModal.sigungu}
+                                onChange={(e) => {
+                                  const nextSigungu = e.target.value;
+                                  const nextDongs = getKoreaDongs(editingFarmlandModal.sido, nextSigungu);
+                                  const firstDong = nextDongs[0];
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    sigungu: nextSigungu,
+                                    eupmyeondong: firstDong?.eupmyeondong || '',
+                                    bjd_code: firstDong?.bjd_code || editingFarmlandModal.bjd_code,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              >
+                                {sigungus.map((sg) => (
+                                  <option key={sg} value={sg}>
+                                    {sg}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">읍/면/동</label>
+                              <select
+                                value={editingFarmlandModal.eupmyeondong}
+                                onChange={(e) => {
+                                  const nextDong = e.target.value;
+                                  const matched = dongs.find((d) => d.eupmyeondong === nextDong);
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    eupmyeondong: nextDong,
+                                    bjd_code: matched?.bjd_code || editingFarmlandModal.bjd_code,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              >
+                                {dongs.map((d) => (
+                                  <option key={d.bjd_code} value={d.eupmyeondong}>
+                                    {d.eupmyeondong}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">상세 지번</label>
+                              <input
+                                type="text"
+                                value={editingFarmlandModal.detail_jibun}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    detail_jibun: e.target.value,
+                                  })
+                                }
+                                placeholder="412-5번지 일원"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">법정동코드 (자동연동)</label>
+                              <input
+                                type="text"
+                                value={editingFarmlandModal.bjd_code}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    bjd_code: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 font-mono font-bold text-slate-700"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">재배면적 (평)</label>
+                              <input
+                                type="number"
+                                min={10}
+                                value={editingFarmlandModal.area_pyeong}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    area_pyeong: Number(e.target.value) || 300,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-slate-900"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">토양 산도 (pH)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={editingFarmlandModal.soil_ph}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    soil_ph: Number(e.target.value) || 6.2,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">전기전도도 (EC, dS/m)</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={editingFarmlandModal.soil_ec}
+                                onChange={(e) =>
+                                  setEditingFarmlandModal({
+                                    ...editingFarmlandModal,
+                                    soil_ec: Number(e.target.value) || 1.1,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingFarmlandModal(null)}
+                              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold cursor-pointer"
+                            >
+                              {editingFarmlandModal.isNew ? '작물 재배지 추가' : '작물 재배지 수정 저장'}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ==================== 모달 3: 나의 재배작물 추가 / 수정 모달 ==================== */}
+                {editingCropPlanModal && (() => {
+                  const memberFarmlandsForSelect = adminMemberFarmlands.filter(
+                    (f: any) =>
+                      String(f.email || '').toLowerCase() ===
+                      String(editingCropPlanModal.email || '').toLowerCase()
+                  );
+                  return (
+                    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+                      <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl overflow-hidden">
+                        <div className="px-6 py-4 bg-indigo-900 text-white flex items-center justify-between">
+                          <div>
+                            <h3 className="text-base font-extrabold">
+                              {editingCropPlanModal.isNew
+                                ? '나의 재배작물 추가 (member_crop_plan)'
+                                : '나의 재배작물 수정 (member_crop_plan)'}
+                            </h3>
+                            <p className="text-xs text-indigo-100 mt-0.5">
+                              마이페이지 &gt; 나의 재배작물 및 작물재배현황 진행율에 즉시 반영됩니다.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCropPlanModal(null)}
+                            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <form onSubmit={handleSaveAdminCropPlan} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">소속 회원 선택</label>
+                              <select
+                                value={editingCropPlanModal.email}
+                                onChange={(e) => {
+                                  const nextEmail = e.target.value;
+                                  const nextLands = adminMemberFarmlands.filter(
+                                    (f: any) =>
+                                      String(f.email || '').toLowerCase() === nextEmail.toLowerCase()
+                                  );
+                                  const firstLand = nextLands[0];
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    email: nextEmail,
+                                    farmland_id: firstLand?.farmland_id || editingCropPlanModal.farmland_id,
+                                    sido: firstLand?.sido || editingCropPlanModal.sido,
+                                    sigungu: firstLand?.sigungu || editingCropPlanModal.sigungu,
+                                    eupmyeondong: firstLand?.eupmyeondong || editingCropPlanModal.eupmyeondong,
+                                    area_pyeong: Number(firstLand?.area_pyeong) || editingCropPlanModal.area_pyeong,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900"
+                              >
+                                {adminMembers.map((m: any) => (
+                                  <option key={m.member_id || m.email} value={m.email}>
+                                    {m.name} ({m.email})
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">연결 작물 재배지 선택</label>
+                              <select
+                                value={editingCropPlanModal.farmland_id}
+                                onChange={(e) => {
+                                  const landId = e.target.value;
+                                  const matchedLand = adminMemberFarmlands.find(
+                                    (f: any) => f.farmland_id === landId
+                                  );
+                                  if (matchedLand) {
+                                    setEditingCropPlanModal({
+                                      ...editingCropPlanModal,
+                                      farmland_id: matchedLand.farmland_id,
+                                      sido: matchedLand.sido,
+                                      sigungu: matchedLand.sigungu,
+                                      eupmyeondong: matchedLand.eupmyeondong,
+                                      area_pyeong: Number(matchedLand.area_pyeong) || 300,
+                                    });
+                                  } else {
+                                    setEditingCropPlanModal({
+                                      ...editingCropPlanModal,
+                                      farmland_id: landId,
+                                    });
+                                  }
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              >
+                                {(memberFarmlandsForSelect.length > 0
+                                  ? memberFarmlandsForSelect
+                                  : adminMemberFarmlands
+                                ).map((f: any) => (
+                                  <option key={f.farmland_id} value={f.farmland_id}>
+                                    {f.farmland_title} ({f.sido} {f.sigungu} {f.eupmyeondong} · {f.area_pyeong}평)
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">재배 작물명</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.crop_name}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    crop_name: e.target.value,
+                                  })
+                                }
+                                placeholder="예: 가을배추, 봄배추, 감자, 고추"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-slate-900"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">품종명</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.cultivar_name}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    cultivar_name: e.target.value,
+                                  })
+                                }
+                                placeholder="예: 불암3호, 불암플러스, 휘파람골드"
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">심는 방식 (모종 / 씨)</label>
+                              <select
+                                value={editingCropPlanModal.planting_type}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    planting_type: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              >
+                                <option value="모종">모종 (육묘 정식)</option>
+                                <option value="씨">씨 (종자 직파)</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">시/도</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.sido}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({ ...editingCropPlanModal, sido: e.target.value })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">시/군/구</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.sigungu}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    sigungu: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">읍/면/동</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.eupmyeondong}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    eupmyeondong: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">재배면적 (평)</label>
+                              <input
+                                type="number"
+                                min={10}
+                                value={editingCropPlanModal.area_pyeong}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    area_pyeong: Number(e.target.value) || 300,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-slate-900"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">정식/파종 시작일</label>
+                              <input
+                                type="date"
+                                value={editingCropPlanModal.planting_date}
+                                onChange={(e) => {
+                                  const pDate = e.target.value;
+                                  const [y, m, d] = pDate.split('-').map(Number);
+                                  const dt = new Date(y || 2026, (m || 8) - 1, d || 25);
+                                  dt.setDate(dt.getDate() + 80);
+                                  const autoHarvest = `${dt.getFullYear()}-${String(
+                                    dt.getMonth() + 1
+                                  ).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    planting_date: pDate,
+                                    expected_harvest_date: autoHarvest,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">예상 수확일</label>
+                              <input
+                                type="date"
+                                value={editingCropPlanModal.expected_harvest_date}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    expected_harvest_date: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">연결 일정 요청번호</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.request_no}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    request_no: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold text-slate-800"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">진행율 (%)</label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={editingCropPlanModal.progress_pct}
+                                onChange={(e) => {
+                                  const pct = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                                  const stageByPct =
+                                    pct >= 100
+                                      ? '06. 수확 완료'
+                                      : pct >= 80
+                                      ? '05. 병해충 예찰 (수확전 후기관리)'
+                                      : pct >= 50
+                                      ? '04. 생육 관리 (웃거름·결구기)'
+                                      : pct >= 30
+                                      ? '03. 정식·활착 (집중관수)'
+                                      : pct >= 15
+                                      ? '02. 파종·육묘 (육묘 환경관리)'
+                                      : '01. 재배 준비 (토양개량·밑거름)';
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    progress_pct: pct,
+                                    current_stage_name: stageByPct,
+                                  });
+                                }}
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-extrabold text-emerald-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">현재 생육단계명</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.current_stage_name}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    current_stage_name: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block font-bold text-slate-700 mb-1">생육 상태 설명</label>
+                              <input
+                                type="text"
+                                value={editingCropPlanModal.status_text}
+                                onChange={(e) =>
+                                  setEditingCropPlanModal({
+                                    ...editingCropPlanModal,
+                                    status_text: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-800"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingCropPlanModal(null)}
+                              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold cursor-pointer"
+                            >
+                              {editingCropPlanModal.isNew ? '나의 재배작물 추가' : '나의 재배작물 수정 저장'}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })()}
         </main>
       </div>
     </div>
