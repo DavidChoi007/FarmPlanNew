@@ -15172,14 +15172,14 @@ export default function UserIntroPage() {
                                 setSelectedRequestNo(crop.request_no);
                               }
                             }}
-                            className={`w-full rounded-3xl lg:rounded-2xl px-4 sm:px-6 py-4 border-2 bg-white shadow-xs lg:shadow-none transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                            className={`w-full rounded-3xl lg:rounded-2xl px-4 sm:px-5 py-4 border-2 bg-white shadow-xs lg:shadow-none transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 lg:gap-4 overflow-hidden ${
                               isSelected
                                 ? 'border-emerald-400 lg:bg-emerald-50/30'
                                 : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50/70'
                             }`}
                           >
                             {/* 좌측: 순번 + 썸네일 + 작물명·품종 (PC에서는 재배구분·요청번호 배지 제외) */}
-                            <div className="flex items-center gap-3.5 min-w-0 lg:w-[29%] shrink-0">
+                            <div className="flex items-center gap-3 min-w-0 lg:flex-[1.15]">
                               <span
                                 className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
                                   isSelected
@@ -15191,10 +15191,10 @@ export default function UserIntroPage() {
                               </span>
 
                               <div
-                                className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient || 'from-emerald-500 to-teal-700'} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
+                                className={`w-14 h-14 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient || 'from-emerald-500 to-teal-700'} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
                               >
-                                <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
-                                <span className="text-[11px] sm:text-xs font-black mt-0.5">
+                                <Sprout className="w-6 h-6" />
+                                <span className="text-[11px] font-black mt-0.5">
                                   {crop.crop_short || '작물'}
                                 </span>
                               </div>
@@ -15208,21 +15208,25 @@ export default function UserIntroPage() {
                                     {displayReqNo}
                                   </span>
                                 </div>
-                                <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 lg:mt-0 truncate leading-snug">
+                                <h3 className="text-[18px] sm:text-[20px] font-black text-slate-950 mt-1 lg:mt-0 truncate leading-snug">
                                   {crop.crop_title}
                                 </h3>
                               </div>
                             </div>
 
-                            {/* 중앙 1: 재배 지역 · 평수 (PC에서는 기준 정식일 제외) */}
-                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[24%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
-                              <div className="min-w-0">
-                                <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">
-                                  재배지 · 면적
+                            {/* 중앙 1: 재배 지역 (PC에서는 평수 정보 및 기준 정식일 제외) */}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 min-w-0 lg:flex-[0.9] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
+                              <div className="min-w-0 flex-1">
+                                <div className="text-[13px] font-extrabold text-slate-500">
+                                  <span className="lg:hidden">재배지 · 면적</span>
+                                  <span className="hidden lg:inline">재배지</span>
                                 </div>
-                                <div className="text-[16px] sm:text-[18px] font-black text-slate-900 truncate mt-0.5">
-                                  {crop.region} ·{' '}
-                                  <span className="text-emerald-700">{crop.area_pyeong}평</span>
+                                <div className="text-[16px] sm:text-[17px] font-black text-slate-900 truncate mt-0.5">
+                                  <span>{crop.region}</span>
+                                  <span className="lg:hidden">
+                                    {' '}
+                                    · <span className="text-emerald-700">{crop.area_pyeong}평</span>
+                                  </span>
                                 </div>
                               </div>
                               <div className="shrink-0 lg:hidden">
@@ -15235,18 +15239,17 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 중앙 2: 완료 인정 공정 수 및 재배 진행상태 프로그레스 바 (재배일정 확인 메뉴 동일 구성) */}
-                            <div className="lg:w-[26%] space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
-                                  완료 인정 {crop.completed_stage_count ?? 0}/
-                                  {crop.total_stage_count ?? 16}개 공정
+                            {/* 중앙 2: 진행 완료 공정 수 및 퍼센트 (PC에서는 '7 / 16개 진행 완료 44%' 단독 표시, 그래프 및 진행상태 제외) */}
+                            <div className="min-w-0 lg:flex-[0.85] space-y-1.5 lg:space-y-0">
+                              <div className="flex items-center justify-between lg:justify-start lg:gap-2">
+                                <span className="text-[14px] sm:text-[15.5px] font-extrabold text-slate-800 whitespace-nowrap">
+                                  {crop.completed_stage_count ?? 0} / {crop.total_stage_count ?? 16}개 진행 완료
                                 </span>
-                                <span className="text-[16px] sm:text-lg font-black text-emerald-700">
+                                <span className="text-[16px] sm:text-[17px] font-black text-emerald-700 whitespace-nowrap">
                                   {crop.progress_pct}%
                                 </span>
                               </div>
-                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                              <div className="w-full h-2.5 rounded-full bg-slate-200 overflow-hidden lg:hidden">
                                 <div
                                   style={{
                                     width: `${Math.min(100, Math.max(0, crop.progress_pct))}%`,
@@ -15254,7 +15257,7 @@ export default function UserIntroPage() {
                                   className="h-full rounded-full bg-emerald-600 transition-all"
                                 />
                               </div>
-                              <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate">
+                              <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate lg:hidden">
                                 진행상태:{' '}
                                 <strong className="text-slate-900 font-black">
                                   {crop.status_text}
@@ -15267,8 +15270,8 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 우측: 일정 상세 보기 + 삭제 액션 버튼 (재배일정 확인 메뉴 동일 구성) */}
-                            <div className="lg:w-auto shrink-0 flex flex-col gap-2">
+                            {/* 우측: 일정 상세 보기 + 삭제 액션 버튼 (영역 이탈 방지 컴팩트 정렬) */}
+                            <div className="lg:w-auto shrink-0 flex flex-col lg:items-end gap-1.5">
                               <div className="flex items-center justify-end gap-2">
                                 <button
                                   type="button"
@@ -15286,30 +15289,30 @@ export default function UserIntroPage() {
                                     setActiveMenu('재배일정 확인');
                                     setMobileScheduleStep('detail');
                                   }}
-                                  className={`flex-1 lg:flex-none px-4 py-3 rounded-xl border font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                                  className={`flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl border font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 ${
                                     myPageProgressDetailReqNo === crop.request_no
                                       ? 'border-emerald-600 bg-emerald-600 text-white'
                                       : 'border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
                                   }`}
                                 >
                                   <span>일정 상세 보기</span>
-                                  <ChevronRight className="w-4 h-4" />
+                                  <ChevronRight className="w-4 h-4 shrink-0" />
                                 </button>
 
                                 <button
                                   type="button"
                                   onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
                                   title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
-                                  className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
+                                  className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4 shrink-0" />
                                   <span>삭제</span>
                                 </button>
                               </div>
 
                               <div
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center justify-end gap-1 bg-white/80 border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-600"
+                                className="inline-flex items-center justify-end gap-1 bg-white/80 border border-slate-200 rounded-xl px-2 py-1 text-[11.5px] font-bold text-slate-600 whitespace-nowrap"
                               >
                                 <span>공정 일괄:</span>
                                 <button
@@ -15317,7 +15320,7 @@ export default function UserIntroPage() {
                                   onClick={() =>
                                     handleBatchSetStageCompletions(crop.request_no, 'COMPLETE_ALL')
                                   }
-                                  className={`px-2 py-0.5 rounded-md cursor-pointer ${
+                                  className={`px-1.5 py-0.5 rounded-md cursor-pointer ${
                                     Number(crop.progress_pct) === 100
                                       ? 'bg-emerald-600 text-white font-extrabold'
                                       : 'hover:bg-emerald-50 text-emerald-700 font-bold'
@@ -15330,7 +15333,7 @@ export default function UserIntroPage() {
                                   onClick={() =>
                                     handleBatchSetStageCompletions(crop.request_no, 'CLEAR_ALL')
                                   }
-                                  className={`px-2 py-0.5 rounded-md cursor-pointer ${
+                                  className={`px-1.5 py-0.5 rounded-md cursor-pointer ${
                                     Number(crop.progress_pct) === 0
                                       ? 'bg-slate-800 text-white font-extrabold'
                                       : 'hover:bg-slate-100 text-slate-600 font-bold'
