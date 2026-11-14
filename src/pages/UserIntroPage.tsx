@@ -430,6 +430,7 @@ export default function UserIntroPage() {
     startY: number;
   } | null>(null);
   const [selectedReqDetailCrop, setSelectedReqDetailCrop] = useState<any | null>(null);
+  const [myPageProgressDetailReqNo, setMyPageProgressDetailReqNo] = useState<string | null>(null);
   const [reqDetailModalPos, setReqDetailModalPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDraggingReqDetailModal, setIsDraggingReqDetailModal] = useState<boolean>(false);
   const reqDetailDragStartRef = React.useRef<{
@@ -1231,6 +1232,10 @@ export default function UserIntroPage() {
       setHoveredProvisionItem(null);
       setClickedProvisionItem(null);
       setSelectedStageItem(null);
+    }
+
+    if (myPageProgressDetailReqNo && keysToDelete.includes(myPageProgressDetailReqNo)) {
+      setMyPageProgressDetailReqNo(null);
     }
 
     if (keysToDelete.includes(selectedRequestNo)) {
@@ -14901,6 +14906,9 @@ export default function UserIntroPage() {
                       const targetCrop = cloudBaeCropList[targetIdx];
                       if (!targetCrop) return;
                       setSelectedRequestNo(targetCrop.request_no);
+                      if (myPageProgressDetailReqNo) {
+                        setMyPageProgressDetailReqNo(targetCrop.request_no);
+                      }
                     };
 
                     return cloudBaeCropList.map((crop: any, idx: number) => {
@@ -15023,11 +15031,21 @@ export default function UserIntroPage() {
                                     e.stopPropagation();
                                     const reqNo = crop.request_no || 'REQ-20261106-009';
                                     setSelectedRequestNo(reqNo);
+                                    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                                      setMyPageProgressDetailReqNo((prev) =>
+                                        prev === reqNo ? null : reqNo
+                                      );
+                                      return;
+                                    }
                                     setExpandedScheduleRequestNo(reqNo);
                                     setActiveMenu('재배일정 확인');
                                     setMobileScheduleStep('detail');
                                   }}
-                                  className="flex-1 lg:flex-none px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+                                  className={`flex-1 lg:flex-none px-4 py-3 rounded-xl border font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                                    myPageProgressDetailReqNo === crop.request_no
+                                      ? 'border-emerald-600 bg-emerald-600 text-white'
+                                      : 'border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
+                                  }`}
                                 >
                                   <span>일정 상세 보기</span>
                                   <ChevronRight className="w-4 h-4" />
@@ -15110,6 +15128,149 @@ export default function UserIntroPage() {
                     });
                   })()}
                 </div>
+
+                {/* ==================== [모바일 전용: 마이페이지 > 재배진행율 '일정 세부정보' (농작업 타임라인) 모달리스 창] ==================== */}
+                {myPageProgressDetailReqNo && (() => {
+                  const modalCrop =
+                    cloudBaeCropList.find(
+                      (c: any) => c.request_no === myPageProgressDetailReqNo
+                    ) ||
+                    activeCropCard ||
+                    cloudBaeCropList[0];
+                  if (!modalCrop) return null;
+
+                  const modalReqNo = modalCrop.request_no || 'REQ-20261106-009';
+                  const modalDisplayReqNo = modalCrop.display_request_no || modalReqNo;
+                  const hasActiveProvisionItems =
+                    Array.isArray(provisionData?.scheduleItems) &&
+                    provisionData.scheduleItems.length > 0 &&
+                    (provisionData?.activeRequest?.request_no === modalReqNo ||
+                      selectedRequestNo === modalReqNo);
+
+                  const timelineItems = hasActiveProvisionItems
+                    ? provisionData.scheduleItems
+                    : STANDARD_16_STAGE_META.map((meta) => ({
+                        item_id: meta.itemId,
+                        step_order: meta.stepOrder,
+                        stage_group_name: meta.stageGroupName,
+                        sub_item_name: meta.subItemName,
+                        start_date: addDaysToYmd(
+                          modalCrop.planting_date || '2026-08-25',
+                          meta.offsetDays
+                        ),
+                        work_content: `${meta.stageGroupName} 단계 ${meta.subItemName} 적기 작업 및 생육상태 확인`,
+                      }));
+
+                  return (
+                    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
+                      <div className="pointer-events-auto w-full max-w-lg max-h-[86vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
+                        {/* 모달리스 창 상단 헤더 */}
+                        <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-[19px] font-black text-slate-900">
+                              일정 세부정보
+                            </h3>
+                            <span className="text-xs font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                              완료 인정 {modalCrop.completed_stage_count ?? 0}/
+                              {modalCrop.total_stage_count ?? 16}개 · 진행률 {modalCrop.progress_pct}%
+                            </span>
+                          </div>
+                          <div className="text-xs font-extrabold text-slate-600 truncate">
+                            {modalDisplayReqNo} · {modalCrop.crop_title} ({modalCrop.region})
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setMyPageProgressDetailReqNo(null)}
+                            className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>닫기</span>
+                          </button>
+                        </div>
+
+                        {/* 모달리스 창 본문: 농작업 타임라인 내용 */}
+                        <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+                          {timelineItems.map((item: any, tIdx: number) => {
+                            const cleanName = String(item.sub_item_name || '')
+                              .replace(/\s*\([^)]*\)/g, '')
+                              .trim();
+                            const effDate = getEffectiveStageItemDate(modalReqNo, item);
+                            const mNum = Number(String(effDate || '').slice(5, 7));
+                            const dNum = Number(String(effDate || '').slice(8, 10));
+                            const koreanDateLabel =
+                              mNum && dNum ? `${mNum}월 ${dNum}일` : effDate || '-';
+                            const isSelected = selectedStageItem?.item_id === item.item_id;
+
+                            return (
+                              <div
+                                key={`mypage-prog-tl-${item.item_id || tIdx}`}
+                                onClick={() => {
+                                  handleSelectStageItem(item);
+                                }}
+                                className={`flex items-start gap-3.5 rounded-xl p-2 transition cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-emerald-50/80 ring-1 ring-emerald-300'
+                                    : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex flex-col items-center w-6 shrink-0 pt-0.5">
+                                  <span
+                                    className={`text-[16px] font-black leading-none ${
+                                      isSelected
+                                        ? 'text-emerald-700 font-black'
+                                        : 'text-slate-800'
+                                    }`}
+                                  >
+                                    {tIdx + 1}
+                                  </span>
+                                  {tIdx < timelineItems.length - 1 && (
+                                    <div className="w-px h-9 bg-slate-200 mt-1.5" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1 pb-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="inline-flex items-center gap-1.5 flex-nowrap shrink-0">
+                                      <span className="font-black text-[17px] text-slate-950 whitespace-nowrap">
+                                        {koreanDateLabel}
+                                      </span>
+                                      {renderStageCompletionButton(modalReqNo, item, {
+                                        size: 'sm',
+                                        explicitDate: effDate,
+                                      })}
+                                    </div>
+                                    <span className="font-black text-[17px] text-slate-950 leading-snug break-keep">
+                                      · {cleanName}
+                                      {renderStageInlineStatusText(modalReqNo, item, {
+                                        explicitDate: effDate,
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div className="text-[14.5px] font-semibold text-slate-600 mt-1 line-clamp-2">
+                                    {item.work_content ||
+                                      item.work_description ||
+                                      '토양검정과 생육상태 확인 후 진행'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 모달리스 창 하단 닫기 바 */}
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setMyPageProgressDetailReqNo(null)}
+                            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
+                          >
+                            일정 세부정보 창 닫기
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </section>
             )}
 
