@@ -227,6 +227,8 @@ export default function UserIntroPage() {
   >('FARMLAND');
   const [isMobileGnbDrawerOpen, setIsMobileGnbDrawerOpen] = useState<boolean>(false);
   const [isMyPageMobileDrawerOpen, setIsMyPageMobileDrawerOpen] = useState<boolean>(false);
+  const [isFarmlandRegModalOpen, setIsFarmlandRegModalOpen] = useState<boolean>(false);
+  const [isCropPlanRegModalOpen, setIsCropPlanRegModalOpen] = useState<boolean>(false);
   const [myFarmlands, setMyFarmlands] = useState<any[]>([]);
   const [myCropPlans, setMyCropPlans] = useState<any[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
@@ -2003,6 +2005,7 @@ export default function UserIntroPage() {
       const res = await r.json();
       if (res?.ok) {
         applyMyPagePayload(res);
+        setIsFarmlandRegModalOpen(false);
         setMyPageToast(
           `[${newFarmlandForm.sido} ${newFarmlandForm.sigungu} ${newFarmlandForm.eupmyeondong}] ${newFarmlandForm.farmland_title} 재배지가 등록되었습니다.`
         );
@@ -2041,6 +2044,7 @@ export default function UserIntroPage() {
       const res = await r.json();
       if (res?.ok) {
         applyMyPagePayload(res);
+        setIsCropPlanRegModalOpen(false);
         setMyPageToast(
           `[${newCropPlanForm.sido} ${newCropPlanForm.sigungu} ${newCropPlanForm.eupmyeondong}] ${newCropPlanForm.crop_name}(${newCropPlanForm.cultivar_name}) 작물이 내 재배작물 리스트에 추가되었습니다.`
         );
@@ -14641,25 +14645,38 @@ export default function UserIntroPage() {
 
             {/* ① 재배지 등록·관리 (관리자 페이지 재배지 관리 DB `시도, 시군구, 읍면동` 검색 연동 · 복수 등록) */}
             {(myPageTab === 'ALL' || myPageTab === 'FARMLAND') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
-                  <div>
-                    <div className="flex items-center gap-2">
+              <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
+                <div className="flex items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
                         관리자 재배지 관리 DB (cultivation_address) 실시간 연동
                       </span>
                     </div>
                     <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                      ① 내 재배지 등록 · 관리 (시도 · 시군구 · 읍면동 DB 검색 · 복수 등록 가능)
+                      ① 내 재배지 등록 · 관리
                     </h3>
-                    <p className="text-xs text-slate-600">
+                    <p className="text-xs text-slate-600 mt-0.5">
                       관리자 페이지의 전국 재배지 관리 DB에서 시도·시군구·읍면동을 검색하여 내 농지를 여러 곳 등록할 수 있습니다.
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (adminDbAddresses.length === 0) {
+                        searchAdminCultivationDb();
+                      }
+                      setIsFarmlandRegModalOpen(true);
+                    }}
+                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs sm:text-sm font-extrabold cursor-pointer shadow-2xs transition shrink-0 inline-flex items-center gap-1.5"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    <span>재배지 등록</span>
+                  </button>
                 </div>
 
-                {/* 관리자 재배지 관리 DB 검색 & 신규 재배지 등록 폼 */}
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-4">
+                {/* 관리자 재배지 관리 DB 검색 & 신규 재배지 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배지 등록' 버튼 모달리스 창에서 등록) */}
+                <div className="hidden lg:block rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-4">
                   <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-emerald-600" />
                     <span>관리자 재배지 관리 DB 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
@@ -14862,83 +14879,115 @@ export default function UserIntroPage() {
                 </div>
 
                 {/* 등록된 내 재배지 리스트 (1줄에 1개 항목) */}
-                <div className="grid grid-cols-1 gap-3">
-                  {myFarmlands.map((land: any, lIdx: number) => (
-                    <div
-                      key={land.farmland_id}
-                      className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-slate-700">
+                      등록된 내 재배지 목록 ({myFarmlands.length}곳 · 총{' '}
+                      {myFarmlands
+                        .reduce((s: number, f: any) => s + Number(f.area_pyeong || 0), 0)
+                        .toLocaleString()}
+                      평)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('CROPS')}
+                      className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
                     >
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                            등록 재배지 #{lIdx + 1}
-                          </span>
-                          <span className="font-extrabold text-slate-900 text-sm sm:text-base">
-                            {land.farmland_title}
-                          </span>
-                          <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                            법정동코드 {land.bjd_code}
-                          </span>
+                      ② 내 재배작물 등록 보기 ›
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {myFarmlands.map((land: any, lIdx: number) => (
+                      <div
+                        key={land.farmland_id}
+                        className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-xs font-extrabold">
+                              등록 재배지 #{lIdx + 1}
+                            </span>
+                            <span className="font-extrabold text-slate-900 text-sm sm:text-base">
+                              {land.farmland_title}
+                            </span>
+                            <span className="text-[11px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                              법정동코드 {land.bjd_code}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-emerald-800">
+                            📍 {land.sido} {land.sigungu} {land.eupmyeondong} {land.detail_jibun}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold">
+                            <span>면적: {Number(land.area_pyeong || 300).toLocaleString()}평</span>
+                            <span>·</span>
+                            <span>토양 pH {land.soil_ph || 6.2}</span>
+                            <span>·</span>
+                            <span>EC {land.soil_ec || 1.1}</span>
+                          </div>
                         </div>
-                        <div className="text-xs font-bold text-emerald-800">
-                          📍 {land.sido} {land.sigungu} {land.eupmyeondong} {land.detail_jibun}
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-600 font-semibold">
-                          <span>면적: {Number(land.area_pyeong || 300).toLocaleString()}평</span>
-                          <span>·</span>
-                          <span>토양 pH {land.soil_ph || 6.2}</span>
-                          <span>·</span>
-                          <span>EC {land.soil_ec || 1.1}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNewCropPlanForm((prev) => ({
+                                ...prev,
+                                farmland_id: land.farmland_id,
+                                sido: land.sido,
+                                sigungu: land.sigungu,
+                                eupmyeondong: land.eupmyeondong,
+                                area_pyeong: Number(land.area_pyeong || 300),
+                              }));
+                              setMyPageTab('CROPS');
+                              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                                setIsCropPlanRegModalOpen(true);
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
+                          >
+                            이 재배지에 작물 추가 ›
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFarmland(land.farmland_id)}
+                            className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition"
+                          >
+                            삭제
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewCropPlanForm((prev) => ({
-                              ...prev,
-                              farmland_id: land.farmland_id,
-                              sido: land.sido,
-                              sigungu: land.sigungu,
-                              eupmyeondong: land.eupmyeondong,
-                              area_pyeong: Number(land.area_pyeong || 300),
-                            }));
-                            setMyPageTab('CROPS');
-                          }}
-                          className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
-                        >
-                          이 재배지에 작물 추가 ›
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFarmland(land.farmland_id)}
-                          className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
 
             {/* ② 재배작물 등록 (복수 가능) */}
             {(myPageTab === 'ALL' || myPageTab === 'CROPS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5">
-                <div className="border-b border-slate-200 pb-3.5">
-                  <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-xs font-extrabold">
-                    다품종 · 다필지 복수 작물 등록 지원
-                  </span>
-                  <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                    ② 내 재배작물 등록 (복수 등록 가능)
-                  </h3>
-                  <p className="text-xs text-slate-600">
-                    등록된 내 재배지를 선택하고 재배할 작물·품종·작물구분(모종/씨)·정식(파종)일을 입력하여 여러 작물을 복수로 등록할 수 있습니다.
-                  </p>
+              <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
+                <div className="flex items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
+                  <div className="min-w-0 flex-1">
+                    <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-xs font-extrabold">
+                      다품종 · 다필지 복수 작물 등록 지원
+                    </span>
+                    <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
+                      ② 내 재배작물 등록 (복수 등록 가능)
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      등록된 내 재배지를 선택하고 재배할 작물·품종·작물구분(모종/씨)·정식(파종)일을 입력하여 여러 작물을 복수로 등록할 수 있습니다.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsCropPlanRegModalOpen(true)}
+                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs sm:text-sm font-extrabold cursor-pointer shadow-2xs transition shrink-0 inline-flex items-center gap-1.5"
+                  >
+                    <Sprout className="w-4 h-4" />
+                    <span>재배작물 등록</span>
+                  </button>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs items-end">
+                {/* 재배작물 신규 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배작물 등록' 버튼 모달리스 창에서 등록) */}
+                <div className="hidden lg:grid rounded-2xl bg-slate-50 border border-slate-200 p-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs items-end">
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">등록 재배지 선택</label>
                     <select
@@ -16982,6 +17031,441 @@ export default function UserIntroPage() {
           </div>
         </div>
       </footer>
+
+      {/* ==================== [모바일/공통 모달리스 창 1: 마이페이지 > 내 재배지 등록] ==================== */}
+      {activeMenu === '마이페이지' && isFarmlandRegModalOpen && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
+          <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
+            {/* 모달리스 창 상단 헤더 */}
+            <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-[18px] font-black text-slate-900">내 재배지 등록</h3>
+                <span className="text-[11px] font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-full">
+                  관리자 재배지 DB 연동
+                </span>
+              </div>
+              <div className="text-xs font-bold text-slate-600">
+                시/도 · 시/군/구 · 읍/면/동을 검색하여 내 농지를 복수로 추가 등록합니다.
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFarmlandRegModalOpen(false)}
+                className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>닫기</span>
+              </button>
+            </div>
+
+            {/* 모달리스 창 본문 */}
+            <div className="p-4 space-y-4 overflow-y-auto flex-1 bg-white text-xs">
+              <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 space-y-3">
+                <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>1. 관리자 재배지 관리 DB 검색 (시/도 · 시/군/구 · 읍/면/동)</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">시/도 선택</label>
+                    <select
+                      value={farmlandSearchSido}
+                      onChange={(e) => {
+                        const nextSido = e.target.value;
+                        const nextSigungu =
+                          (adminAddrMeta.sigungusBySido[nextSido] || [])[0] || 'ALL';
+                        setFarmlandSearchSido(nextSido);
+                        setFarmlandSearchSigungu(nextSigungu);
+                        searchAdminCultivationDb({
+                          sido: nextSido,
+                          sigungu: nextSigungu,
+                          q: farmlandSearchQuery,
+                        });
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    >
+                      <option value="ALL">전체 시/도</option>
+                      {(adminAddrMeta.sidos.length > 0
+                        ? adminAddrMeta.sidos
+                        : [
+                            '충청북도',
+                            '강원특별자치도',
+                            '전라남도',
+                            '경상북도',
+                            '충청남도',
+                            '경기도',
+                            '전북특별자치도',
+                            '경상남도',
+                            '제주특별자치도',
+                          ]
+                      ).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">시/군/구 선택</label>
+                    <select
+                      value={farmlandSearchSigungu}
+                      onChange={(e) => {
+                        const nextSg = e.target.value;
+                        setFarmlandSearchSigungu(nextSg);
+                        searchAdminCultivationDb({
+                          sido: farmlandSearchSido,
+                          sigungu: nextSg,
+                          q: farmlandSearchQuery,
+                        });
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    >
+                      <option value="ALL">전체 시/군/구</option>
+                      {(adminAddrMeta.sigungusBySido[farmlandSearchSido] || ['충주시', '평창군', '해남군']).map(
+                        (sg) => (
+                          <option key={sg} value={sg}>
+                            {sg}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    읍/면/동 또는 법정동코드 검색
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={farmlandSearchQuery}
+                      onChange={(e) => setFarmlandSearchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          searchAdminCultivationDb();
+                        }
+                      }}
+                      placeholder="예: 단월동, 방림면, 산이면..."
+                      className="flex-1 px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-semibold text-slate-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => searchAdminCultivationDb()}
+                      className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold cursor-pointer shrink-0"
+                    >
+                      DB 검색
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-500">
+                    검색된 관리자 재배지 DB 목록 ({adminDbAddresses.length}건) — 터치 시 자동 입력:
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap max-h-32 overflow-y-auto p-2 rounded-xl bg-white border border-slate-200">
+                    {adminDbAddresses.map((addr: any) => {
+                      const isSelected =
+                        newFarmlandForm.sido === addr.sido &&
+                        newFarmlandForm.sigungu === addr.sigungu &&
+                        newFarmlandForm.eupmyeondong === addr.eupmyeondong;
+                      return (
+                        <button
+                          key={`modal-addr-${addr.bjd_code || `${addr.sido}-${addr.sigungu}-${addr.eupmyeondong}`}`}
+                          type="button"
+                          onClick={() =>
+                            setNewFarmlandForm((prev) => ({
+                              ...prev,
+                              sido: addr.sido,
+                              sigungu: addr.sigungu,
+                              eupmyeondong: addr.eupmyeondong,
+                              bjd_code: addr.bjd_code,
+                              farmland_title: `${addr.sigungu} ${addr.eupmyeondong} 농장`,
+                            }))
+                          }
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            isSelected
+                              ? 'bg-emerald-600 text-white border-emerald-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
+                          }`}
+                        >
+                          {addr.sido} {addr.sigungu} {addr.eupmyeondong}{' '}
+                          <span className="opacity-70 text-[10px]">({addr.bjd_code})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* 선택된 재배지 상세 정보 입력 */}
+              <div className="rounded-2xl bg-emerald-50/40 border border-emerald-200 p-3.5 space-y-3">
+                <div className="text-xs font-extrabold text-emerald-950">
+                  2. 선택된 재배지 상세 정보 입력
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    선택된 지역 (시도 · 시군구 · 읍면동)
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${newFarmlandForm.sido} ${newFarmlandForm.sigungu} ${newFarmlandForm.eupmyeondong} (${newFarmlandForm.bjd_code})`}
+                    className="w-full px-3 py-2.5 rounded-xl border border-emerald-300 bg-white text-emerald-950 font-extrabold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">농장 별칭</label>
+                  <input
+                    type="text"
+                    value={newFarmlandForm.farmland_title}
+                    onChange={(e) =>
+                      setNewFarmlandForm({ ...newFarmlandForm, farmland_title: e.target.value })
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">상세 지번</label>
+                    <input
+                      type="text"
+                      value={newFarmlandForm.detail_jibun}
+                      onChange={(e) =>
+                        setNewFarmlandForm({ ...newFarmlandForm, detail_jibun: e.target.value })
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">재배 면적 (평)</label>
+                    <input
+                      type="number"
+                      value={newFarmlandForm.area_pyeong}
+                      onChange={(e) =>
+                        setNewFarmlandForm({
+                          ...newFarmlandForm,
+                          area_pyeong: Number(e.target.value) || 300,
+                        })
+                      }
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 모달리스 창 하단 액션 바 */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsFarmlandRegModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-extrabold text-xs sm:text-sm cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleAddFarmland}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm cursor-pointer shadow-2xs transition"
+              >
+                + 내 재배지 추가 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== [모바일/공통 모달리스 창 2: 마이페이지 > 내 재배작물 등록] ==================== */}
+      {activeMenu === '마이페이지' && isCropPlanRegModalOpen && (
+        <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
+          <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
+            {/* 모달리스 창 상단 헤더 */}
+            <div className="relative bg-emerald-50/95 border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-[18px] font-black text-slate-900">내 재배작물 등록</h3>
+                <span className="text-[11px] font-extrabold text-emerald-800 bg-white border border-emerald-200 px-2 py-0.5 rounded-full">
+                  다품종 · 다필지 복수 등록
+                </span>
+              </div>
+              <div className="text-xs font-bold text-slate-600">
+                등록된 내 재배지를 선택하고 작물·품종·작물구분(모종/씨)·정식일을 입력해 등록합니다.
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCropPlanRegModalOpen(false)}
+                className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+                <span>닫기</span>
+              </button>
+            </div>
+
+            {/* 모달리스 창 본문 */}
+            <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">등록 재배지 선택</label>
+                <select
+                  value={newCropPlanForm.farmland_id}
+                  onChange={(e) => {
+                    const lid = e.target.value;
+                    const found = myFarmlands.find((f: any) => f.farmland_id === lid);
+                    if (found) {
+                      setNewCropPlanForm((prev) => ({
+                        ...prev,
+                        farmland_id: lid,
+                        sido: found.sido,
+                        sigungu: found.sigungu,
+                        eupmyeondong: found.eupmyeondong,
+                        area_pyeong: Number(found.area_pyeong || 300),
+                      }));
+                    } else {
+                      setNewCropPlanForm((prev) => ({ ...prev, farmland_id: lid }));
+                    }
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                >
+                  {myFarmlands.map((f: any) => (
+                    <option key={f.farmland_id} value={f.farmland_id}>
+                      {f.farmland_title} ({f.sido} {f.sigungu} {f.eupmyeondong})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">재배 작물 선택</label>
+                  <select
+                    value={newCropPlanForm.crop_name}
+                    onChange={(e) => {
+                      const cname = e.target.value;
+                      const defaultCv =
+                        cname === '봄배추'
+                          ? '춘광'
+                          : cname === '월동배추'
+                          ? '해남1호'
+                          : cname === '고추'
+                          ? '칼라탄'
+                          : cname === '마늘'
+                          ? '홍산마늘'
+                          : '불암3호';
+                      setNewCropPlanForm((prev) => ({
+                        ...prev,
+                        crop_name: cname,
+                        cultivar_name: defaultCv,
+                      }));
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  >
+                    <option value="가을배추">가을배추</option>
+                    <option value="봄배추">봄배추</option>
+                    <option value="월동배추">월동배추</option>
+                    <option value="고추">고추</option>
+                    <option value="마늘">마늘</option>
+                    <option value="양파">양파</option>
+                    <option value="감자">감자</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">품종 선택</label>
+                  <select
+                    value={newCropPlanForm.cultivar_name}
+                    onChange={(e) =>
+                      setNewCropPlanForm((prev) => ({ ...prev, cultivar_name: e.target.value }))
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  >
+                    <option value="불암3호">불암3호 (가을배추 표준)</option>
+                    <option value="청명가을">청명가을 (직파/씨 전용)</option>
+                    <option value="불암플러스">불암플러스</option>
+                    <option value="춘광">춘광 (봄·고랭지배추)</option>
+                    <option value="해남1호">해남1호 (월동배추)</option>
+                    <option value="칼라탄">칼라탄 (복합내병계 고추)</option>
+                    <option value="홍산마늘">홍산마늘</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">작물구분 (모종 / 씨)</label>
+                <select
+                  value={newCropPlanForm.planting_type}
+                  onChange={(e) =>
+                    setNewCropPlanForm((prev) => ({ ...prev, planting_type: e.target.value }))
+                  }
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                >
+                  <option value="모종">모종 (정식 재배)</option>
+                  <option value="씨">씨 (직파 · 최적 발아온도)</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">정식/파종일</label>
+                  <input
+                    type="date"
+                    value={newCropPlanForm.planting_date}
+                    onChange={(e) =>
+                      setNewCropPlanForm((prev) => ({ ...prev, planting_date: e.target.value }))
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1.5">재배 면적 (평)</label>
+                  <input
+                    type="number"
+                    value={newCropPlanForm.area_pyeong}
+                    onChange={(e) =>
+                      setNewCropPlanForm((prev) => ({
+                        ...prev,
+                        area_pyeong: Number(e.target.value) || 300,
+                      }))
+                    }
+                    placeholder="평"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-emerald-50/70 border border-emerald-200 p-3 space-y-1">
+                <div className="text-[11px] font-bold text-emerald-700">선택 요약</div>
+                <div className="text-xs font-extrabold text-slate-900">
+                  📍 {newCropPlanForm.sido} {newCropPlanForm.sigungu} {newCropPlanForm.eupmyeondong} ·{' '}
+                  {newCropPlanForm.crop_name} ({newCropPlanForm.cultivar_name})
+                </div>
+                <div className="text-[11px] font-semibold text-slate-600">
+                  작물구분: {newCropPlanForm.planting_type} · 정식/파종일: {newCropPlanForm.planting_date} · 면적:{' '}
+                  {Number(newCropPlanForm.area_pyeong || 300).toLocaleString()}평
+                </div>
+              </div>
+            </div>
+
+            {/* 모달리스 창 하단 액션 바 */}
+            <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsCropPlanRegModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-extrabold text-xs sm:text-sm cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleAddCropPlan}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm cursor-pointer shadow-2xs transition"
+              >
+                + 재배작물 복수 등록
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== [모바일 전용 공통 모달리스 창: 재배일정 확인 & 마이페이지>재배진행율 '일정 세부정보' (농작업 타임라인) 및 '작업 세부정보'] ==================== */}
       {(activeMenu === '재배일정 확인' ||
