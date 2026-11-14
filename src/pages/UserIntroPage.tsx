@@ -14646,35 +14646,6 @@ export default function UserIntroPage() {
             {/* ① 재배지 등록·관리 (관리자 페이지 재배지 관리 DB `시도, 시군구, 읍면동` 검색 연동 · 복수 등록) */}
             {(myPageTab === 'ALL' || myPageTab === 'FARMLAND') && (
               <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
-                <div className="flex items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
-                        관리자 재배지 관리 DB (cultivation_address) 실시간 연동
-                      </span>
-                    </div>
-                    <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                      ① 내 재배지 등록 · 관리
-                    </h3>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      관리자 페이지의 전국 재배지 관리 DB에서 시도·시군구·읍면동을 검색하여 내 농지를 여러 곳 등록할 수 있습니다.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (adminDbAddresses.length === 0) {
-                        searchAdminCultivationDb();
-                      }
-                      setIsFarmlandRegModalOpen(true);
-                    }}
-                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs sm:text-sm font-extrabold cursor-pointer shadow-2xs transition shrink-0 inline-flex items-center gap-1.5"
-                  >
-                    <MapPin className="w-4 h-4" />
-                    <span>재배지 등록</span>
-                  </button>
-                </div>
-
                 {/* 관리자 재배지 관리 DB 검색 & 신규 재배지 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배지 등록' 버튼 모달리스 창에서 등록) */}
                 <div className="hidden lg:block rounded-2xl bg-slate-50 border border-slate-200 p-4 space-y-4">
                   <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
@@ -14879,22 +14850,37 @@ export default function UserIntroPage() {
                 </div>
 
                 {/* 등록된 내 재배지 리스트 (1줄에 1개 항목) */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-700">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                    <span className="text-xs sm:text-sm font-extrabold text-slate-800">
                       등록된 내 재배지 목록 ({myFarmlands.length}곳 · 총{' '}
                       {myFarmlands
                         .reduce((s: number, f: any) => s + Number(f.area_pyeong || 0), 0)
                         .toLocaleString()}
                       평)
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setMyPageTab('CROPS')}
-                      className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
-                    >
-                      ② 내 재배작물 등록 보기 ›
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setMyPageTab('CROPS')}
+                        className="hidden sm:inline-flex text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
+                      >
+                        ② 내 재배작물 등록 보기 ›
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (adminDbAddresses.length === 0) {
+                            searchAdminCultivationDb();
+                          }
+                          setIsFarmlandRegModalOpen(true);
+                        }}
+                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs font-extrabold cursor-pointer shadow-2xs transition shrink-0 inline-flex items-center gap-1.5"
+                      >
+                        <MapPin className="w-3.5 h-3.5" />
+                        <span>재배지 등록</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {myFarmlands.map((land: any, lIdx: number) => (
