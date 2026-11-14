@@ -13682,7 +13682,7 @@ export default function UserIntroPage() {
 
         {/* ==================== [탭 7: 마이페이지 (좌측: 메뉴 영역 / 우측: 선택 메뉴 관련 내용 영역)] ==================== */}
         {activeMenu === '마이페이지' && (
-          <div className="space-y-6">
+          <div className="space-y-2.5 lg:space-y-6">
             {/* 마이페이지 전용 3D 아바타 와이드 배너 (홈과 동일한 비율 · 1376x328) */}
             <section className="rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
               <div className="relative w-full">
@@ -13806,7 +13806,7 @@ export default function UserIntroPage() {
             )}
 
             {/* 좌측 메뉴 영역 (모바일: 좌측 슬라이드 드로어 / PC: 고정 사이드바) + 우측 관련 내용 영역 */}
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
+            <div className="flex flex-col lg:flex-row gap-0 lg:gap-6 items-start">
               {/* ==================== [좌측 영역: 마이페이지 메뉴 사이드바] ==================== */}
               <aside
                 className={`fixed inset-y-0 left-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-slate-50 p-4 overflow-y-auto shadow-2xl border-r border-slate-200 transition-transform duration-300 ease-in-out lg:static lg:z-auto lg:w-[310px] xl:w-[330px] lg:max-w-none lg:bg-transparent lg:p-0 lg:overflow-visible lg:shadow-none lg:border-0 shrink-0 space-y-4 lg:sticky lg:top-24 ${
@@ -14004,7 +14004,7 @@ export default function UserIntroPage() {
               </aside>
 
               {/* ==================== [우측 영역: 선택된 메뉴의 관련 내용] ==================== */}
-              <div className="flex-1 min-w-0 w-full space-y-5">
+              <div className="flex-1 min-w-0 w-full flex flex-col gap-3 lg:gap-5">
                 {myPageToast && (
                   <div className="rounded-2xl bg-emerald-50 border border-emerald-300 px-4 py-3 text-xs sm:text-sm font-extrabold text-emerald-900 flex items-center justify-between gap-2 shadow-2xs">
                     <div className="flex items-center gap-2">
@@ -14861,7 +14861,7 @@ export default function UserIntroPage() {
 
             {/* ③ 작물재배현황 및 진행율 */}
             {(myPageTab === 'ALL' || myPageTab === 'PROGRESS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4">
+              <section className="bg-white rounded-3xl border border-slate-200 p-3 sm:p-6 shadow-xs flex flex-col gap-4">
                 <div className="hidden lg:flex lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-extrabold">
