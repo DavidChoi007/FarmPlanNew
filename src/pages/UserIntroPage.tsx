@@ -15178,8 +15178,8 @@ export default function UserIntroPage() {
                                 : 'border-slate-200 hover:border-emerald-300 hover:bg-slate-50/70'
                             }`}
                           >
-                            {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 (재배일정 확인 메뉴 동일 구성) */}
-                            <div className="flex items-center gap-3.5 min-w-0 lg:w-[31%] shrink-0">
+                            {/* 좌측: 순번 + 썸네일 + 작물명·품종 (PC에서는 재배구분·요청번호 배지 제외) */}
+                            <div className="flex items-center gap-3.5 min-w-0 lg:w-[29%] shrink-0">
                               <span
                                 className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
                                   isSelected
@@ -15200,7 +15200,7 @@ export default function UserIntroPage() {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5 flex-wrap">
+                                <div className="flex lg:hidden items-center gap-1.5 flex-wrap">
                                   <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[13px] sm:text-sm">
                                     {crop.badge || crop.planting_type}
                                   </span>
@@ -15208,14 +15208,14 @@ export default function UserIntroPage() {
                                     {displayReqNo}
                                   </span>
                                 </div>
-                                <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 truncate leading-snug">
+                                <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 lg:mt-0 truncate leading-snug">
                                   {crop.crop_title}
                                 </h3>
                               </div>
                             </div>
 
-                            {/* 중앙 1: 재배 지역 · 평수 · 기준 정식일 (재배일정 확인 메뉴 동일 구성) */}
-                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[32%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
+                            {/* 중앙 1: 재배 지역 · 평수 (PC에서는 기준 정식일 제외) */}
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[24%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
                               <div className="min-w-0">
                                 <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">
                                   재배지 · 면적
@@ -15225,7 +15225,7 @@ export default function UserIntroPage() {
                                   <span className="text-emerald-700">{crop.area_pyeong}평</span>
                                 </div>
                               </div>
-                              <div className="shrink-0">
+                              <div className="shrink-0 lg:hidden">
                                 <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">
                                   기준 정식일
                                 </div>
@@ -15236,7 +15236,7 @@ export default function UserIntroPage() {
                             </div>
 
                             {/* 중앙 2: 완료 인정 공정 수 및 재배 진행상태 프로그레스 바 (재배일정 확인 메뉴 동일 구성) */}
-                            <div className="lg:w-[23%] space-y-1.5">
+                            <div className="lg:w-[26%] space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
                                   완료 인정 {crop.completed_stage_count ?? 0}/
