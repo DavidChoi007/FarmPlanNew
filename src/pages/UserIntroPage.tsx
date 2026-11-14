@@ -321,6 +321,10 @@ export default function UserIntroPage() {
   const isInsideHoverBubbleRef = React.useRef<boolean>(false);
   const isInsideGrowthItemRef = React.useRef<boolean>(false);
   const isBubbleLockedByClickRef = React.useRef<boolean>(false);
+  const isRestoringHistoryRef = React.useRef<boolean>(false);
+  const ignoreNextPopStateRef = React.useRef<boolean>(false);
+  const navStackRef = React.useRef<any[]>([]);
+  const navIndexRef = React.useRef<number>(0);
   const [selectedCatalogMatId, setSelectedCatalogMatId] = useState<string>('FERT-PRD-01');
   const [newCustomMatForm, setNewCustomMatForm] = useState<{
     sub_type: string;
@@ -398,7 +402,9 @@ export default function UserIntroPage() {
 
   useEffect(() => {
     setHoveredProvisionItem(null);
-    setClickedProvisionItem(null);
+    if (!isRestoringHistoryRef.current) {
+      setClickedProvisionItem(null);
+    }
   }, [selectedRequestNo, activeMenu]);
 
   // 오늘 할 일 체크리스트 상태
@@ -3551,12 +3557,14 @@ export default function UserIntroPage() {
         activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
           ? mobileAgroCategoryTab
           : getUserAgroCategoryFromMenu(activeMenu);
-      setMobileAgroCategoryTab(cat);
-      setUserAgroMainTypeFilter('ALL');
-      setUserAgroSubTypeFilter('ALL');
-      setUserAgroOrganicFilter('ALL');
-      setUserAgroKeyword('');
-      setSelectedUserAgroDetail(null);
+      if (!isRestoringHistoryRef.current) {
+        setMobileAgroCategoryTab(cat);
+        setUserAgroMainTypeFilter('ALL');
+        setUserAgroSubTypeFilter('ALL');
+        setUserAgroOrganicFilter('ALL');
+        setUserAgroKeyword('');
+        setSelectedUserAgroDetail(null);
+      }
       executeUserAgroMaterialSearch({
         category: cat,
         main_type: 'ALL',
@@ -3566,6 +3574,240 @@ export default function UserIntroPage() {
       });
     }
   }, [activeMenu]);
+
+  // ==================== 브라우저 이전/다음(뒤로가기) 히스토리 스택 동기화 ====================
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const isAgroMenu =
+      activeMenu === '농작물 구매' ||
+      activeMenu === '농자재 판매' ||
+      activeMenu === '비료' ||
+      activeMenu === '영양제' ||
+      activeMenu === '병해충관리제' ||
+      activeMenu === '병해충방지제' ||
+      activeMenu === '씨' ||
+      activeMenu === '모종';
+
+    const effectiveAgroTab = isAgroMenu
+      ? activeMenu === '농작물 구매' || activeMenu === '농자재 판매'
+        ? mobileAgroCategoryTab
+        : getUserAgroCategoryFromMenu(activeMenu)
+      : mobileAgroCategoryTab;
+
+    const navMenuKey = isAgroMenu ? `AGRO:${effectiveAgroTab}` : activeMenu;
+    const navSubKey =
+      activeMenu === '마이페이지'
+        ? `tab:${myPageTab}`
+        : activeMenu === '재배일정 확인'
+        ? `step:${mobileScheduleStep}|exp:${expandedScheduleRequestNo || ''}|view:${scheduleViewMode}`
+        : '';
+    const pageKey = `${navMenuKey}||${navSubKey}`;
+
+    const overlayKey = [
+      activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS')
+        ? `progReq:${myPageProgressDetailReqNo || ''}|stg:${
+            myPageStageDetailItem ? resolveStageItemId(myPageStageDetailItem) : ''
+          }`
+        : '',
+      activeMenu === '재배일정 확인'
+        ? `prov:${clickedProvisionItem ? resolveStageItemId(clickedProvisionItem) : ''}`
+        : '',
+      activeMenu === '재배일정 요청'
+        ? `reqDet:${
+            selectedReqDetailCrop
+              ? selectedReqDetailCrop.request_no || selectedReqDetailCrop.crop_plan_id || ''
+              : ''
+          }|reqForm:${isScheduleReqModelessOpen ? '1' : '0'}`
+        : '',
+      isAgroMenu
+        ? `agroDet:${
+            selectedUserAgroDetail
+              ? selectedUserAgroDetail.material_id || selectedUserAgroDetail.product_name || '1'
+              : ''
+          }`
+        : '',
+      isAuthModalOpen ? 'auth:1' : '',
+    ]
+      .filter(Boolean)
+      .join('|');
+
+    const routeKey = `${pageKey}||${overlayKey}`;
+
+    const snap = {
+      routeKey,
+      pageKey,
+      overlayKey,
+      activeMenu,
+      myPageTab,
+      mobileScheduleStep,
+      expandedScheduleRequestNo: expandedScheduleRequestNo || null,
+      selectedRequestNo: selectedRequestNo || 'REQ-20261106-009',
+      scheduleViewMode,
+      mobileAgroCategoryTab: effectiveAgroTab,
+      myPageProgressDetailReqNo: myPageProgressDetailReqNo || null,
+      myPageStageDetailItem: myPageStageDetailItem || null,
+      clickedProvisionItem: clickedProvisionItem || null,
+      selectedReqDetailCrop: selectedReqDetailCrop || null,
+      isScheduleReqModelessOpen: Boolean(isScheduleReqModelessOpen),
+      selectedUserAgroDetail: selectedUserAgroDetail || null,
+      isAuthModalOpen: Boolean(isAuthModalOpen),
+    };
+
+    const safeSerializeSnap = (s: any) => {
+      try {
+        return JSON.parse(JSON.stringify(s));
+      } catch {
+        return {
+          routeKey: s.routeKey,
+          pageKey: s.pageKey,
+          overlayKey: s.overlayKey,
+          activeMenu: s.activeMenu,
+          myPageTab: s.myPageTab,
+          mobileScheduleStep: s.mobileScheduleStep,
+          expandedScheduleRequestNo: s.expandedScheduleRequestNo,
+          selectedRequestNo: s.selectedRequestNo,
+          scheduleViewMode: s.scheduleViewMode,
+          mobileAgroCategoryTab: s.mobileAgroCategoryTab,
+          myPageProgressDetailReqNo: s.myPageProgressDetailReqNo,
+          isScheduleReqModelessOpen: s.isScheduleReqModelessOpen,
+          isAuthModalOpen: s.isAuthModalOpen,
+        };
+      }
+    };
+
+    if (navStackRef.current.length === 0) {
+      navStackRef.current = [snap];
+      navIndexRef.current = 0;
+      window.history.replaceState(
+        {
+          ...(window.history.state || {}),
+          __farmplanNavIndex: 0,
+          __farmplanSnap: safeSerializeSnap(snap),
+        },
+        ''
+      );
+      return;
+    }
+
+    if (isRestoringHistoryRef.current) {
+      isRestoringHistoryRef.current = false;
+      navStackRef.current[navIndexRef.current] = snap;
+      return;
+    }
+
+    const curIdx = navIndexRef.current;
+    const curEntry = navStackRef.current[curIdx];
+
+    if (curEntry && curEntry.routeKey === snap.routeKey) {
+      navStackRef.current[curIdx] = snap;
+      window.history.replaceState(
+        {
+          ...(window.history.state || {}),
+          __farmplanNavIndex: curIdx,
+          __farmplanSnap: safeSerializeSnap(snap),
+        },
+        ''
+      );
+      return;
+    }
+
+    // 동일 페이지 내에서 모달/오버레이를 '닫기' 버튼으로 닫아 직전 상태로 돌아간 경우: 히스토리 중복 적재 대신 pop 처리
+    if (
+      curIdx > 0 &&
+      curEntry &&
+      curEntry.pageKey === snap.pageKey &&
+      Boolean(curEntry.overlayKey) &&
+      navStackRef.current[curIdx - 1]?.routeKey === snap.routeKey
+    ) {
+      const prevIdx = curIdx - 1;
+      navIndexRef.current = prevIdx;
+      navStackRef.current = navStackRef.current.slice(0, curIdx);
+      navStackRef.current[prevIdx] = snap;
+      ignoreNextPopStateRef.current = true;
+      window.history.back();
+      return;
+    }
+
+    const nextIdx = curIdx + 1;
+    navStackRef.current = [...navStackRef.current.slice(0, nextIdx), snap];
+    navIndexRef.current = nextIdx;
+    window.history.pushState(
+      {
+        ...(window.history.state || {}),
+        __farmplanNavIndex: nextIdx,
+        __farmplanSnap: safeSerializeSnap(snap),
+      },
+      ''
+    );
+  }, [
+    activeMenu,
+    myPageTab,
+    mobileScheduleStep,
+    expandedScheduleRequestNo,
+    selectedRequestNo,
+    scheduleViewMode,
+    mobileAgroCategoryTab,
+    myPageProgressDetailReqNo,
+    myPageStageDetailItem,
+    clickedProvisionItem,
+    selectedReqDetailCrop,
+    isScheduleReqModelessOpen,
+    selectedUserAgroDetail,
+    isAuthModalOpen,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (ignoreNextPopStateRef.current) {
+        ignoreNextPopStateRef.current = false;
+        return;
+      }
+      const st = e.state;
+      if (!st || typeof st.__farmplanNavIndex !== 'number') {
+        return;
+      }
+      const targetIdx = st.__farmplanNavIndex;
+      const targetSnap = navStackRef.current[targetIdx] || st.__farmplanSnap;
+      if (!targetSnap) return;
+
+      const prevSnap = navStackRef.current[navIndexRef.current];
+      isRestoringHistoryRef.current = true;
+      navIndexRef.current = targetIdx;
+
+      setActiveMenu(targetSnap.activeMenu || '홈');
+      setMyPageTab(targetSnap.myPageTab || 'FARMLAND');
+      setMobileScheduleStep(targetSnap.mobileScheduleStep || 'list');
+      setExpandedScheduleRequestNo(targetSnap.expandedScheduleRequestNo ?? null);
+      if (targetSnap.selectedRequestNo) {
+        setSelectedRequestNo(targetSnap.selectedRequestNo);
+      }
+      setScheduleViewMode(targetSnap.scheduleViewMode || 'timeline');
+      setMobileAgroCategoryTab(targetSnap.mobileAgroCategoryTab || 'ALL');
+      setMyPageProgressDetailReqNo(targetSnap.myPageProgressDetailReqNo ?? null);
+      setMyPageStageDetailItem(targetSnap.myPageStageDetailItem ?? null);
+      setClickedProvisionItem(targetSnap.clickedProvisionItem ?? null);
+      setSelectedReqDetailCrop(targetSnap.selectedReqDetailCrop ?? null);
+      setIsScheduleReqModelessOpen(Boolean(targetSnap.isScheduleReqModelessOpen));
+      setSelectedUserAgroDetail(targetSnap.selectedUserAgroDetail ?? null);
+      setIsAuthModalOpen(Boolean(targetSnap.isAuthModalOpen));
+      setIsMobileGnbDrawerOpen(false);
+      setIsMyPageMobileDrawerOpen(false);
+
+      if (!prevSnap || prevSnap.pageKey !== targetSnap.pageKey) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      setTimeout(() => {
+        isRestoringHistoryRef.current = false;
+      }, 0);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const syncCategoriesOnFocus = () => {
