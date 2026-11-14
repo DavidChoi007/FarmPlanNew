@@ -17073,7 +17073,9 @@ export default function UserIntroPage() {
                         {/* 작업 세부정보 모달리스 폼 상단 헤더 */}
                         <div className="relative bg-[#E9F7F1] border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-[19px] font-black text-slate-900">작업 세부정보</h3>
+                            <h3 className="text-[19px] font-black text-slate-900">
+                              {stageCleanName ? `${stageCleanName} 작업 세부정보` : '작업 세부정보'}
+                            </h3>
                             <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">
                               {liveStageItem.stage_group_name || '생육 관리'}
                             </span>
