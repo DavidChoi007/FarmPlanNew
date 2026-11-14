@@ -880,6 +880,15 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_item_completions_v2',
+          state_value: next,
+        }),
+      }).catch(() => {});
       return next;
     });
   };
@@ -1177,7 +1186,7 @@ export default function UserIntroPage() {
       new Set([crop.crop_plan_id, crop.request_no, crop.display_request_no].filter(Boolean))
     ) as string[];
 
-    // 1. 프론트엔드 삭제 상태 및 localStorage 연관 데이터 즉시 제거
+    // 1. 프론트엔드 삭제 상태 및 localStorage + Supabase DB 연관 데이터 즉시 제거
     setDeletedScheduleKeys((prev) => {
       const next = Array.from(new Set([...prev, ...keysToDelete]));
       try {
@@ -1185,6 +1194,15 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'deleted_schedule_keys_v1',
+          state_value: next,
+        }),
+      }).catch(() => {});
       return next;
     });
 
@@ -1604,10 +1622,72 @@ export default function UserIntroPage() {
   const loadMyPageData = async (targetEmail?: string, markLoggedIn = false) => {
     const emailToFetch = targetEmail || loggedInUser.email || 'CloudBae@naver.com';
     try {
-      const r = await fetch(`/api/mypage?email=${encodeURIComponent(emailToFetch)}`);
+      const [r, syncResRaw] = await Promise.all([
+        fetch(`/api/mypage?email=${encodeURIComponent(emailToFetch)}`),
+        fetch(`/api/client-sync-state?email=${encodeURIComponent(emailToFetch)}`).catch(() => null),
+      ]);
       const res = await r.json();
       if (res?.ok) {
         applyMyPagePayload(res, markLoggedIn);
+      }
+      if (syncResRaw && syncResRaw.ok) {
+        const syncData = await syncResRaw.json().catch(() => null);
+        const states = syncData?.states || {};
+        if (
+          states.stage_item_completions_v2 &&
+          typeof states.stage_item_completions_v2 === 'object' &&
+          Object.keys(states.stage_item_completions_v2).length > 0
+        ) {
+          setStageItemCompletions(states.stage_item_completions_v2);
+        } else {
+          // 만약 Supabase DB에 아직 저장된 완료상태가 없고 현재 브라우저에 완료 데이터가 있다면 최초 1회 클라우드로 업로드
+          try {
+            const localSaved = localStorage.getItem(STAGE_COMPLETION_STORAGE_KEY);
+            if (localSaved) {
+              const parsedLocal = JSON.parse(localSaved);
+              if (parsedLocal && typeof parsedLocal === 'object' && Object.keys(parsedLocal).length > 0) {
+                fetch('/api/client-sync-state', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: emailToFetch,
+                    state_key: 'stage_item_completions_v2',
+                    state_value: parsedLocal,
+                  }),
+                }).catch(() => {});
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (Array.isArray(states.deleted_schedule_keys_v1)) {
+          setDeletedScheduleKeys(states.deleted_schedule_keys_v1);
+        }
+        if (Array.isArray(states.mypage_cart_items_v1) && states.mypage_cart_items_v1.length > 0) {
+          setMyCartItems(
+            states.mypage_cart_items_v1.map((item: any) => {
+              const safeThumb = resolveAgroProductThumbUrl(item);
+              return {
+                ...item,
+                thumbnailUrl: safeThumb,
+                thumbnail_url: safeThumb,
+              };
+            })
+          );
+        }
+        if (Array.isArray(states.stage_purchase_history_v1) && states.stage_purchase_history_v1.length > 0) {
+          setStagePurchaseHistory(
+            states.stage_purchase_history_v1.map((item: any) => {
+              const safeThumb = resolveAgroProductThumbUrl(item);
+              return {
+                ...item,
+                thumbnailUrl: safeThumb,
+                thumbnail_url: safeThumb,
+              };
+            })
+          );
+        }
       }
     } catch {
       // ignore
@@ -2271,6 +2351,15 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'mypage_cart_items_v1',
+          state_value: next,
+        }),
+      }).catch(() => {});
       return next;
     });
   };
@@ -2432,6 +2521,15 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_purchase_history_v1',
+          state_value: updated,
+        }),
+      }).catch(() => {});
       return updated;
     });
 
@@ -2973,6 +3071,15 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_purchase_history_v1',
+          state_value: updated,
+        }),
+      }).catch(() => {});
       return updated;
     });
 
@@ -3816,6 +3923,11 @@ export default function UserIntroPage() {
         .then((r) => r.json())
         .then((res) => setData(res))
         .catch(() => {});
+      loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
+      loadScheduleProvision(selectedRequestNo, {
+        gdd_mode: patentGddMode,
+        preserveItemId: selectedStageItem?.item_id,
+      });
     };
     const syncCategoriesOnStorage = (e: StorageEvent) => {
       if (e.key === 'hanfarm_static_overview_v1' && e.newValue) {

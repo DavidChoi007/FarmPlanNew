@@ -270,15 +270,11 @@ export default function SurveyPublicPage() {
         ).then((r) => r.json());
         if (res?.ok && res.survey) {
           const srv = res.survey;
-          const srvTime = String(srv.updated_at || '');
-          const cfgTime = String(cfgSurvey?.updated_at || '');
-          const useCfg = Boolean(cfgSurvey && cfgTime && cfgTime > srvTime);
-          const merged = useCfg ? { ...srv, ...cfgSurvey } : srv;
           setSurveyMeta({
-            ...merged,
+            ...srv,
             questions:
-              Array.isArray(merged.questions) && merged.questions.length > 0
-                ? merged.questions
+              Array.isArray(srv.questions) && srv.questions.length > 0
+                ? srv.questions
                 : FALLBACK_QUESTIONS,
           });
           return;

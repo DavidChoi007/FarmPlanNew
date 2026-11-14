@@ -554,6 +554,14 @@ export function initDatabase() {
       updated_at TEXT DEFAULT (datetime('now', 'localtime')),
       PRIMARY KEY (request_no, item_id)
     );
+
+    -- 회원/브라우저 간 통합 UI 동기화 상태 테이블 (생육과정별 [작업완료] 인정 상태, 삭제된 일정 키, 장바구니, 구매이력 등)
+    CREATE TABLE IF NOT EXISTS member_ui_sync_state (
+      state_key TEXT PRIMARY KEY,
+      member_email TEXT DEFAULT 'CloudBae@naver.com',
+      state_json TEXT NOT NULL DEFAULT '{}',
+      updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
   `);
 
   seedInitialData();

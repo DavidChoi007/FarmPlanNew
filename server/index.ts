@@ -9828,23 +9828,11 @@ const server = http.createServer(async (req, res) => {
         ]);
         if (Array.isArray(remoteCfg) && remoteCfg.length > 0) {
           const rc = remoteCfg[0];
-          const localCfg = db
-            .prepare("SELECT template_json, updated_at FROM purchase_intent_config WHERE config_id = 'DEFAULT'")
-            .get() as { template_json?: string; updated_at?: string } | undefined;
-          const localTime = String(localCfg?.updated_at || '');
           const remoteTime = String(rc?.updated_at || '');
-          if (!localCfg || remoteTime >= localTime) {
-            db.prepare(`
-              INSERT OR REPLACE INTO purchase_intent_config (config_id, template_json, updated_at)
-              VALUES ('DEFAULT', ?, ?)
-            `).run(String(rc.template_json || '{}'), remoteTime);
-          } else if (localCfg?.template_json) {
-            await supabaseRestUpsert(
-              'purchase_intent_config',
-              [{ config_id: 'DEFAULT', template_json: localCfg.template_json, updated_at: localTime }],
-              'config_id'
-            );
-          }
+          db.prepare(`
+            INSERT OR REPLACE INTO purchase_intent_config (config_id, template_json, updated_at)
+            VALUES ('DEFAULT', ?, ?)
+          `).run(String(rc.template_json || '{}'), remoteTime);
         }
         if (Array.isArray(remoteEntries) && remoteEntries.length > 0) {
           const insStmt = db.prepare(`
@@ -10006,6 +9994,77 @@ const server = http.createServer(async (req, res) => {
         ).catch(() => {});
       }
       sendJson(res, { ok: true });
+      return;
+    }
+
+    // 11. 디바이스/브라우저 간 실시간 동기화 상태(생육과정 완료 인정, 삭제 키, 장바구니, 구매이력) 조회·저장 API (Supabase DB Single Source of Truth)
+    if (pathname === '/api/client-sync-state' && req.method === 'GET') {
+      const email = (parsedUrl.searchParams.get('email') || 'CloudBae@naver.com').trim();
+      try {
+        const remoteRows = await supabaseRestSelect(
+          'member_ui_sync_state',
+          `member_email=eq.${encodeURIComponent(email)}`
+        );
+        if (Array.isArray(remoteRows) && remoteRows.length > 0) {
+          const upStmt = db.prepare(`
+            INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at)
+            VALUES (?, ?, ?, ?)
+          `);
+          for (const r of remoteRows) {
+            if (r?.state_key) {
+              upStmt.run(
+                String(r.state_key),
+                String(r.member_email || email),
+                String(r.state_json || '{}'),
+                String(r.updated_at || '')
+              );
+            }
+          }
+        }
+      } catch {
+        // ignore network errors
+      }
+      const rows = db
+        .prepare('SELECT state_key, member_email, state_json, updated_at FROM member_ui_sync_state WHERE member_email = ?')
+        .all(email) as Array<{ state_key: string; member_email: string; state_json: string; updated_at: string }>;
+      const states: Record<string, any> = {};
+      for (const r of rows) {
+        try {
+          states[r.state_key] = JSON.parse(r.state_json || '{}');
+        } catch {
+          states[r.state_key] = null;
+        }
+      }
+      sendJson(res, { ok: true, email, states });
+      return;
+    }
+
+    if (pathname === '/api/client-sync-state' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const email = String(body.email || 'CloudBae@naver.com').trim();
+      const stateKey = String(body.state_key || '').trim();
+      const stateValue = body.state_value !== undefined ? body.state_value : {};
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      if (stateKey) {
+        const jsonStr = typeof stateValue === 'string' ? stateValue : JSON.stringify(stateValue);
+        db.prepare(`
+          INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at)
+          VALUES (?, ?, ?, ?)
+        `).run(stateKey, email, jsonStr, nowStr);
+        await supabaseRestUpsert(
+          'member_ui_sync_state',
+          [
+            {
+              state_key: stateKey,
+              member_email: email,
+              state_json: jsonStr,
+              updated_at: nowStr,
+            },
+          ],
+          'state_key'
+        ).catch(() => {});
+      }
+      sendJson(res, { ok: true, state_key: stateKey, updated_at: nowStr });
       return;
     }
 

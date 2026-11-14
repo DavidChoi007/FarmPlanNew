@@ -302,34 +302,43 @@ if (typeof window !== 'undefined') {
       }
     };
 
-    const sbUpsert = async (table: string, payload: Record<string, any>, onConflict: string) => {
+    const sbUpsert = async (
+      table: string,
+      payload: Record<string, any> | Record<string, any>[],
+      onConflict: string
+    ): Promise<boolean> => {
       try {
-        await origFetch(`${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`, {
-          method: 'POST',
-          headers: {
-            apikey: SB_KEY,
-            Authorization: `Bearer ${SB_KEY}`,
-            'Content-Type': 'application/json',
-            Prefer: 'resolution=merge-duplicates,return=minimal',
-          },
-          body: JSON.stringify(payload),
-        });
+        const r = await origFetch(
+          `${SB_URL}/rest/v1/${table}?on_conflict=${encodeURIComponent(onConflict)}`,
+          {
+            method: 'POST',
+            headers: {
+              apikey: SB_KEY,
+              Authorization: `Bearer ${SB_KEY}`,
+              'Content-Type': 'application/json',
+              Prefer: 'resolution=merge-duplicates,return=minimal',
+            },
+            body: JSON.stringify(payload),
+          }
+        );
+        return Boolean(r && r.ok);
       } catch {
-        // ignore network errors
+        return false;
       }
     };
 
-    const sbDelete = async (table: string, filterQuery: string) => {
+    const sbDelete = async (table: string, filterQuery: string): Promise<boolean> => {
       try {
-        await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
+        const r = await origFetch(`${SB_URL}/rest/v1/${table}?${filterQuery}`, {
           method: 'DELETE',
           headers: {
             apikey: SB_KEY,
             Authorization: `Bearer ${SB_KEY}`,
           },
         });
+        return Boolean(r && r.ok);
       } catch {
-        // ignore network errors
+        return false;
       }
     };
 
@@ -1184,7 +1193,7 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true });
     }
 
-    // 3. 회원 인증 (cloudbae@naver.com / 1234 로그인, 회원가입, 비밀번호 찾기) 및 마이페이지 API
+    // 3. 회원 인증 (cloudbae@naver.com / 1234 로그인, 회원가입, 비밀번호 찾기) 및 마이페이지 API (Supabase DB Single Source of Truth)
     const getDefaultCloudBaeMember = () => ({
       member_id: 'MEM-CLOUDBAE',
       email: 'CloudBae@naver.com',
@@ -1223,12 +1232,219 @@ if (typeof window !== 'undefined') {
       }
     };
 
+    const toDbMemberRow = (m: any) => ({
+      member_id: String(m.member_id || 'MEM-CLOUDBAE').trim(),
+      email: String(m.email || 'CloudBae@naver.com').trim(),
+      password: String(m.password || '1234').trim(),
+      signup_type: String(m.signup_type || 'EMAIL').trim(),
+      name: String(m.name || '배철민').trim(),
+      nickname: String(m.nickname || 'CloudBae').trim(),
+      gender: String(m.gender || '남성').trim(),
+      birth_date: String(m.birth_date || '1978-05-15').trim(),
+      age: Number(m.age) || 48,
+      road_address: String(m.road_address || '충청북도 충주시 충원대로 268 (단월동)').trim(),
+      road_address_detail: String(m.road_address_detail || '').trim(),
+      postal_code: String(m.postal_code || '27481').trim(),
+      phone: String(m.phone || '010-2026-0109').trim(),
+      created_at: String(m.created_at || getKstNowStr()).trim(),
+    });
+
+    // 디바이스/브라우저 간 통합 UI 동기화 상태 조회·저장 API (Supabase member_ui_sync_state 단일 진실 공급원)
+    if (p === '/api/client-sync-state' && method === 'GET') {
+      const email = (u.searchParams.get('email') || 'CloudBae@naver.com').trim();
+      const states: Record<string, any> = {};
+      try {
+        const remoteRows = await sbSelect(
+          'member_ui_sync_state',
+          `select=*&member_email=eq.${encodeURIComponent(email)}`
+        );
+        if (Array.isArray(remoteRows)) {
+          for (const r of remoteRows) {
+            if (r?.state_key) {
+              try {
+                states[r.state_key] = JSON.parse(r.state_json || '{}');
+              } catch {
+                states[r.state_key] = null;
+              }
+            }
+          }
+          // Supabase DB 값으로 localStorage 동기화
+          if (states.stage_item_completions_v2 && typeof states.stage_item_completions_v2 === 'object') {
+            localStorage.setItem(
+              'hanfarm_stage_item_completions_v2',
+              JSON.stringify(states.stage_item_completions_v2)
+            );
+          }
+          if (Array.isArray(states.deleted_schedule_keys_v1)) {
+            localStorage.setItem(
+              'hanfarm_deleted_schedule_keys_v1',
+              JSON.stringify(states.deleted_schedule_keys_v1)
+            );
+          }
+          if (Array.isArray(states.mypage_cart_items_v1)) {
+            localStorage.setItem(
+              'hanfarm_mypage_cart_items_v1',
+              JSON.stringify(states.mypage_cart_items_v1)
+            );
+          }
+          if (states.stage_purchase_history_v1 && typeof states.stage_purchase_history_v1 === 'object') {
+            localStorage.setItem(
+              'hanfarm_stage_purchase_history_v1',
+              JSON.stringify(states.stage_purchase_history_v1)
+            );
+          }
+        }
+      } catch {
+        // ignore network errors
+      }
+      return jsonResponse({ ok: true, email, states });
+    }
+
+    if (p === '/api/client-sync-state' && method === 'POST') {
+      const body = parseBody(init);
+      const email = String(body.email || 'CloudBae@naver.com').trim();
+      const stateKey = String(body.state_key || '').trim();
+      const stateValue = body.state_value !== undefined ? body.state_value : {};
+      const nowStr = getKstNowStr();
+      let synced = false;
+      if (stateKey) {
+        const jsonStr = typeof stateValue === 'string' ? stateValue : JSON.stringify(stateValue);
+        try {
+          if (stateKey === 'stage_item_completions_v2') {
+            localStorage.setItem('hanfarm_stage_item_completions_v2', jsonStr);
+          } else if (stateKey === 'deleted_schedule_keys_v1') {
+            localStorage.setItem('hanfarm_deleted_schedule_keys_v1', jsonStr);
+          } else if (stateKey === 'mypage_cart_items_v1') {
+            localStorage.setItem('hanfarm_mypage_cart_items_v1', jsonStr);
+          } else if (stateKey === 'stage_purchase_history_v1') {
+            localStorage.setItem('hanfarm_stage_purchase_history_v1', jsonStr);
+          }
+        } catch {
+          // ignore
+        }
+        synced = await sbUpsert(
+          'member_ui_sync_state',
+          {
+            state_key: stateKey,
+            member_email: email,
+            state_json: jsonStr,
+            updated_at: nowStr,
+          },
+          'state_key'
+        );
+      }
+      return jsonResponse({ ok: true, synced, state_key: stateKey, updated_at: nowStr });
+    }
+
+    // Supabase DB에서 최신 회원·재배지·작물플랜·주문내역·삭제키를 실시간 조회하여 snap.mypage 및 localStorage 동기화
+    const syncMyPageFromSupabase = async (emailInput = 'CloudBae@naver.com') => {
+      const mp = (snap.mypage = snap.mypage || {});
+      try {
+        const [sbMembers, sbLands, sbPlans, sbOrders, sbSyncRows] = await Promise.all([
+          sbSelect('user_member', 'select=*'),
+          sbSelect('member_farmland', 'select=*&order=created_at.asc'),
+          sbSelect('member_crop_plan', 'select=*&order=crop_plan_id.asc'),
+          sbSelect('member_agro_order', 'select=*&order=ordered_at.desc'),
+          sbSelect('member_ui_sync_state', 'select=*'),
+        ]);
+
+        let deletedKeysSet = new Set<string>();
+        if (Array.isArray(sbSyncRows)) {
+          for (const sr of sbSyncRows) {
+            if (sr?.state_key === 'deleted_schedule_keys_v1') {
+              try {
+                const parsedDel = JSON.parse(sr.state_json || '[]');
+                if (Array.isArray(parsedDel)) {
+                  parsedDel.forEach((k) => deletedKeysSet.add(String(k)));
+                  localStorage.setItem('hanfarm_deleted_schedule_keys_v1', JSON.stringify(parsedDel));
+                }
+              } catch {
+                // ignore
+              }
+            } else if (sr?.state_key === 'stage_item_completions_v2') {
+              try {
+                const parsedComp = JSON.parse(sr.state_json || '{}');
+                if (parsedComp && typeof parsedComp === 'object') {
+                  localStorage.setItem('hanfarm_stage_item_completions_v2', JSON.stringify(parsedComp));
+                }
+              } catch {
+                // ignore
+              }
+            } else if (sr?.state_key === 'mypage_cart_items_v1') {
+              try {
+                const parsedCart = JSON.parse(sr.state_json || '[]');
+                if (Array.isArray(parsedCart)) {
+                  localStorage.setItem('hanfarm_mypage_cart_items_v1', JSON.stringify(parsedCart));
+                }
+              } catch {
+                // ignore
+              }
+            } else if (sr?.state_key === 'stage_purchase_history_v1') {
+              try {
+                const parsedHist = JSON.parse(sr.state_json || '{}');
+                if (parsedHist && typeof parsedHist === 'object') {
+                  localStorage.setItem('hanfarm_stage_purchase_history_v1', JSON.stringify(parsedHist));
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+
+        if (Array.isArray(sbMembers) && sbMembers.length > 0) {
+          saveStoredMembers(sbMembers);
+          const matchedMember =
+            sbMembers.find(
+              (m: any) => String(m.email || '').toLowerCase() === String(emailInput).toLowerCase()
+            ) ||
+            sbMembers.find((m: any) => String(m.email || '').toLowerCase() === 'cloudbae@naver.com') ||
+            sbMembers[0];
+          if (matchedMember) {
+            mp.member = matchedMember;
+          }
+        }
+        if (Array.isArray(sbLands)) {
+          mp.farmlands = sbLands;
+        }
+        if (Array.isArray(sbPlans)) {
+          mp.cropPlans = sbPlans.filter(
+            (cp: any) =>
+              !deletedKeysSet.has(String(cp.crop_plan_id || '')) &&
+              !deletedKeysSet.has(String(cp.request_no || ''))
+          );
+        }
+        if (Array.isArray(sbOrders)) {
+          mp.orders = sbOrders.map((ord: any) => {
+            let orderItems = Array.isArray(ord.orderItems) ? ord.orderItems : [];
+            if (orderItems.length === 0 && typeof ord.items_json === 'string' && ord.items_json.trim()) {
+              try {
+                const parsed = JSON.parse(ord.items_json);
+                if (Array.isArray(parsed)) orderItems = parsed;
+              } catch {
+                // ignore
+              }
+            }
+            return {
+              ...ord,
+              orderItems,
+            };
+          });
+        }
+        persistMyPage(mp);
+      } catch {
+        // ignore network errors and fall back to snap.mypage
+      }
+      return mp;
+    };
+
     if (p === '/api/auth/check-email') {
       const email = (u.searchParams.get('email') || '').trim().toLowerCase();
       if (!email || !email.includes('@')) {
         return jsonResponse({ ok: false, available: false, message: '올바른 이메일 형식을 입력해 주세요.' }, 400);
       }
-      const members = getStoredMembers();
+      const sbMembers = await sbSelect('user_member', 'select=email');
+      const members = Array.isArray(sbMembers) && sbMembers.length > 0 ? sbMembers : getStoredMembers();
       const exists =
         email === 'cloudbae@naver.com' ||
         members.some((m) => String(m.email || '').toLowerCase() === email);
@@ -1244,6 +1460,7 @@ if (typeof window !== 'undefined') {
       const loginType = String(body.login_type || 'EMAIL').toUpperCase();
       const rawEmail = String(body.email || '').trim();
       const password = String(body.password || '').trim();
+      await syncMyPageFromSupabase(rawEmail || 'CloudBae@naver.com');
       const members = getStoredMembers();
 
       if (loginType === 'GOOGLE_GMAIL') {
@@ -1316,7 +1533,7 @@ if (typeof window !== 'undefined') {
     if (p === '/api/auth/signup' && method === 'POST') {
       const body = parseBody(init);
       const members = getStoredMembers();
-      const newMember = {
+      const newMember = toDbMemberRow({
         member_id: `MEM-${Date.now()}`,
         email: String(body.email || 'user@naver.com').trim(),
         password: String(body.password || '1234').trim(),
@@ -1330,12 +1547,13 @@ if (typeof window !== 'undefined') {
         road_address_detail: body.road_address_detail || '',
         postal_code: body.postal_code || '27481',
         phone: body.phone || '010-2026-0109',
-      };
+      });
       const filtered = members.filter(
         (m) => String(m.email || '').toLowerCase() !== newMember.email.toLowerCase()
       );
       filtered.unshift(newMember);
       saveStoredMembers(filtered);
+      await sbUpsert('user_member', newMember, 'member_id');
 
       const mp = (snap.mypage = snap.mypage || {});
       mp.member = newMember;
@@ -1368,6 +1586,7 @@ if (typeof window !== 'undefined') {
       }
       found.password = String(body.new_password || '1234').trim();
       saveStoredMembers(members);
+      await sbUpsert('user_member', toDbMemberRow(found), 'member_id');
       return jsonResponse({
         ok: true,
         email: found.email,
@@ -1376,7 +1595,8 @@ if (typeof window !== 'undefined') {
     }
 
     if (p === '/api/mypage') {
-      const mp = snap.mypage || {};
+      const emailParam = (u.searchParams.get('email') || 'CloudBae@naver.com').trim();
+      const mp = await syncMyPageFromSupabase(emailParam);
       return jsonResponse({
         ok: true,
         ...mp,
@@ -1392,6 +1612,7 @@ if (typeof window !== 'undefined') {
       const mp = (snap.mypage = snap.mypage || {});
       mp.member = { ...(mp.member || getDefaultCloudBaeMember()), ...body };
       persistMyPage(mp);
+      await sbUpsert('user_member', toDbMemberRow(mp.member), 'member_id');
       return jsonResponse({ ok: true, ...mp });
     }
 
@@ -1411,10 +1632,14 @@ if (typeof window !== 'undefined') {
         area_pyeong: Number(body.area_pyeong) || 300,
         soil_ph: Number(body.soil_ph) || 6.2,
         soil_ec: Number(body.soil_ec) || 1.1,
+        created_at: body.created_at || getKstNowStr(),
       };
-      list.push(newLand);
+      const existingIdx = list.findIndex((f: any) => f.farmland_id === newLand.farmland_id);
+      if (existingIdx >= 0) list[existingIdx] = newLand;
+      else list.push(newLand);
       mp.farmlands = list;
       persistMyPage(mp);
+      await sbUpsert('member_farmland', newLand, 'farmland_id');
       return jsonResponse({ ok: true, ...mp });
     }
 
@@ -1423,6 +1648,9 @@ if (typeof window !== 'undefined') {
       const mp = (snap.mypage = snap.mypage || {});
       mp.farmlands = (mp.farmlands || []).filter((f: any) => f.farmland_id !== farmland_id);
       persistMyPage(mp);
+      if (farmland_id) {
+        await sbDelete('member_farmland', `farmland_id=eq.${encodeURIComponent(String(farmland_id))}`);
+      }
       return jsonResponse({ ok: true, ...mp });
     }
 
@@ -1434,7 +1662,7 @@ if (typeof window !== 'undefined') {
       const newPlan = {
         crop_plan_id: body.crop_plan_id || `CPLAN-${Date.now()}`,
         email: body.email || 'CloudBae@naver.com',
-        request_no: 'REQ-20261106-009',
+        request_no: body.request_no || 'REQ-20261106-009',
         farmland_id: body.farmland_id || 'LAND-CB-01',
         sido: body.sido || '충청북도',
         sigungu: body.sigungu || '충주시',
@@ -1448,10 +1676,14 @@ if (typeof window !== 'undefined') {
         current_stage_name: pct >= 100 ? '06. 수확 완료' : '04. 생육 관리',
         progress_pct: pct,
         status_text: pct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 생육 관리중',
+        created_at: body.created_at || getKstNowStr(),
       };
-      list.push(newPlan);
+      const existingIdx = list.findIndex((c: any) => c.crop_plan_id === newPlan.crop_plan_id);
+      if (existingIdx >= 0) list[existingIdx] = newPlan;
+      else list.push(newPlan);
       mp.cropPlans = list;
       persistMyPage(mp);
+      await sbUpsert('member_crop_plan', newPlan, 'crop_plan_id');
       return jsonResponse({ ok: true, ...mp });
     }
 
@@ -1459,21 +1691,28 @@ if (typeof window !== 'undefined') {
       const { crop_plan_id, progress_pct } = parseBody(init);
       const mp = (snap.mypage = snap.mypage || {});
       const pct = Math.max(0, Math.min(100, Number(progress_pct) || 0));
-      mp.cropPlans = (mp.cropPlans || []).map((cp: any) =>
-        cp.crop_plan_id === crop_plan_id
-          ? {
-              ...cp,
-              progress_pct: pct,
-              current_stage_name: pct >= 100 ? '06. 수확 완료' : '04. 생육 관리',
-              status_text: pct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 정상 생육중',
-            }
-          : cp
-      );
+      let updatedCropPlan: any = null;
+      mp.cropPlans = (mp.cropPlans || []).map((cp: any) => {
+        if (cp.crop_plan_id === crop_plan_id) {
+          updatedCropPlan = {
+            ...cp,
+            progress_pct: pct,
+            current_stage_name: pct >= 100 ? '06. 수확 완료' : '04. 생육 관리',
+            status_text: pct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 정상 생육중',
+          };
+          return updatedCropPlan;
+        }
+        return cp;
+      });
       persistMyPage(mp);
+      if (updatedCropPlan) {
+        const { display_request_no, ...dbPlan } = updatedCropPlan;
+        await sbUpsert('member_crop_plan', dbPlan, 'crop_plan_id');
+      }
       return jsonResponse({ ok: true, ...mp });
     }
 
-    const cascadeDeleteScheduleData = (params: {
+    const cascadeDeleteScheduleData = async (params: {
       crop_plan_id?: string;
       request_no?: string;
       display_request_no?: string;
@@ -1533,7 +1772,8 @@ if (typeof window !== 'undefined') {
         }
       }
 
-      // 5. localStorage 내 연관 추천 제품·추천 근거 DB 및 커스텀 일정 데이터 삭제 + 영구 삭제 키 기록
+      // 5. localStorage 및 Supabase member_ui_sync_state 영구 삭제 키 기록
+      let nextDeleted: string[] = [];
       try {
         const recDbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
         const recDb = JSON.parse(localStorage.getItem(recDbKey) || '{}');
@@ -1551,7 +1791,7 @@ if (typeof window !== 'undefined') {
 
         const delKey = 'hanfarm_deleted_schedule_keys_v1';
         const prevDeleted: string[] = JSON.parse(localStorage.getItem(delKey) || '[]');
-        const nextDeleted = Array.from(
+        nextDeleted = Array.from(
           new Set([...prevDeleted, ...targetReqNos, ...targetPlanIds])
         );
         localStorage.setItem(delKey, JSON.stringify(nextDeleted));
@@ -1559,12 +1799,39 @@ if (typeof window !== 'undefined') {
         // ignore storage errors
       }
 
+      // 6. Supabase 클라우드 DB 테이블 연쇄 삭제 및 삭제 키 상태 동기화
+      for (const rNo of targetReqNos) {
+        await Promise.all([
+          sbDelete('member_schedule_request', `request_no=eq.${encodeURIComponent(rNo)}`),
+          sbDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`),
+          sbDelete('schedule_provision_custom_item', `request_no=eq.${encodeURIComponent(rNo)}`),
+          sbDelete('schedule_stage_recommendation_log', `request_no=eq.${encodeURIComponent(rNo)}`),
+          sbDelete('cultivation_history_log', `request_id=eq.${encodeURIComponent(rNo)}`),
+          sbDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`),
+        ]);
+      }
+      for (const pId of targetPlanIds) {
+        await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(pId)}`);
+      }
+      if (nextDeleted.length > 0) {
+        await sbUpsert(
+          'member_ui_sync_state',
+          {
+            state_key: 'deleted_schedule_keys_v1',
+            member_email: 'CloudBae@naver.com',
+            state_json: JSON.stringify(nextDeleted),
+            updated_at: getKstNowStr(),
+          },
+          'state_key'
+        );
+      }
+
       return { mp, targetReqNos, targetPlanIds };
     };
 
     if (p === '/api/mypage/crops/delete' && method === 'POST') {
       const body = parseBody(init);
-      const { mp, targetReqNos, targetPlanIds } = cascadeDeleteScheduleData(body);
+      const { mp, targetReqNos, targetPlanIds } = await cascadeDeleteScheduleData(body);
       return jsonResponse({
         ok: true,
         deleted_request_nos: targetReqNos,
@@ -1577,10 +1844,11 @@ if (typeof window !== 'undefined') {
       const body = parseBody(init);
       const mp = (snap.mypage = snap.mypage || {});
       const list = Array.isArray(mp.orders) ? [...mp.orders] : [];
+      const orderItems = Array.isArray(body.orderItems) ? body.orderItems : [];
       const newOrder = {
         order_no: body.orderNo || `ORD-${Date.now()}`,
         email: body.email || 'CloudBae@naver.com',
-        ordered_at: body.orderedAt || new Date().toISOString().slice(0, 16).replace('T', ' '),
+        ordered_at: body.orderedAt || getKstNowStr().slice(0, 16),
         purchase_title: body.purchaseTitle || '생육단계별 선택 농자재 일괄 구매',
         crop_title: body.cropTitle || '가을배추 (불암3호)',
         region_address: body.regionAddress || '충청북도 충주시 단월동',
@@ -1591,32 +1859,148 @@ if (typeof window !== 'undefined') {
         discount_amount: Number(body.orderDiscount) || 0,
         final_total: Number(body.orderFinalTotal) || 0,
         reward_points: Number(body.rewardPoints) || 0,
-        orderItems: Array.isArray(body.orderItems) ? body.orderItems : [],
+        orderItems,
       };
       list.unshift(newOrder);
       mp.orders = list;
       persistMyPage(mp);
+      await sbUpsert(
+        'member_agro_order',
+        {
+          order_no: newOrder.order_no,
+          email: newOrder.email,
+          ordered_at: newOrder.ordered_at,
+          purchase_title: newOrder.purchase_title,
+          crop_title: newOrder.crop_title,
+          region_address: newOrder.region_address,
+          delivery_option: newOrder.delivery_option,
+          payment_method: newOrder.payment_method,
+          delivery_status: newOrder.delivery_status,
+          raw_total: newOrder.raw_total,
+          discount_amount: newOrder.discount_amount,
+          final_total: newOrder.final_total,
+          reward_points: newOrder.reward_points,
+          items_json: JSON.stringify(orderItems),
+          created_at: getKstNowStr(),
+        },
+        'order_no'
+      );
       return jsonResponse({ ok: true, ...mp });
     }
 
-    // 4. 재배 일정 요청 및 제공 API
+    // 4. 재배 일정 요청 및 제공 API (Supabase member_schedule_request / schedule_provision_custom_item 실시간 연동)
     if (p === '/api/member-schedule-requests') {
-      return jsonResponse(snap.scheduleRequests || { items: [], total: 0 });
+      const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
+      try {
+        const [sbReqs, sbDelSync] = await Promise.all([
+          sbSelect('member_schedule_request', 'select=*&order=requested_at.desc'),
+          sbSelect('member_ui_sync_state', 'select=*&state_key=eq.deleted_schedule_keys_v1'),
+        ]);
+        const deletedSet = new Set<string>();
+        if (Array.isArray(sbDelSync) && sbDelSync[0]?.state_json) {
+          try {
+            const parsedDel = JSON.parse(sbDelSync[0].state_json);
+            if (Array.isArray(parsedDel)) parsedDel.forEach((k) => deletedSet.add(String(k)));
+          } catch {
+            // ignore
+          }
+        }
+        if (Array.isArray(sbReqs) && sbReqs.length > 0) {
+          const filtered = sbReqs.filter((r: any) => !deletedSet.has(String(r.request_no || '')));
+          sr.items = filtered;
+          sr.total = filtered.length;
+        }
+      } catch {
+        // ignore network errors
+      }
+      return jsonResponse(sr);
     }
+
     if (p === '/api/member-schedule-requests/save' && method === 'POST') {
       const body = parseBody(init);
       const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
       const list = Array.isArray(sr.items) ? [...sr.items] : [];
-      const idx = list.findIndex((r) => r.request_no === body.request_no);
-      if (idx >= 0) list[idx] = { ...list[idx], ...body };
-      else list.unshift(body);
+      const reqNo = String(body.request_no || `REQ-20261114-${Date.now().toString().slice(-3)}`).trim();
+      const rowData = {
+        request_no: reqNo,
+        member_id: String(body.member_id || 'CloudBae@naver.com').trim(),
+        member_contact: String(body.member_contact || '010-2026-0109').trim(),
+        group_id: String(body.group_id || 'GRP-LEAF').trim(),
+        group_name: String(body.group_name || '엽채류').trim(),
+        crop_id: String(body.crop_id || 'CRP-CABBAGE').trim(),
+        crop_name: String(body.crop_name || '가을배추').trim(),
+        cultivar_id: String(body.cultivar_id || 'CV-BRM3').trim(),
+        item_name_3rd: String(body.item_name_3rd || body.cultivar_name || '불암3호').trim(),
+        system_id: String(body.system_id || 'SYS-FIELD-01').trim(),
+        system_name: String(body.system_name || '노지 재배 (정식)').trim(),
+        bjd_code: String(body.bjd_code || '4313010700').trim(),
+        sido: String(body.sido || '충청북도').trim(),
+        sigungu: String(body.sigungu || '충주시').trim(),
+        eupmyeondong: String(body.eupmyeondong || '단월동').trim(),
+        detail_address: String(body.detail_address || '').trim(),
+        area_pyeong: Number(body.area_pyeong) || 300,
+        cultivation_type: String(body.cultivation_type || '노지').trim(),
+        land_category: String(body.land_category || '전').trim(),
+        planting_method: String(body.planting_method || '모종').trim(),
+        desired_start_date: String(body.desired_start_date || '2026-08-25').trim(),
+        expected_harvest_date: String(body.expected_harvest_date || '2026-11-15').trim(),
+        mulching_yn: String(body.mulching_yn || 'Y').trim(),
+        irrigation_type: String(body.irrigation_type || '점적관수').trim(),
+        is_organic: Number(body.is_organic ?? 0),
+        soil_test_linked_yn: String(body.soil_test_linked_yn || 'Y').trim(),
+        target_yield_kg: Number(body.target_yield_kg) || 3500,
+        etc_notes: String(body.etc_notes || '').trim(),
+        request_status: String(body.request_status || '일정산출완료').trim(),
+        requested_at: String(body.requested_at || getKstNowStr()).trim(),
+      };
+      const idx = list.findIndex((r) => r.request_no === reqNo);
+      if (idx >= 0) list[idx] = { ...list[idx], ...rowData };
+      else list.unshift(rowData);
       sr.items = list;
       sr.total = list.length;
-      return jsonResponse({ ok: true, item: body });
+
+      // 마이페이지 작물재배 플랜(member_crop_plan)도 동시에 동기화
+      const mp = (snap.mypage = snap.mypage || {});
+      const cropPlans: any[] = Array.isArray(mp.cropPlans) ? [...mp.cropPlans] : [];
+      const planId = `CPLAN-${reqNo}`;
+      const existingPlan = cropPlans.find((c) => c.crop_plan_id === planId || c.request_no === reqNo);
+      const syncedPlan = {
+        crop_plan_id: existingPlan?.crop_plan_id || planId,
+        email: 'CloudBae@naver.com',
+        request_no: reqNo,
+        farmland_id: existingPlan?.farmland_id || 'LAND-CB-01',
+        sido: rowData.sido,
+        sigungu: rowData.sigungu,
+        eupmyeondong: rowData.eupmyeondong,
+        crop_name: rowData.crop_name,
+        cultivar_name: rowData.item_name_3rd,
+        planting_type: `${rowData.cultivation_type} ${rowData.planting_method.includes('파종') || rowData.planting_method.includes('씨') ? '직파(씨앗)' : '정식(모종)'}`,
+        area_pyeong: rowData.area_pyeong,
+        planting_date: rowData.desired_start_date,
+        expected_harvest_date: rowData.expected_harvest_date,
+        current_stage_name: existingPlan?.current_stage_name || '01. 토양 관리 및 기비',
+        progress_pct: existingPlan?.progress_pct ?? 0,
+        status_text: existingPlan?.status_text || '기후 연동 맞춤 재배일정 산출됨',
+        created_at: existingPlan?.created_at || getKstNowStr(),
+      };
+      const planIdx = cropPlans.findIndex(
+        (c) => c.crop_plan_id === syncedPlan.crop_plan_id || c.request_no === reqNo
+      );
+      if (planIdx >= 0) cropPlans[planIdx] = syncedPlan;
+      else cropPlans.unshift(syncedPlan);
+      mp.cropPlans = cropPlans;
+      persistMyPage(mp);
+
+      await Promise.all([
+        sbUpsert('member_schedule_request', rowData, 'request_no'),
+        sbUpsert('member_crop_plan', syncedPlan, 'crop_plan_id'),
+      ]);
+      return jsonResponse({ ok: true, item: rowData, cropPlan: syncedPlan });
     }
+
     if (p === '/api/member-schedule-requests/delete' && method === 'POST') {
       const body = parseBody(init);
-      const { targetReqNos, targetPlanIds } = cascadeDeleteScheduleData(body);
+      const { targetReqNos, targetPlanIds } = await cascadeDeleteScheduleData(body);
       return jsonResponse({
         ok: true,
         deleted_request_nos: targetReqNos,
@@ -1624,13 +2008,108 @@ if (typeof window !== 'undefined') {
       });
     }
 
+    if (p === '/api/schedule-provision/update-item' && method === 'POST') {
+      const body = parseBody(init);
+      const reqNo = String(body.request_no || 'REQ-20261106-009').trim();
+      const customKey = 'hanfarm_custom_schedule_items_v1';
+
+      if (body.reset_all === true) {
+        try {
+          const prevCustom = JSON.parse(localStorage.getItem(customKey) || '{}');
+          delete prevCustom[reqNo];
+          localStorage.setItem(customKey, JSON.stringify(prevCustom));
+        } catch {
+          // ignore
+        }
+        await sbDelete(
+          'schedule_provision_custom_item',
+          `request_no=eq.${encodeURIComponent(reqNo)}`
+        );
+        return jsonResponse({ ok: true, reset: true, request_no: reqNo });
+      }
+
+      const itemsToSave: any[] = Array.isArray(body.items_to_save)
+        ? body.items_to_save
+        : [body.updated_item, ...(Array.isArray(body.cascaded_items) ? body.cascaded_items : [])].filter(Boolean);
+
+      const nowStr = getKstNowStr();
+      const customRowsForSb: any[] = [];
+      try {
+        const prevCustom = JSON.parse(localStorage.getItem(customKey) || '{}');
+        const curReqMap = { ...(prevCustom[reqNo] || {}) };
+        for (const it of itemsToSave) {
+          if (!it) continue;
+          const itemId = String(it.item_id || '').trim();
+          if (!itemId) continue;
+          curReqMap[itemId] = {
+            ...curReqMap[itemId],
+            ...it,
+            updated_at: nowStr,
+          };
+          customRowsForSb.push({
+            request_no: reqNo,
+            item_id: itemId,
+            stage_group_id: String(it.stage_group_id || ''),
+            stage_group_name: String(it.stage_group_name || ''),
+            sub_item_name: String(it.sub_item_name || ''),
+            bar_label: String(it.bar_label || it.sub_item_name || ''),
+            process_code: String(it.process_code || ''),
+            process_name: String(it.process_name || ''),
+            target_pgdd: Number(it.target_pgdd || 0),
+            start_date: String(it.start_date || ''),
+            end_date: String(it.end_date || it.start_date || ''),
+            work_content: String(it.work_content || ''),
+            climate_rule: String(it.climate_rule || ''),
+            usage_tip: String(it.usage_tip || ''),
+            ai_analysis_reason: String(it.ai_analysis_reason || ''),
+            materials_json: JSON.stringify(Array.isArray(it.materials) ? it.materials : []),
+            updated_at: nowStr,
+          });
+        }
+        prevCustom[reqNo] = curReqMap;
+        localStorage.setItem(customKey, JSON.stringify(prevCustom));
+      } catch {
+        // ignore
+      }
+
+      let synced = false;
+      if (customRowsForSb.length > 0) {
+        synced = await sbUpsert(
+          'schedule_provision_custom_item',
+          customRowsForSb,
+          'request_no,item_id'
+        );
+      }
+      return jsonResponse({
+        ok: true,
+        synced,
+        request_no: reqNo,
+        saved_count: customRowsForSb.length,
+      });
+    }
+
     if (p === '/api/schedule-provision') {
       const baseProv = JSON.parse(JSON.stringify(snap.scheduleProvision || {}));
       const reqNoParam = (u.searchParams.get('request_no') || '').trim();
-      const allReqList: any[] = Array.isArray(snap.scheduleRequests?.items)
-        ? snap.scheduleRequests.items
-        : Array.isArray(baseProv.allRequests)
+
+      // 1) Supabase member_schedule_request에서 최신 요청 목록 조회
+      try {
+        const sbReqs = await sbSelect('member_schedule_request', 'select=*&order=requested_at.desc');
+        if (Array.isArray(sbReqs) && sbReqs.length > 0) {
+          baseProv.allRequests = sbReqs;
+          if (snap.scheduleRequests) {
+            snap.scheduleRequests.items = sbReqs;
+            snap.scheduleRequests.total = sbReqs.length;
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      const allReqList: any[] = Array.isArray(baseProv.allRequests)
         ? baseProv.allRequests
+        : Array.isArray(snap.scheduleRequests?.items)
+        ? snap.scheduleRequests.items
         : [];
       const matchedReq = reqNoParam
         ? allReqList.find((r: any) => r.request_no === reqNoParam)
@@ -1642,6 +2121,49 @@ if (typeof window !== 'undefined') {
         };
       }
       const activeReq = baseProv.activeRequest || {};
+      const reqKey = String(activeReq.request_no || reqNoParam || 'REQ-20261106-009');
+
+      // 2) Supabase schedule_provision_custom_item에서 사용자 커스텀 수정 일정 조회 및 오버레이
+      let customItemMap: Record<string, any> = {};
+      try {
+        const sbCustomRows = await sbSelect(
+          'schedule_provision_custom_item',
+          `select=*&request_no=eq.${encodeURIComponent(reqKey)}`
+        );
+        if (Array.isArray(sbCustomRows)) {
+          for (const cr of sbCustomRows) {
+            if (!cr?.item_id) continue;
+            let parsedMats: any[] | undefined = undefined;
+            if (typeof cr.materials_json === 'string' && cr.materials_json.trim()) {
+              try {
+                const pm = JSON.parse(cr.materials_json);
+                if (Array.isArray(pm) && pm.length > 0) parsedMats = pm;
+              } catch {
+                // ignore
+              }
+            }
+            customItemMap[cr.item_id] = {
+              item_id: cr.item_id,
+              ...(cr.start_date ? { start_date: cr.start_date, recommended_date: cr.start_date } : {}),
+              ...(cr.end_date ? { end_date: cr.end_date } : {}),
+              ...(cr.work_content ? { work_content: cr.work_content } : {}),
+              ...(cr.climate_rule ? { climate_rule: cr.climate_rule } : {}),
+              ...(cr.usage_tip ? { usage_tip: cr.usage_tip } : {}),
+              ...(cr.ai_analysis_reason ? { ai_analysis_reason: cr.ai_analysis_reason } : {}),
+              ...(cr.target_pgdd ? { target_pgdd: Number(cr.target_pgdd) } : {}),
+              ...(parsedMats ? { materials: parsedMats } : {}),
+            };
+          }
+          // localStorage의 커스텀 캐시도 Supabase 기준으로 일치화
+          const customKey = 'hanfarm_custom_schedule_items_v1';
+          const prevCustom = JSON.parse(localStorage.getItem(customKey) || '{}');
+          prevCustom[reqKey] = customItemMap;
+          localStorage.setItem(customKey, JSON.stringify(prevCustom));
+        }
+      } catch {
+        // ignore network errors
+      }
+
       const safeAreaPyeong = Math.max(10, Number(activeReq.area_pyeong || 300));
       const areaRatio = Number((safeAreaPyeong / 100).toFixed(2));
       const regionLabel =
@@ -1741,10 +2263,17 @@ if (typeof window !== 'undefined') {
       };
 
       if (Array.isArray(baseProv.scheduleItems)) {
-        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) => ({
-          ...it,
-          materials: normalizeStageSingleMaterial(it),
-        }));
+        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) => {
+          const customOverlay = customItemMap[it.item_id] || {};
+          const mergedItem = {
+            ...it,
+            ...customOverlay,
+          };
+          return {
+            ...mergedItem,
+            materials: normalizeStageSingleMaterial(mergedItem),
+          };
+        });
       }
       if (Array.isArray(baseProv.stageGroups)) {
         const byItemId = new Map<string, any>();
@@ -1752,9 +2281,15 @@ if (typeof window !== 'undefined') {
         baseProv.stageGroups = baseProv.stageGroups.map((grp: any) => ({
           ...grp,
           items: Array.isArray(grp.items)
-            ? grp.items.map((gi: any) => byItemId.get(gi.item_id) || {
-                ...gi,
-                materials: normalizeStageSingleMaterial(gi),
+            ? grp.items.map((gi: any) => {
+                const fromSchedule = byItemId.get(gi.item_id);
+                if (fromSchedule) return fromSchedule;
+                const customOverlay = customItemMap[gi.item_id] || {};
+                const mergedGi = { ...gi, ...customOverlay };
+                return {
+                  ...mergedGi,
+                  materials: normalizeStageSingleMaterial(mergedGi),
+                };
               })
             : [],
         }));
@@ -1763,7 +2298,6 @@ if (typeof window !== 'undefined') {
       try {
         const dbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
         const prevDb = JSON.parse(localStorage.getItem(dbKey) || '{}');
-        const reqKey = String(activeReq.request_no || 'REQ-DEFAULT');
         prevDb[reqKey] = (baseProv.scheduleItems || []).map((it: any) => ({
           request_no: reqKey,
           item_id: it.item_id,
@@ -2158,10 +2692,10 @@ if (typeof window !== 'undefined') {
             snap.surveys.forms = forms;
             snap.surveys.activeSurvey = nextForm;
           }
-          await sbUpsert('survey_form', toSupabaseFormRow(nextForm), 'survey_id');
-          return jsonResponse({ ok: true, survey_id: surveyId, survey: nextForm });
+          const synced = await sbUpsert('survey_form', toSupabaseFormRow(nextForm), 'survey_id');
+          return jsonResponse({ ok: true, synced, survey_id: surveyId, survey: nextForm });
         } catch {
-          return jsonResponse({ ok: true });
+          return jsonResponse({ ok: false }, 500);
         }
       }
 
@@ -2187,6 +2721,7 @@ if (typeof window !== 'undefined') {
         const nextSeq = responses.length + 1;
         const todayYmd = getKstNowStr().slice(0, 10).replace(/-/g, '');
         let respId = `RESP-${todayYmd}-${String(nextSeq).padStart(3, '0')}`;
+        let synced = false;
         try {
           const body = parseBody(init);
           if (body.response_id) respId = String(body.response_id).trim();
@@ -2216,11 +2751,11 @@ if (typeof window !== 'undefined') {
           if (snap.surveys) {
             snap.surveys.responses = responses;
           }
-          await sbUpsert('survey_response', toSupabaseRespRow(newResp), 'response_id');
+          synced = await sbUpsert('survey_response', toSupabaseRespRow(newResp), 'response_id');
         } catch {
           // ignore
         }
-        return jsonResponse({ ok: true, response_id: respId });
+        return jsonResponse({ ok: true, synced, response_id: respId });
       }
 
       if (p === '/api/surveys/response/delete') {
@@ -2241,48 +2776,14 @@ if (typeof window !== 'undefined') {
         return jsonResponse({ ok: true });
       }
 
-      // GET 요청 (/api/surveys 또는 /api/surveys/public) 시 Supabase 클라우드 DB와 localStorage 양방향 최신 동기화
+      // GET 요청 (/api/surveys 또는 /api/surveys/public) 시 Supabase 클라우드 DB를 100% 단일 진실 공급원(Single Source of Truth)으로 사용
       try {
         const [remoteFormsRaw, remoteRespsRaw] = await Promise.all([
           sbSelect('survey_form', 'select=*&order=updated_at.desc'),
           sbSelect('survey_response', 'select=*&order=submitted_at.desc'),
         ]);
         if (Array.isArray(remoteFormsRaw) && remoteFormsRaw.length > 0) {
-          const remoteForms = remoteFormsRaw.map(normalizeFormItem);
-          const mergedMap = new Map<string, any>();
-          for (const rf of remoteForms) {
-            mergedMap.set(rf.survey_id, rf);
-          }
-          for (const lf of forms) {
-            const rf = mergedMap.get(lf.survey_id);
-            if (!rf) {
-              mergedMap.set(lf.survey_id, lf);
-              sbUpsert('survey_form', toSupabaseFormRow(lf), 'survey_id');
-            } else {
-              const localTime = String(lf.updated_at || '');
-              const remoteTime = String(rf.updated_at || '');
-              const isRemoteInitialSeed = remoteTime === '2026-11-09 22:28:31';
-              const isLocalContentModified =
-                lf.title !== rf.title ||
-                lf.greeting_text !== rf.greeting_text ||
-                lf.intro_text !== rf.intro_text ||
-                lf.duration_text !== rf.duration_text ||
-                lf.notice_text !== rf.notice_text ||
-                lf.footer_title !== rf.footer_title ||
-                lf.footer_sub !== rf.footer_sub ||
-                Number(lf.is_active) !== Number(rf.is_active) ||
-                lf.questions_json !== rf.questions_json;
-              if (localTime > remoteTime || (isRemoteInitialSeed && isLocalContentModified)) {
-                const syncedLocal =
-                  localTime <= remoteTime ? { ...lf, updated_at: getKstNowStr() } : lf;
-                mergedMap.set(lf.survey_id, syncedLocal);
-                sbUpsert('survey_form', toSupabaseFormRow(syncedLocal), 'survey_id');
-              } else {
-                mergedMap.set(lf.survey_id, rf);
-              }
-            }
-          }
-          forms = Array.from(mergedMap.values());
+          forms = remoteFormsRaw.map(normalizeFormItem);
           localStorage.setItem(FORMS_KEY, JSON.stringify(forms));
           if (snap.surveys) {
             snap.surveys.forms = forms;
@@ -2290,25 +2791,14 @@ if (typeof window !== 'undefined') {
           }
         }
         if (Array.isArray(remoteRespsRaw)) {
-          const remoteResps = remoteRespsRaw.map(normalizeRespItem);
-          const respMap = new Map<string, any>();
-          for (const rr of remoteResps) {
-            if (rr.response_id) respMap.set(rr.response_id, rr);
-          }
-          for (const lr of responses) {
-            if (lr.response_id && !respMap.has(lr.response_id)) {
-              respMap.set(lr.response_id, lr);
-              sbUpsert('survey_response', toSupabaseRespRow(lr), 'response_id');
-            }
-          }
-          responses = Array.from(respMap.values());
+          responses = remoteRespsRaw.map(normalizeRespItem);
           localStorage.setItem(RESPS_KEY, JSON.stringify(responses));
           if (snap.surveys) {
             snap.surveys.responses = responses;
           }
         }
       } catch {
-        // ignore network errors and fall back to localStorage
+        // ignore network errors and fall back to localStorage only when offline
       }
 
       if (p === '/api/surveys/public') {
@@ -2540,7 +3030,6 @@ if (typeof window !== 'undefined') {
     if (p === '/api/purchase-intents') {
       let template: any = null;
       let entries: any[] | null = null;
-      let deletedIds: string[] = [];
       try {
         const rawTpl = localStorage.getItem(INTENT_TPL_KEY);
         if (rawTpl) template = JSON.parse(rawTpl);
@@ -2556,16 +3045,8 @@ if (typeof window !== 'undefined') {
       } catch {
         // ignore
       }
-      try {
-        const rawDeleted = localStorage.getItem(INTENT_DELETED_KEY);
-        if (rawDeleted) {
-          const parsedDel = JSON.parse(rawDeleted);
-          if (Array.isArray(parsedDel)) deletedIds = parsedDel.map((x) => String(x));
-        }
-      } catch {
-        // ignore
-      }
 
+      // Supabase purchase_intent_config / purchase_intent_entry를 100% 단일 진실 공급원(Single Source of Truth)으로 사용
       try {
         const [remoteCfgRows, remoteEntryRows] = await Promise.all([
           sbSelect('purchase_intent_config', 'select=*&config_id=eq.DEFAULT'),
@@ -2582,35 +3063,10 @@ if (typeof window !== 'undefined') {
           }
           const remoteUpdatedAt = String(cfgRow?.updated_at || '2026-11-09 22:28:31');
           if (remoteTpl) {
-            const stripMeta = (obj: any) => {
-              if (!obj || typeof obj !== 'object') return {};
-              const { updated_at, _synced_to_sb, ...rest } = obj;
-              return rest;
-            };
-            const localTime = String(template?.updated_at || '');
-            const isUnsyncedLocalMod =
-              template &&
-              !template._synced_to_sb &&
-              JSON.stringify(stripMeta(template)) !== JSON.stringify(stripMeta(remoteTpl));
-            if (template && (localTime > remoteUpdatedAt || (remoteUpdatedAt === '2026-11-09 22:28:31' && isUnsyncedLocalMod))) {
-              const nowStr = localTime > remoteUpdatedAt ? localTime : getKstNowStr();
-              const syncedTpl = { ...stripMeta(template), updated_at: nowStr, _synced_to_sb: true };
-              template = syncedTpl;
-              localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(syncedTpl));
-              await sbUpsert(
-                'purchase_intent_config',
-                {
-                  config_id: 'DEFAULT',
-                  template_json: JSON.stringify(stripMeta(syncedTpl)),
-                  updated_at: nowStr,
-                },
-                'config_id'
-              );
-            } else {
-              const syncedRemote = { ...stripMeta(remoteTpl), updated_at: remoteUpdatedAt, _synced_to_sb: true };
-              template = syncedRemote;
-              localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(syncedRemote));
-            }
+            const { updated_at, _synced_to_sb, ...rest } = remoteTpl;
+            const syncedRemote = { ...rest, updated_at: remoteUpdatedAt, _synced_to_sb: true };
+            template = syncedRemote;
+            localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(syncedRemote));
           }
         } else if (template) {
           const nowStr = String(template.updated_at || getKstNowStr());
@@ -2629,48 +3085,14 @@ if (typeof window !== 'undefined') {
         }
 
         if (Array.isArray(remoteEntryRows)) {
-          const deletedSet = new Set(deletedIds);
-          const remoteMap = new Map<string, any>();
-          for (const rr of remoteEntryRows) {
-            const norm = normalizeIntentEntry({ ...rr, _synced_to_sb: true });
-            if (norm.intent_id) remoteMap.set(norm.intent_id, norm);
-          }
-          for (const delId of deletedSet) {
-            if (remoteMap.has(delId)) {
-              remoteMap.delete(delId);
-              await sbDelete('purchase_intent_entry', `intent_id=eq.${encodeURIComponent(delId)}`);
-            }
-          }
-          if (Array.isArray(entries)) {
-            const stripEntryMeta = (e: any) => {
-              const { _synced_to_sb, ...rest } = normalizeIntentEntry(e);
-              return rest;
-            };
-            for (const le of entries) {
-              if (!le?.intent_id || deletedSet.has(le.intent_id)) continue;
-              const existingRemote = remoteMap.get(le.intent_id);
-              if (!existingRemote && !le._synced_to_sb) {
-                const syncedLe = { ...normalizeIntentEntry(le), _synced_to_sb: true };
-                remoteMap.set(le.intent_id, syncedLe);
-                await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(syncedLe), 'intent_id');
-              } else if (
-                existingRemote &&
-                !le._synced_to_sb &&
-                JSON.stringify(stripEntryMeta(le)) !== JSON.stringify(stripEntryMeta(existingRemote))
-              ) {
-                const syncedLe = { ...normalizeIntentEntry(le), _synced_to_sb: true };
-                remoteMap.set(le.intent_id, syncedLe);
-                await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(syncedLe), 'intent_id');
-              }
-            }
-          }
-          entries = Array.from(remoteMap.values()).sort((a, b) =>
-            String(b.intent_id || '').localeCompare(String(a.intent_id || ''))
-          );
+          entries = remoteEntryRows
+            .map((rr) => normalizeIntentEntry({ ...rr, _synced_to_sb: true }))
+            .filter((norm) => Boolean(norm?.intent_id))
+            .sort((a, b) => String(b.intent_id || '').localeCompare(String(a.intent_id || '')));
           localStorage.setItem(INTENT_ENTRIES_KEY, JSON.stringify(entries));
         }
       } catch {
-        // ignore network errors and fall back to localStorage
+        // ignore network errors and fall back to localStorage only when offline
       }
 
       return jsonResponse({ ok: true, template, entries });
@@ -2684,7 +3106,7 @@ if (typeof window !== 'undefined') {
         const nowStr = getKstNowStr();
         const savedTpl = { ...cleanTpl, updated_at: nowStr, _synced_to_sb: true };
         localStorage.setItem(INTENT_TPL_KEY, JSON.stringify(savedTpl));
-        await sbUpsert(
+        const synced = await sbUpsert(
           'purchase_intent_config',
           {
             config_id: 'DEFAULT',
@@ -2693,11 +3115,10 @@ if (typeof window !== 'undefined') {
           },
           'config_id'
         );
-        return jsonResponse({ ok: true, template: savedTpl, updatedAt: nowStr });
+        return jsonResponse({ ok: true, synced, template: savedTpl, updatedAt: nowStr });
       } catch {
-        // ignore
+        return jsonResponse({ ok: false }, 500);
       }
-      return jsonResponse({ ok: true });
     }
 
     if (p === '/api/purchase-intents/entry') {
@@ -2728,12 +3149,15 @@ if (typeof window !== 'undefined') {
         } catch {
           // ignore
         }
-        await sbUpsert('purchase_intent_entry', toSupabaseIntentEntryRow(normEntry), 'intent_id');
-        return jsonResponse({ ok: true, intent_id: normEntry.intent_id, entry: normEntry });
+        const synced = await sbUpsert(
+          'purchase_intent_entry',
+          toSupabaseIntentEntryRow(normEntry),
+          'intent_id'
+        );
+        return jsonResponse({ ok: true, synced, intent_id: normEntry.intent_id, entry: normEntry });
       } catch {
-        // ignore
+        return jsonResponse({ ok: false }, 500);
       }
-      return jsonResponse({ ok: true });
     }
 
     if (p === '/api/purchase-intents/entry/delete') {
