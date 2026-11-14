@@ -15309,39 +15309,6 @@ export default function UserIntroPage() {
                                   <span>삭제</span>
                                 </button>
                               </div>
-
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center justify-end gap-1 bg-white/80 border border-slate-200 rounded-xl px-2 py-1 text-[11.5px] font-bold text-slate-600 whitespace-nowrap"
-                              >
-                                <span>공정 일괄:</span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleBatchSetStageCompletions(crop.request_no, 'COMPLETE_ALL')
-                                  }
-                                  className={`px-1.5 py-0.5 rounded-md cursor-pointer ${
-                                    Number(crop.progress_pct) === 100
-                                      ? 'bg-emerald-600 text-white font-extrabold'
-                                      : 'hover:bg-emerald-50 text-emerald-700 font-bold'
-                                  }`}
-                                >
-                                  전 공정 완료(100%)
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleBatchSetStageCompletions(crop.request_no, 'CLEAR_ALL')
-                                  }
-                                  className={`px-1.5 py-0.5 rounded-md cursor-pointer ${
-                                    Number(crop.progress_pct) === 0
-                                      ? 'bg-slate-800 text-white font-extrabold'
-                                      : 'hover:bg-slate-100 text-slate-600 font-bold'
-                                  }`}
-                                >
-                                  초기화(0%)
-                                </button>
-                              </div>
                             </div>
                           </div>
 
