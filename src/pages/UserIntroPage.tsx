@@ -454,11 +454,11 @@ export default function UserIntroPage() {
   const [localAddedCropRequests, setLocalAddedCropRequests] = useState<any[]>([]);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
   const [reqForm, setReqForm] = useState({
-    farmland_id: 'LAND-CB-01',
+    farmland_id: '',
     sido: '충청북도',
     sigungu: '충주시',
     eupmyeondong: '단월동',
-    detail_address: '412-5번지 일원',
+    detail_address: '',
     group_id: 'GRP-LEAF',
     group_name: '엽채류 (잎채소)',
     crop_name: '가을배추',
@@ -4999,6 +4999,7 @@ export default function UserIntroPage() {
                 type="button"
                 onClick={() => {
                   setReqFormSubmitted(false);
+                  setReqForm((prev) => ({ ...prev, farmland_id: '' }));
                   setScheduleReqModalPos({ x: 0, y: 0 });
                   setIsScheduleReqModelessOpen(true);
                 }}
@@ -12251,7 +12252,10 @@ export default function UserIntroPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setReqFormSubmitted(false)}
+                            onClick={() => {
+                              setReqFormSubmitted(false);
+                              setReqForm((prev) => ({ ...prev, farmland_id: '' }));
+                            }}
                             className="px-4 py-2.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 font-extrabold text-xs sm:text-sm cursor-pointer hover:bg-emerald-100/50"
                           >
                             + 추가 재배일정 요청하기
@@ -12267,44 +12271,43 @@ export default function UserIntroPage() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {/* 내 등록 농지 빠른 선택 바 */}
-                        {myFarmlands.length > 0 && (
-                          <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
-                            <label className="block text-xs font-extrabold text-slate-800 mb-1.5">
-                              📍 내 등록 재배지 빠른 불러오기 ({myFarmlands.length}필지)
-                            </label>
-                            <select
-                              value={reqForm.farmland_id}
-                              onChange={(e) => {
-                                const lid = e.target.value;
-                                const found = myFarmlands.find((f: any) => f.farmland_id === lid);
-                                if (found) {
-                                  setReqForm((prev) => ({
-                                    ...prev,
-                                    farmland_id: lid,
-                                    sido: found.sido,
-                                    sigungu: found.sigungu,
-                                    eupmyeondong: found.eupmyeondong,
-                                    detail_address: found.detail_jibun || prev.detail_address || '',
-                                    area_pyeong: Number(found.area_pyeong || 300),
-                                    soil_ph: Number(found.soil_ph || 6.2),
-                                    soil_ec: Number(found.soil_ec || 1.1),
-                                  }));
-                                } else {
-                                  setReqForm((prev) => ({ ...prev, farmland_id: lid }));
-                                }
-                              }}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold text-xs sm:text-sm"
-                            >
-                              {myFarmlands.map((f: any) => (
-                                <option key={f.farmland_id} value={f.farmland_id}>
-                                  {f.farmland_title} — {f.sido} {f.sigungu} {f.eupmyeondong}
-                                  {f.detail_jibun ? ` ${f.detail_jibun}` : ''} ({Number(f.area_pyeong || 300).toLocaleString()}평 · pH {f.soil_ph || 6.2})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
+                        {/* 내 등록 농지 빠른 선택 바 (기본값: "등록된 재배지 선택하기" 미선택 상태 시작) */}
+                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
+                          <label className="block text-xs font-extrabold text-slate-800 mb-1.5">
+                            📍 내 등록 재배지 빠른 불러오기 ({myFarmlands.length}필지)
+                          </label>
+                          <select
+                            value={reqForm.farmland_id}
+                            onChange={(e) => {
+                              const lid = e.target.value;
+                              const found = myFarmlands.find((f: any) => f.farmland_id === lid);
+                              if (found) {
+                                setReqForm((prev) => ({
+                                  ...prev,
+                                  farmland_id: lid,
+                                  sido: found.sido,
+                                  sigungu: found.sigungu,
+                                  eupmyeondong: found.eupmyeondong,
+                                  detail_address: found.detail_jibun || '',
+                                  area_pyeong: Number(found.area_pyeong || 300),
+                                  soil_ph: Number(found.soil_ph || 6.2),
+                                  soil_ec: Number(found.soil_ec || 1.1),
+                                }));
+                              } else {
+                                setReqForm((prev) => ({ ...prev, farmland_id: '' }));
+                              }
+                            }}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold text-xs sm:text-sm"
+                          >
+                            <option value="">등록된 재배지 선택하기</option>
+                            {myFarmlands.map((f: any) => (
+                              <option key={f.farmland_id} value={f.farmland_id}>
+                                {f.farmland_title} — {f.sido} {f.sigungu} {f.eupmyeondong}
+                                {f.detail_jibun ? ` ${f.detail_jibun}` : ''} ({Number(f.area_pyeong || 300).toLocaleString()}평)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
                         {(() => {
                           // 1. 시/도 · 시/군/구 · 읍/면/동 셀렉트 박스 옵션 구성 (전국 행정구역 트리 + 관리자 주소록 DB 통합)
@@ -12717,33 +12720,6 @@ export default function UserIntroPage() {
                                   }
                                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
                                 />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-3">
-                                <div>
-                                  <label className="block font-bold text-slate-700 mb-1">토양 산도 (pH)</label>
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    value={reqForm.soil_ph}
-                                    onChange={(e) =>
-                                      setReqForm({ ...reqForm, soil_ph: Number(e.target.value) || 6.2 })
-                                    }
-                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block font-bold text-slate-700 mb-1">토양 EC (dS/m)</label>
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    value={reqForm.soil_ec}
-                                    onChange={(e) =>
-                                      setReqForm({ ...reqForm, soil_ec: Number(e.target.value) || 1.1 })
-                                    }
-                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                                  />
-                                </div>
                               </div>
                             </div>
                           );
