@@ -1728,65 +1728,21 @@ function ensureMemberScheduleRequests() {
     );
   `);
 
-  // 충청북도 충주시 단월동에 재배지가 있는 배철민(CloudBae@naver.com) 1명의 요청(REQ-20261106-009)만 유지하고 나머지 요청 데이터 삭제
-  db.prepare("DELETE FROM member_schedule_request WHERE request_no != 'REQ-20261106-009'").run();
-
-  const seedRows = [
-    {
-      request_no: 'REQ-20261106-009',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-2026-0109',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-CABBAGE',
-      crop_name: '가을배추',
-      cultivar_id: 'CV-BRM3',
-      item_name_3rd: '불암3호',
-      system_id: 'SYS-CAB-AUT',
-      system_name: '노지 가을재배',
-      bjd_code: '4305003000',
-      sido: '충청북도',
-      sigungu: '충주시',
-      eupmyeondong: '단월동',
-      detail_address: '단월동 382-4번지 달천강변 배추 영농포전 (전 1,000평)',
-      area_pyeong: 1000,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-08-25',
-      expected_harvest_date: '2026-11-15',
-      mulching_yn: 1,
-      irrigation_type: '점적관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 15500,
-      etc_notes: '충청북도 충주시 단월동 1,000평 노지 가을배추(불암3호) 재배 포전으로, 단월동 기상·토양검정 DB 연동 적산온도(PGDD 785℃·일) 기반 정식·활착·1~2차 웃거름·결구기 칼슘 엽면시비 및 수확적기 산출 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-06 13:25:00',
-    },
-  ];
-
-  const stmt = db.prepare(`
-    INSERT OR REPLACE INTO member_schedule_request (
-      request_no, member_id, member_contact,
-      group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
-      bjd_code, sido, sigungu, eupmyeondong, detail_address,
-      area_pyeong, cultivation_type, land_category, planting_method,
-      desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
-      is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  for (const r of seedRows) {
-    stmt.run(
-      r.request_no, r.member_id, r.member_contact,
-      r.group_id, r.group_name, r.crop_id, r.crop_name, r.cultivar_id, r.item_name_3rd, r.system_id, r.system_name,
-      r.bjd_code, r.sido, r.sigungu, r.eupmyeondong, r.detail_address,
-      r.area_pyeong, r.cultivation_type, r.land_category, r.planting_method,
-      r.desired_start_date, r.expected_harvest_date, r.mulching_yn, r.irrigation_type,
-      r.is_organic, r.soil_test_linked_yn, r.target_yield_kg, r.etc_notes, r.request_status, r.requested_at
-    );
-  }
+  // 기존 시드 재배일정 요청 데이터(REQ-20261106-009 등) 일괄 삭제
+  db.prepare(`
+    DELETE FROM member_schedule_request
+    WHERE request_no IN (
+      'REQ-20261101-001',
+      'REQ-20261102-002',
+      'REQ-20261102-003',
+      'REQ-20261103-004',
+      'REQ-20261104-005',
+      'REQ-20261104-006',
+      'REQ-20261105-007',
+      'REQ-20261106-008',
+      'REQ-20261106-009'
+    )
+  `).run();
 }
 
 function ensureCultivationAddresses() {
@@ -3021,35 +2977,7 @@ function seedInitialData() {
   `);
   insertSyncLog.run('SYNC-20261105-01', 'STN-127', 'SEED', '2026-01-01 ~ 2026-12-31', 365, 2, 'SUCCESS', '2026-11-05 03:00:00', '초기 내부 기상 테이블 시드 데이터 생성 (추후 공공DB 기상청 Open API 자동 수집 전환 대기)');
 
-  // 9. 농가 작물재배 일정 요청 및 재배이력 시드 (충청북도 충주시 단월동 배철민 1명만 유지)
-  const insertReq = db.prepare(`
-    INSERT INTO schedule_request (
-      request_id, farmer_name, region_name, station_id, group_id, crop_id, cultivar_id, system_id,
-      request_type, area_pyeong, start_date, expected_harvest_date, mulching_yn, irrigation_yn,
-      is_organic, has_soil_test, soil_ph, soil_k, soil_om, accumulated_pgdd, remaining_pgdd,
-      progress_pct, pipeline_status, requested_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  insertReq.run(
-    'CULT-2026-000123', '배철민 (CloudBae@naver.com)', '충청북도 충주시 단월동', 'STN-127',
-    'GRP-LEAF', 'CRP-CABBAGE', 'CV-BULAM3', 'SYS-CAB-AUT',
-    'NEW_PLAN', 1000, '2026-08-25', '2026-11-15', 1, 1,
-    0, 1, 6.5, 0.65, 28.0, 520, 265, 60, 'S150_COMPLETED', '2026-08-20 09:15:00'
-  );
-
-  // 재배이력 자동 생성 데이터 시드 (도 3의 ③ 영역 반영)
-  const insertHist = db.prepare(`
-    INSERT INTO cultivation_history_log (
-      history_id, request_id, item_type, item_code, item_name,
-      predicted_date, actual_date, confirmed_at, material_used,
-      calculated_stage_pgdd, sequence_check, date_valid, missing_flag,
-      reliability_score, quality_flag, include_in_training
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  insertHist.run('HIST-001', 'CULT-2026-000123', 'WORK', 'OP_PLANTING', '정식 (본밭 모종 심기)', '2026-08-25', '2026-08-25', '2026-08-25 18:10:00', '배추 불암3호 포트묘', 0, 'PASS', 'PASS', 0, 0.98, 'NORMAL', 1);
-  insertHist.run('HIST-002', 'CULT-2026-000123', 'STAGE', 'STG_ROOTING', '활착 확인 (정식→활착 구간)', '2026-09-01', '2026-09-02', '2026-09-02 10:15:00', '-', 136.0, 'PASS', 'PASS', 0, 0.96, 'NORMAL', 1);
-  insertHist.run('HIST-003', 'CULT-2026-000123', 'WORK', 'OP_TOPDRESS_1', '1차 웃거름 실행', '2026-09-10', '2026-09-10', '2026-09-10 10:24:00', 'NK복합비료(20-10-10) 20kg/10a 살포', 0, 'PASS', 'PASS', 0, 0.95, 'NORMAL', 1);
-  insertHist.run('HIST-004', 'CULT-2026-000123', 'STAGE', 'STG_HEADING_START', '결구 시작 확인 (활착→결구 구간)', '2026-09-28', '2026-09-30', '2026-09-30 16:40:00', '-', 296.0, 'PASS', 'PASS', 0, 0.94, 'NORMAL', 1);
+  // 9. 농가 작물재배 일정 요청 및 재배이력 시드 (재배일정 요청/확인 데이터 초기화 — 빈 상태 유지)
 
   // 10. 생육예측모델(GDD) 엔진 A안/B안 버전 시드
   const insertModelVer = db.prepare(`

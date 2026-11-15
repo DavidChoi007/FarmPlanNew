@@ -1304,41 +1304,7 @@ export default function AdminDashboardPage() {
   }, [activeTab]);
 
   // ==================== 2. 재배 일정 요청 관리 (member_schedule_request) 상태 및 핸들러 ====================
-  const DEFAULT_SCHEDULE_REQUEST_ITEMS = [
-    {
-      request_no: 'REQ-20261106-009',
-      member_id: 'CloudBae@naver.com (배철민)',
-      member_contact: '010-2026-0109',
-      group_id: 'GRP-LEAF',
-      group_name: '엽채류 (잎채소)',
-      crop_id: 'CRP-CABBAGE',
-      crop_name: '가을배추',
-      cultivar_id: 'CV-BRM3',
-      item_name_3rd: '불암3호',
-      system_id: 'SYS-CAB-AUT',
-      system_name: '노지 가을재배',
-      bjd_code: '4305003000',
-      sido: '충청북도',
-      sigungu: '충주시',
-      eupmyeondong: '단월동',
-      detail_address: '단월동 382-4번지 달천강변 배추 영농포전 (전 1,000평)',
-      area_pyeong: 1000,
-      cultivation_type: '노지재배',
-      land_category: '전(밭)',
-      planting_method: '육묘정식',
-      desired_start_date: '2026-08-25',
-      expected_harvest_date: '2026-11-25',
-      mulching_yn: 1,
-      irrigation_type: '점적관수',
-      is_organic: 0,
-      soil_test_linked_yn: 1,
-      target_yield_kg: 15500,
-      etc_notes:
-        '충청북도 충주시 단월동 1,000평 노지 가을배추(불암3호) 재배 포전으로, 단월동 기상·토양검정 DB 연동 적산온도(PGDD 785℃·일) 기반 정식·활착·1~2차 웃거름·결구기 칼슘 엽면시비 및 수확적기 산출 요청.',
-      request_status: '일정산출완료',
-      requested_at: '2026-11-06 13:25:00',
-    },
-  ];
+  const DEFAULT_SCHEDULE_REQUEST_ITEMS: any[] = [];
 
   const [reqGroupFilter, setReqGroupFilter] = useState<string>('ALL');
   const [reqCropFilter, setReqCropFilter] = useState<string>('ALL');
@@ -1358,12 +1324,12 @@ export default function AdminDashboardPage() {
     items: DEFAULT_SCHEDULE_REQUEST_ITEMS,
     total: DEFAULT_SCHEDULE_REQUEST_ITEMS.length,
     summary: {
-      total_requests: 1,
-      total_pyeong: 1000,
-      avg_pyeong: 1000,
-      open_field_count: 1,
+      total_requests: 0,
+      total_pyeong: 0,
+      avg_pyeong: 0,
+      open_field_count: 0,
       facility_count: 0,
-      completed_count: 1,
+      completed_count: 0,
     },
   });
   const [selectedReqDetail, setSelectedReqDetail] = useState<any | null>(null);
@@ -1483,13 +1449,18 @@ export default function AdminDashboardPage() {
   };
 
   const handleDeleteScheduleReq = async (requestNo: string, itemName: string) => {
-    if (!window.confirm(`재배 일정 [${requestNo} - ${itemName}] 항목을 정말 삭제하시겠습니까?`)) return;
+    if (
+      !window.confirm(
+        `[${requestNo} - ${itemName}] 재배일정 요청 데이터를 삭제하시겠습니까?\n\n※ 삭제 시 연동된 [재배일정 확인] 데이터(16개 생육과정 세부 일정, 완료 진행률 및 맞춤 추천 농자재 데이터)까지 모두 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`
+      )
+    )
+      return;
     await fetch('/api/member-schedule-requests/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ request_no: requestNo }),
     });
-    showToast(`재배 일정 [${requestNo}] 삭제 완료 (Supabase 실시간 반영)`);
+    showToast(`재배일정 요청 및 재배일정 확인 데이터 [${requestNo}] 삭제 완료 (Supabase 실시간 반영)`);
     if (selectedReqDetail?.request_no === requestNo) {
       setSelectedReqDetail(null);
     }
@@ -4781,27 +4752,7 @@ export default function AdminDashboardPage() {
       created_at: '2026-11-01 09:05:00',
     },
   ]);
-  const [adminMemberCropPlans, setAdminMemberCropPlans] = useState<any[]>([
-    {
-      crop_plan_id: 'CPLAN-CB-01',
-      email: 'CloudBae@naver.com',
-      request_no: 'REQ-20261106-009',
-      farmland_id: 'LAND-CB-01',
-      sido: '충청북도',
-      sigungu: '충주시',
-      eupmyeondong: '단월동',
-      crop_name: '가을배추',
-      cultivar_name: '불암3호',
-      planting_type: '모종',
-      area_pyeong: 1000,
-      planting_date: '2026-08-25',
-      expected_harvest_date: '2026-11-25',
-      current_stage_name: '05. 병해충 예찰 · 수확 준비',
-      progress_pct: 60,
-      status_text: '생육 확인 필요 · 결구 진행중',
-      created_at: '2026-11-01 09:10:00',
-    },
-  ]);
+  const [adminMemberCropPlans, setAdminMemberCropPlans] = useState<any[]>([]);
   const [isAdminMemberLoading, setIsAdminMemberLoading] = useState<boolean>(false);
   const [selectedMemberEmailFilter, setSelectedMemberEmailFilter] = useState<string>('ALL');
   const [memberSearchKeyword, setMemberSearchKeyword] = useState<string>('');
@@ -5041,7 +4992,7 @@ export default function AdminDashboardPage() {
   const handleDeleteAdminCropPlan = async (plan: any) => {
     if (
       !window.confirm(
-        `재배작물 [${plan.crop_name} (${plan.cultivar_name}) · ${plan.crop_plan_id}] 항목을 삭제하시겠습니까?`
+        `[${plan.crop_name} (${plan.cultivar_name}) · ${plan.request_no || plan.crop_plan_id}] 재배일정 확인(재배작물) 데이터를 삭제하시겠습니까?\n\n※ 삭제 시 연동된 [재배일정 요청] 및 [재배일정 확인] 데이터(16개 생육과정 세부 일정, 완료 진행률 및 맞춤 추천 농자재 데이터)까지 모두 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`
       )
     ) {
       return;
@@ -5060,7 +5011,9 @@ export default function AdminDashboardPage() {
         if (Array.isArray(res.members)) setAdminMembers(res.members);
         if (Array.isArray(res.farmlands)) setAdminMemberFarmlands(res.farmlands);
         if (Array.isArray(res.cropPlans)) setAdminMemberCropPlans(res.cropPlans);
-        showToast(`재배작물 [${plan.crop_name} (${plan.cultivar_name})] 삭제 완료`);
+        executeScheduleReqSearch();
+        loadScheduleProvisionData();
+        showToast(`재배작물 및 재배일정 확인 데이터 [${plan.crop_name} (${plan.cultivar_name})] 삭제 완료`);
       }
     } catch {
       window.alert('재배작물 삭제 중 오류가 발생했습니다.');

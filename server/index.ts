@@ -155,7 +155,7 @@ function initMemberAndMyPageTables() {
     WHERE LOWER(email) = 'cloudbae@naver.com' AND (name = '배클라우드' OR name = 'CloudBae' OR name = '')
   `).run();
 
-  // 충청북도 충주시 단월동 재배지(REQ-20261106-009, LAND-CB-01, CPLAN-CB-01) 외 타 지역 시드 데이터 일괄 정리
+  // 기존 시드 재배일정 요청 및 재배일정 확인 데이터(REQ-20261106-009, CPLAN-CB-01 등) 일괄 삭제
   db.prepare(`
     DELETE FROM member_schedule_request
     WHERE request_no IN (
@@ -166,7 +166,8 @@ function initMemberAndMyPageTables() {
       'REQ-20261104-005',
       'REQ-20261104-006',
       'REQ-20261105-007',
-      'REQ-20261106-008'
+      'REQ-20261106-008',
+      'REQ-20261106-009'
     )
   `).run();
   db.prepare(`
@@ -185,6 +186,7 @@ function initMemberAndMyPageTables() {
   db.prepare(`
     DELETE FROM member_crop_plan
     WHERE crop_plan_id IN (
+      'CPLAN-CB-01',
       'CPLAN-CB-02',
       'CPLAN-CB-03',
       'CPLAN-CB-04',
@@ -193,114 +195,40 @@ function initMemberAndMyPageTables() {
       'CPLAN-CB-07',
       'CPLAN-CB-08',
       'CPLAN-CB-09'
-    )
+    ) OR request_no = 'REQ-20261106-009'
   `).run();
   db.prepare(`
     DELETE FROM cultivation_history_log
-    WHERE request_id IN ('CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
+    WHERE request_id IN ('CULT-2026-000123', 'CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
   `).run();
   db.prepare(`
     DELETE FROM schedule_request
-    WHERE request_id IN ('CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
+    WHERE request_id IN ('CULT-2026-000123', 'CULT-2026-000124', 'CULT-2026-000125', 'CULT-2026-000126')
   `).run();
   db.prepare(`
     DELETE FROM member_agro_order
     WHERE order_no = 'ORD-20260508-CB042'
   `).run();
 
-  // 관리자 페이지의 재배일정 요청 데이터(member_schedule_request, schedule_request)를 모두 CloudBae@naver.com (배철민) 회원과 매칭 동기화
+  // 배철민(CloudBae@naver.com) 회원의 충청북도 충주시 단월동 기본 재배지(LAND-CB-01) 유지
   db.prepare(`
-    UPDATE member_schedule_request
-    SET member_id = 'CloudBae@naver.com (배철민)'
-    WHERE member_id != 'CloudBae@naver.com (배철민)'
-  `).run();
-
-  db.prepare(`
-    UPDATE schedule_request
-    SET farmer_name = '배철민 (CloudBae@naver.com)',
-        region_name = '충청북도 충주시 단월동'
-    WHERE request_id = 'CULT-2026-000123'
-  `).run();
-
-  // 관리자 페이지의 재배일정 요청 및 제공 데이터(member_schedule_request)를 CloudBae@naver.com (배철민) 회원의 재배지(member_farmland) 및 재배작물(member_crop_plan)과 1:1 매칭 연결
-  const allAdminRequests = db
-    .prepare(
-      `SELECT r.*,
-              COALESCE(c.crop_name, r.crop_name) as resolved_crop_name,
-              COALESCE(cv.cultivar_name, r.item_name_3rd) as resolved_cultivar_name,
-              s.soil_ph, s.soil_ec
-       FROM member_schedule_request r
-       LEFT JOIN crop c ON r.crop_id = c.crop_id
-       LEFT JOIN cultivar cv ON r.cultivar_id = cv.cultivar_id
-       LEFT JOIN soil_address_survey s ON r.bjd_code = s.bjd_code
-       ORDER BY CASE WHEN r.request_no = 'REQ-20261106-009' THEN 0 ELSE 1 END ASC, r.requested_at DESC`
+    INSERT OR IGNORE INTO member_farmland (
+      farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+      detail_jibun, area_pyeong, soil_ph, soil_ec
+    ) VALUES (
+      'LAND-CB-01',
+      'CloudBae@naver.com',
+      '충주시 단월동 가을배추 포전 (REQ-20261106-009)',
+      '4305003000',
+      '충청북도',
+      '충주시',
+      '단월동',
+      '단월동 382-4번지 달천강변 배추 영농포전 (전 1,000평)',
+      1000,
+      6.5,
+      1.1
     )
-    .all() as any[];
-
-  if (allAdminRequests.length > 0) {
-    const upsertLandStmt = db.prepare(`
-      INSERT OR REPLACE INTO member_farmland (
-        farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
-        detail_jibun, area_pyeong, soil_ph, soil_ec
-      ) VALUES (?, 'CloudBae@naver.com', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const upsertCropStmt = db.prepare(`
-      INSERT OR REPLACE INTO member_crop_plan (
-        crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
-        crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
-        expected_harvest_date, current_stage_name, progress_pct, status_text
-      ) VALUES (?, 'CloudBae@naver.com', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const stagePresets = [
-      { stage: '04. 생육 관리 (2차 웃거름·결구중기)', pct: 60, status: '생육 확인 필요 · 결구 진행중' },
-    ];
-
-    allAdminRequests.forEach((reqRow, idx) => {
-      const landId = `LAND-CB-${String(idx + 1).padStart(2, '0')}`;
-      const cropPlanId = `CPLAN-CB-${String(idx + 1).padStart(2, '0')}`;
-      const cropName =
-        reqRow.resolved_crop_name === '배추' ? '가을배추' : reqRow.resolved_crop_name || '가을배추';
-      const cultivarName = reqRow.resolved_cultivar_name || reqRow.item_name_3rd || '불암3호';
-      const isDirectSeed =
-        String(reqRow.planting_method || '').includes('직파') ||
-        String(reqRow.planting_method || '').includes('점파') ||
-        String(reqRow.planting_method || '').includes('종서');
-      const preset = stagePresets[idx % stagePresets.length];
-
-      upsertLandStmt.run(
-        landId,
-        `${reqRow.sigungu} ${reqRow.eupmyeondong} ${cropName} 포전 (${reqRow.request_no})`,
-        reqRow.bjd_code || '4305003000',
-        reqRow.sido || '충청북도',
-        reqRow.sigungu || '충주시',
-        reqRow.eupmyeondong || '단월동',
-        reqRow.detail_address || '',
-        Number(reqRow.area_pyeong || 300),
-        Number(reqRow.soil_ph || 6.3),
-        Number(reqRow.soil_ec || 1.1)
-      );
-
-      upsertCropStmt.run(
-        cropPlanId,
-        reqRow.request_no,
-        landId,
-        reqRow.sido || '충청북도',
-        reqRow.sigungu || '충주시',
-        reqRow.eupmyeondong || '단월동',
-        cropName,
-        cultivarName,
-        isDirectSeed ? '씨' : '모종',
-        Number(reqRow.area_pyeong || 300),
-        reqRow.desired_start_date || '2026-08-25',
-        reqRow.expected_harvest_date || '2026-11-15',
-        preset.stage,
-        preset.pct,
-        preset.status
-      );
-    });
-  }
+  `).run();
 
   // CloudBae@naver.com 기본 농자재 구매현황 (충청북도 충주시 단월동 1건) 시드 등록
   const existingOrders = (
@@ -9877,9 +9805,47 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/admin/member-crops/delete' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const cropPlanId = String(body.crop_plan_id || '').trim();
+      const reqNoInput = String(body.request_no || '').trim();
+      const existingPlan = cropPlanId
+        ? (db
+            .prepare('SELECT request_no FROM member_crop_plan WHERE crop_plan_id = ?')
+            .get(cropPlanId) as { request_no?: string } | undefined)
+        : undefined;
+      const targetReqNos = Array.from(
+        new Set([reqNoInput, existingPlan?.request_no].filter(Boolean))
+      );
+
       if (cropPlanId) {
         db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(cropPlanId);
         await supabaseRestDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(cropPlanId)}`);
+      }
+      for (const rNo of targetReqNos) {
+        db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+        db.prepare('DELETE FROM member_crop_plan WHERE request_no = ?').run(rNo);
+        try {
+          db.prepare('DELETE FROM schedule_provision_custom_item WHERE request_no = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+        try {
+          db.prepare('DELETE FROM schedule_stage_recommendation_log WHERE request_no = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+        try {
+          db.prepare('DELETE FROM cultivation_history_log WHERE request_id = ?').run(rNo);
+          db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+        } catch {
+          // ignore
+        }
+        await Promise.all([
+          supabaseRestDelete('member_schedule_request', `request_no=eq.${encodeURIComponent(rNo)}`),
+          supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`),
+          supabaseRestDelete('schedule_provision_custom_item', `request_no=eq.${encodeURIComponent(rNo)}`),
+          supabaseRestDelete('schedule_stage_recommendation_log', `request_no=eq.${encodeURIComponent(rNo)}`),
+          supabaseRestDelete('cultivation_history_log', `request_id=eq.${encodeURIComponent(rNo)}`),
+          supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`),
+        ]);
       }
       sendJson(res, buildAdminMembersPayload());
       return;

@@ -274,7 +274,7 @@ export default function UserIntroPage() {
   // 재배일정 확인 (회원 CloudBae 기준) 상태
   const [provisionData, setProvisionData] = useState<any>(null);
   const [isProvisionLoading, setIsProvisionLoading] = useState<boolean>(false);
-  const [selectedRequestNo, setSelectedRequestNo] = useState<string>('REQ-20261106-009');
+  const [selectedRequestNo, setSelectedRequestNo] = useState<string>('');
   const [expandedScheduleRequestNo, setExpandedScheduleRequestNo] = useState<string | null>(null);
   const [selectedStageItem, setSelectedStageItem] = useState<any>(null);
   const [editDetailForm, setEditDetailForm] = useState<any>(null);
@@ -546,31 +546,8 @@ export default function UserIntroPage() {
 
   const userMenus = ['홈', '재배일정 요청', '재배일정 확인', '농작물 구매', '마이페이지'];
 
-  // CloudBae@naver.com (배철민) 회원의 등록 재배작물 리스트 (충청북도 충주시 단월동 1건과 1:1 매칭)
-  const defaultCloudBaeCropList = [
-    {
-      crop_plan_id: 'CPLAN-CB-01',
-      request_no: 'REQ-20261106-009',
-      crop_title: '가을배추 (불암3호)',
-      crop_short: '가을배추',
-      cultivar_name: '불암3호',
-      badge: '노지 정식(모종)',
-      region: '충청북도 충주시 단월동',
-      area_pyeong: 1000,
-      planting_type: '모종',
-      planting_label: '정식 2026.08.25 (화)',
-      planting_date: '2026-08-25',
-      expected_harvest_date: '2026-11-25',
-      current_stage_name: '05. 병해충 예찰 · 수확 준비',
-      progress_pct: 60,
-      status_text: '생육 확인 필요 · 결구 진행중',
-      temp_avg: '18.5°C',
-      rain_mm: '5mm',
-      next_task_dday: '오늘 진행',
-      opt_temp: '18~20℃ 적온',
-      thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-    },
-  ];
+  // CloudBae@naver.com (배철민) 회원의 등록 재배작물 리스트 (초기 기본값: 빈 배열 — 재배일정 요청 시 동적 생성)
+  const defaultCloudBaeCropList: any[] = [];
 
   const baseCropList =
     myCropPlans.length > 0
@@ -1154,7 +1131,7 @@ export default function UserIntroPage() {
     const cropTitle = crop.crop_title || `${crop.crop_short || '작물'} (${crop.cultivar_name || ''})`;
 
     const confirmed = window.confirm(
-      `[${cropTitle} · ${displayReqNo}] 항목을 삭제하시겠습니까?\n\n삭제 시 연관된 아래 저장 데이터가 모두 함께 삭제됩니다:\n• 재배일정 요청 및 재배작물 플랜 데이터\n• 생육과정 정밀 일정(16개 공정) 및 기후 조정 데이터\n• 생육과정별 맞춤 추천 제품(1종) 및 개조식 추천 근거 데이터\n• 선택된 농자재 장바구니 및 생육 이력 데이터`
+      `[${cropTitle} · ${displayReqNo}] 재배일정 요청 데이터를 삭제하시겠습니까?\n\n※ 삭제 시 연동된 [재배일정 확인] 데이터(16개 생육과정 세부 일정, 완료 진행률 및 맞춤 추천 농자재 데이터)까지 모두 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`
     );
     if (!confirmed) return;
 
@@ -1176,6 +1153,28 @@ export default function UserIntroPage() {
         body: JSON.stringify({
           email: loggedInUser.email || 'CloudBae@naver.com',
           state_key: 'deleted_schedule_keys_v1',
+          state_value: next,
+        }),
+      }).catch(() => {});
+      return next;
+    });
+
+    setStageItemCompletions((prev) => {
+      const next = { ...prev };
+      keysToDelete.forEach((k) => {
+        delete next[k];
+      });
+      try {
+        localStorage.setItem('hanfarm_stage_item_completions_v2', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_item_completions_v2',
           state_value: next,
         }),
       }).catch(() => {});
@@ -1392,8 +1391,52 @@ export default function UserIntroPage() {
     }
   };
 
+  const fallbackEmptyCropCard = {
+    crop_plan_id: '',
+    request_no: '',
+    display_request_no: '',
+    crop_title: '등록된 작물 없음',
+    crop_short: '작물 없음',
+    cultivar_name: '',
+    badge: '일정 미등록',
+    region: '충청북도 충주시 단월동',
+    area_pyeong: 0,
+    planting_type: '모종',
+    planting_label: '-',
+    planting_date: '',
+    expected_harvest_date: '',
+    current_stage_name: '등록된 재배일정이 없습니다',
+    progress_pct: 0,
+    completed_stage_count: 0,
+    total_stage_count: 16,
+    status_text: '재배일정 요청 후 확인 가능',
+    temp_avg: '18.5°C',
+    rain_mm: '0mm',
+    next_task_dday: '-',
+    opt_temp: '18~20℃ 적온',
+    thumb_gradient: 'from-slate-500 via-slate-600 to-slate-700',
+  };
+
   const activeCropCard =
-    cloudBaeCropList.find((c) => c.request_no === selectedRequestNo) || cloudBaeCropList[0];
+    cloudBaeCropList.find((c) => c.request_no === selectedRequestNo) ||
+    cloudBaeCropList[0] ||
+    fallbackEmptyCropCard;
+
+  useEffect(() => {
+    if (cloudBaeCropList.length === 0) {
+      if (selectedRequestNo !== '') {
+        setSelectedRequestNo('');
+      }
+      if (provisionData !== null) {
+        setProvisionData(null);
+      }
+      return;
+    }
+    const exists = cloudBaeCropList.some((c) => c.request_no === selectedRequestNo);
+    if (!exists && cloudBaeCropList[0]?.request_no) {
+      setSelectedRequestNo(cloudBaeCropList[0].request_no);
+    }
+  }, [cloudBaeCropList, selectedRequestNo, provisionData]);
 
   // 출생년월일 기준 나이 자동 계산 헬퍼
   const calcAgeFromBirthDate = (birthYmd: string): number => {
@@ -3538,6 +3581,11 @@ export default function UserIntroPage() {
     reqNo: string,
     opts?: { gdd_mode?: 'effective' | 'raw'; override_start_date?: string; preserveItemId?: string }
   ) => {
+    if (!reqNo) {
+      setProvisionData(null);
+      setIsProvisionLoading(false);
+      return;
+    }
     setIsProvisionLoading(true);
     try {
       const params = new URLSearchParams({ request_no: reqNo });
@@ -5765,7 +5813,12 @@ export default function UserIntroPage() {
               </div>
 
               <div className="px-4 py-2.5 divide-y divide-slate-100">
-                {cloudBaeCropList.slice(0, 5).map((crop: any, idx: number) => {
+                {cloudBaeCropList.length === 0 ? (
+                  <div className="py-4 text-center text-xs font-bold text-slate-500">
+                    현재 등록된 재배일정 요청 내역이 없습니다.
+                  </div>
+                ) : (
+                  cloudBaeCropList.slice(0, 5).map((crop: any, idx: number) => {
                   const defaultSurnames = ['최', '배', '김', '박', '이'];
                   const rawName = String(crop.member_name || '').trim();
                   const maskedMemberName = rawName
@@ -5802,7 +5855,8 @@ export default function UserIntroPage() {
                       </span>
                     </div>
                   );
-                })}
+                  })
+                )}
               </div>
             </section>
 
@@ -6858,6 +6912,36 @@ export default function UserIntroPage() {
               {/* 작물재배 리스트 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 표시 + 아코디언) */}
               <div className="space-y-3.5">
                 {(() => {
+                  if (cloudBaeCropList.length === 0) {
+                    return (
+                      <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 sm:p-12 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center font-black text-xl">
+                          🌱
+                        </div>
+                        <div className="text-base sm:text-lg font-extrabold text-slate-900">
+                          등록된 재배일정 확인 데이터가 없습니다.
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                          새로운 재배일정을 요청하시면 지역 기후와 적산온도(GDD)를 분석하여 16개 생육과정별 세부 일정과 맞춤 농자재를 자동으로 산출해 드립니다.
+                        </p>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveMenu('재배일정 요청');
+                              setReqFormSubmitted(false);
+                              setScheduleReqModalPos({ x: 0, y: 0 });
+                              setIsScheduleReqModelessOpen(true);
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-xs transition cursor-pointer"
+                          >
+                            + 새 재배일정 요청하기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const rawActiveCropIdx = cloudBaeCropList.findIndex(
                     (c) => c.request_no === selectedRequestNo
                   );
@@ -9781,7 +9865,7 @@ export default function UserIntroPage() {
             </section>
 
             {/* ---------- 2단계 & 3단계: 선택한 작물 상세 화면 (PC 전용 — 모바일은 상단 1페이지 단일항목 아코디언에 통합 표시) ---------- */}
-            <div className="hidden lg:block space-y-6">
+            <div className={`${cloudBaeCropList.length > 0 ? 'hidden lg:block' : 'hidden'} space-y-6`}>
               {/* 모바일 전용 상단 뒤로가기 바 (리스트로 돌아가기) */}
               <div className="flex lg:hidden items-center justify-between bg-white rounded-2xl border border-slate-200 px-4 py-3 shadow-2xs">
                 <button
@@ -11692,6 +11776,35 @@ export default function UserIntroPage() {
               {/* 해당 아이디의 재배일정 요청 이력 카드 리스트 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 표시) */}
               <div className="space-y-3.5">
                 {(() => {
+                  if (cloudBaeCropList.length === 0) {
+                    return (
+                      <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 sm:p-12 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center font-black text-xl">
+                          📋
+                        </div>
+                        <div className="text-base sm:text-lg font-extrabold text-slate-900">
+                          현재 요청된 재배일정이 없습니다.
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
+                          상단 우측의 <strong>[재배 일정 요청]</strong> 버튼을 클릭하여 내 재배지와 희망 작물의 맞춤 재배일정을 요청해 보세요.
+                        </p>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReqFormSubmitted(false);
+                              setScheduleReqModalPos({ x: 0, y: 0 });
+                              setIsScheduleReqModelessOpen(true);
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-xs transition cursor-pointer"
+                          >
+                            + 재배 일정 요청하기
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const rawActiveReqCropIdx = cloudBaeCropList.findIndex(
                     (c: any) => c.request_no === selectedRequestNo
                   );
@@ -15439,6 +15552,19 @@ export default function UserIntroPage() {
                     </button>
                   </div>
                   {(() => {
+                    if (cloudBaeCropList.length === 0) {
+                      return (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center space-y-2">
+                          <div className="text-sm font-extrabold text-slate-900">
+                            등록된 내 재배작물이 없습니다.
+                          </div>
+                          <p className="text-xs text-slate-600">
+                            재배작물을 등록하거나 재배일정을 요청하시면 내 재배작물 목록과 생육 진행율이 표시됩니다.
+                          </p>
+                        </div>
+                      );
+                    }
+
                     const rawActiveRegIdx = cloudBaeCropList.findIndex(
                       (c: any) => c.request_no === selectedRequestNo
                     );
@@ -15620,6 +15746,19 @@ export default function UserIntroPage() {
                 {/* 작물재배현황 및 진행율 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 리스트) */}
                 <div className="space-y-3.5">
                   {(() => {
+                    if (cloudBaeCropList.length === 0) {
+                      return (
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center space-y-2.5">
+                          <div className="text-sm sm:text-base font-extrabold text-slate-900">
+                            현재 등록된 작물재배현황 및 진행율 데이터가 없습니다.
+                          </div>
+                          <p className="text-xs text-slate-600">
+                            재배일정을 요청하시거나 내 재배작물을 등록하시면 16개 생육과정별 진행율 관리가 가능합니다.
+                          </p>
+                        </div>
+                      );
+                    }
+
                     const rawActiveProgressIdx = cloudBaeCropList.findIndex(
                       (c: any) => c.request_no === selectedRequestNo
                     );

@@ -136,6 +136,26 @@ if (typeof window !== 'undefined') {
       }
       localStorage.setItem(DANWOL_ONLY_MIGRATION_KEY, '1');
     }
+
+    const CLEAR_SCHEDULE_CONFIRM_MIGRATION_KEY = 'hanfarm_clear_schedule_confirm_data_v1';
+    if (!localStorage.getItem(CLEAR_SCHEDULE_CONFIRM_MIGRATION_KEY)) {
+      localStorage.removeItem(MYPAGE_STORAGE_KEY);
+      localStorage.removeItem('hanfarm_stage_item_completions_v2');
+      localStorage.removeItem('hanfarm_custom_schedule_items_v1');
+      localStorage.removeItem('hanfarm_schedule_stage_recommendations_db_v1');
+      localStorage.setItem(
+        'hanfarm_deleted_schedule_keys_v1',
+        JSON.stringify(['REQ-20261106-009', 'CPLAN-CB-01', 'CULT-2026-000123'])
+      );
+      const savedOvRaw = localStorage.getItem(OVERVIEW_STORAGE_KEY);
+      if (savedOvRaw) {
+        const parsedOv = JSON.parse(savedOvRaw);
+        parsedOv.scheduleRequests = [];
+        parsedOv.cultivationRecords = [];
+        localStorage.setItem(OVERVIEW_STORAGE_KEY, JSON.stringify(parsedOv));
+      }
+      localStorage.setItem(CLEAR_SCHEDULE_CONFIRM_MIGRATION_KEY, '1');
+    }
   } catch {
     // ignore migration errors
   }
@@ -1902,14 +1922,8 @@ if (typeof window !== 'undefined') {
     }
 
     if (p === '/api/admin/member-crops/delete' && method === 'POST') {
-      const { crop_plan_id } = parseBody(init);
-      const targetId = String(crop_plan_id || '').trim();
-      const mp = (snap.mypage = snap.mypage || {});
-      mp.cropPlans = (mp.cropPlans || []).filter((c: any) => c.crop_plan_id !== targetId);
-      persistMyPage(mp);
-      if (targetId) {
-        await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(targetId)}`);
-      }
+      const body = parseBody(init);
+      await cascadeDeleteScheduleData(body);
       return jsonResponse(buildAdminMembersStaticPayload());
     }
 
@@ -2018,11 +2032,11 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true, ...mp });
     }
 
-    const cascadeDeleteScheduleData = async (params: {
+    async function cascadeDeleteScheduleData(params: {
       crop_plan_id?: string;
       request_no?: string;
       display_request_no?: string;
-    }) => {
+    }) {
       const mp = (snap.mypage = snap.mypage || {});
       const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
       const matchedCropPlan = (mp.cropPlans || []).find(
