@@ -3022,8 +3022,139 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ items, total: items.length });
     }
 
-    if (p === '/api/payment-bank-accounts') {
-      return jsonResponse(snap.paymentBankAccounts || { items: [] });
+    if (
+      p === '/api/payment-bank-accounts' ||
+      p === '/api/payment-bank-accounts/set-primary' ||
+      p === '/api/payment-bank-accounts/toggle-active' ||
+      p === '/api/payment-bank-accounts/delete'
+    ) {
+      const BANK_KEY = 'hanfarm_payment_bank_accounts_v1';
+      let currentItems: any[] = [];
+      try {
+        const saved = localStorage.getItem(BANK_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            currentItems = parsed;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      if (currentItems.length === 0) {
+        currentItems = Array.isArray(snap.paymentBankAccounts?.items)
+          ? [...snap.paymentBankAccounts.items]
+          : [
+              {
+                account_id: 'ACC-NH-001',
+                bank_code: '011',
+                bank_name: 'NH농협은행',
+                account_number: '301-0348-9120-81',
+                account_holder: '(주)한팜',
+                account_purpose: '비료·영양재·병해충관리제 통합 구입 결제',
+                branch_name: '충주기업금융지점',
+                is_primary: 1,
+                is_active: 1,
+                auto_confirm_enabled: 1,
+                cash_receipt_info: '현금영수증(소득공제/지출증빙) 및 전자세금계산서 100% 발행 가능',
+                transfer_guide_memo:
+                  '입금자명을 주문자 성함(또는 농장명)과 동일하게 입력해 주시면 자동 입금확인 처리됩니다.',
+                sort_order: 1,
+              },
+            ];
+      }
+
+      if (p === '/api/payment-bank-accounts/set-primary' && method === 'POST') {
+        const targetId = String(body.account_id || '').trim();
+        currentItems = currentItems.map((acc: any) => ({
+          ...acc,
+          is_primary: acc.account_id === targetId ? 1 : 0,
+          is_active: acc.account_id === targetId ? 1 : acc.is_active,
+        }));
+        try {
+          localStorage.setItem(BANK_KEY, JSON.stringify(currentItems));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      if (p === '/api/payment-bank-accounts/toggle-active' && method === 'POST') {
+        const targetId = String(body.account_id || '').trim();
+        const nextVal = body.is_active ? 1 : 0;
+        currentItems = currentItems.map((acc: any) =>
+          acc.account_id === targetId ? { ...acc, is_active: nextVal } : acc
+        );
+        try {
+          localStorage.setItem(BANK_KEY, JSON.stringify(currentItems));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      if (p === '/api/payment-bank-accounts/delete' && method === 'POST') {
+        const targetId = String(body.account_id || '').trim();
+        currentItems = currentItems.filter((acc: any) => acc.account_id !== targetId);
+        try {
+          localStorage.setItem(BANK_KEY, JSON.stringify(currentItems));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      if (p === '/api/payment-bank-accounts' && method === 'POST') {
+        const accountId = String(body.account_id || '').trim().toUpperCase();
+        const isPrimary = body.is_primary ? 1 : 0;
+        if (isPrimary === 1) {
+          currentItems = currentItems.map((acc: any) => ({ ...acc, is_primary: 0 }));
+        }
+        const newRow = {
+          account_id: accountId,
+          bank_code: String(body.bank_code || '011').trim(),
+          bank_name: String(body.bank_name || 'NH농협은행').trim(),
+          account_number: String(body.account_number || '').trim(),
+          account_holder: String(body.account_holder || '(주)한팜').trim(),
+          account_purpose: String(body.account_purpose || '비료·영양재·병해충관리제 통합 구입 결제').trim(),
+          branch_name: String(body.branch_name || '').trim(),
+          is_primary: isPrimary,
+          is_active: body.is_active === undefined ? 1 : body.is_active ? 1 : 0,
+          auto_confirm_enabled: body.auto_confirm_enabled === undefined ? 1 : body.auto_confirm_enabled ? 1 : 0,
+          cash_receipt_info: String(
+            body.cash_receipt_info || '현금영수증(소득공제/지출증빙) 및 전자세금계산서 100% 발행 가능'
+          ).trim(),
+          transfer_guide_memo: String(
+            body.transfer_guide_memo ||
+              '입금자명을 주문자 성함(또는 농장명)과 동일하게 입력해 주시면 자동 입금확인 처리됩니다.'
+          ).trim(),
+          sort_order: Number(body.sort_order) || 1,
+          updated_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        };
+        const existsIdx = currentItems.findIndex((acc: any) => acc.account_id === accountId);
+        if (existsIdx >= 0) {
+          currentItems[existsIdx] = newRow;
+        } else {
+          currentItems.push(newRow);
+        }
+        try {
+          localStorage.setItem(BANK_KEY, JSON.stringify(currentItems));
+        } catch {
+          // ignore
+        }
+        return jsonResponse({ ok: true, item: newRow });
+      }
+
+      const sorted = [...currentItems].sort(
+        (a: any, b: any) => Number(b.is_primary || 0) - Number(a.is_primary || 0)
+      );
+      const primaryAccount = sorted.find((a: any) => Number(a.is_primary) === 1) || sorted[0] || null;
+      return jsonResponse({
+        items: sorted,
+        totalCount: sorted.length,
+        activeCount: sorted.filter((a: any) => Number(a.is_active) === 1).length,
+        primaryAccount,
+      });
     }
     if (p === '/api/crop-growth-process-plans') {
       return jsonResponse(snap.cropGrowthPlans || { items: [] });
