@@ -453,6 +453,7 @@ export default function UserIntroPage() {
   } | null>(null);
   const [localAddedCropRequests, setLocalAddedCropRequests] = useState<any[]>([]);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
+  const isSubmittingScheduleReqRef = React.useRef<boolean>(false);
   const [reqForm, setReqForm] = useState({
     farmland_id: '',
     sido: '충청북도',
@@ -1094,19 +1095,35 @@ export default function UserIntroPage() {
     };
   };
 
-  const cloudBaeCropList = [
+  const rawCombinedCropList = [
     ...localAddedCropRequests.filter(
-      (loc) => !baseCropList.some((b) => b.crop_plan_id === loc.crop_plan_id)
+      (loc) =>
+        !baseCropList.some(
+          (b) =>
+            (b.crop_plan_id && b.crop_plan_id === loc.crop_plan_id) ||
+            (b.request_no && b.request_no === loc.request_no)
+        )
     ),
     ...baseCropList,
-  ]
+  ];
+  const seenScheduleReqKeys = new Set<string>();
+  const cloudBaeCropList = rawCombinedCropList
     .filter((crop: any) => {
       const keysToCheck = [
         crop.crop_plan_id,
         crop.request_no,
         crop.display_request_no,
       ].filter(Boolean);
-      return !keysToCheck.some((k) => deletedScheduleKeys.includes(String(k)));
+      if (keysToCheck.some((k) => deletedScheduleKeys.includes(String(k)))) {
+        return false;
+      }
+      const reqKey = String(crop.request_no || crop.display_request_no || '').trim();
+      const planKey = String(crop.crop_plan_id || '').trim();
+      if (reqKey && seenScheduleReqKeys.has(`REQ:${reqKey}`)) return false;
+      if (planKey && seenScheduleReqKeys.has(`PLAN:${planKey}`)) return false;
+      if (reqKey) seenScheduleReqKeys.add(`REQ:${reqKey}`);
+      if (planKey) seenScheduleReqKeys.add(`PLAN:${planKey}`);
+      return true;
     })
     .map((crop: any) => {
       const reqNo = crop.request_no || 'REQ-20261106-009';
@@ -1304,108 +1321,142 @@ export default function UserIntroPage() {
   };
 
   const handleSubmitScheduleReqForm = async () => {
-    const isSeed = String(reqForm.planting_type || '').includes('씨');
-    const pDate = reqForm.planting_date || '2026-08-25';
-    const wk = getWeekdayNameFromYmd(pDate);
-    const dateDot = pDate.replace(/-/g, '.');
-    const harvestYmd = addDaysToYmd(pDate, 82);
-    const nextIdx = cloudBaeCropList.length + 1;
-    const newPlanId = `CPLAN-REQ-${Date.now()}`;
-    const newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
-
-    const detailTrimmed = String(reqForm.detail_address || '').trim();
-    const regionLabel = `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}${
-      detailTrimmed ? ` ${detailTrimmed}` : ''
-    }`;
-
-    const newItem = {
-      crop_plan_id: newPlanId,
-      request_no: newReqDisplayNo,
-      display_request_no: newReqDisplayNo,
-      group_id: reqForm.group_id || 'GRP-LEAF',
-      group_name: reqForm.group_name || '엽채류 (잎채소)',
-      crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
-      crop_short: reqForm.crop_name,
-      cultivar_name: reqForm.cultivar_name,
-      badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
-      region: regionLabel,
-      detail_address: detailTrimmed,
-      area_pyeong: Number(reqForm.area_pyeong || 300),
-      planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
-      planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
-      planting_date: pDate,
-      expected_harvest_date: harvestYmd,
-      current_stage_name: '01. 토양 준비 및 밑거름 (신규 산출 완료)',
-      progress_pct: 15,
-      status_text: '맞춤 일정 산출 완료 · 생육 준비',
-      temp_avg: '18.5°C',
-      rain_mm: '2mm',
-      next_task_dday: '추천 진행일 대기',
-      opt_temp: '18~20℃ 적온',
-      thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-      requested_at: '2026-11-11',
-      soil_ph: reqForm.soil_ph,
-      soil_ec: reqForm.soil_ec,
-    };
-
-    setLocalAddedCropRequests((prev) => [newItem, ...prev]);
-    setSelectedRequestNo(newReqDisplayNo);
-    setReqFormSubmitted(true);
-
+    if (isSubmittingScheduleReqRef.current) return;
+    isSubmittingScheduleReqRef.current = true;
     try {
-      await fetch('/api/member-schedule-requests/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_no: newReqDisplayNo,
-          crop_plan_id: newPlanId,
-          group_id: reqForm.group_id || 'GRP-LEAF',
-          group_name: reqForm.group_name || '엽채류 (잎채소)',
-          sido: reqForm.sido,
-          sigungu: reqForm.sigungu,
-          eupmyeondong: reqForm.eupmyeondong,
-          detail_address: detailTrimmed,
-          crop_name: reqForm.crop_name,
-          item_name_3rd: reqForm.cultivar_name,
-          planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
-          area_pyeong: Number(reqForm.area_pyeong || 300),
-          desired_start_date: pDate,
-          expected_harvest_date: harvestYmd,
-        }),
-      });
-    } catch {
-      // ignore
-    }
-
-    try {
-      const r = await fetch('/api/mypage/crops', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: loggedInUser.email || 'CloudBae@naver.com',
-          crop_plan_id: newPlanId,
-          request_no: newReqDisplayNo,
-          farmland_id: reqForm.farmland_id || 'LAND-CB-01',
-          group_id: reqForm.group_id || 'GRP-LEAF',
-          group_name: reqForm.group_name || '엽채류 (잎채소)',
-          sido: reqForm.sido,
-          sigungu: reqForm.sigungu,
-          eupmyeondong: reqForm.eupmyeondong,
-          detail_address: detailTrimmed,
-          crop_name: reqForm.crop_name,
-          cultivar_name: reqForm.cultivar_name,
-          planting_type: reqForm.planting_type,
-          area_pyeong: Number(reqForm.area_pyeong || 300),
-          planting_date: pDate,
-          progress_pct: 15,
-        }),
-      });
-      const res = await r.json();
-      if (res?.ok) {
-        applyMyPagePayload(res);
+      const isSeed = String(reqForm.planting_type || '').includes('씨');
+      const pDate = reqForm.planting_date || '2026-08-25';
+      const wk = getWeekdayNameFromYmd(pDate);
+      const dateDot = pDate.replace(/-/g, '.');
+      const harvestYmd = addDaysToYmd(pDate, 82);
+      const existingReqKeys = new Set(
+        [
+          ...cloudBaeCropList.flatMap((c: any) => [
+            c.request_no,
+            c.display_request_no,
+            c.crop_plan_id,
+          ]),
+          ...myCropPlans.flatMap((c: any) => [c.request_no, c.crop_plan_id]),
+          ...deletedScheduleKeys,
+        ]
+          .filter(Boolean)
+          .map((k) => String(k).trim())
+      );
+      let nextIdx = cloudBaeCropList.length + 1;
+      let newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
+      while (
+        existingReqKeys.has(newReqDisplayNo) ||
+        existingReqKeys.has(`CPLAN-${newReqDisplayNo}`)
+      ) {
+        nextIdx += 1;
+        newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
       }
-    } catch {
-      // ignore
+      const newPlanId = `CPLAN-${newReqDisplayNo}`;
+
+      const detailTrimmed = String(reqForm.detail_address || '').trim();
+      const regionLabel = `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}${
+        detailTrimmed ? ` ${detailTrimmed}` : ''
+      }`;
+
+      const newItem = {
+        crop_plan_id: newPlanId,
+        request_no: newReqDisplayNo,
+        display_request_no: newReqDisplayNo,
+        group_id: reqForm.group_id || 'GRP-LEAF',
+        group_name: reqForm.group_name || '엽채류 (잎채소)',
+        crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
+        crop_short: reqForm.crop_name,
+        cultivar_name: reqForm.cultivar_name,
+        badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+        region: regionLabel,
+        detail_address: detailTrimmed,
+        area_pyeong: Number(reqForm.area_pyeong || 300),
+        planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
+        planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
+        planting_date: pDate,
+        expected_harvest_date: harvestYmd,
+        current_stage_name: '01. 토양 준비 및 밑거름 (신규 산출 완료)',
+        progress_pct: 15,
+        status_text: '맞춤 일정 산출 완료 · 생육 준비',
+        temp_avg: '18.5°C',
+        rain_mm: '2mm',
+        next_task_dday: '추천 진행일 대기',
+        opt_temp: '18~20℃ 적온',
+        thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
+        requested_at: '2026-11-11',
+        soil_ph: reqForm.soil_ph,
+        soil_ec: reqForm.soil_ec,
+      };
+
+      setLocalAddedCropRequests((prev) => [
+        newItem,
+        ...prev.filter(
+          (it) =>
+            it.crop_plan_id !== newPlanId &&
+            it.request_no !== newReqDisplayNo &&
+            it.display_request_no !== newReqDisplayNo
+        ),
+      ]);
+      setSelectedRequestNo(newReqDisplayNo);
+      setReqFormSubmitted(true);
+
+      try {
+        await fetch('/api/member-schedule-requests/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            request_no: newReqDisplayNo,
+            crop_plan_id: newPlanId,
+            group_id: reqForm.group_id || 'GRP-LEAF',
+            group_name: reqForm.group_name || '엽채류 (잎채소)',
+            sido: reqForm.sido,
+            sigungu: reqForm.sigungu,
+            eupmyeondong: reqForm.eupmyeondong,
+            detail_address: detailTrimmed,
+            crop_name: reqForm.crop_name,
+            item_name_3rd: reqForm.cultivar_name,
+            planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+            area_pyeong: Number(reqForm.area_pyeong || 300),
+            desired_start_date: pDate,
+            expected_harvest_date: harvestYmd,
+          }),
+        });
+      } catch {
+        // ignore
+      }
+
+      try {
+        const r = await fetch('/api/mypage/crops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loggedInUser.email || 'CloudBae@naver.com',
+            crop_plan_id: newPlanId,
+            request_no: newReqDisplayNo,
+            farmland_id: reqForm.farmland_id || 'LAND-CB-01',
+            group_id: reqForm.group_id || 'GRP-LEAF',
+            group_name: reqForm.group_name || '엽채류 (잎채소)',
+            sido: reqForm.sido,
+            sigungu: reqForm.sigungu,
+            eupmyeondong: reqForm.eupmyeondong,
+            detail_address: detailTrimmed,
+            crop_name: reqForm.crop_name,
+            cultivar_name: reqForm.cultivar_name,
+            planting_type: reqForm.planting_type,
+            area_pyeong: Number(reqForm.area_pyeong || 300),
+            planting_date: pDate,
+            progress_pct: 15,
+          }),
+        });
+        const res = await r.json();
+        if (res?.ok) {
+          applyMyPagePayload(res);
+        }
+      } catch {
+        // ignore
+      }
+    } finally {
+      isSubmittingScheduleReqRef.current = false;
     }
   };
 
@@ -1641,7 +1692,31 @@ export default function UserIntroPage() {
       });
     }
     if (Array.isArray(res.farmlands)) setMyFarmlands(res.farmlands);
-    if (Array.isArray(res.cropPlans)) setMyCropPlans(res.cropPlans);
+    if (Array.isArray(res.cropPlans)) {
+      const seenReqNos = new Set<string>();
+      const seenPlanIds = new Set<string>();
+      const dedupedPlans = res.cropPlans.filter((cp: any) => {
+        if (!cp) return false;
+        const rNo = String(cp.request_no || '').trim();
+        const pId = String(cp.crop_plan_id || '').trim();
+        if (rNo && seenReqNos.has(rNo)) return false;
+        if (pId && seenPlanIds.has(pId)) return false;
+        if (rNo) seenReqNos.add(rNo);
+        if (pId) seenPlanIds.add(pId);
+        return true;
+      });
+      setMyCropPlans(dedupedPlans);
+      setLocalAddedCropRequests((prev) =>
+        prev.filter(
+          (loc) =>
+            !dedupedPlans.some(
+              (cp: any) =>
+                (cp.crop_plan_id && cp.crop_plan_id === loc.crop_plan_id) ||
+                (cp.request_no && cp.request_no === loc.request_no)
+            )
+        )
+      );
+    }
     if (Array.isArray(res.orders)) {
       const sanitizedOrders = res.orders.map((ord: any) => ({
         ...ord,

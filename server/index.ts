@@ -5244,6 +5244,11 @@ const server = http.createServer(async (req, res) => {
         String(rowData.planting_method || '').includes('직파') ||
         String(rowData.planting_method || '').includes('점파') ||
         String(rowData.planting_method || '').includes('종서');
+      const targetPlanId = String(body.crop_plan_id || `CPLAN-${rowData.request_no}`).trim();
+      db.prepare('DELETE FROM member_crop_plan WHERE request_no = ? AND crop_plan_id != ?').run(
+        rowData.request_no,
+        targetPlanId
+      );
       db.prepare(`
         INSERT OR REPLACE INTO member_crop_plan (
           crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
@@ -5251,7 +5256,7 @@ const server = http.createServer(async (req, res) => {
           expected_harvest_date, current_stage_name, progress_pct, status_text
         ) VALUES (?, 'CloudBae@naver.com', ?, 'LAND-CB-01', ?, ?, ?, ?, ?, ?, ?, ?, ?, '04. 생육 관리', 60, '생육 확인 필요 · 일정 연동됨')
       `).run(
-        `CPLAN-${rowData.request_no}`,
+        targetPlanId,
         rowData.request_no,
         rowData.sido,
         rowData.sigungu,
@@ -5265,7 +5270,7 @@ const server = http.createServer(async (req, res) => {
       );
 
       await supabaseRestUpsert('member_schedule_request', rowData, 'request_no');
-      const syncedPlan = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(`CPLAN-${rowData.request_no}`) as Record<string, any> | undefined;
+      const syncedPlan = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(targetPlanId) as Record<string, any> | undefined;
       if (syncedPlan) {
         await supabaseRestUpsert('member_crop_plan', syncedPlan, 'crop_plan_id');
       }
@@ -8999,11 +9004,27 @@ const server = http.createServer(async (req, res) => {
           'SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC, farmland_id ASC'
         )
         .all(member.email) as any[];
-      const cropPlans = db
+      const rawCropPlans = db
         .prepare(
           'SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC, crop_plan_id ASC'
         )
         .all(member.email) as any[];
+      const seenReqNos = new Set<string>();
+      const seenPlanIds = new Set<string>();
+      const cropPlans: any[] = [];
+      for (const cp of rawCropPlans) {
+        const rNo = String(cp?.request_no || '').trim();
+        const pId = String(cp?.crop_plan_id || '').trim();
+        if ((rNo && seenReqNos.has(rNo)) || (pId && seenPlanIds.has(pId))) {
+          if (pId) {
+            db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(pId);
+          }
+          continue;
+        }
+        if (rNo) seenReqNos.add(rNo);
+        if (pId) seenPlanIds.add(pId);
+        cropPlans.push(cp);
+      }
       const rawOrders = db
         .prepare(
           'SELECT * FROM member_agro_order WHERE LOWER(email) = LOWER(?) ORDER BY ordered_at DESC, order_no DESC'
@@ -9847,11 +9868,12 @@ const server = http.createServer(async (req, res) => {
         ).padStart(2, '0')}`;
 
       const requestNo =
-        plantingType.includes('씨')
+        String(body.request_no || '').trim() ||
+        (plantingType.includes('씨')
           ? 'REQ-20261106-008'
           : cropName.includes('봄')
           ? 'REQ-20261106-005'
-          : 'REQ-20261106-009';
+          : 'REQ-20261106-009');
 
       const stageByPct =
         progressPct >= 100
@@ -9870,7 +9892,27 @@ const server = http.createServer(async (req, res) => {
         String(body.status_text || '').trim() ||
         (progressPct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 생육 관리중');
 
-      const cropPlanId = String(body.crop_plan_id || `CPLAN-${Date.now()}`).trim();
+      const existingPlanByReq = db
+        .prepare(
+          'SELECT crop_plan_id FROM member_crop_plan WHERE LOWER(email) = LOWER(?) AND request_no = ? LIMIT 1'
+        )
+        .get(email, requestNo) as { crop_plan_id?: string } | undefined;
+      const cropPlanId = String(
+        existingPlanByReq?.crop_plan_id || body.crop_plan_id || `CPLAN-${requestNo}`
+      ).trim();
+
+      const dupPlans = db
+        .prepare(
+          'SELECT crop_plan_id FROM member_crop_plan WHERE LOWER(email) = LOWER(?) AND request_no = ? AND crop_plan_id != ?'
+        )
+        .all(email, requestNo, cropPlanId) as { crop_plan_id: string }[];
+      for (const dup of dupPlans) {
+        db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(dup.crop_plan_id);
+        await supabaseRestDelete(
+          'member_crop_plan',
+          `crop_plan_id=eq.${encodeURIComponent(dup.crop_plan_id)}`
+        );
+      }
 
       db.prepare(`
         INSERT OR REPLACE INTO member_crop_plan (

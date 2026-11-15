@@ -303,8 +303,29 @@ if (typeof window !== 'undefined') {
     }
   };
 
+  const deduplicateCropPlanList = (plans: any[]): any[] => {
+    if (!Array.isArray(plans)) return [];
+    const seenReqNos = new Set<string>();
+    const seenPlanIds = new Set<string>();
+    const result: any[] = [];
+    for (const cp of plans) {
+      if (!cp) continue;
+      const rNo = String(cp.request_no || '').trim();
+      const pId = String(cp.crop_plan_id || '').trim();
+      if (rNo && seenReqNos.has(rNo)) continue;
+      if (pId && seenPlanIds.has(pId)) continue;
+      if (rNo) seenReqNos.add(rNo);
+      if (pId) seenPlanIds.add(pId);
+      result.push(cp);
+    }
+    return result;
+  };
+
   const persistMyPage = (mp: any) => {
     try {
+      if (mp && Array.isArray(mp.cropPlans)) {
+        mp.cropPlans = deduplicateCropPlanList(mp.cropPlans);
+      }
       localStorage.setItem(MYPAGE_STORAGE_KEY, JSON.stringify(mp));
     } catch {
       // ignore
@@ -1463,11 +1484,30 @@ if (typeof window !== 'undefined') {
           mp.farmlands = sbLands;
         }
         if (Array.isArray(sbPlans)) {
-          mp.cropPlans = sbPlans.filter(
+          const validPlans = sbPlans.filter(
             (cp: any) =>
               !deletedKeysSet.has(String(cp.crop_plan_id || '')) &&
               !deletedKeysSet.has(String(cp.request_no || ''))
           );
+          const seenReqNos = new Set<string>();
+          const seenPlanIds = new Set<string>();
+          const dedupedPlans: any[] = [];
+          const duplicatePlanIdsToDelete: string[] = [];
+          for (const cp of validPlans) {
+            const rNo = String(cp?.request_no || '').trim();
+            const pId = String(cp?.crop_plan_id || '').trim();
+            if ((rNo && seenReqNos.has(rNo)) || (pId && seenPlanIds.has(pId))) {
+              if (pId) duplicatePlanIdsToDelete.push(pId);
+              continue;
+            }
+            if (rNo) seenReqNos.add(rNo);
+            if (pId) seenPlanIds.add(pId);
+            dedupedPlans.push(cp);
+          }
+          mp.cropPlans = dedupedPlans;
+          for (const dupId of duplicatePlanIdsToDelete) {
+            sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(dupId)}`).catch(() => {});
+          }
         }
         if (Array.isArray(sbOrders)) {
           mp.orders = sbOrders.map((ord: any) => {
@@ -1991,29 +2031,37 @@ if (typeof window !== 'undefined') {
       const mp = (snap.mypage = snap.mypage || {});
       const list = Array.isArray(mp.cropPlans) ? [...mp.cropPlans] : [];
       const pct = Math.max(0, Math.min(100, Number(body.progress_pct ?? 25)));
+      const reqNo = String(body.request_no || 'REQ-20261106-009').trim();
+      const inputPlanId = String(body.crop_plan_id || '').trim();
+      const existingIdx = list.findIndex(
+        (c: any) =>
+          (inputPlanId && c.crop_plan_id === inputPlanId) ||
+          (reqNo && c.request_no === reqNo)
+      );
+      const existingPlan = existingIdx >= 0 ? list[existingIdx] : null;
       const newPlan = {
-        crop_plan_id: body.crop_plan_id || `CPLAN-${Date.now()}`,
-        email: body.email || 'CloudBae@naver.com',
-        request_no: body.request_no || 'REQ-20261106-009',
-        farmland_id: body.farmland_id || 'LAND-CB-01',
-        sido: body.sido || '충청북도',
-        sigungu: body.sigungu || '충주시',
-        eupmyeondong: body.eupmyeondong || '단월동',
-        crop_name: body.crop_name || '가을배추',
-        cultivar_name: body.cultivar_name || '불암3호',
-        planting_type: body.planting_type || '모종',
-        area_pyeong: Number(body.area_pyeong) || 300,
-        planting_date: body.planting_date || '2026-08-25',
-        expected_harvest_date: body.expected_harvest_date || '2026-11-15',
+        crop_plan_id: existingPlan?.crop_plan_id || inputPlanId || `CPLAN-${reqNo}`,
+        email: body.email || existingPlan?.email || 'CloudBae@naver.com',
+        request_no: reqNo,
+        farmland_id: body.farmland_id || existingPlan?.farmland_id || 'LAND-CB-01',
+        sido: body.sido || existingPlan?.sido || '충청북도',
+        sigungu: body.sigungu || existingPlan?.sigungu || '충주시',
+        eupmyeondong: body.eupmyeondong || existingPlan?.eupmyeondong || '단월동',
+        crop_name: body.crop_name || existingPlan?.crop_name || '가을배추',
+        cultivar_name: body.cultivar_name || existingPlan?.cultivar_name || '불암3호',
+        planting_type: body.planting_type || existingPlan?.planting_type || '모종',
+        area_pyeong: Number(body.area_pyeong) || existingPlan?.area_pyeong || 300,
+        planting_date: body.planting_date || existingPlan?.planting_date || '2026-08-25',
+        expected_harvest_date:
+          body.expected_harvest_date || existingPlan?.expected_harvest_date || '2026-11-15',
         current_stage_name: pct >= 100 ? '06. 수확 완료' : '04. 생육 관리',
         progress_pct: pct,
         status_text: pct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 생육 관리중',
-        created_at: body.created_at || getKstNowStr(),
+        created_at: body.created_at || existingPlan?.created_at || getKstNowStr(),
       };
-      const existingIdx = list.findIndex((c: any) => c.crop_plan_id === newPlan.crop_plan_id);
       if (existingIdx >= 0) list[existingIdx] = newPlan;
       else list.push(newPlan);
-      mp.cropPlans = list;
+      mp.cropPlans = deduplicateCropPlanList(list);
       persistMyPage(mp);
       await sbUpsert('member_crop_plan', newPlan, 'crop_plan_id');
       return jsonResponse({ ok: true, ...mp });
@@ -2293,10 +2341,20 @@ if (typeof window !== 'undefined') {
         planting_method: String(body.planting_method || '모종').trim(),
         desired_start_date: String(body.desired_start_date || '2026-08-25').trim(),
         expected_harvest_date: String(body.expected_harvest_date || '2026-11-15').trim(),
-        mulching_yn: String(body.mulching_yn || 'Y').trim(),
+        mulching_yn:
+          body.mulching_yn !== undefined
+            ? body.mulching_yn === 'N' || body.mulching_yn === 0
+              ? 0
+              : 1
+            : 1,
         irrigation_type: String(body.irrigation_type || '점적관수').trim(),
         is_organic: Number(body.is_organic ?? 0),
-        soil_test_linked_yn: String(body.soil_test_linked_yn || 'Y').trim(),
+        soil_test_linked_yn:
+          body.soil_test_linked_yn !== undefined
+            ? body.soil_test_linked_yn === 'N' || body.soil_test_linked_yn === 0
+              ? 0
+              : 1
+            : 1,
         target_yield_kg: Number(body.target_yield_kg) || 3500,
         etc_notes: String(body.etc_notes || '').trim(),
         request_status: String(body.request_status || '일정산출완료').trim(),
@@ -2311,10 +2369,17 @@ if (typeof window !== 'undefined') {
       // 마이페이지 작물재배 플랜(member_crop_plan)도 동시에 동기화
       const mp = (snap.mypage = snap.mypage || {});
       const cropPlans: any[] = Array.isArray(mp.cropPlans) ? [...mp.cropPlans] : [];
-      const planId = `CPLAN-${reqNo}`;
-      const existingPlan = cropPlans.find((c) => c.crop_plan_id === planId || c.request_no === reqNo);
+      const inputPlanId = String(body.crop_plan_id || '').trim();
+      const defaultPlanId = `CPLAN-${reqNo}`;
+      const existingPlan = cropPlans.find(
+        (c) =>
+          (inputPlanId && c.crop_plan_id === inputPlanId) ||
+          c.crop_plan_id === defaultPlanId ||
+          c.request_no === reqNo
+      );
+      const resolvedPlanId = existingPlan?.crop_plan_id || inputPlanId || defaultPlanId;
       const syncedPlan = {
-        crop_plan_id: existingPlan?.crop_plan_id || planId,
+        crop_plan_id: resolvedPlanId,
         email: 'CloudBae@naver.com',
         request_no: reqNo,
         farmland_id: existingPlan?.farmland_id || 'LAND-CB-01',
@@ -2337,7 +2402,7 @@ if (typeof window !== 'undefined') {
       );
       if (planIdx >= 0) cropPlans[planIdx] = syncedPlan;
       else cropPlans.unshift(syncedPlan);
-      mp.cropPlans = cropPlans;
+      mp.cropPlans = deduplicateCropPlanList(cropPlans);
       persistMyPage(mp);
 
       await Promise.all([
