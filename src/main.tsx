@@ -156,6 +156,18 @@ if (typeof window !== 'undefined') {
       }
       localStorage.setItem(CLEAR_SCHEDULE_CONFIRM_MIGRATION_KEY, '1');
     }
+
+    const CLEAR_AGRO_PURCHASE_MIGRATION_KEY = 'hanfarm_clear_agro_purchase_history_v1';
+    if (!localStorage.getItem(CLEAR_AGRO_PURCHASE_MIGRATION_KEY)) {
+      localStorage.setItem('hanfarm_stage_purchase_history_v1', '[]');
+      const savedMpRaw = localStorage.getItem(MYPAGE_STORAGE_KEY);
+      if (savedMpRaw) {
+        const parsedMp = JSON.parse(savedMpRaw);
+        parsedMp.orders = [];
+        localStorage.setItem(MYPAGE_STORAGE_KEY, JSON.stringify(parsedMp));
+      }
+      localStorage.setItem(CLEAR_AGRO_PURCHASE_MIGRATION_KEY, '1');
+    }
   } catch {
     // ignore migration errors
   }

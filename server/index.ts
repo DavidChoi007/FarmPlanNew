@@ -207,7 +207,7 @@ function initMemberAndMyPageTables() {
   `).run();
   db.prepare(`
     DELETE FROM member_agro_order
-    WHERE order_no = 'ORD-20260508-CB042'
+    WHERE order_no IN ('ORD-20260508-CB042', 'ORD-20260820-CB101', 'ORD-20260822-CB105')
   `).run();
 
   // 배철민(CloudBae@naver.com) 회원의 충청북도 충주시 단월동 기본 재배지(LAND-CB-01) 유지
@@ -229,124 +229,6 @@ function initMemberAndMyPageTables() {
       1.1
     )
   `).run();
-
-  // CloudBae@naver.com 기본 농자재 구매현황 (충청북도 충주시 단월동 1건) 시드 등록
-  const existingOrders = (
-    db
-      .prepare('SELECT COUNT(*) as cnt FROM member_agro_order WHERE LOWER(email) = LOWER(?)')
-      .get('CloudBae@naver.com') as { cnt: number }
-  ).cnt;
-
-  if (existingOrders === 0) {
-    const insertOrder = db.prepare(`
-      INSERT OR REPLACE INTO member_agro_order (
-        order_no, email, ordered_at, purchase_title, crop_title, region_address,
-        delivery_option, payment_method, delivery_status, raw_total, discount_amount,
-        final_total, reward_points, items_json
-      ) VALUES (?, 'CloudBae@naver.com', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    insertOrder.run(
-      'ORD-20260820-CB101',
-      '2026.08.20 14:22',
-      '가을배추(불암3호) 전 생육단계 추천 농자재 올인원 패키지',
-      '가을배추 (불암3호) · 1,000평',
-      '충청북도 충주시 단월동 412-5번지 일원 (CloudBae 농장)',
-      'STAGE_SCHEDULED',
-      'NONGHYUP_CARD',
-      '생육단계별 적기 맞춤 배송중 (04. 생육 관리 단계까지 배송완료)',
-      268000,
-      13400,
-      254600,
-      5092,
-      JSON.stringify([
-        {
-          stageName: '재배 준비',
-          product_name: '흙살림 골드 유기질 퇴비 (특호)',
-          unit_spec: '20Kg / 포',
-          unit_price: 9500,
-          qty: 6,
-          subtotal: 57000,
-          scheduledDeliveryDate: '2026-08-05',
-          thumbnail_url: '/images/fertilizers/FERT-PRD-01-thumb.png',
-        },
-        {
-          stageName: '파종·육묘',
-          product_name: '슈퍼배추 전용 원예상토 1호',
-          unit_spec: '50L / 포',
-          unit_price: 14500,
-          qty: 3,
-          subtotal: 43500,
-          scheduledDeliveryDate: '2026-08-10',
-          thumbnail_url: '/images/fertilizers/FERT-PRD-02-thumb.png',
-        },
-        {
-          stageName: '정식·활착',
-          product_name: '뿌리왕 발근·활착 촉진 영양제',
-          unit_spec: '500ml / 병',
-          unit_price: 22000,
-          qty: 2,
-          subtotal: 44000,
-          scheduledDeliveryDate: '2026-08-22',
-          thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
-        },
-        {
-          stageName: '생육 관리',
-          product_name: '한팜 칼슘·붕소 결구강화 특호',
-          unit_spec: '1L / 병',
-          unit_price: 24500,
-          qty: 3,
-          subtotal: 73500,
-          scheduledDeliveryDate: '2026-09-18',
-          thumbnail_url: '/images/fertilizers/MAT-NUTR-02-thumb.png',
-        },
-        {
-          stageName: '병해충 예찰',
-          product_name: '무름병·노균병 동시방제 살균제 클린팜',
-          unit_spec: '500ml / 병',
-          unit_price: 25000,
-          qty: 2,
-          subtotal: 50000,
-          scheduledDeliveryDate: '2026-10-02',
-          thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
-        },
-      ])
-    );
-  } else {
-    try {
-      const rows = db.prepare('SELECT order_no, items_json FROM member_agro_order').all() as Array<{
-        order_no: string;
-        items_json: string;
-      }>;
-      const updateOrderItemsStmt = db.prepare(
-        'UPDATE member_agro_order SET items_json = ? WHERE order_no = ?'
-      );
-      for (const r of rows) {
-        if (
-          r.items_json &&
-          (r.items_json.includes('NUTR-PRD-01') ||
-            r.items_json.includes('NUTR-PRD-02') ||
-            r.items_json.includes('PEST-PRD-01') ||
-            r.items_json.includes('/api/agro-materials/image/'))
-        ) {
-          const fixedJson = r.items_json
-            .replace(/\/api\/agro-materials\/image\/FERT-PRD-01\/thumb/g, '/images/fertilizers/FERT-PRD-01-thumb.png')
-            .replace(/\/api\/agro-materials\/image\/FERT-PRD-02\/thumb/g, '/images/fertilizers/FERT-PRD-02-thumb.png')
-            .replace(/\/api\/agro-materials\/image\/FERT-PRD-03\/thumb/g, '/images/fertilizers/FERT-PRD-03-thumb.png')
-            .replace(/\/api\/agro-materials\/image\/FERT-PRD-04\/thumb/g, '/images/fertilizers/FERT-PRD-04-thumb.jpg')
-            .replace(/\/api\/agro-materials\/image\/FERT-PRD-05\/thumb/g, '/images/fertilizers/FERT-PRD-05-thumb.jpg')
-            .replace(/\/api\/agro-materials\/image\/NUTR-PRD-01\/thumb/g, '/images/fertilizers/MAT-NUTR-01-thumb.png')
-            .replace(/\/api\/agro-materials\/image\/NUTR-PRD-02\/thumb/g, '/images/fertilizers/MAT-NUTR-02-thumb.png')
-            .replace(/\/api\/agro-materials\/image\/PEST-PRD-01\/thumb/g, '/images/fertilizers/MAT-PEST-01-thumb.jpg');
-          if (fixedJson !== r.items_json) {
-            updateOrderItemsStmt.run(fixedJson, r.order_no);
-          }
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
 }
 initMemberAndMyPageTables();
 
