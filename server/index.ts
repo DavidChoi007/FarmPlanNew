@@ -10059,6 +10059,22 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/api/mypage/orders/delete' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const email = String(body.email || 'CloudBae@naver.com').trim();
+      const orderNo = String(body.order_no || '').trim();
+      if (body.delete_all) {
+        db.prepare('DELETE FROM member_agro_order WHERE LOWER(email) = LOWER(?)').run(email);
+        await supabaseRestDelete('member_agro_order', `email=eq.${encodeURIComponent(email)}`);
+      } else if (orderNo) {
+        db.prepare('DELETE FROM member_agro_order WHERE order_no = ?').run(orderNo);
+        await supabaseRestDelete('member_agro_order', `order_no=eq.${encodeURIComponent(orderNo)}`);
+      }
+      const payload = buildMemberMyPagePayload(email);
+      sendJson(res, { ok: true, ...payload });
+      return;
+    }
+
     // 10. 구매의향서 양식(내용) 및 접수 현황 조회·수정·삭제 API
     if (pathname === '/api/purchase-intents' && req.method === 'GET') {
       try {

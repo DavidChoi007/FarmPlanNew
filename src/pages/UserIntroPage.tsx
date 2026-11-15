@@ -2610,6 +2610,109 @@ export default function UserIntroPage() {
     return defaultStagePurchases;
   });
 
+  const handleDeleteStagePurchaseItem = async (entry: any) => {
+    if (!entry) return;
+    const productName = entry.productName || entry.product_name || '농자재 상품';
+    const orderNo = entry.orderNo || entry.order_no || '';
+    if (
+      !window.confirm(
+        `[${productName}${orderNo ? ` · ${orderNo}` : ''}] 농자재 구매 내역을 삭제하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+
+    const targetId = entry.id || entry.purchase_id || '';
+    setStagePurchaseHistory((prev) => {
+      const updated = prev.filter((p: any, idx: number) => {
+        const pId = p.id || p.purchase_id || `SPUR-ROW-${idx}`;
+        if (targetId && pId === targetId) return false;
+        if (
+          orderNo &&
+          (p.orderNo || p.order_no) === orderNo &&
+          (p.material_id || p.productName || p.product_name) ===
+            (entry.material_id || entry.productName || entry.product_name) &&
+          (p.stageItemId || p.item_id || p.processCode || p.process_code) ===
+            (entry.stageItemId || entry.item_id || entry.processCode || entry.process_code)
+        ) {
+          return false;
+        }
+        return true;
+      });
+      try {
+        localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_purchase_history_v1',
+          state_value: updated,
+        }),
+      }).catch(() => {});
+      return updated;
+    });
+
+    if (orderNo) {
+      setMyOrders((prev) => prev.filter((o: any) => (o.order_no || o.orderNo) !== orderNo));
+      fetch('/api/mypage/orders/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          order_no: orderNo,
+        }),
+      }).catch(() => {});
+    }
+
+    setMyPageToast(`[${productName}] 농자재 구매 내역이 삭제되었습니다.`);
+    setTimeout(() => setMyPageToast(''), 3500);
+  };
+
+  const handleDeleteAllStagePurchases = async () => {
+    if (stagePurchaseHistory.length === 0) return;
+    if (
+      !window.confirm(
+        `농자재 구매 내역(${stagePurchaseHistory.length}건)을 모두 삭제하시겠습니까?`
+      )
+    ) {
+      return;
+    }
+
+    setStagePurchaseHistory([]);
+    setMyOrders([]);
+    setMyPagePurchaseCropFilter('ALL');
+    try {
+      localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify([]));
+    } catch {
+      // ignore
+    }
+    fetch('/api/client-sync-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: loggedInUser.email || 'CloudBae@naver.com',
+        state_key: 'stage_purchase_history_v1',
+        state_value: [],
+      }),
+    }).catch(() => {});
+
+    fetch('/api/mypage/orders/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: loggedInUser.email || 'CloudBae@naver.com',
+        delete_all: true,
+      }),
+    }).catch(() => {});
+
+    setMyPageToast('농자재 구매 내역이 모두 삭제되었습니다.');
+    setTimeout(() => setMyPageToast(''), 3500);
+  };
+
   // provisionData가 로드되면 초기 시드 항목(SPUR-INIT-01, SPUR-INIT-02)의 공정명·제품명을 실제 생육과정 데이터와 자동 정합화
   useEffect(() => {
     if (!provisionData?.scheduleItems?.length) return;
@@ -15905,20 +16008,32 @@ export default function UserIntroPage() {
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveMenu('재배일정 확인');
-                        setMobileScheduleStep('detail');
-                        if (typeof window !== 'undefined') {
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }
-                      }}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer self-start sm:self-center shrink-0 inline-flex items-center gap-1.5 shadow-2xs transition"
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                      <span>생육과정별 추천 제품 구매하러 가기 ›</span>
-                    </button>
+                    <div className="flex items-center gap-2 self-start sm:self-center shrink-0 flex-wrap">
+                      {stagePurchaseHistory.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteAllStagePurchases}
+                          className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1.5 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>구매 내역 전체 삭제</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenu('재배일정 확인');
+                          setMobileScheduleStep('detail');
+                          if (typeof window !== 'undefined') {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
+                        }}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer shrink-0 inline-flex items-center gap-1.5 shadow-2xs transition"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>생육과정별 추천 제품 구매하러 가기 ›</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* 요약 KPI 바 (모바일 3열 / PC 3열) */}
@@ -16041,6 +16156,14 @@ export default function UserIntroPage() {
                                 className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 text-[11px] font-extrabold cursor-pointer transition"
                               >
                                 해당 생육과정 보기 ›
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStagePurchaseItem(entry)}
+                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-[11px] font-extrabold cursor-pointer transition inline-flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                <span>삭제</span>
                               </button>
                             </div>
                           </div>

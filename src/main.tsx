@@ -2220,6 +2220,23 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true, ...mp });
     }
 
+    if (p === '/api/mypage/orders/delete' && method === 'POST') {
+      const body = parseBody(init);
+      const email = String(body.email || 'CloudBae@naver.com').trim();
+      const orderNo = String(body.order_no || '').trim();
+      const mp = (snap.mypage = snap.mypage || {});
+      if (body.delete_all) {
+        mp.orders = [];
+        persistMyPage(mp);
+        await sbDelete('member_agro_order', `email=eq.${encodeURIComponent(email)}`);
+      } else if (orderNo) {
+        mp.orders = (mp.orders || []).filter((o: any) => o.order_no !== orderNo);
+        persistMyPage(mp);
+        await sbDelete('member_agro_order', `order_no=eq.${encodeURIComponent(orderNo)}`);
+      }
+      return jsonResponse({ ok: true, ...mp });
+    }
+
     // 4. 재배 일정 요청 및 제공 API (Supabase member_schedule_request / schedule_provision_custom_item 실시간 연동)
     if (p === '/api/member-schedule-requests') {
       const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
