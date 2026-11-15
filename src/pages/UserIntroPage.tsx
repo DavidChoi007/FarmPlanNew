@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from '../router.tsx';
 import { KOREA_ADMIN_TREE } from '../../server/koreaAddresses.ts';
 import {
+  loadScheduleGenerationModuleFromStorage,
+  saveScheduleGenerationModuleToStorage,
+  getEnabledModuleFlags,
+} from '../utils/scheduleGenerationModule.ts';
+import {
   Sprout,
   Calendar,
   FileEdit,
@@ -1324,11 +1329,32 @@ export default function UserIntroPage() {
     if (isSubmittingScheduleReqRef.current) return;
     isSubmittingScheduleReqRef.current = true;
     try {
+      const genModConfig = loadScheduleGenerationModuleFromStorage();
+      const modFlags = getEnabledModuleFlags(genModConfig);
+      const enabledRuleCount = genModConfig.items.filter((i) => i.category === 'RULE_LOGIC' && i.enabled).length;
+      const enabledAiCount = genModConfig.items.filter((i) => i.category === 'AI_AGENT' && i.enabled).length;
+
       const isSeed = String(reqForm.planting_type || '').includes('씨');
-      const pDate = reqForm.planting_date || '2026-08-25';
+      const rawDesiredDate = reqForm.planting_date || '2026-08-25';
+      // 선택된 일정 생성 모듈(RULE-03 모종 최적온도 시작 / RULE-04 씨 발아온도 조기 시작 / AI-02 농작업 적기 탐색) 반영
+      let startShiftDays = 0;
+      if (isSeed && modFlags.seed_germination_early_start === false) {
+        startShiftDays = 0;
+      } else if (!isSeed && modFlags.seedling_opt_temp_filter === false) {
+        startShiftDays = 0;
+      } else if (modFlags.ai_work_date_optimizer === false) {
+        startShiftDays = 0;
+      }
+      const pDate = addDaysToYmd(rawDesiredDate, startShiftDays);
       const wk = getWeekdayNameFromYmd(pDate);
       const dateDot = pDate.replace(/-/g, '.');
-      const harvestYmd = addDaysToYmd(pDate, 82);
+
+      // 선택된 일정 생성 모듈(RULE-05 지역별 PGDD, RULE-06 토양·지형 미기후 보정, AI-01 다변량 생육속도 모델) 기반 재배일수 산출
+      let baseSpanDays = 82;
+      if (modFlags.regional_pgdd_matching === false) baseSpanDays -= 3;
+      if (modFlags.soil_topo_microclimate_offset === false) baseSpanDays -= 2;
+      if (modFlags.ai_multivariate_pgdd_model === false) baseSpanDays += 3;
+      const harvestYmd = addDaysToYmd(pDate, baseSpanDays);
       const existingReqKeys = new Set(
         [
           ...cloudBaeCropList.flatMap((c: any) => [
@@ -1377,8 +1403,8 @@ export default function UserIntroPage() {
         expected_harvest_date: harvestYmd,
         current_stage_name: '01. 토양 준비 및 밑거름 (신규 산출 완료)',
         progress_pct: 15,
-        status_text: '맞춤 일정 산출 완료 · 생육 준비',
-        temp_avg: '18.5°C',
+        status_text: `맞춤 일정 산출 완료 (로직 ${enabledRuleCount}개·AI ${enabledAiCount}개 모듈 적용)`,
+        temp_avg: modFlags.past_climate_blend_avg !== false ? '18.5°C' : '18.1°C',
         rain_mm: '2mm',
         next_task_dday: '추천 진행일 대기',
         opt_temp: '18~20℃ 적온',
@@ -1775,6 +1801,12 @@ export default function UserIntroPage() {
         }
         if (Array.isArray(states.deleted_schedule_keys_v1)) {
           setDeletedScheduleKeys(states.deleted_schedule_keys_v1);
+        }
+        if (
+          states.schedule_generation_module_v1 &&
+          typeof states.schedule_generation_module_v1 === 'object'
+        ) {
+          saveScheduleGenerationModuleToStorage(states.schedule_generation_module_v1);
         }
         if (Array.isArray(states.mypage_cart_items_v1) && states.mypage_cart_items_v1.length > 0) {
           setMyCartItems(
@@ -4394,6 +4426,8 @@ export default function UserIntroPage() {
     setIsSavingDetailItem(true);
     setDetailSaveMessage('');
     try {
+      const modFlags = getEnabledModuleFlags(loadScheduleGenerationModuleFromStorage());
+      const shouldCascade = cascadeDeltaDays !== 0 && modFlags.cascade_stage_shift !== false;
       const updatedCurrent = {
         ...editDetailForm,
         start_date: curStart,
@@ -4403,7 +4437,7 @@ export default function UserIntroPage() {
       };
       const itemsToSave = [
         updatedCurrent,
-        ...(cascadeDeltaDays !== 0 ? cascadedSubsequentPreview : []),
+        ...(shouldCascade ? cascadedSubsequentPreview : []),
       ];
 
       const res = await fetch('/api/schedule-provision/update-item', {
@@ -4413,7 +4447,7 @@ export default function UserIntroPage() {
           request_no: provisionData?.activeRequest?.request_no || selectedRequestNo,
           cultivar_id: provisionData?.activeRequest?.cultivar_id || 'CV-BRM3',
           updated_item: updatedCurrent,
-          cascaded_items: cascadeDeltaDays !== 0 ? cascadedSubsequentPreview : [],
+          cascaded_items: shouldCascade ? cascadedSubsequentPreview : [],
           items_to_save: itemsToSave,
         }),
       });
@@ -4424,7 +4458,7 @@ export default function UserIntroPage() {
         preserveItemId: updatedCurrent.item_id,
       });
       setDetailSaveMessage(
-        cascadeDeltaDays !== 0
+        shouldCascade
           ? `추천 진행일(${formatYmdWithWeekday(curStart)}) 승인 완료! 이후 ${subsequentItems.length}개 생육과정이 기후 조건(최저·최고온도 회피 및 적정온도 추천)에 맞춘 새 일정으로 업데이트되었습니다.`
           : json.message || '생육과정 세부 정보가 저장되었습니다.'
       );

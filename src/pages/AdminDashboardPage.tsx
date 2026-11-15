@@ -2,6 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Link, getBasePath, encodeSharePayload } from '../router.tsx';
 import { getKoreaDongs } from '../../server/koreaAddresses.ts';
 import {
+  type ScheduleGenerationModuleConfig,
+  SCHEDULE_GEN_MODULE_SYNC_KEY,
+  createDefaultScheduleGenerationModuleConfig,
+  loadScheduleGenerationModuleFromStorage,
+  saveScheduleGenerationModuleToStorage,
+  normalizeScheduleGenerationModuleConfig,
+} from '../utils/scheduleGenerationModule.ts';
+import {
   LayoutDashboard,
   Layers,
   ListChecks,
@@ -39,6 +47,7 @@ type AdminTab =
   | 'dashboard'
   | 'schedule_requests'
   | 'schedule_provision'
+  | 'schedule_generation_module'
   | 'basic_crop_codes'
   | 'basic_growth_codes'
   | 'basic_growth_types'
@@ -84,7 +93,10 @@ export default function AdminDashboardPage() {
   // 다른 메뉴로 이동 시 기존에 열려 있던 서브메뉴 자동 닫기 (아코디언 동작)
   useEffect(() => {
     setIsScheduleMenuOpen(
-      activeTab === 'schedule_requests' || activeTab === 'schedule_provision' || activeTab === 'histories'
+      activeTab === 'schedule_requests' ||
+        activeTab === 'schedule_provision' ||
+        activeTab === 'schedule_generation_module' ||
+        activeTab === 'histories'
     );
     setIsBasicCodeOpen(
       activeTab === 'basic_crop_codes' ||
@@ -3795,6 +3807,8 @@ export default function AdminDashboardPage() {
     } else if (activeTab === 'schedule_provision') {
       loadScheduleProvisionData(provisionRequestNo || 'REQ-20261106-009');
       executeScheduleReqSearch();
+    } else if (activeTab === 'schedule_generation_module') {
+      loadScheduleGenModuleConfig();
     } else if (
       activeTab === 'basic_growth_types' ||
       activeTab === 'basic_growth_codes' ||
@@ -3828,6 +3842,100 @@ export default function AdminDashboardPage() {
       loadAllData();
     }
   }, [overview?.growthTypeCodes, overview?.nutrientCategoryCodes, overview?.pesticideCategoryCodes]);
+
+  // ==================== 재배 일정 생성 모듈 (schedule_generation_module) 상태 및 저장 핸들러 ====================
+  const [scheduleGenModuleConfig, setScheduleGenModuleConfig] = useState<ScheduleGenerationModuleConfig>(() =>
+    loadScheduleGenerationModuleFromStorage()
+  );
+  const [isSavingScheduleGenModule, setIsSavingScheduleGenModule] = useState<boolean>(false);
+
+  const loadScheduleGenModuleConfig = async () => {
+    try {
+      const res = await fetch('/api/schedule-generation-module').then((r) => r.json());
+      if (res?.config) {
+        const normalized = normalizeScheduleGenerationModuleConfig(res.config);
+        setScheduleGenModuleConfig(normalized);
+        saveScheduleGenerationModuleToStorage(normalized);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    loadScheduleGenModuleConfig();
+  }, []);
+
+  const handleToggleScheduleGenModuleItem = (id: string) => {
+    setScheduleGenModuleConfig((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        item.id === id ? { ...item, enabled: !item.enabled } : item
+      ),
+    }));
+  };
+
+  const handleSetAllScheduleGenModuleItems = (enabled: boolean, categoryFilter?: 'RULE_LOGIC' | 'AI_AGENT') => {
+    setScheduleGenModuleConfig((prev) => ({
+      ...prev,
+      items: prev.items.map((item) =>
+        !categoryFilter || item.category === categoryFilter ? { ...item, enabled } : item
+      ),
+    }));
+  };
+
+  const handleApplyScheduleGenModule = async () => {
+    const ruleItems = scheduleGenModuleConfig.items.filter((i) => i.category === 'RULE_LOGIC');
+    const aiItems = scheduleGenModuleConfig.items.filter((i) => i.category === 'AI_AGENT');
+    const enabledRuleCount = ruleItems.filter((i) => i.enabled).length;
+    const enabledAiCount = aiItems.filter((i) => i.enabled).length;
+    const enabledTotalCount = enabledRuleCount + enabledAiCount;
+
+    const confirmMessage = [
+      `선택하신 일정 생성 모듈을 적용하시겠습니까?`,
+      ``,
+      `• 정량 규칙 · 수식 로직 선택: ${enabledRuleCount} / ${ruleItems.length}개 선택`,
+      `• AI 에이전트 · AI 추론 모델 선택: ${enabledAiCount} / ${aiItems.length}개 선택`,
+      `• 총 적용 모듈: ${enabledTotalCount} / ${scheduleGenModuleConfig.items.length}개`,
+      ``,
+      `[확인]을 누르시면 설정이 즉시 저장되며, 이후 생성·산출되는 모든 재배일정에 선택된 모듈이 적용됩니다.`,
+    ].join('\n');
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setIsSavingScheduleGenModule(true);
+    try {
+      const savedLocal = saveScheduleGenerationModuleToStorage(scheduleGenModuleConfig);
+      setScheduleGenModuleConfig(savedLocal);
+
+      await fetch('/api/schedule-generation-module', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: savedLocal }),
+      }).catch(() => {});
+
+      await fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'CloudBae@naver.com',
+          state_key: SCHEDULE_GEN_MODULE_SYNC_KEY,
+          state_value: savedLocal,
+        }),
+      }).catch(() => {});
+
+      // 현재 일정 제공 데이터도 선택된 모듈 기준으로 즉시 재산출 갱신
+      await loadScheduleProvisionData(provisionRequestNo || 'REQ-20261106-009').catch(() => {});
+
+      showToast(
+        `선택모듈 적용 완료! (정량 규칙 로직 ${enabledRuleCount}/${ruleItems.length}개 · AI 에이전트 ${enabledAiCount}/${aiItems.length}개 저장 및 재배일정 생성 엔진 반영)`
+      );
+    } finally {
+      setIsSavingScheduleGenModule(false);
+    }
+  };
 
   // ==================== 재배 일정 제공 관리 (schedule_provision) 상태 및 로더 ====================
   const [provisionRequestNo, setProvisionRequestNo] = useState<string>('REQ-20261106-009');
@@ -5032,6 +5140,7 @@ export default function AdminDashboardPage() {
     { id: 'basic_seedling_codes', label: '2. 기초 코드 관리 > 모종 분류 기초 코드', sub: '모종(육묘) 기초 코드 · 카테고리명 · 설명 관리', icon: Sprout },
     { id: 'schedule_requests', label: '3. 재배 일정 관리 > 일정 요청', sub: '회원(CloudBae@naver.com (배철민)) 희망 작물·재배지 일정 요청', icon: ClipboardList },
     { id: 'schedule_provision', label: '3. 재배 일정 관리 > 일정 제공', sub: '요청 건별 재배지 365일 기후(온도·습도·강우량) 분석 작물 재배 일정', icon: ListChecks },
+    { id: 'schedule_generation_module', label: '3. 재배 일정 관리 > 일정 생성 모듈', sub: '정량 규칙 로직 선택 · AI 에이전트 선택 기반 재배일정 생성 모듈 관리', icon: Sliders },
     { id: 'histories', label: '3. 재배 일정 관리 > 재배일정·재배이력 관리', sub: '자동수집 이력 · 신뢰도 검수', icon: ClipboardList },
     { id: 'taxonomy', label: '2. 농작물 관리 - 재배 작물 관리', sub: '1·2단계 코드 선택 기반 품종 리스트 · 온도 · 발아 정보 관리', icon: Layers },
     { id: 'templates', label: '4. 농작물 관리 > 작물별 생육 과정 적산온도 관리', sub: '단계별 PGDD · 판단도움말 · 등록/수정/삭제', icon: ListChecks },
@@ -5791,6 +5900,7 @@ export default function AdminDashboardPage() {
           {navItems.map((item) => {
             if (
               item.id === 'schedule_provision' ||
+              item.id === 'schedule_generation_module' ||
               item.id === 'histories' ||
               item.id === 'basic_growth_codes' ||
               item.id === 'basic_growth_types' ||
@@ -6086,8 +6196,10 @@ export default function AdminDashboardPage() {
             if (item.id === 'schedule_requests') {
               const isReqSubActive = activeTab === 'schedule_requests';
               const isProvSubActive = activeTab === 'schedule_provision';
+              const isGenModSubActive = activeTab === 'schedule_generation_module';
               const isHistSubActive = activeTab === 'histories';
-              const isAnyScheduleActive = isReqSubActive || isProvSubActive || isHistSubActive;
+              const isAnyScheduleActive =
+                isReqSubActive || isProvSubActive || isGenModSubActive || isHistSubActive;
               return (
                 <div key="schedule_menu_group" className="space-y-1">
                   {/* 상위 메뉴: 3. 재배 일정 관리 */}
@@ -6113,7 +6225,7 @@ export default function AdminDashboardPage() {
                       <div className="min-w-0">
                         <div className="text-xs font-bold leading-tight truncate">3. 재배 일정 관리</div>
                         <div className="text-[10px] font-normal mt-0.5 truncate text-slate-500">
-                          일정 요청 · 일정 제공 · 재배일정·재배이력 관리
+                          일정 요청 · 일정 제공 · 일정 생성 모듈 · 재배이력 관리
                         </div>
                       </div>
                     </div>
@@ -6124,7 +6236,7 @@ export default function AdminDashboardPage() {
                     )}
                   </button>
 
-                  {/* 서브 메뉴 목록: 일정 요청 / 일정 제공 / 재배일정·재배이력 관리 (번호 없음) */}
+                  {/* 서브 메뉴 목록: 일정 요청 / 일정 제공 / 일정 생성 모듈 / 재배일정·재배이력 관리 (번호 없음) */}
                   {isScheduleMenuOpen && (
                     <div className="ml-3 p-1.5 rounded-xl bg-[#F3FAF7] border border-emerald-200/80 space-y-1">
                       <button
@@ -6175,6 +6287,32 @@ export default function AdminDashboardPage() {
                             }`}
                           >
                             재배 일정 제공 관리
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('schedule_generation_module')}
+                        className={`w-full text-left px-3 py-2 rounded-lg flex items-start gap-2.5 font-normal transition ${
+                          isGenModSubActive
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200/70'
+                        }`}
+                      >
+                        <Sliders
+                          className={`w-4 h-4 mt-0.5 shrink-0 ${
+                            isGenModSubActive ? 'text-white' : 'text-emerald-600'
+                          }`}
+                        />
+                        <div className="min-w-0 font-normal">
+                          <div className="text-xs font-semibold leading-tight truncate">└ 일정 생성 모듈</div>
+                          <div
+                            className={`text-[10px] font-normal mt-0.5 truncate ${
+                              isGenModSubActive ? 'text-emerald-50' : 'text-slate-500'
+                            }`}
+                          >
+                            정량 규칙 로직 선택 · AI 에이전트 선택
                           </div>
                         </div>
                       </button>
@@ -9405,6 +9543,342 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
+
+          {/* ==================== 3-3. 재배 일정 관리 > 일정 생성 모듈 (정량 규칙 로직 선택 + AI 에이전트 선택) ==================== */}
+          {activeTab === 'schedule_generation_module' &&
+            (() => {
+              const ruleItems = scheduleGenModuleConfig.items.filter((i) => i.category === 'RULE_LOGIC');
+              const aiItems = scheduleGenModuleConfig.items.filter((i) => i.category === 'AI_AGENT');
+              const enabledRuleCount = ruleItems.filter((i) => i.enabled).length;
+              const enabledAiCount = aiItems.filter((i) => i.enabled).length;
+              const totalCount = scheduleGenModuleConfig.items.length;
+              const enabledTotalCount = enabledRuleCount + enabledAiCount;
+              const isAllEnabled = enabledTotalCount === totalCount;
+              const isAllRulesEnabled = enabledRuleCount === ruleItems.length;
+              const isAllAiEnabled = enabledAiCount === aiItems.length;
+
+              return (
+                <div className="space-y-6">
+                  {/* 상단 헤더 배너 */}
+                  <div className="bg-emerald-950 text-white rounded-2xl p-6 shadow-md border border-emerald-800/70 space-y-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold tracking-wider uppercase">
+                            3. 재배 일정 관리 &gt; 일정 생성 모듈
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-teal-500/20 border border-teal-400/40 text-teal-200 text-[11px] font-bold">
+                            정량 규칙 · 수식 로직 ({enabledRuleCount}/{ruleItems.length}) + AI 에이전트 ({enabledAiCount}/{aiItems.length})
+                          </span>
+                          <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200 text-[11px] font-semibold">
+                            기본값: 전체 선택(10/10)
+                          </span>
+                        </div>
+                        <h2 className="text-xl font-extrabold mt-2 tracking-tight">
+                          재배일정 생성 모듈 설정 — ① 정량 규칙 · 수식 로직 선택 &amp; ② AI 에이전트 · AI 추론 모델 선택
+                        </h2>
+                        <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                          재배일정 생성 시 적용되는 <strong className="text-emerald-300">정량 규칙·수식 로직(7개 항목)</strong>과{' '}
+                          <strong className="text-indigo-300">AI 에이전트·AI 추론 모델(3개 항목)</strong>을 좌측 체크박스로 개별 선택/해제할 수 있습니다.
+                          기본값은 전체 선택 상태이며, 하단 <strong className="text-amber-300">[선택모듈 적용]</strong> 버튼 클릭 시 재확인 후 저장되어 이후 모든 재배일정 산출에 즉시 반영됩니다.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllScheduleGenModuleItems(true)}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer flex items-center gap-1.5 ${
+                            isAllEnabled
+                              ? 'bg-emerald-600 text-white border-emerald-400 shadow-xs'
+                              : 'bg-slate-900 hover:bg-slate-800 text-emerald-300 border-slate-700'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          전체 선택 (기본값 복원)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllScheduleGenModuleItems(false)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          전체 해제
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleApplyScheduleGenModule}
+                          disabled={isSavingScheduleGenModule}
+                          className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold shadow-sm transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <Check className="w-4 h-4" />
+                          선택모듈 적용 ({enabledTotalCount}/{totalCount})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 요약 지표 바 */}
+                    <div className="grid sm:grid-cols-4 gap-3 pt-3 border-t border-white/10 text-xs">
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                        <div className="text-slate-400 text-[11px]">총 선택된 생성 모듈</div>
+                        <div className="text-lg font-extrabold text-white mt-0.5">
+                          {enabledTotalCount} <span className="text-xs font-normal text-slate-300">/ {totalCount}개 활성화</span>
+                        </div>
+                      </div>
+                      <div className="bg-emerald-900/40 rounded-xl p-3 border border-emerald-500/30">
+                        <div className="text-emerald-300 text-[11px] font-bold">① 정량 규칙 · 수식 로직 선택</div>
+                        <div className="text-lg font-extrabold text-emerald-200 mt-0.5">
+                          {enabledRuleCount} <span className="text-xs font-normal text-emerald-300/80">/ {ruleItems.length}개 선택됨</span>
+                        </div>
+                      </div>
+                      <div className="bg-indigo-900/40 rounded-xl p-3 border border-indigo-400/30">
+                        <div className="text-indigo-200 text-[11px] font-bold">② AI 에이전트 · AI 추론 모델 선택</div>
+                        <div className="text-lg font-extrabold text-indigo-100 mt-0.5">
+                          {enabledAiCount} <span className="text-xs font-normal text-indigo-300/80">/ {aiItems.length}개 선택됨</span>
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                        <div className="text-slate-400 text-[11px]">최근 모듈 저장·적용 일시</div>
+                        <div className="text-sm font-bold text-amber-300 mt-1 font-mono">
+                          {scheduleGenModuleConfig.updated_at || '기본값 (전체 선택)'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 섹션 1: 정량 규칙 · 수식 로직 선택 (RULE_LOGIC) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div className="bg-emerald-50/80 px-6 py-4 border-b border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-extrabold text-sm shrink-0 shadow-xs">
+                          1
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-extrabold text-slate-900">
+                              정량 규칙 · 수식 로직 선택 (Rule-based Deterministic Module)
+                            </h3>
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold">
+                              {enabledRuleCount} / {ruleItems.length}개 선택
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            기후 데이터 대입 수식, 작물별 한계·최적·발아온도 필터, 지역별 목표 적산온도(PGDD), 토양·지형 보정 및 연쇄 시프트 규칙입니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllScheduleGenModuleItems(!isAllRulesEnabled, 'RULE_LOGIC')}
+                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition cursor-pointer"
+                        >
+                          {isAllRulesEnabled ? '로직 전체 해제' : '로직 전체 선택'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-slate-200">
+                      {ruleItems.map((item, idx) => (
+                        <label
+                          key={item.id}
+                          onClick={() => handleToggleScheduleGenModuleItem(item.id)}
+                          className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
+                            item.enabled
+                              ? 'bg-white hover:bg-emerald-50/40'
+                              : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
+                          }`}
+                        >
+                          <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={item.enabled}
+                              onChange={() => handleToggleScheduleGenModuleItem(item.id)}
+                              className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-mono font-extrabold text-xs border border-emerald-300">
+                                  {item.code}
+                                </span>
+                                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200">
+                                  {item.badge}
+                                </span>
+                                <span className="text-sm font-extrabold text-slate-900">
+                                  {idx + 1}. {item.title}
+                                </span>
+                              </div>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                                  item.enabled
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                    : 'bg-slate-200 text-slate-600 border-slate-300'
+                                }`}
+                              >
+                                {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+
+                            <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                              <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700">
+                                <span className="font-extrabold text-emerald-800 mr-1.5">[적용 수식·기준]</span>
+                                <span className="font-mono">{item.formula}</span>
+                              </div>
+                              <div className="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900">
+                                <span className="font-extrabold text-amber-800 mr-1.5">[체크 해제 시 동작]</span>
+                                <span>{item.impact_when_disabled}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 섹션 2: AI 에이전트 · AI 추론 모델 선택 (AI_AGENT) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                    <div className="bg-indigo-50/80 px-6 py-4 border-b border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-extrabold text-sm shrink-0 shadow-xs">
+                          2
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-base font-extrabold text-slate-900">
+                              AI 에이전트 · AI 추론 모델 선택 (AI Agent &amp; Heuristic Optimization Module)
+                            </h3>
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 text-xs font-bold">
+                              {enabledAiCount} / {aiItems.length}개 선택
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-0.5">
+                            다변량 생육속도(AI-PGDD) 가중치 추론, 작업별 강우·과습·한파 회피 최적일 탐색 에이전트, 생육과정별 1종 맞춤 농자재 추천 에이전트입니다.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSetAllScheduleGenModuleItems(!isAllAiEnabled, 'AI_AGENT')}
+                          className="px-3 py-1.5 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 border border-indigo-300 text-xs font-bold transition cursor-pointer"
+                        >
+                          {isAllAiEnabled ? 'AI 에이전트 전체 해제' : 'AI 에이전트 전체 선택'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-slate-200">
+                      {aiItems.map((item, idx) => (
+                        <label
+                          key={item.id}
+                          onClick={() => handleToggleScheduleGenModuleItem(item.id)}
+                          className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
+                            item.enabled
+                              ? 'bg-white hover:bg-indigo-50/40'
+                              : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
+                          }`}
+                        >
+                          <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={item.enabled}
+                              onChange={() => handleToggleScheduleGenModuleItem(item.id)}
+                              className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                            />
+                          </div>
+
+                          <div className="flex-1 min-w-0 space-y-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-mono font-extrabold text-xs border border-indigo-300">
+                                  {item.code}
+                                </span>
+                                <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
+                                  {item.badge}
+                                </span>
+                                <span className="text-sm font-extrabold text-slate-900">
+                                  {idx + 1}. {item.title}
+                                </span>
+                              </div>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                                  item.enabled
+                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                                    : 'bg-slate-200 text-slate-600 border-slate-300'
+                                }`}
+                              >
+                                {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+
+                            <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+                              <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700">
+                                <span className="font-extrabold text-indigo-800 mr-1.5">[AI 모델·알고리즘]</span>
+                                <span className="font-mono">{item.formula}</span>
+                              </div>
+                              <div className="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900">
+                                <span className="font-extrabold text-amber-800 mr-1.5">[체크 해제 시 동작]</span>
+                                <span>{item.impact_when_disabled}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 하단 고정 액션 바: 선택모듈 적용 버튼 */}
+                  <div className="bg-white rounded-2xl border-2 border-emerald-600/80 p-5 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-900 font-extrabold text-xs">
+                          현재 선택 현황: 총 {enabledTotalCount} / {totalCount}개 모듈
+                        </span>
+                        <span className="text-xs font-bold text-slate-700">
+                          (정량 규칙 로직 <strong className="text-emerald-700">{enabledRuleCount}/{ruleItems.length}개</strong> · AI 에이전트{' '}
+                          <strong className="text-indigo-700">{enabledAiCount}/{aiItems.length}개</strong>)
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        우측 <strong>[선택모듈 적용]</strong> 버튼을 클릭하면 확인 창을 거쳐 모듈 설정이 영구 저장되며, 재배일정 생성 및 산출 시 저장된 모듈만 적용됩니다.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const def = createDefaultScheduleGenerationModuleConfig();
+                          setScheduleGenModuleConfig(def);
+                          showToast('전체 선택(기본값 10/10개) 상태로 체크박스가 복원되었습니다. [선택모듈 적용]을 눌러 저장하세요.');
+                        }}
+                        className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <RotateCcw className="w-4 h-4" />
+                        기본값(전체선택) 복원
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleApplyScheduleGenModule}
+                        disabled={isSavingScheduleGenModule}
+                        className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-md transition cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        {isSavingScheduleGenModule ? '모듈 저장 중...' : '선택모듈 적용'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
           {/* ==================== 2단계 & 3단계: [작물 재배 일정] 및 [세부 정보] 모달리스 창 (일정 요청 & 일정 제공 공용) ==================== */}
           {(activeTab === 'schedule_requests' || activeTab === 'schedule_provision') && (

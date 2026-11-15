@@ -9,6 +9,14 @@ import {
   generateKoreaAddressDataset,
   generateKoreaRoadAndJibunDatasets,
 } from '../server/koreaAddresses.ts';
+import {
+  SCHEDULE_GEN_MODULE_STORAGE_KEY,
+  SCHEDULE_GEN_MODULE_SYNC_KEY,
+  normalizeScheduleGenerationModuleConfig,
+  loadScheduleGenerationModuleFromStorage,
+  saveScheduleGenerationModuleToStorage,
+  getEnabledModuleFlags,
+} from './utils/scheduleGenerationModule.ts';
 
 let cachedKoreaAddresses: ReturnType<typeof generateKoreaAddressDataset> | null = null;
 function getKoreaAddressesCache() {
@@ -1369,6 +1377,9 @@ if (typeof window !== 'undefined') {
               JSON.stringify(states.stage_purchase_history_v1)
             );
           }
+          if (states.schedule_generation_module_v1 && typeof states.schedule_generation_module_v1 === 'object') {
+            saveScheduleGenerationModuleToStorage(states.schedule_generation_module_v1);
+          }
         }
       } catch {
         // ignore network errors
@@ -1394,6 +1405,8 @@ if (typeof window !== 'undefined') {
             localStorage.setItem('hanfarm_mypage_cart_items_v1', jsonStr);
           } else if (stateKey === 'stage_purchase_history_v1') {
             localStorage.setItem('hanfarm_stage_purchase_history_v1', jsonStr);
+          } else if (stateKey === SCHEDULE_GEN_MODULE_SYNC_KEY) {
+            localStorage.setItem(SCHEDULE_GEN_MODULE_STORAGE_KEY, jsonStr);
           }
         } catch {
           // ignore
@@ -1410,6 +1423,44 @@ if (typeof window !== 'undefined') {
         );
       }
       return jsonResponse({ ok: true, synced, state_key: stateKey, updated_at: nowStr });
+    }
+
+    if (p === '/api/schedule-generation-module' && method === 'GET') {
+      let config = loadScheduleGenerationModuleFromStorage();
+      try {
+        const remoteRows = await sbSelect(
+          'member_ui_sync_state',
+          `select=*&state_key=eq.${encodeURIComponent(SCHEDULE_GEN_MODULE_SYNC_KEY)}`
+        );
+        if (Array.isArray(remoteRows) && remoteRows[0]?.state_json) {
+          const parsed = JSON.parse(remoteRows[0].state_json);
+          config = saveScheduleGenerationModuleToStorage(parsed);
+        }
+      } catch {
+        // ignore network errors
+      }
+      return jsonResponse({ ok: true, config });
+    }
+
+    if (p === '/api/schedule-generation-module' && method === 'POST') {
+      const body = parseBody(init);
+      const nowStr = getKstNowStr();
+      const nextConfig = saveScheduleGenerationModuleToStorage({
+        ...(body.config || body),
+        updated_at: nowStr,
+        updated_by: String(body.updated_by || body.config?.updated_by || '관리자 (선택모듈 적용)'),
+      });
+      await sbUpsert(
+        'member_ui_sync_state',
+        {
+          state_key: SCHEDULE_GEN_MODULE_SYNC_KEY,
+          member_email: 'CloudBae@naver.com',
+          state_json: JSON.stringify(nextConfig),
+          updated_at: nowStr,
+        },
+        'state_key'
+      );
+      return jsonResponse({ ok: true, config: nextConfig });
     }
 
     // Supabase DB에서 최신 회원·재배지·작물플랜·주문내역·삭제키를 실시간 조회하여 snap.mypage 및 localStorage 동기화
@@ -2676,18 +2727,84 @@ if (typeof window !== 'undefined') {
         ];
       };
 
+      const genModuleConfig = loadScheduleGenerationModuleFromStorage();
+      const modFlags = getEnabledModuleFlags(genModuleConfig);
+      baseProv.appliedGenerationModule = genModuleConfig;
+
+      const shiftYmdByDays = (ymd: string, deltaDays: number): string => {
+        if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd) || deltaDays === 0) return ymd;
+        const [y, m, d] = ymd.split('-').map(Number);
+        const dt = new Date(Date.UTC(y || 2026, (m || 8) - 1, d || 25));
+        dt.setUTCDate(dt.getUTCDate() + deltaDays);
+        return dt.toISOString().slice(0, 10);
+      };
+
+      const applyModuleToScheduleItem = (it: any) => {
+        let dayOffset = 0;
+        const stepOrder = Number(it.step_order || 1);
+        const isSeedReq = String(activeReq.planting_method || '').includes('씨') || String(activeReq.planting_method || '').includes('직파');
+        if (!isSeedReq && modFlags.seedling_opt_temp_filter === false) {
+          dayOffset -= 1;
+        }
+        if (isSeedReq && modFlags.seed_germination_early_start === false) {
+          dayOffset += 2;
+        }
+        if (modFlags.soil_topo_microclimate_offset === false && stepOrder <= 3) {
+          dayOffset += 1;
+        }
+        if (modFlags.ai_multivariate_pgdd_model === false && stepOrder >= 8) {
+          dayOffset += Math.min(3, Math.floor((stepOrder - 7) / 3));
+        }
+        if (modFlags.ai_work_date_optimizer === false) {
+          dayOffset += stepOrder % 2 === 0 ? -1 : 0;
+        }
+
+        const customOverlay = customItemMap[it.item_id] || {};
+        const hasCustomStart = Boolean(customOverlay.start_date);
+        const adjStartDate = hasCustomStart
+          ? customOverlay.start_date
+          : shiftYmdByDays(String(it.start_date || ''), dayOffset);
+        const adjEndDate = customOverlay.end_date
+          ? customOverlay.end_date
+          : shiftYmdByDays(String(it.end_date || it.start_date || ''), dayOffset);
+
+        const activeRuleLabels: string[] = [];
+        if (modFlags.past_climate_blend_avg) activeRuleLabels.push('작년+올해예측 평균(BLENDED_AVG)');
+        else activeRuleLabels.push('작년기후 단독(예측혼합 해제)');
+        if (modFlags.regional_pgdd_matching) activeRuleLabels.push('지역별 PGDD 매칭');
+        if (modFlags.ai_multivariate_pgdd_model) activeRuleLabels.push('AI-PGDD 다변량 추론');
+        if (modFlags.ai_work_date_optimizer) activeRuleLabels.push('AI 작업적기 보정');
+
+        const baseReason = String(customOverlay.ai_analysis_reason || it.ai_analysis_reason || '');
+        const modulePrefix = `[적용모듈: ${activeRuleLabels.join(' · ')}] `;
+
+        const mergedItem = {
+          ...it,
+          ...customOverlay,
+          start_date: adjStartDate,
+          recommended_date: adjStartDate,
+          end_date: adjEndDate,
+          ai_analysis_reason: baseReason.startsWith('[적용모듈:')
+            ? baseReason
+            : `${modulePrefix}${baseReason}`,
+        };
+        const mats = normalizeStageSingleMaterial(mergedItem);
+        if (modFlags.ai_stage_agro_recommender === false && mats.length > 0) {
+          mats[0] = {
+            ...mats[0],
+            selection_rationale: `[표준 자재 매칭 — AI 소견서 생성 미적용] ${mats[0].rationale_stage || ''}`,
+          };
+        }
+        return {
+          ...mergedItem,
+          materials: mats,
+        };
+      };
+
       if (Array.isArray(baseProv.scheduleItems)) {
-        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) => {
-          const customOverlay = customItemMap[it.item_id] || {};
-          const mergedItem = {
-            ...it,
-            ...customOverlay,
-          };
-          return {
-            ...mergedItem,
-            materials: normalizeStageSingleMaterial(mergedItem),
-          };
-        });
+        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) =>
+          applyModuleToScheduleItem(it)
+        );
       }
       if (Array.isArray(baseProv.stageGroups)) {
         const byItemId = new Map<string, any>();
@@ -2698,12 +2815,7 @@ if (typeof window !== 'undefined') {
             ? grp.items.map((gi: any) => {
                 const fromSchedule = byItemId.get(gi.item_id);
                 if (fromSchedule) return fromSchedule;
-                const customOverlay = customItemMap[gi.item_id] || {};
-                const mergedGi = { ...gi, ...customOverlay };
-                return {
-                  ...mergedGi,
-                  materials: normalizeStageSingleMaterial(mergedGi),
-                };
+                return applyModuleToScheduleItem(gi);
               })
             : [],
         }));

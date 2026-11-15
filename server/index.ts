@@ -26,6 +26,12 @@ import {
   evaluateCategoryRecommendations,
   selectScheduleStageMaterials,
 } from './agroRecommendationEngine.ts';
+import {
+  SCHEDULE_GEN_MODULE_SYNC_KEY,
+  createDefaultScheduleGenerationModuleConfig,
+  normalizeScheduleGenerationModuleConfig,
+  getEnabledModuleFlags,
+} from '../src/utils/scheduleGenerationModule.ts';
 
 initDatabase();
 
@@ -5368,9 +5374,83 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // 2-1-B. 재배 일정 생성 모듈 설정(정량 규칙 로직 선택 + AI 에이전트 선택) 조회·저장 API
+    if (pathname === '/api/schedule-generation-module' && req.method === 'GET') {
+      let config = createDefaultScheduleGenerationModuleConfig();
+      try {
+        const row = db
+          .prepare('SELECT state_json FROM member_ui_sync_state WHERE state_key = ? LIMIT 1')
+          .get(SCHEDULE_GEN_MODULE_SYNC_KEY) as { state_json?: string } | undefined;
+        if (row?.state_json) {
+          config = normalizeScheduleGenerationModuleConfig(JSON.parse(row.state_json));
+        } else {
+          const remoteRows = await supabaseRestSelect(
+            'member_ui_sync_state',
+            `state_key=eq.${encodeURIComponent(SCHEDULE_GEN_MODULE_SYNC_KEY)}`
+          );
+          if (Array.isArray(remoteRows) && remoteRows[0]?.state_json) {
+            config = normalizeScheduleGenerationModuleConfig(JSON.parse(remoteRows[0].state_json));
+            db.prepare(
+              'INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at) VALUES (?, ?, ?, ?)'
+            ).run(
+              SCHEDULE_GEN_MODULE_SYNC_KEY,
+              'CloudBae@naver.com',
+              JSON.stringify(config),
+              config.updated_at
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
+      sendJson(res, { ok: true, config });
+      return;
+    }
+
+    if (pathname === '/api/schedule-generation-module' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const rawConfig = body?.config || body;
+      const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+      const normalized = normalizeScheduleGenerationModuleConfig({
+        ...rawConfig,
+        updated_at: nowStr,
+      });
+      const jsonStr = JSON.stringify(normalized);
+      db.prepare(`
+        INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at)
+        VALUES (?, ?, ?, ?)
+      `).run(SCHEDULE_GEN_MODULE_SYNC_KEY, 'CloudBae@naver.com', jsonStr, nowStr);
+      await supabaseRestUpsert(
+        'member_ui_sync_state',
+        [
+          {
+            state_key: SCHEDULE_GEN_MODULE_SYNC_KEY,
+            member_email: 'CloudBae@naver.com',
+            state_json: jsonStr,
+            updated_at: nowStr,
+          },
+        ],
+        'state_key'
+      ).catch(() => {});
+      sendJson(res, { ok: true, config: normalized });
+      return;
+    }
+
     // 2-2. 재배 일정 제공 관리 API (재배 일정 요청 기본 데이터 + 재배지 365일 기후 데이터[온도·습도·강우량] 연동 생육과정 일정 산출)
     if (pathname === '/api/schedule-provision' && req.method === 'GET') {
       const requestedNo = (parsedUrl.searchParams.get('request_no') || '').trim();
+      let genModuleConfig = createDefaultScheduleGenerationModuleConfig();
+      try {
+        const modRow = db
+          .prepare('SELECT state_json FROM member_ui_sync_state WHERE state_key = ? LIMIT 1')
+          .get(SCHEDULE_GEN_MODULE_SYNC_KEY) as { state_json?: string } | undefined;
+        if (modRow?.state_json) {
+          genModuleConfig = normalizeScheduleGenerationModuleConfig(JSON.parse(modRow.state_json));
+        }
+      } catch {
+        // ignore
+      }
+      const modFlags = getEnabledModuleFlags(genModuleConfig);
 
       // 전체 재배 일정 요청 목록 조회 (가을배추 불암3호 우선 정렬)
       const allRequests = db
@@ -5621,7 +5701,9 @@ const server = http.createServer(async (req, res) => {
           : 1.0;
 
       const maturityScale =
-        reqCvId === 'CV-DUBAEK'
+        modFlags.regional_pgdd_matching === false
+          ? 1.0
+          : reqCvId === 'CV-DUBAEK'
           ? 1.12
           : reqCvId === 'CV-SEOLBONG'
           ? 0.89
@@ -5635,15 +5717,18 @@ const server = http.createServer(async (req, res) => {
           ? 1.03
           : defaultMaturityScale;
 
-      // 토양검정 DB (cultivation_soil) 연동 보정 계수 (산도 pH, 유기물, 배수등급 반영)
+      // 토양검정 DB (cultivation_soil) 연동 보정 계수 (산도 pH, 유기물, 배수등급 반영 — RULE-06 미적용 시 보정 비활성)
       const soilPh = Number(activeRequest.soil_ph ?? 6.2);
       const soilOm = Number(activeRequest.organic_matter_g_kg ?? 24);
       const drainageClass = String(activeRequest.drainage_class || '양호');
       // 산성 토양(pH < 5.9)은 석회 시용 후 가스 피해 방지를 위해 정식 전 토양 반응 일수(+3일) 추가 확보
-      const soilLimeReactionDays = soilPh < 5.9 ? 3 : soilPh < 6.1 ? 1 : 0;
+      const soilLimeReactionDays =
+        modFlags.soil_topo_microclimate_offset === false ? 0 : soilPh < 5.9 ? 3 : soilPh < 6.1 ? 1 : 0;
       // 유기물 풍부(>=28g/kg) 및 배수 양호 포전은 뿌리 활착·양분 흡수 효율 +3% 가속, 배수 불량 포전은 강우 시 과습 감속
-      const soilFertilityFactor = soilOm >= 28 ? 1.03 : soilOm < 18 ? 0.97 : 1.0;
-      const soilDrainagePenalty = drainageClass.includes('불량') ? 0.94 : 1.0;
+      const soilFertilityFactor =
+        modFlags.soil_topo_microclimate_offset === false ? 1.0 : soilOm >= 28 ? 1.03 : soilOm < 18 ? 0.97 : 1.0;
+      const soilDrainagePenalty =
+        modFlags.soil_topo_microclimate_offset === false ? 1.0 : drainageClass.includes('불량') ? 0.94 : 1.0;
 
       // 농작물·품종 등록 정보(최저온도, 최고온도, 최적온도, 작물구분[씨/모종], 적정발아온도) 연동
       const cropMinTemp = Number(cvInfo?.min_temp ?? cropInfo?.min_temp ?? sysInfo?.limit_temp_min ?? 5.0);
@@ -5696,20 +5781,30 @@ const server = http.createServer(async (req, res) => {
       const isHighland =
         String(activeRequest.cultivation_type || '').includes('고랭지') ||
         String(activeRequest.eupmyeondong || '').includes('대관령');
-      const mulchingOffset = isFacility ? 3.5 : Number(activeRequest.mulching_yn) ? 1.5 : 0.0;
+      const mulchingOffset =
+        modFlags.soil_topo_microclimate_offset === false
+          ? 0.0
+          : isFacility
+          ? 3.5
+          : Number(activeRequest.mulching_yn)
+          ? 1.5
+          : 0.0;
 
-      // 지역·지형(해발고도·분지·해안·산간) 미기후 보정치 (100m당 -0.6℃ 기온감률 및 지형 특성 반영)
-      const regionalTopoOffset = isHighland
-        ? -2.8 // 강원 평창 대관령 등 해발 700m 고랭지 기온감률 보정
-        : String(activeRequest.eupmyeondong || '').includes('산척')
-        ? -0.9 // 충주 산척면 산간 분지(해발 320m) vs 단월동 강변 평야(해발 115m) 기온차
-        : String(activeRequest.sigungu || '').includes('안동') || String(activeRequest.sigungu || '').includes('이천')
-        ? -0.5 // 내륙 분지 야간 복사냉각 보정
-        : String(activeRequest.sigungu || '').includes('해남') || String(activeRequest.sigungu || '').includes('밀양')
-        ? 0.6 // 남부 해안·온난지 보정
-        : String(activeRequest.sido || '').includes('제주')
-        ? 1.2 // 제주 해양성 난대 기후 보정
-        : 0.0;
+      // 지역·지형(해발고도·분지·해안·산간) 미기후 보정치 (100m당 -0.6℃ 기온감률 및 지형 특성 반영 — RULE-06 미적용 시 0.0)
+      const regionalTopoOffset =
+        modFlags.soil_topo_microclimate_offset === false
+          ? 0.0
+          : isHighland
+          ? -2.8 // 강원 평창 대관령 등 해발 700m 고랭지 기온감률 보정
+          : String(activeRequest.eupmyeondong || '').includes('산척')
+          ? -0.9 // 충주 산척면 산간 분지(해발 320m) vs 단월동 강변 평야(해발 115m) 기온차
+          : String(activeRequest.sigungu || '').includes('안동') || String(activeRequest.sigungu || '').includes('이천')
+          ? -0.5 // 내륙 분지 야간 복사냉각 보정
+          : String(activeRequest.sigungu || '').includes('해남') || String(activeRequest.sigungu || '').includes('밀양')
+          ? 0.6 // 남부 해안·온난지 보정
+          : String(activeRequest.sido || '').includes('제주')
+          ? 1.2 // 제주 해양성 난대 기후 보정
+          : 0.0;
 
       // 날짜 유틸리티
       const parseDateUTC = (ymd: string): Date => {
@@ -5735,7 +5830,7 @@ const server = http.createServer(async (req, res) => {
           ? futureByYmd.get(ymd) || (ymd.startsWith('2026-') ? futureByMmDd2026.get(mmdd) : undefined)
           : undefined;
 
-        if (past && future) {
+        if (past && future && modFlags.past_climate_blend_avg !== false) {
           // [규칙 1] 같은 날짜에 작년 기후 데이터 + 올해 예측 기후 데이터(현재 기준 +6개월 이내)가 모두 존재할 때: 두 기후 데이터의 평균값 대입
           const blendedMin = Number(((past.temp_min + future.temp_min) / 2 + regionalTopoOffset).toFixed(1));
           const blendedMax = Number(((past.temp_max + future.temp_max) / 2 + regionalTopoOffset).toFixed(1));
@@ -5767,7 +5862,7 @@ const server = http.createServer(async (req, res) => {
           };
         }
 
-        if (past) {
+        if (past && (modFlags.unforecast_past_fallback !== false || Boolean(future))) {
           // [규칙 2] 같은 날짜의 올해 예측 기후 데이터가 없을 때 (+6개월 이후 미예측 날짜 · 12/31 안쪽 날짜 포함): 작년 기후 데이터 단독 대입
           const adjPastAvg = Number((past.temp_avg + regionalTopoOffset).toFixed(1));
           const adjPastMin = Number((past.temp_min + regionalTopoOffset).toFixed(1));
@@ -5866,6 +5961,10 @@ const server = http.createServer(async (req, res) => {
         const rawGdd = Math.max(0, clampedTemp - baseTempTb);
         if (rawGdd <= 0) return 0;
 
+        if (modFlags.ai_multivariate_pgdd_model === false) {
+          return Number((rawGdd * pgddConversionFactor).toFixed(2));
+        }
+
         // 작물별 생육적온(optTempMin ~ optTempMax) 구간 동화효율 및 고온기 호흡소모 감속 계수
         let thermalEfficiency = 1.0;
         if (fieldTemp >= optTempMin && fieldTemp <= optTempMax) {
@@ -5903,6 +6002,13 @@ const server = http.createServer(async (req, res) => {
         searchRange: number,
         mode: 'DRY_WORK' | 'MULCH_OR_PLANT' | 'TOPDRESS' | 'HARVEST'
       ): { bestDate: string; shiftDays: number; reason: string } => {
+        if (modFlags.ai_work_date_optimizer === false) {
+          return {
+            bestDate: baseYmd,
+            shiftDays: 0,
+            reason: 'AI 농작업 적기 탐색 미적용 (적산온도 도달 기준일 그대로 적용)',
+          };
+        }
         let bestDate = baseYmd;
         let bestScore = -9999;
         let bestShift = 0;
@@ -5982,6 +6088,13 @@ const server = http.createServer(async (req, res) => {
 
         // 작물구분이 '씨'(직파)인 경우: 평균 온도가 적정발아온도(germTempMin) 이상인 빠른 시기(조기 구간 우선)에 평균날씨(무강우·적습)를 선택
         if (cropPlantingType === '씨') {
+          if (modFlags.seed_germination_early_start === false) {
+            return {
+              bestDate: baseDesiredYmd,
+              shiftDays: 0,
+              reason: `작물구분(씨) 발아온도 조기 시작 규칙 미적용 (희망 시작일 ${baseDesiredYmd} 그대로 적용)`,
+            };
+          }
           let chosenSeedDate = '';
           let chosenSeedOffset = 0;
           let fallbackBestDate = baseDesiredYmd;
@@ -6025,6 +6138,13 @@ const server = http.createServer(async (req, res) => {
         }
 
         // 작물구분이 '모종'인 경우(규칙 1): 작년 기준 최저온도 미만·최고온도 초과 기간 제외 후 최적 예상 온도(optTempMin~optTempMax)일 때 첫 실질적 생육 작업 시작
+        if (modFlags.seedling_opt_temp_filter === false) {
+          return {
+            bestDate: baseDesiredYmd,
+            shiftDays: 0,
+            reason: `모종(작물) 한계온도 제외 및 최적온도 시작 규칙 미적용 (희망 시작일 ${baseDesiredYmd} 그대로 적용)`,
+          };
+        }
         let bestDate = baseDesiredYmd;
         let bestScore = -9999;
         let bestShift = 0;
@@ -8365,6 +8485,7 @@ const server = http.createServer(async (req, res) => {
         scheduleItems,
         availableMaterialsCatalog: enrichMaterials(allMaterials.map((m) => m.material_id)),
         patentEngine,
+        appliedGenerationModule: genModuleConfig,
       });
       return;
     }
