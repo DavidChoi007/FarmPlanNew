@@ -229,9 +229,9 @@ export default function UserIntroPage() {
     new_password_confirm: '',
   });
 
-  // 마이페이지 데이터 상태 (재배지 등록, 재배작물 등록, 작물재배현황 및 진행율, 농자재 구매 내역, 장바구니, 농자재 구매)
+  // 마이페이지 데이터 상태 (재배지 등록, 재배작물 등록, 작물재배현황 및 진행율, 장바구니, 농자재 구매)
   const [myPageTab, setMyPageTab] = useState<
-    'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'PURCHASE_HISTORY' | 'CART' | 'AGRO_PURCHASE' | 'PROFILE'
+    'ALL' | 'FARMLAND' | 'CROPS' | 'PROGRESS' | 'CART' | 'AGRO_PURCHASE' | 'PROFILE'
   >('FARMLAND');
   const [isMobileGnbDrawerOpen, setIsMobileGnbDrawerOpen] = useState<boolean>(false);
   const [isMyPageMobileDrawerOpen, setIsMyPageMobileDrawerOpen] = useState<boolean>(false);
@@ -7875,7 +7875,7 @@ export default function UserIntroPage() {
                                                           type="button"
                                                           onClick={() => {
                                                             setActiveMenu('마이페이지');
-                                                            setMyPageTab('PURCHASE_HISTORY');
+                                                            setMyPageTab('AGRO_PURCHASE');
                                                           }}
                                                           className="px-2.5 py-1 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
                                                         >
@@ -8032,7 +8032,7 @@ export default function UserIntroPage() {
                                                           type="button"
                                                           onClick={() => {
                                                             setActiveMenu('마이페이지');
-                                                            setMyPageTab('PURCHASE_HISTORY');
+                                                            setMyPageTab('AGRO_PURCHASE');
                                                           }}
                                                           className="px-2.5 py-1 rounded-lg bg-emerald-400 text-slate-950 font-black text-[11px] shrink-0 cursor-pointer"
                                                         >
@@ -11143,7 +11143,7 @@ export default function UserIntroPage() {
                                   type="button"
                                   onClick={() => {
                                     setActiveMenu('마이페이지');
-                                    setMyPageTab('PURCHASE_HISTORY');
+                                    setMyPageTab('AGRO_PURCHASE');
                                     if (typeof window !== 'undefined') {
                                       window.scrollTo({ top: 0, behavior: 'smooth' });
                                     }
@@ -11640,7 +11640,7 @@ export default function UserIntroPage() {
                                             onClick={() => {
                                               setClickedProvisionItem(null);
                                               setActiveMenu('마이페이지');
-                                              setMyPageTab('PURCHASE_HISTORY');
+                                              setMyPageTab('AGRO_PURCHASE');
                                               if (typeof window !== 'undefined') {
                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                               }
@@ -11838,7 +11838,7 @@ export default function UserIntroPage() {
                                                   onClick={() => {
                                                     setClickedProvisionItem(null);
                                                     setActiveMenu('마이페이지');
-                                                    setMyPageTab('PURCHASE_HISTORY');
+                                                    setMyPageTab('AGRO_PURCHASE');
                                                     if (typeof window !== 'undefined') {
                                                       window.scrollTo({
                                                         top: 0,
@@ -12043,7 +12043,7 @@ export default function UserIntroPage() {
                           onClick={() => {
                             setPurchaseOrderReceipt(null);
                             setActiveMenu('마이페이지');
-                            setMyPageTab('PURCHASE_HISTORY');
+                            setMyPageTab('AGRO_PURCHASE');
                           }}
                           className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-800 text-xs sm:text-sm font-extrabold cursor-pointer"
                         >
@@ -13541,7 +13541,7 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setMyPageTab('PURCHASE_HISTORY');
+                        setMyPageTab('AGRO_PURCHASE');
                         setActiveMenu('마이페이지');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-extrabold shrink-0 cursor-pointer"
@@ -13785,7 +13785,7 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setMyPageTab('PURCHASE_HISTORY');
+                        setMyPageTab('AGRO_PURCHASE');
                         setActiveMenu('마이페이지');
                       }}
                       className="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-extrabold cursor-pointer"
@@ -15220,23 +15220,18 @@ export default function UserIntroPage() {
                     }%)`,
                   },
                   {
-                    code: 'PURCHASE_HISTORY',
-                    line1: '④ 농자재',
-                    line2: `구매내역 (${stagePurchaseHistory.length}건)`,
-                  },
-                  {
                     code: 'CART',
-                    line1: '⑤ 장바구니',
+                    line1: '④ 장바구니',
                     line2: `(${myCartItems.length}건)`,
                   },
                   {
                     code: 'AGRO_PURCHASE',
-                    line1: '⑥ 농자재 구매',
+                    line1: '⑤ 농자재 구매',
                     line2: `(${stagePurchaseHistory.length}건)`,
                   },
                   {
                     code: 'PROFILE',
-                    line1: '⑦ 회원 기본정보',
+                    line1: '⑥ 회원 기본정보',
                     line2: '',
                   },
                 ].map((mTab) => {
@@ -15313,7 +15308,7 @@ export default function UserIntroPage() {
                       마이페이지 메뉴
                     </span>
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      8개 항목
+                      7개 항목
                     </span>
                   </div>
 
@@ -15349,29 +15344,22 @@ export default function UserIntroPage() {
                       icon: Calendar,
                     },
                     {
-                      code: 'PURCHASE_HISTORY',
-                      title: '④ 농자재 구매 내역',
-                      desc: '사진 · 제품명 · 구매수량 · 포장규격 · 제조사',
-                      badge: `${stagePurchaseHistory.length}건`,
-                      icon: PackageCheck,
-                    },
-                    {
                       code: 'CART',
-                      title: '⑤ 농자재 장바구니',
+                      title: '④ 농자재 장바구니',
                       desc: '생육과정별 담은 농자재 수량조절 · 주문',
                       badge: `${myCartItems.length}건`,
                       icon: ShoppingCart,
                     },
                     {
                       code: 'AGRO_PURCHASE',
-                      title: '⑥ 농자재 구매',
+                      title: '⑤ 농자재 구매',
                       desc: '생육과정 구분 정보 · 구매 상품 리스트',
                       badge: `${stagePurchaseHistory.length}건`,
                       icon: ShoppingBag,
                     },
                     {
                       code: 'PROFILE',
-                      title: '⑦ 회원 기본정보 관리',
+                      title: '⑥ 회원 기본정보 관리',
                       desc: '이메일 · 이름 · 성별 · 도로명주소',
                       badge: '내 정보',
                       icon: User,
@@ -15502,9 +15490,9 @@ export default function UserIntroPage() {
                   </div>
                 )}
 
-                {/* 우측 상단 6대 핵심 현황 KPI 요약 카드 (PC 전용) */}
+                {/* 우측 상단 5대 핵심 현황 KPI 요약 카드 (PC 전용) */}
                 <section className="hidden lg:block bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 shadow-xs">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
                     <button
                       type="button"
                       onClick={() => setMyPageTab('FARMLAND')}
@@ -15573,24 +15561,6 @@ export default function UserIntroPage() {
 
                     <button
                       type="button"
-                      onClick={() => setMyPageTab('PURCHASE_HISTORY')}
-                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
-                        myPageTab === 'PURCHASE_HISTORY'
-                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                      }`}
-                    >
-                      <div className="text-xs font-bold text-emerald-800">④ 농자재 구매 내역</div>
-                      <div className="text-xl font-extrabold text-slate-900 mt-1">
-                        {stagePurchaseHistory.length}건
-                      </div>
-                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                        사진·제품명·수량·규격·제조사
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => setMyPageTab('CART')}
                       className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
                         myPageTab === 'CART'
@@ -15598,7 +15568,7 @@ export default function UserIntroPage() {
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-slate-500">⑤ 농자재 장바구니</div>
+                      <div className="text-xs font-bold text-slate-500">④ 농자재 장바구니</div>
                       <div className="text-xl font-extrabold text-slate-900 mt-1">
                         {myCartItems.length}건
                       </div>
@@ -15618,13 +15588,13 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => setMyPageTab('AGRO_PURCHASE')}
-                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer col-span-2 sm:col-span-1 ${
                         myPageTab === 'AGRO_PURCHASE'
                           ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-emerald-800">⑥ 농자재 구매</div>
+                      <div className="text-xs font-bold text-emerald-800">⑤ 농자재 구매</div>
                       <div className="text-xl font-extrabold text-slate-900 mt-1">
                         {stagePurchaseHistory.length}건
                       </div>
@@ -16612,263 +16582,7 @@ export default function UserIntroPage() {
               </section>
             )}
 
-            {/* ④ 농자재 구매 내역 (생육과정별 세부보기 추천 제품 구매 — 재배일정 정보 · 생육과정 정보 · 제품정보 통합 표시) */}
-            {(myPageTab === 'ALL' || myPageTab === 'PURCHASE_HISTORY') && (() => {
-              const normalizedHistory = stagePurchaseHistory.map((p: any, idx: number) => ({
-                ...p,
-                id: p.id || p.purchase_id || `SPUR-ROW-${idx}`,
-                orderNo: p.orderNo || p.order_no || 'ORD-2026-STG',
-                purchasedAt: p.purchasedAt || p.ordered_at || '2026.08.20 14:22',
-                requestNo: p.requestNo || p.request_no || 'REQ-20261106-009',
-                cropTitle: p.cropTitle || p.crop_title || '가을배추 (불암3호)',
-                cropCategory: p.cropCategory || '엽채류',
-                plantingType: p.plantingType || p.planting_type || '모종',
-                region: p.region || '충청북도 충주시 단월동',
-                areaPyeong: Number(p.areaPyeong ?? p.area_pyeong ?? 300),
-                plantingDate: p.plantingDate || p.planting_date || '2026-08-25',
-                expectedHarvestDate:
-                  p.expectedHarvestDate || p.expected_harvest_date || '2026-11-15',
-                stageGroupName: p.stageGroupName || p.stage_group_name || '생육 관리',
-                stageColor: p.stageColor || p.stage_color || '#16a34a',
-                stageItemId: p.stageItemId || p.item_id || p.process_code || 'SCH-01',
-                processCode: p.processCode || p.process_code || 'SCH-01',
-                subItemName: p.subItemName || p.sub_item_name || '생육과정',
-                processName: p.processName || p.process_name || p.sub_item_name || '생육과정',
-                startDate: p.startDate || p.recommended_date || '2026-08-25',
-                startWeekLabel: p.startWeekLabel || '',
-                targetPgdd: Number(p.targetPgdd ?? p.target_pgdd ?? 0),
-                workDescription:
-                  p.workDescription ||
-                  p.work_content ||
-                  '생육 단계별 기온·토양 수분 조건을 확인하고 권장 사용량에 맞춰 살포합니다.',
-                productName: p.productName || p.product_name || '맞춤 추천 농자재',
-                manufacturer: p.manufacturer || '한팜인증',
-                subType: p.subType || p.sub_type || '맞춤 농자재',
-                unitSpec: p.unitSpec || p.unit_spec || '1개',
-                unitLabel: p.unitLabel || p.unit_label || '개',
-                unitPrice: Number(p.unitPrice ?? p.unit_price ?? 18000),
-                qty: Number(p.qty ?? 1),
-                recommendedQty: Number(p.recommendedQty ?? p.qty ?? 1),
-                totalPrice: Number(
-                  p.totalPrice ?? p.final_subtotal ?? p.raw_subtotal ?? 18000
-                ),
-                matchScore: Number(p.matchScore ?? p.match_score ?? 96),
-                categorySpecBadge: p.categorySpecBadge || p.spec_summary || '',
-                thumbnailUrl: resolveAgroProductThumbUrl(p),
-                deliveryStatus:
-                  p.deliveryStatus || p.delivery_status || '구매완료 · 적기 배송예정',
-              }));
-              const uniqueScheduleFilters = Array.from(
-                new Map(
-                  normalizedHistory.map((p: any) => [
-                    p.requestNo,
-                    {
-                      requestNo: p.requestNo,
-                      label: `${p.cropTitle} (${p.region})`,
-                    },
-                  ])
-                ).values()
-              );
-              const filteredPurchases =
-                myPagePurchaseCropFilter === 'ALL'
-                  ? normalizedHistory
-                  : normalizedHistory.filter(
-                      (p: any) => p.requestNo === myPagePurchaseCropFilter
-                    );
-              const totalPurchasedQty = filteredPurchases.reduce(
-                (s: number, p: any) => s + Number(p.qty || 0),
-                0
-              );
-              const totalPurchasedAmount = filteredPurchases.reduce(
-                (s: number, p: any) => s + Number(p.totalPrice || 0),
-                0
-              );
-              const uniqueStageCount = new Set(
-                filteredPurchases.map((p: any) => `${p.requestNo}-${p.stageItemId}`)
-              ).size;
-
-              return (
-                <section className="bg-white rounded-3xl border-2 border-emerald-500/80 p-4 sm:p-6 shadow-xs space-y-5">
-                  {/* 상단 헤더 & 액션 버튼 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-xs font-extrabold">
-                          생육과정별 세부보기 추천제품 구매 연동
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-                          구매한 재배 일정 · 생육과정 · 제품정보 통합 조회
-                        </span>
-                      </div>
-                      <h3 className="text-base sm:text-xl font-extrabold text-slate-900">
-                        ④ 농자재 구매 내역 ({filteredPurchases.length}건)
-                      </h3>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        재배일정 확인 페이지의 생육과정별 세부보기에서 구매하신 추천 제품의 재배 일정 정보, 생육과정 정보, 제품 정보를 모바일과 PC에서 한눈에 확인할 수 있습니다.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-center shrink-0 flex-wrap">
-                      {stagePurchaseHistory.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleDeleteAllStagePurchases}
-                          className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1.5 transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>구매 내역 전체 삭제</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveMenu('재배일정 확인');
-                          setMobileScheduleStep('detail');
-                          if (typeof window !== 'undefined') {
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          }
-                        }}
-                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer shrink-0 inline-flex items-center gap-1.5 shadow-2xs transition"
-                      >
-                        <ShoppingBag className="w-4 h-4" />
-                        <span>생육과정별 추천 제품 구매하러 가기 ›</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 요약 KPI 바 (모바일 3열 / PC 3열) */}
-                  <div className="grid grid-cols-3 gap-2.5 sm:gap-4 bg-emerald-50/60 rounded-2xl p-3 sm:p-4 border border-emerald-200">
-                    <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-emerald-100">
-                      <div className="text-[11px] font-bold text-slate-500">구매 건수 / 총 수량</div>
-                      <div className="text-sm sm:text-lg font-extrabold text-slate-900 mt-0.5">
-                        {filteredPurchases.length}건{' '}
-                        <span className="text-xs sm:text-sm text-emerald-700 font-bold">
-                          ({totalPurchasedQty}개)
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-emerald-100">
-                      <div className="text-[11px] font-bold text-slate-500">적용 생육과정 수</div>
-                      <div className="text-sm sm:text-lg font-extrabold text-emerald-800 mt-0.5">
-                        {uniqueStageCount}개 공정
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-xl p-2.5 sm:p-3.5 border border-emerald-100">
-                      <div className="text-[11px] font-bold text-slate-500">총 구매 결제금액</div>
-                      <div className="text-sm sm:text-lg font-extrabold text-emerald-700 mt-0.5">
-                        {totalPurchasedAmount.toLocaleString()}원
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 재배일정별 필터 버튼 */}
-                  {uniqueScheduleFilters.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-extrabold text-slate-600 mr-1">
-                        재배일정 필터:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setMyPagePurchaseCropFilter('ALL')}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                          myPagePurchaseCropFilter === 'ALL'
-                            ? 'bg-slate-900 text-white border-slate-900'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        전체 재배일정 ({stagePurchaseHistory.length})
-                      </button>
-                      {uniqueScheduleFilters.map((sf: any) => (
-                        <button
-                          key={sf.requestNo}
-                          type="button"
-                          onClick={() => setMyPagePurchaseCropFilter(sf.requestNo)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer ${
-                            myPagePurchaseCropFilter === sf.requestNo
-                              ? 'bg-emerald-600 text-white border-emerald-600'
-                              : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'
-                          }`}
-                        >
-                          {sf.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 구매 내역 리스트 (사진, 제품명, 구매수량, 포장규격, 제조사 표시) */}
-                  {filteredPurchases.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-2 bg-slate-50/50">
-                      <div className="text-sm font-extrabold text-slate-700">
-                        생육과정별 세부보기에서 구매한 추천 제품 내역이 없습니다.
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        재배일정 확인 페이지의 생육과정별 세부보기에서 추천 제품의 수량을 설정하고 구매하면 이곳에 자동으로 기록됩니다.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredPurchases.map((entry: any) => (
-                        <div
-                          key={entry.id}
-                          className="rounded-2xl border border-slate-200 hover:border-emerald-400 transition overflow-hidden bg-white shadow-2xs p-3.5 sm:p-4 flex items-center justify-between gap-3.5"
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            {/* 사진 */}
-                            <img
-                              src={resolveAgroProductThumbUrl(entry)}
-                              alt={entry.productName}
-                              onError={handleAgroThumbImgError}
-                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-contain p-1 border border-slate-200 bg-slate-50 shrink-0"
-                            />
-
-                            {/* 제품명, 구매수량, 포장규격, 제조사 */}
-                            <div className="min-w-0 flex-1 space-y-1.5">
-                              <div className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug break-keep">
-                                {entry.productName}
-                              </div>
-                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-semibold">
-                                <span>
-                                  구매수량:{' '}
-                                  <strong className="text-emerald-700 font-extrabold">
-                                    {entry.qty}
-                                    {entry.unitLabel}
-                                  </strong>
-                                </span>
-                                <span className="text-slate-300">|</span>
-                                <span>
-                                  포장규격:{' '}
-                                  <strong className="text-slate-800 font-bold">
-                                    {entry.unitSpec}
-                                  </strong>
-                                </span>
-                                <span className="text-slate-300">|</span>
-                                <span>
-                                  제조사:{' '}
-                                  <strong className="text-slate-800 font-bold">
-                                    {entry.manufacturer}
-                                  </strong>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteStagePurchaseItem(entry)}
-                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-xs font-extrabold cursor-pointer transition inline-flex items-center gap-1 shrink-0"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>삭제</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              );
-            })()}
-
-            {/* ⑤ 농자재 장바구니 */}
+            {/* ④ 농자재 장바구니 */}
             {(myPageTab === 'ALL' || myPageTab === 'CART') && (() => {
               const checkedItems = myCartItems.filter((it: any) => it.checked);
               const totalCartQty = myCartItems.reduce(
@@ -16893,7 +16607,7 @@ export default function UserIntroPage() {
                         재배일정 · 생육과정별 맞춤 농자재 장바구니
                       </span>
                       <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                        ⑤ 농자재 장바구니 ({myCartItems.length}건)
+                        ④ 농자재 장바구니 ({myCartItems.length}건)
                       </h3>
                       <p className="text-xs text-slate-600 mt-0.5">
                         재배일정 생육단계별 추천 제품과 농자재를 담아 수량을 조절하고, 선택 상품을 원클릭으로 구매할 수 있습니다.
@@ -17195,7 +16909,7 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* ⑥ 마이페이지 > 농자재 구매 (회원 아이디 제외 + 생육과정 구분 정보들 + 제품명 리스트) */}
+            {/* ⑤ 마이페이지 > 농자재 구매 (회원 아이디 제외 + 생육과정 구분 정보들 + 제품명 리스트) */}
             {(myPageTab === 'ALL' || myPageTab === 'AGRO_PURCHASE') && (() => {
               const totalPurchasedQty = stagePurchaseHistory.reduce(
                 (sum: number, item: any) => sum + (Number(item.qty) || 1),
@@ -17216,7 +16930,7 @@ export default function UserIntroPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold">
-                          ⑥ 농자재 구매 (생육과정별 구매 상품 리스트)
+                          ⑤ 농자재 구매 (생육과정별 구매 상품 리스트)
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
                           생육과정 구분 정보 · 제품명 · 규격 · 수량 · 결제금액
