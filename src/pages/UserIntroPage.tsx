@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from '../router.tsx';
+import { KOREA_ADMIN_TREE } from '../../server/koreaAddresses.ts';
 import {
   Sprout,
   Calendar,
@@ -457,6 +458,9 @@ export default function UserIntroPage() {
     sido: '충청북도',
     sigungu: '충주시',
     eupmyeondong: '단월동',
+    detail_address: '412-5번지 일원',
+    group_id: 'GRP-LEAF',
+    group_name: '엽채류 (잎채소)',
     crop_name: '가을배추',
     cultivar_name: '불암3호',
     planting_type: '모종',
@@ -1309,15 +1313,23 @@ export default function UserIntroPage() {
     const newPlanId = `CPLAN-REQ-${Date.now()}`;
     const newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
 
+    const detailTrimmed = String(reqForm.detail_address || '').trim();
+    const regionLabel = `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}${
+      detailTrimmed ? ` ${detailTrimmed}` : ''
+    }`;
+
     const newItem = {
       crop_plan_id: newPlanId,
       request_no: newReqDisplayNo,
       display_request_no: newReqDisplayNo,
+      group_id: reqForm.group_id || 'GRP-LEAF',
+      group_name: reqForm.group_name || '엽채류 (잎채소)',
       crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
       crop_short: reqForm.crop_name,
       cultivar_name: reqForm.cultivar_name,
       badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
-      region: `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}`,
+      region: regionLabel,
+      detail_address: detailTrimmed,
       area_pyeong: Number(reqForm.area_pyeong || 300),
       planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
       planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
@@ -1347,9 +1359,12 @@ export default function UserIntroPage() {
         body: JSON.stringify({
           request_no: newReqDisplayNo,
           crop_plan_id: newPlanId,
+          group_id: reqForm.group_id || 'GRP-LEAF',
+          group_name: reqForm.group_name || '엽채류 (잎채소)',
           sido: reqForm.sido,
           sigungu: reqForm.sigungu,
           eupmyeondong: reqForm.eupmyeondong,
+          detail_address: detailTrimmed,
           crop_name: reqForm.crop_name,
           item_name_3rd: reqForm.cultivar_name,
           planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
@@ -1371,9 +1386,12 @@ export default function UserIntroPage() {
           crop_plan_id: newPlanId,
           request_no: newReqDisplayNo,
           farmland_id: reqForm.farmland_id || 'LAND-CB-01',
+          group_id: reqForm.group_id || 'GRP-LEAF',
+          group_name: reqForm.group_name || '엽채류 (잎채소)',
           sido: reqForm.sido,
           sigungu: reqForm.sigungu,
           eupmyeondong: reqForm.eupmyeondong,
+          detail_address: detailTrimmed,
           crop_name: reqForm.crop_name,
           cultivar_name: reqForm.cultivar_name,
           planting_type: reqForm.planting_type,
@@ -12209,7 +12227,9 @@ export default function UserIntroPage() {
                         <div className="flex items-center gap-2 text-emerald-800 font-extrabold text-base">
                           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                           <span>
-                            [{reqForm.sido} {reqForm.sigungu} {reqForm.eupmyeondong}] {reqForm.crop_name}({reqForm.cultivar_name}) 맞춤형 재배일정 요청 및 산출이 완료되었습니다!
+                            [{reqForm.sido} {reqForm.sigungu} {reqForm.eupmyeondong}
+                            {reqForm.detail_address ? ` ${reqForm.detail_address}` : ''}] {reqForm.group_name ? `[${reqForm.group_name}] ` : ''}
+                            {reqForm.crop_name}({reqForm.cultivar_name}) 맞춤형 재배일정 요청 및 산출이 완료되었습니다!
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-700">
@@ -12265,6 +12285,7 @@ export default function UserIntroPage() {
                                     sido: found.sido,
                                     sigungu: found.sigungu,
                                     eupmyeondong: found.eupmyeondong,
+                                    detail_address: found.detail_jibun || prev.detail_address || '',
                                     area_pyeong: Number(found.area_pyeong || 300),
                                     soil_ph: Number(found.soil_ph || 6.2),
                                     soil_ec: Number(found.soil_ec || 1.1),
@@ -12277,162 +12298,456 @@ export default function UserIntroPage() {
                             >
                               {myFarmlands.map((f: any) => (
                                 <option key={f.farmland_id} value={f.farmland_id}>
-                                  {f.farmland_title} — {f.sido} {f.sigungu} {f.eupmyeondong} ({Number(f.area_pyeong || 300).toLocaleString()}평 · pH {f.soil_ph || 6.2})
+                                  {f.farmland_title} — {f.sido} {f.sigungu} {f.eupmyeondong}
+                                  {f.detail_jibun ? ` ${f.detail_jibun}` : ''} ({Number(f.area_pyeong || 300).toLocaleString()}평 · pH {f.soil_ph || 6.2})
                                 </option>
                               ))}
                             </select>
                           </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs sm:text-sm">
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">시/도</label>
-                            <input
-                              type="text"
-                              value={reqForm.sido}
-                              onChange={(e) => setReqForm({ ...reqForm, sido: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            />
-                          </div>
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">시/군/구</label>
-                            <input
-                              type="text"
-                              value={reqForm.sigungu}
-                              onChange={(e) => setReqForm({ ...reqForm, sigungu: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            />
-                          </div>
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">읍/면/동</label>
-                            <input
-                              type="text"
-                              value={reqForm.eupmyeondong}
-                              onChange={(e) => setReqForm({ ...reqForm, eupmyeondong: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            />
-                          </div>
+                        {(() => {
+                          // 1. 시/도 · 시/군/구 · 읍/면/동 셀렉트 박스 옵션 구성 (전국 행정구역 트리 + 관리자 주소록 DB 통합)
+                          const sidoOptions = Array.from(
+                            new Set(
+                              [
+                                ...Object.keys(KOREA_ADMIN_TREE),
+                                ...(adminAddrMeta.sidos || []),
+                                reqForm.sido,
+                              ].filter(Boolean)
+                            )
+                          );
+                          const sigunguOptions = Array.from(
+                            new Set(
+                              [
+                                ...Object.keys(KOREA_ADMIN_TREE[reqForm.sido] || {}),
+                                ...(adminAddrMeta.sigungusBySido?.[reqForm.sido] || []),
+                                reqForm.sigungu,
+                              ].filter(Boolean)
+                            )
+                          );
+                          const eupmyeondongOptions = Array.from(
+                            new Set(
+                              [
+                                ...(KOREA_ADMIN_TREE[reqForm.sido]?.[reqForm.sigungu] || []),
+                                reqForm.eupmyeondong,
+                              ].filter(Boolean)
+                            )
+                          );
 
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">농작물 선택</label>
-                            <select
-                              value={reqForm.crop_name}
-                              onChange={(e) => {
-                                const cname = e.target.value;
-                                const defaultCv =
-                                  cname === '봄배추'
-                                    ? '춘광'
-                                    : cname === '월동배추'
-                                    ? '해남1호'
-                                    : cname === '시금치'
-                                    ? '포항초 (재래종)'
-                                    : cname === '감자'
-                                    ? '두백'
-                                    : cname === '상추'
-                                    ? '청치마상추'
-                                    : cname === '고추'
-                                    ? '칼라탄'
-                                    : cname === '마늘'
-                                    ? '홍산마늘'
-                                    : '불암3호';
-                                setReqForm({ ...reqForm, crop_name: cname, cultivar_name: defaultCv });
-                              }}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            >
-                              <option value="가을배추">가을배추</option>
-                              <option value="봄배추">봄배추</option>
-                              <option value="월동배추">월동배추</option>
-                              <option value="시금치">시금치</option>
-                              <option value="감자">감자</option>
-                              <option value="상추">상추</option>
-                              <option value="마늘">마늘</option>
-                              <option value="고추">고추</option>
-                            </select>
-                          </div>
+                          // 3. 관리자 페이지 [기초코드 관리 > 농작물 기초코드 > 1단계 작물군 관리] 연동 목록
+                          const fallbackStage1Groups = [
+                            { group_id: 'GRP-FOOD', group_name: '식량작물 (서류·곡류)' },
+                            { group_id: 'GRP-LEAF', group_name: '엽채류 (잎채소)' },
+                            { group_id: 'GRP-SPICE', group_name: '조미채소류 (양념류)' },
+                            { group_id: 'GRP-ROOT', group_name: '근채류 (뿌리채소)' },
+                            { group_id: 'GRP-FRUIT', group_name: '과채류 (열매채소)' },
+                          ];
+                          const stage1Groups: Array<{ group_id: string; group_name: string }> =
+                            Array.isArray(data?.groups) && data.groups.length > 0
+                              ? data.groups.map((g: any) => ({
+                                  group_id: String(g.group_id),
+                                  group_name: String(g.group_name),
+                                }))
+                              : fallbackStage1Groups;
 
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">품종 선택</label>
-                            <select
-                              value={reqForm.cultivar_name}
-                              onChange={(e) => setReqForm({ ...reqForm, cultivar_name: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            >
-                              <option value="불암3호">불암3호 (최저 5℃ · 최고 26℃ · 최적 18~20℃)</option>
-                              <option value="불암플러스">불암플러스 (최저 5℃ · 최고 26℃ · 최적 18~20℃)</option>
-                              <option value="휘파람골드">휘파람골드 (최저 5℃ · 최고 26℃ · 최적 18~20℃)</option>
-                              <option value="청명가을">청명가을 (씨 파종 · 적정발아 20℃)</option>
-                              <option value="춘광">춘광 (최저 4℃ · 최고 25℃ · 최적 15~18℃)</option>
-                              <option value="포항초 (재래종)">포항초 (재래종 · 적온 15~20℃)</option>
-                              <option value="두백">두백 (감자 · 적온 15~18℃)</option>
-                              <option value="설봉">설봉 (감자 · 적온 16~20℃)</option>
-                              <option value="청치마상추">청치마상추 (적온 15~20℃)</option>
-                              <option value="해남1호">해남1호 (월동배추)</option>
-                              <option value="홍산마늘">홍산마늘</option>
-                              <option value="칼라탄">칼라탄 (복합내병계 고추)</option>
-                            </select>
-                          </div>
+                          // 1차분류(group_id)별 농작물(2단계) 목록 매핑 (관리자 DB data?.crops + 표준 작물 통합)
+                          const presetCropsByGroup: Record<string, string[]> = {
+                            'GRP-LEAF': ['가을배추', '봄배추', '월동배추', '배추', '상추', '시금치'],
+                            'GRP-FOOD': ['감자', '고구마', '콩'],
+                            'GRP-SPICE': ['마늘', '고추', '양파', '대파'],
+                            'GRP-ROOT': ['무', '당근'],
+                            'GRP-FRUIT': ['토마토', '오이', '수박', '참외'],
+                          };
+                          const dbCropsForGroup = Array.isArray(data?.crops)
+                            ? data.crops
+                                .filter((c: any) => String(c.group_id) === String(reqForm.group_id))
+                                .map((c: any) => String(c.crop_name))
+                            : [];
+                          const availableCropsForGroup = Array.from(
+                            new Set(
+                              [
+                                ...(presetCropsByGroup[reqForm.group_id] || []),
+                                ...dbCropsForGroup,
+                              ].filter(Boolean)
+                            )
+                          );
+                          const finalCropOptions =
+                            availableCropsForGroup.length > 0
+                              ? availableCropsForGroup
+                              : ['가을배추', '봄배추', '월동배추', '시금치', '감자', '상추', '마늘', '고추'];
 
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">작물구분 (씨 / 모종)</label>
-                            <select
-                              value={reqForm.planting_type}
-                              onChange={(e) => setReqForm({ ...reqForm, planting_type: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            >
-                              <option value="모종">모종 (최저·최고온도 회피 최적기 정식)</option>
-                              <option value="씨">씨 (평균기온 ≥ 적정발아온도 빠른 시기 파종)</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">희망 시작(정식/파종) 기준일</label>
-                            <input
-                              type="date"
-                              value={reqForm.planting_date}
-                              onChange={(e) => setReqForm({ ...reqForm, planting_date: e.target.value })}
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block font-bold text-slate-700 mb-1">재배 면적 (평)</label>
-                            <input
-                              type="number"
-                              value={reqForm.area_pyeong}
-                              onChange={(e) =>
-                                setReqForm({ ...reqForm, area_pyeong: Number(e.target.value) || 300 })
+                          // 농작물별 품종(3단계) 및 기본 작물구분(씨/모종) 매핑
+                          const getCultivarSpecsForCrop = (
+                            cropName: string
+                          ): Array<{ value: string; label: string; plantingType: '씨' | '모종' }> => {
+                            if (cropName === '가을배추' || cropName === '배추') {
+                              return [
+                                { value: '불암3호', label: '불암3호 (최저 5℃ · 최고 26℃ · 최적 18~20℃)', plantingType: '모종' },
+                                { value: '불암플러스', label: '불암플러스 (최저 5℃ · 최고 26℃ · 최적 18~20℃)', plantingType: '모종' },
+                                { value: '휘파람골드', label: '휘파람골드 (최저 5℃ · 최고 26℃ · 최적 18~20℃)', plantingType: '모종' },
+                                { value: '청명가을', label: '청명가을 (씨 파종 · 적정발아 20℃)', plantingType: '씨' },
+                                { value: '춘광', label: '춘광 (최저 4℃ · 최고 25℃ · 최적 15~18℃)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '봄배추') {
+                              return [
+                                { value: '춘광', label: '춘광 (최저 4℃ · 최고 25℃ · 최적 15~18℃)', plantingType: '모종' },
+                                { value: '불암3호', label: '불암3호 (최저 5℃ · 최고 26℃ · 최적 18~20℃)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '월동배추') {
+                              return [
+                                { value: '해남1호', label: '해남1호 (월동배추 · 내한성 우수)', plantingType: '모종' },
+                                { value: '동풍', label: '동풍 (월동배추 · 구비대 우수)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '시금치') {
+                              return [
+                                { value: '포항초 (재래종)', label: '포항초 (재래종 · 적온 15~20℃)', plantingType: '씨' },
+                                { value: '사계절시금치', label: '사계절시금치 (내추대성 · 적온 15~20℃)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '상추') {
+                              return [
+                                { value: '청치마상추', label: '청치마상추 (적온 15~20℃)', plantingType: '모종' },
+                                { value: '적치마상추', label: '적치마상추 (적온 15~20℃)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '감자') {
+                              return [
+                                { value: '두백', label: '두백 (감자 · 적온 15~18℃)', plantingType: '씨' },
+                                { value: '설봉', label: '설봉 (감자 · 적온 16~20℃)', plantingType: '씨' },
+                                { value: '수미 (Superior)', label: '수미 (Superior · 적온 14~23℃)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '고구마') {
+                              return [
+                                { value: '베니하루카 (꿀고구마)', label: '베니하루카 (꿀고구마 · 적온 20~28℃)', plantingType: '모종' },
+                                { value: '호풍미', label: '호풍미 (복합내병성 · 적온 20~28℃)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '콩') {
+                              return [
+                                { value: '대원콩', label: '대원콩 (장류·두부용 · 적정발아 20~25℃)', plantingType: '씨' },
+                                { value: '선유콩', label: '선유콩 (다수확 표준 품종)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '마늘') {
+                              return [
+                                { value: '홍산마늘', label: '홍산마늘 (한지·난지 겸용 · 적온 18~20℃)', plantingType: '씨' },
+                                { value: '남도마늘', label: '남도마늘 (난지형 조생종 · 적온 18~20℃)', plantingType: '씨' },
+                                { value: '대서마늘', label: '대서마늘 (다수확 대과종)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '고추') {
+                              return [
+                                { value: '칼라탄', label: '칼라탄 (복합내병계 고추 · 적온 23~28℃)', plantingType: '모종' },
+                                { value: 'PR탄탄대군', label: 'PR탄탄대군 (탄저·역병 복합내병성)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '양파') {
+                              return [
+                                { value: '케이원', label: '케이원 (중만생 저장형 양파 · 적온 15~20℃)', plantingType: '모종' },
+                                { value: '신기루', label: '신기루 (조생종 양파)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '대파') {
+                              return [
+                                { value: '까만보석', label: '까만보석 (외대파 · 내서·내한성 우수)', plantingType: '모종' },
+                              ];
+                            }
+                            if (cropName === '무') {
+                              return [
+                                { value: '청아무', label: '청아무 (가을 김장무 · 적온 17~20℃)', plantingType: '씨' },
+                                { value: '관동여름무', label: '관동여름무 (내서성 무)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '당근') {
+                              return [
+                                { value: '신흑전5촌', label: '신흑전5촌 (만생 다수확 당근 · 적온 18~21℃)', plantingType: '씨' },
+                              ];
+                            }
+                            if (cropName === '토마토' || cropName === '오이' || cropName === '수박' || cropName === '참외') {
+                              return [
+                                { value: `${cropName} 표준품종`, label: `${cropName} 우수 F1 품종 (적온 22~27℃)`, plantingType: '모종' },
+                              ];
+                            }
+                            // 관리자 DB cultivar 테이블 연동
+                            const matchedCropObj = Array.isArray(data?.crops)
+                              ? data.crops.find((c: any) => String(c.crop_name) === cropName)
+                              : null;
+                            if (matchedCropObj && Array.isArray(data?.cultivars)) {
+                              const dbCvs = data.cultivars.filter(
+                                (cv: any) => String(cv.crop_id) === String(matchedCropObj.crop_id)
+                              );
+                              if (dbCvs.length > 0) {
+                                return dbCvs.map((cv: any) => ({
+                                  value: String(cv.cultivar_name),
+                                  label: `${cv.cultivar_name} (최저 ${cv.min_temp || 5}℃ · 최고 ${cv.max_temp || 25}℃ · 최적 ${cv.opt_temp || '15~20'}℃)`,
+                                  plantingType: String(cv.planting_type || '').includes('씨') ? '씨' : '모종',
+                                }));
                               }
-                              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                            />
-                          </div>
+                            }
+                            return [
+                              { value: '불암3호', label: '불암3호 (최저 5℃ · 최고 26℃ · 최적 18~20℃)', plantingType: '모종' },
+                            ];
+                          };
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">토양 산도 (pH)</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={reqForm.soil_ph}
-                                onChange={(e) =>
-                                  setReqForm({ ...reqForm, soil_ph: Number(e.target.value) || 6.2 })
-                                }
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                              />
+                          const cultivarOptions = getCultivarSpecsForCrop(reqForm.crop_name);
+
+                          return (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs sm:text-sm">
+                              {/* 1. 시/도, 시/군/구, 읍/면/동 셀렉트 박스 선택 */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">시/도</label>
+                                <select
+                                  value={reqForm.sido}
+                                  onChange={(e) => {
+                                    const nextSido = e.target.value;
+                                    const nextSigunguList = Array.from(
+                                      new Set([
+                                        ...Object.keys(KOREA_ADMIN_TREE[nextSido] || {}),
+                                        ...(adminAddrMeta.sigungusBySido?.[nextSido] || []),
+                                      ])
+                                    );
+                                    const nextSigungu = nextSigunguList[0] || '';
+                                    const nextDongList = KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [];
+                                    const nextDong = nextDongList[0] || '';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      farmland_id: '',
+                                      sido: nextSido,
+                                      sigungu: nextSigungu,
+                                      eupmyeondong: nextDong,
+                                    }));
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  {sidoOptions.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">시/군/구</label>
+                                <select
+                                  value={reqForm.sigungu}
+                                  onChange={(e) => {
+                                    const nextSigungu = e.target.value;
+                                    const nextDongList = KOREA_ADMIN_TREE[reqForm.sido]?.[nextSigungu] || [];
+                                    const nextDong = nextDongList[0] || '';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      farmland_id: '',
+                                      sigungu: nextSigungu,
+                                      eupmyeondong: nextDong,
+                                    }));
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  {sigunguOptions.map((sg) => (
+                                    <option key={sg} value={sg}>
+                                      {sg}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">읍/면/동</label>
+                                <select
+                                  value={reqForm.eupmyeondong}
+                                  onChange={(e) =>
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      farmland_id: '',
+                                      eupmyeondong: e.target.value,
+                                    }))
+                                  }
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  {eupmyeondongOptions.map((dong) => (
+                                    <option key={dong} value={dong}>
+                                      {dong}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* 2. 세부주소 텍스트 입력 항목 추가 */}
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <label className="block font-bold text-slate-700 mb-1">
+                                  세부주소 (지번 / 도로명 상세 / 필지·동 호수)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={reqForm.detail_address}
+                                  onChange={(e) =>
+                                    setReqForm((prev) => ({ ...prev, detail_address: e.target.value }))
+                                  }
+                                  placeholder="예: 412-5번지 일원, 단월리 산15-2, 제1비닐하우스 등 세부주소 입력"
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                />
+                              </div>
+
+                              {/* 3. 농작물 선택 항목 앞에 1차분류 (관리자 기초코드 관리 > 농작물 기초코드 > 1단계 작물군 관리) 선택 추가 */}
+                              <div>
+                                <label className="block font-bold text-emerald-800 mb-1">
+                                  1차분류 (1단계 작물군)
+                                </label>
+                                <select
+                                  value={reqForm.group_id}
+                                  onChange={(e) => {
+                                    const nextGroupId = e.target.value;
+                                    const matchedGrp = stage1Groups.find((g) => g.group_id === nextGroupId);
+                                    const nextGroupName = matchedGrp?.group_name || '엽채류 (잎채소)';
+                                    const dbCrops = Array.isArray(data?.crops)
+                                      ? data.crops
+                                          .filter((c: any) => String(c.group_id) === nextGroupId)
+                                          .map((c: any) => String(c.crop_name))
+                                      : [];
+                                    const nextCrops = Array.from(
+                                      new Set([...(presetCropsByGroup[nextGroupId] || []), ...dbCrops].filter(Boolean))
+                                    );
+                                    const firstCrop = nextCrops[0] || '가을배추';
+                                    const firstCvSpecs = getCultivarSpecsForCrop(firstCrop);
+                                    const firstCv = firstCvSpecs[0]?.value || '불암3호';
+                                    const firstPType = firstCvSpecs[0]?.plantingType || '모종';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      group_id: nextGroupId,
+                                      group_name: nextGroupName,
+                                      crop_name: firstCrop,
+                                      cultivar_name: firstCv,
+                                      planting_type: firstPType,
+                                    }));
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/40 text-slate-900 font-bold"
+                                >
+                                  {stage1Groups.map((grp) => (
+                                    <option key={grp.group_id} value={grp.group_id}>
+                                      {grp.group_name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">농작물 선택 (2단계 작물)</label>
+                                <select
+                                  value={reqForm.crop_name}
+                                  onChange={(e) => {
+                                    const cname = e.target.value;
+                                    const cvSpecs = getCultivarSpecsForCrop(cname);
+                                    const defaultCv = cvSpecs[0]?.value || '불암3호';
+                                    const defaultPType = cvSpecs[0]?.plantingType || '모종';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      crop_name: cname,
+                                      cultivar_name: defaultCv,
+                                      planting_type: defaultPType,
+                                    }));
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  {finalCropOptions.map((cName) => (
+                                    <option key={cName} value={cName}>
+                                      {cName}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">품종 선택 (3단계 품종)</label>
+                                <select
+                                  value={reqForm.cultivar_name}
+                                  onChange={(e) => {
+                                    const cvVal = e.target.value;
+                                    const matchedCv = cultivarOptions.find((c) => c.value === cvVal);
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      cultivar_name: cvVal,
+                                      planting_type: matchedCv?.plantingType || prev.planting_type,
+                                    }));
+                                  }}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  {cultivarOptions.map((cv) => (
+                                    <option key={cv.value} value={cv.value}>
+                                      {cv.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">작물구분 (씨 / 모종)</label>
+                                <select
+                                  value={reqForm.planting_type}
+                                  onChange={(e) => setReqForm({ ...reqForm, planting_type: e.target.value })}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  <option value="모종">모종 (최저·최고온도 회피 최적기 정식)</option>
+                                  <option value="씨">씨 (평균기온 ≥ 적정발아온도 빠른 시기 파종)</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">희망 시작(정식/파종) 기준일</label>
+                                <input
+                                  type="date"
+                                  value={reqForm.planting_date}
+                                  onChange={(e) => setReqForm({ ...reqForm, planting_date: e.target.value })}
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">재배 면적 (평)</label>
+                                <input
+                                  type="number"
+                                  value={reqForm.area_pyeong}
+                                  onChange={(e) =>
+                                    setReqForm({ ...reqForm, area_pyeong: Number(e.target.value) || 300 })
+                                  }
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 sm:col-span-2 lg:col-span-3">
+                                <div>
+                                  <label className="block font-bold text-slate-700 mb-1">토양 산도 (pH)</label>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={reqForm.soil_ph}
+                                    onChange={(e) =>
+                                      setReqForm({ ...reqForm, soil_ph: Number(e.target.value) || 6.2 })
+                                    }
+                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block font-bold text-slate-700 mb-1">토양 EC (dS/m)</label>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={reqForm.soil_ec}
+                                    onChange={(e) =>
+                                      setReqForm({ ...reqForm, soil_ec: Number(e.target.value) || 1.1 })
+                                    }
+                                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                  />
+                                </div>
+                              </div>
                             </div>
-                            <div>
-                              <label className="block font-bold text-slate-700 mb-1">토양 EC (dS/m)</label>
-                              <input
-                                type="number"
-                                step="0.1"
-                                value={reqForm.soil_ec}
-                                onChange={(e) =>
-                                  setReqForm({ ...reqForm, soil_ec: Number(e.target.value) || 1.1 })
-                                }
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                          );
+                        })()}
 
                         <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
                           <button
