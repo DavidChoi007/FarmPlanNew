@@ -3874,6 +3874,10 @@ export default function AdminDashboardPage() {
     loadScheduleGenerationModuleFromStorage()
   );
   const [isSavingScheduleGenModule, setIsSavingScheduleGenModule] = useState<boolean>(false);
+  const [activeModuleDetailBox, setActiveModuleDetailBox] = useState<{
+    id: string;
+    type: 'formula' | 'uncheck';
+  } | null>(null);
 
   const loadScheduleGenModuleConfig = async () => {
     try {
@@ -10005,64 +10009,167 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <div className="divide-y divide-slate-200">
-                      {ruleItems.map((item, idx) => (
-                        <label
-                          key={item.id}
-                          onClick={() => handleToggleScheduleGenModuleItem(item.id)}
-                          className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
-                            item.enabled
-                              ? 'bg-white hover:bg-emerald-50/40'
-                              : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
-                          }`}
-                        >
-                          <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={item.enabled}
-                              onChange={() => handleToggleScheduleGenModuleItem(item.id)}
-                              className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
-                            />
-                          </div>
+                      {ruleItems.map((item, idx) => {
+                        const formulaText = item.formulaOrMethod || item.formula || '';
+                        const uncheckText = item.uncheckEffect || item.impact_when_disabled || '';
+                        const isFormulaOpen =
+                          activeModuleDetailBox?.id === item.id && activeModuleDetailBox?.type === 'formula';
+                        const isUncheckOpen =
+                          activeModuleDetailBox?.id === item.id && activeModuleDetailBox?.type === 'uncheck';
 
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-mono font-extrabold text-xs border border-emerald-300">
-                                  {item.code}
-                                </span>
-                                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200">
-                                  {item.badge}
-                                </span>
-                                <span className="text-sm font-extrabold text-slate-900">
-                                  {idx + 1}. {item.title}
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleToggleScheduleGenModuleItem(item.id)}
+                            className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
+                              item.enabled
+                                ? 'bg-white hover:bg-emerald-50/40'
+                                : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
+                            }`}
+                          >
+                            <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={item.enabled}
+                                onChange={() => handleToggleScheduleGenModuleItem(item.id)}
+                                className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 font-mono font-extrabold text-xs border border-emerald-300">
+                                    {item.code}
+                                  </span>
+                                  <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200">
+                                    {item.badge}
+                                  </span>
+                                  <span className="text-sm font-extrabold text-slate-900">
+                                    {idx + 1}. {item.title}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                                    item.enabled
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                      : 'bg-slate-200 text-slate-600 border-slate-300'
+                                  }`}
+                                >
+                                  {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
                                 </span>
                               </div>
-                              <span
-                                className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
-                                  item.enabled
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                    : 'bg-slate-200 text-slate-600 border-slate-300'
-                                }`}
+
+                              <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+
+                              <div
+                                className="grid sm:grid-cols-2 gap-2.5 pt-1 text-[11px]"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
-                              </span>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveModuleDetailBox((prev) =>
+                                      prev?.id === item.id && prev?.type === 'formula'
+                                        ? null
+                                        : { id: item.id, type: 'formula' }
+                                    )
+                                  }
+                                  className={`text-left px-3.5 py-2.5 rounded-xl border transition cursor-pointer ${
+                                    isFormulaOpen
+                                      ? 'bg-emerald-50 border-emerald-400 ring-2 ring-emerald-200 text-slate-900'
+                                      : 'bg-slate-50 hover:bg-emerald-50/60 border-slate-200/90 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-extrabold text-emerald-800">
+                                      [적용 수식 · 기준 설명]
+                                    </span>
+                                    <span className="text-[10px] font-bold text-emerald-700 underline">
+                                      {isFormulaOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
+                                    </span>
+                                  </div>
+                                  <div className="font-mono text-slate-800 break-words leading-relaxed">
+                                    {formulaText}
+                                  </div>
+                                </button>
 
-                            <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveModuleDetailBox((prev) =>
+                                      prev?.id === item.id && prev?.type === 'uncheck'
+                                        ? null
+                                        : { id: item.id, type: 'uncheck' }
+                                    )
+                                  }
+                                  className={`text-left px-3.5 py-2.5 rounded-xl border transition cursor-pointer ${
+                                    isUncheckOpen
+                                      ? 'bg-amber-100/80 border-amber-400 ring-2 ring-amber-200 text-amber-950'
+                                      : 'bg-amber-50/70 hover:bg-amber-100/50 border-amber-200/80 text-amber-900'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-extrabold text-amber-800">
+                                      [선택 해제(OFF) 시 대체 계산 방식]
+                                    </span>
+                                    <span className="text-[10px] font-bold text-amber-800 underline">
+                                      {isUncheckOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
+                                    </span>
+                                  </div>
+                                  <div className="text-amber-950 break-words leading-relaxed">
+                                    {uncheckText}
+                                  </div>
+                                </button>
+                              </div>
 
-                            <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
-                              <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700">
-                                <span className="font-extrabold text-emerald-800 mr-1.5">[적용 수식·기준]</span>
-                                <span className="font-mono">{item.formula}</span>
-                              </div>
-                              <div className="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900">
-                                <span className="font-extrabold text-amber-800 mr-1.5">[체크 해제 시 동작]</span>
-                                <span>{item.impact_when_disabled}</span>
-                              </div>
+                              {(isFormulaOpen || isUncheckOpen) && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`mt-2 p-3.5 rounded-xl border text-xs leading-relaxed space-y-1.5 ${
+                                    isFormulaOpen
+                                      ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950'
+                                      : 'bg-amber-50/95 border-amber-300 text-amber-950'
+                                  }`}
+                                >
+                                  <div className="font-extrabold flex items-center justify-between">
+                                    <span>
+                                      {isFormulaOpen
+                                        ? `📌 [${item.code}] 선택(ON) 시 적용 수식 및 작동 원리 상세`
+                                        : `⚠️ [${item.code}] 선택 해제(OFF) 시 대체 계산 방식 상세`}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveModuleDetailBox(null)}
+                                      className="text-[11px] font-bold px-2 py-0.5 rounded bg-white/80 hover:bg-white border border-slate-300 text-slate-700 cursor-pointer"
+                                    >
+                                      닫기
+                                    </button>
+                                  </div>
+                                  {isFormulaOpen ? (
+                                    <div className="space-y-1 text-slate-800">
+                                      <p>
+                                        • <strong>적용 수식/조건:</strong>{' '}
+                                        <code className="px-1.5 py-0.5 rounded bg-white border border-emerald-200 font-mono text-emerald-900">
+                                          {formulaText}
+                                        </code>
+                                      </p>
+                                      <p>• <strong>상세 동작 설명:</strong> {item.description}</p>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1 text-amber-950">
+                                      <p>• <strong>선택 해제(OFF) 시 대체 동작:</strong> {uncheckText}</p>
+                                      <p className="text-[11px] text-amber-800">
+                                        • 좌측 체크박스를 해제하고 [선택모듈 적용]을 누르면 위 정량 로직 대신 기본 폴백(대체) 기준으로 재배일정이 산출됩니다.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -10099,64 +10206,167 @@ export default function AdminDashboardPage() {
                     </div>
 
                     <div className="divide-y divide-slate-200">
-                      {aiItems.map((item, idx) => (
-                        <label
-                          key={item.id}
-                          onClick={() => handleToggleScheduleGenModuleItem(item.id)}
-                          className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
-                            item.enabled
-                              ? 'bg-white hover:bg-indigo-50/40'
-                              : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
-                          }`}
-                        >
-                          <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={item.enabled}
-                              onChange={() => handleToggleScheduleGenModuleItem(item.id)}
-                              className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-                            />
-                          </div>
+                      {aiItems.map((item, idx) => {
+                        const formulaText = item.formulaOrMethod || item.formula || '';
+                        const uncheckText = item.uncheckEffect || item.impact_when_disabled || '';
+                        const isFormulaOpen =
+                          activeModuleDetailBox?.id === item.id && activeModuleDetailBox?.type === 'formula';
+                        const isUncheckOpen =
+                          activeModuleDetailBox?.id === item.id && activeModuleDetailBox?.type === 'uncheck';
 
-                          <div className="flex-1 min-w-0 space-y-2">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-mono font-extrabold text-xs border border-indigo-300">
-                                  {item.code}
-                                </span>
-                                <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
-                                  {item.badge}
-                                </span>
-                                <span className="text-sm font-extrabold text-slate-900">
-                                  {idx + 1}. {item.title}
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => handleToggleScheduleGenModuleItem(item.id)}
+                            className={`p-5 flex items-start gap-4 transition cursor-pointer select-none ${
+                              item.enabled
+                                ? 'bg-white hover:bg-indigo-50/40'
+                                : 'bg-slate-50/80 opacity-75 hover:bg-slate-100/70'
+                            }`}
+                          >
+                            <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={item.enabled}
+                                onChange={() => handleToggleScheduleGenModuleItem(item.id)}
+                                className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                              />
+                            </div>
+
+                            <div className="flex-1 min-w-0 space-y-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-900 font-mono font-extrabold text-xs border border-indigo-300">
+                                    {item.code}
+                                  </span>
+                                  <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200">
+                                    {item.badge}
+                                  </span>
+                                  <span className="text-sm font-extrabold text-slate-900">
+                                    {idx + 1}. {item.title}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
+                                    item.enabled
+                                      ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
+                                      : 'bg-slate-200 text-slate-600 border-slate-300'
+                                  }`}
+                                >
+                                  {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
                                 </span>
                               </div>
-                              <span
-                                className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold border ${
-                                  item.enabled
-                                    ? 'bg-indigo-50 text-indigo-700 border-indigo-300'
-                                    : 'bg-slate-200 text-slate-600 border-slate-300'
-                                }`}
+
+                              <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+
+                              <div
+                                className="grid sm:grid-cols-2 gap-2.5 pt-1 text-[11px]"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {item.enabled ? '✔ 적용 중 (ON)' : '미적용 (OFF)'}
-                              </span>
-                            </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveModuleDetailBox((prev) =>
+                                      prev?.id === item.id && prev?.type === 'formula'
+                                        ? null
+                                        : { id: item.id, type: 'formula' }
+                                    )
+                                  }
+                                  className={`text-left px-3.5 py-2.5 rounded-xl border transition cursor-pointer ${
+                                    isFormulaOpen
+                                      ? 'bg-indigo-50 border-indigo-400 ring-2 ring-indigo-200 text-slate-900'
+                                      : 'bg-slate-50 hover:bg-indigo-50/60 border-slate-200/90 text-slate-700'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-extrabold text-indigo-800">
+                                      [AI 모델 · 알고리즘 설명]
+                                    </span>
+                                    <span className="text-[10px] font-bold text-indigo-700 underline">
+                                      {isFormulaOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
+                                    </span>
+                                  </div>
+                                  <div className="font-mono text-slate-800 break-words leading-relaxed">
+                                    {formulaText}
+                                  </div>
+                                </button>
 
-                            <p className="text-xs text-slate-700 leading-relaxed">{item.description}</p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActiveModuleDetailBox((prev) =>
+                                      prev?.id === item.id && prev?.type === 'uncheck'
+                                        ? null
+                                        : { id: item.id, type: 'uncheck' }
+                                    )
+                                  }
+                                  className={`text-left px-3.5 py-2.5 rounded-xl border transition cursor-pointer ${
+                                    isUncheckOpen
+                                      ? 'bg-amber-100/80 border-amber-400 ring-2 ring-amber-200 text-amber-950'
+                                      : 'bg-amber-50/70 hover:bg-amber-100/50 border-amber-200/80 text-amber-900'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="font-extrabold text-amber-800">
+                                      [선택 해제(OFF) 시 대체 계산 방식]
+                                    </span>
+                                    <span className="text-[10px] font-bold text-amber-800 underline">
+                                      {isUncheckOpen ? '상세 닫기 ▲' : '상세 보기 ▼'}
+                                    </span>
+                                  </div>
+                                  <div className="text-amber-950 break-words leading-relaxed">
+                                    {uncheckText}
+                                  </div>
+                                </button>
+                              </div>
 
-                            <div className="grid sm:grid-cols-2 gap-2 pt-1 text-[11px]">
-                              <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200/90 text-slate-700">
-                                <span className="font-extrabold text-indigo-800 mr-1.5">[AI 모델·알고리즘]</span>
-                                <span className="font-mono">{item.formula}</span>
-                              </div>
-                              <div className="px-3 py-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900">
-                                <span className="font-extrabold text-amber-800 mr-1.5">[체크 해제 시 동작]</span>
-                                <span>{item.impact_when_disabled}</span>
-                              </div>
+                              {(isFormulaOpen || isUncheckOpen) && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`mt-2 p-3.5 rounded-xl border text-xs leading-relaxed space-y-1.5 ${
+                                    isFormulaOpen
+                                      ? 'bg-indigo-50/90 border-indigo-300 text-indigo-950'
+                                      : 'bg-amber-50/95 border-amber-300 text-amber-950'
+                                  }`}
+                                >
+                                  <div className="font-extrabold flex items-center justify-between">
+                                    <span>
+                                      {isFormulaOpen
+                                        ? `🤖 [${item.code}] 선택(ON) 시 AI 모델 추론 원리 상세`
+                                        : `⚠️ [${item.code}] 선택 해제(OFF) 시 대체 계산 방식 상세`}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveModuleDetailBox(null)}
+                                      className="text-[11px] font-bold px-2 py-0.5 rounded bg-white/80 hover:bg-white border border-slate-300 text-slate-700 cursor-pointer"
+                                    >
+                                      닫기
+                                    </button>
+                                  </div>
+                                  {isFormulaOpen ? (
+                                    <div className="space-y-1 text-slate-800">
+                                      <p>
+                                        • <strong>AI 추론 수식/모델:</strong>{' '}
+                                        <code className="px-1.5 py-0.5 rounded bg-white border border-indigo-200 font-mono text-indigo-900">
+                                          {formulaText}
+                                        </code>
+                                      </p>
+                                      <p>• <strong>상세 동작 설명:</strong> {item.description}</p>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-1 text-amber-950">
+                                      <p>• <strong>선택 해제(OFF) 시 대체 동작:</strong> {uncheckText}</p>
+                                      <p className="text-[11px] text-amber-800">
+                                        • 좌측 체크박스를 해제하고 [선택모듈 적용]을 누르면 AI 에이전트 추론을 생략하고 위 기본 대체 기준으로 재배일정이 산출됩니다.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </label>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 

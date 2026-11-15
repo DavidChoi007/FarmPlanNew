@@ -11,8 +11,10 @@ export interface ScheduleGenerationModuleItem {
   title: string;
   badge: string;
   formulaOrMethod: string;
+  formula?: string;
   description: string;
   uncheckEffect: string;
+  impact_when_disabled?: string;
   enabled: boolean;
 }
 
@@ -174,7 +176,12 @@ export function createDefaultScheduleGenerationModuleConfig(): ScheduleGeneratio
     version: 1,
     updated_at: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '),
     updated_by: '관리자 (기본값 전체 선택)',
-    items: DEFAULT_SCHEDULE_GENERATION_MODULE_ITEMS.map((it) => ({ ...it, enabled: true })),
+    items: DEFAULT_SCHEDULE_GENERATION_MODULE_ITEMS.map((it) => ({
+      ...it,
+      formula: it.formulaOrMethod,
+      impact_when_disabled: it.uncheckEffect,
+      enabled: true,
+    })),
   };
 }
 
@@ -204,6 +211,8 @@ export function normalizeScheduleGenerationModuleConfig(
     updated_by: String(raw.updated_by || def.updated_by),
     items: DEFAULT_SCHEDULE_GENERATION_MODULE_ITEMS.map((item) => ({
       ...item,
+      formula: item.formulaOrMethod,
+      impact_when_disabled: item.uncheckEffect,
       enabled: byKey.has(item.key)
         ? Boolean(byKey.get(item.key))
         : byKey.has(item.id)
