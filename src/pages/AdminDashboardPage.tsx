@@ -41,6 +41,7 @@ import {
   Droplets,
   Calendar,
   Users,
+  ShoppingBag,
 } from 'lucide-react';
 
 type AdminTab =
@@ -78,7 +79,8 @@ type AdminTab =
   | 'purchase_intent_status'
   | 'addresses_road'
   | 'addresses'
-  | 'member_management';
+  | 'member_management'
+  | 'agro_sales_management';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -5128,6 +5130,305 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // ==================== [13. 농자재 판매 관리 상태 및 검색 필터] ====================
+  const ADMIN_AGRO_SALES_STORAGE_KEY = 'hanfarm_admin_agro_sales_v1';
+  const USER_STAGE_PURCHASE_STORAGE_KEY = 'hanfarm_stage_purchase_history_v1';
+
+  const inferAgroCategory1st = (item: any): string => {
+    if (item?.category_1st && ['비료', '영양제', '병해충관리제', '씨', '모종'].includes(item.category_1st)) {
+      return item.category_1st;
+    }
+    const rawCat = String(item?.category || item?.main_category || '').toUpperCase();
+    const pName = String(item?.productName || item?.product_name || '');
+    const subName = String(item?.subItemName || item?.processName || '');
+    if (rawCat.includes('SEEDLING') || pName.includes('모종') || pName.includes('육묘')) return '모종';
+    if (rawCat.includes('SEED') || pName.includes('종자') || pName.includes('씨앗')) return '씨';
+    if (
+      rawCat.includes('PESTICIDE') ||
+      pName.includes('살충') ||
+      pName.includes('살균') ||
+      pName.includes('방제') ||
+      pName.includes('약제') ||
+      subName.includes('방제') ||
+      subName.includes('병해충')
+    ) {
+      return '병해충관리제';
+    }
+    if (
+      rawCat.includes('NUTRIENT') ||
+      pName.includes('칼슘') ||
+      pName.includes('붕소') ||
+      pName.includes('영양') ||
+      pName.includes('활착') ||
+      pName.includes('엽면')
+    ) {
+      return '영양제';
+    }
+    return '비료';
+  };
+
+  const inferAgroCategory2nd = (item: any, cat1: string): string => {
+    if (item?.category_2nd && String(item.category_2nd).trim()) {
+      return String(item.category_2nd).trim();
+    }
+    const pName = String(item?.productName || item?.product_name || '');
+    if (cat1 === '비료') {
+      if (pName.includes('퇴비') || pName.includes('유기')) return '유기질 퇴비';
+      if (pName.includes('석회') || pName.includes('개량')) return '토양개량제';
+      if (pName.includes('웃거름') || pName.includes('NK')) return '웃거름(추비)';
+      return '밑거름·복합비료';
+    }
+    if (cat1 === '영양제') {
+      if (pName.includes('칼슘') || pName.includes('붕소')) return '칼슘·붕소 영양제';
+      if (pName.includes('발근') || pName.includes('활착')) return '발근·활착 촉진제';
+      return '생육·비대 영양제';
+    }
+    if (cat1 === '병해충관리제') {
+      if (pName.includes('무름') || pName.includes('노균') || pName.includes('살균')) return '살균제';
+      if (pName.includes('나방') || pName.includes('진딧물') || pName.includes('살충')) return '살충제';
+      return '친환경·복합방제제';
+    }
+    if (cat1 === '씨') return '정품 보증 종자';
+    if (cat1 === '모종') return '우량 포트 육묘';
+    return item?.subItemName || '기타 농자재';
+  };
+
+  const DEFAULT_ADMIN_AGRO_SALES: any[] = [
+    {
+      id: 'ORD-20260918-04',
+      orderNo: 'ORD-20260918-04',
+      purchasedAt: '2026-09-18 11:05',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '04. 생육 중기 (결구 시작기)',
+      subItemName: '생육 중기 2차 추비 · 칼슘제 엽면시비',
+      processCode: 'STAGE-04-01',
+      startDate: '2026-09-20',
+      targetPgdd: 432,
+      category_1st: '영양제',
+      category_2nd: '칼슘·붕소 영양제',
+      productName: '칼슘보론 액상 영양제 (결구기 꿀통배추 예방)',
+      manufacturer: '(주)대유',
+      unitSpec: '500ml × 1병 (250평 기준)',
+      unitPrice: 16000,
+      qty: 2,
+      unitLabel: '병',
+      totalPrice: 30400,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+    },
+    {
+      id: 'ORD-20260901-03',
+      orderNo: 'ORD-20260901-03',
+      purchasedAt: '2026-09-01 08:40',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '03. 정식 · 초기 활착기',
+      subItemName: '뿌리 활착 및 초기 생육 촉진 (1차 추비)',
+      processCode: 'STAGE-03-02',
+      startDate: '2026-09-02',
+      targetPgdd: 136,
+      category_1st: '영양제',
+      category_2nd: '발근·활착 촉진제',
+      productName: '파워루트 발근·활착 촉진 액비 (아미노산+해조추출물)',
+      manufacturer: '(주)도프',
+      unitSpec: '1L × 1병 (300평 관주용)',
+      unitPrice: 24000,
+      qty: 1,
+      unitLabel: '병',
+      totalPrice: 22800,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+    },
+    {
+      id: 'ORD-20260812-02',
+      orderNo: 'ORD-20260812-02',
+      purchasedAt: '2026-08-12 09:15',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '01. 재배 준비 (토양 관리)',
+      subItemName: '밑거름 시비 및 로터리 정지 작업',
+      processCode: 'STAGE-01-02',
+      startDate: '2026-08-14',
+      targetPgdd: 0,
+      category_1st: '비료',
+      category_2nd: '밑거름·복합비료',
+      productName: '원예용 슈퍼복합비료 (질소-인산-칼리+붕소·고토)',
+      manufacturer: '남해화학(주)',
+      unitSpec: '20kg × 1포',
+      unitPrice: 21500,
+      qty: 3,
+      unitLabel: '포',
+      totalPrice: 61275,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+    },
+    {
+      id: 'ORD-20260810-01',
+      orderNo: 'ORD-20260810-01',
+      purchasedAt: '2026-08-10 14:22',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '01. 재배 준비 (토양 관리)',
+      subItemName: '토양 산도(pH) 교정 및 유기물 퇴비 살포',
+      processCode: 'STAGE-01-01',
+      startDate: '2026-08-11',
+      targetPgdd: 0,
+      category_1st: '비료',
+      category_2nd: '유기질 퇴비',
+      productName: '흙살림 입상 완숙 유박퇴비 1등급 (유기물 70%)',
+      manufacturer: '(주)흙살림바이오',
+      unitSpec: '20kg × 1포',
+      unitPrice: 13500,
+      qty: 12,
+      unitLabel: '포',
+      totalPrice: 153900,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+    },
+    {
+      id: 'ORD-20260820-05',
+      orderNo: 'ORD-20260820-05',
+      purchasedAt: '2026-08-20 16:10',
+      member_id: 'kimfarm88@hanmail.net',
+      member_name: '김영호',
+      cropTitle: '가을배추 (휘파람골드)',
+      region: '충청북도 충주시 산척면 송강리 · 600평',
+      stageGroupName: '05. 병해충 예찰 · 방제',
+      subItemName: '배추 무름병 · 뿌리혹병 예방 전문 방제',
+      processCode: 'STAGE-05-01',
+      startDate: '2026-08-24',
+      targetPgdd: 510,
+      category_1st: '병해충관리제',
+      category_2nd: '살균제',
+      productName: '일품 무름병·세균병 전문 입상수화제',
+      manufacturer: '경농(주)',
+      unitSpec: '250g × 1봉 (500평분)',
+      unitPrice: 19500,
+      qty: 2,
+      unitLabel: '봉',
+      totalPrice: 37050,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '입금확인 · 출고중',
+    },
+    {
+      id: 'ORD-20260822-06',
+      orderNo: 'ORD-20260822-06',
+      purchasedAt: '2026-08-22 10:30',
+      member_id: 'lee_green@naver.com',
+      member_name: '이정숙',
+      cropTitle: '가을배추 (불암플러스)',
+      region: '전라남도 해남군 해남읍 연동리 · 500평',
+      stageGroupName: '02. 파종 · 육묘 관리',
+      subItemName: '우량 배추 포트 모종 본밭 정식 준비',
+      processCode: 'STAGE-02-01',
+      startDate: '2026-08-25',
+      targetPgdd: 45,
+      category_1st: '모종',
+      category_2nd: '우량 포트 육묘',
+      productName: '해남 불암플러스 배추 105구 우량 건묘 트레이',
+      manufacturer: '한팜육묘장',
+      unitSpec: '105구 × 1트레이',
+      unitPrice: 14000,
+      qty: 10,
+      unitLabel: '트레이',
+      totalPrice: 133000,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+    },
+  ];
+
+  const loadMergedAdminAgroSales = (): any[] => {
+    try {
+      const savedAdminRaw = localStorage.getItem(ADMIN_AGRO_SALES_STORAGE_KEY);
+      const savedUserRaw = localStorage.getItem(USER_STAGE_PURCHASE_STORAGE_KEY);
+      const adminItems: any[] = savedAdminRaw ? JSON.parse(savedAdminRaw) : [];
+      const userItems: any[] = savedUserRaw ? JSON.parse(savedUserRaw) : [];
+
+      const byId = new Map<string, any>();
+      const allSource = [...userItems, ...adminItems, ...DEFAULT_ADMIN_AGRO_SALES];
+      for (const raw of allSource) {
+        if (!raw) continue;
+        const key = String(raw.id || raw.orderNo || Math.random());
+        if (byId.has(key)) continue;
+        const cat1 = inferAgroCategory1st(raw);
+        const cat2 = inferAgroCategory2nd(raw, cat1);
+        byId.set(key, {
+          ...raw,
+          id: key,
+          orderNo: raw.orderNo || key,
+          member_id: raw.member_id || raw.email || 'CloudBae@naver.com',
+          member_name: raw.member_name || '배철민',
+          category_1st: cat1,
+          category_2nd: cat2,
+          productName: raw.productName || raw.product_name || '농자재 상품',
+        });
+      }
+      return Array.from(byId.values());
+    } catch {
+      return DEFAULT_ADMIN_AGRO_SALES;
+    }
+  };
+
+  const [adminAgroSalesList, setAdminAgroSalesList] = useState<any[]>(() => loadMergedAdminAgroSales());
+  const [salesMemberIdFilter, setSalesMemberIdFilter] = useState<string>('');
+  const [salesCategory1stFilter, setSalesCategory1stFilter] = useState<string>('ALL');
+  const [salesCategory2ndFilter, setSalesCategory2ndFilter] = useState<string>('ALL');
+  const [salesProductNameFilter, setSalesProductNameFilter] = useState<string>('');
+
+  useEffect(() => {
+    if (activeTab === 'agro_sales_management') {
+      setAdminAgroSalesList(loadMergedAdminAgroSales());
+    }
+  }, [activeTab]);
+
+  const handleUpdateAdminSaleStatus = (targetId: string, nextStatus: string) => {
+    setAdminAgroSalesList((prev) => {
+      const next = prev.map((it) =>
+        it.id === targetId ? { ...it, deliveryStatus: nextStatus } : it
+      );
+      try {
+        localStorage.setItem(ADMIN_AGRO_SALES_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast(`판매 주문 [${targetId}] 상태가 "${nextStatus}"(으)로 변경되었습니다.`);
+  };
+
+  const handleDeleteAdminSaleItem = (targetId: string) => {
+    if (!window.confirm(`해당 농자재 판매 내역(${targetId})을 삭제하시겠습니까?`)) return;
+    setAdminAgroSalesList((prev) => {
+      const next = prev.filter((it) => it.id !== targetId);
+      try {
+        localStorage.setItem(ADMIN_AGRO_SALES_STORAGE_KEY, JSON.stringify(next));
+        const userRaw = localStorage.getItem(USER_STAGE_PURCHASE_STORAGE_KEY);
+        if (userRaw) {
+          const parsedUser = JSON.parse(userRaw);
+          if (Array.isArray(parsedUser)) {
+            localStorage.setItem(
+              USER_STAGE_PURCHASE_STORAGE_KEY,
+              JSON.stringify(parsedUser.filter((u: any) => u.id !== targetId))
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast(`농자재 판매 내역 [${targetId}] 삭제 완료`);
+  };
+
   const navItems: { id: AdminTab; label: string; sub: string; icon: any }[] = [
     { id: 'dashboard', label: '1. 통합 대시보드', sub: '운영 현황 · 모델 KPI', icon: LayoutDashboard },
     { id: 'basic_crop_codes', label: '2. 기초 코드 관리 > 농작물 기초 코드', sub: '1단계 작물군 · 2단계 작물 기초 코드 관리', icon: Database },
@@ -5162,7 +5463,8 @@ export default function AdminDashboardPage() {
     { id: 'purchase_intent_content', label: '11. 구매의향서 관리 > 구매의향서 내용', sub: '한팜 맞춤형 재배관리 플랫폼 구독의향서 본문 · 최종 확인 폼 · URL 배포', icon: ClipboardList },
     { id: 'purchase_intent_status', label: '11. 구매의향서 관리 > 구매의향서 수집 현황', sub: '접수된 구매·구독의향서 응답 수집 현황 · 통계 · CSV 다운로드', icon: ListChecks },
     { id: 'member_management', label: '12. 회원정보 관리', sub: '회원가입 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 관리', icon: Users },
-    { id: 'settings', label: '13. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
+    { id: 'agro_sales_management', label: '13. 농자재 판매 관리', sub: '회원ID · 농자재 1/2차 구분 · 농자재명 검색 및 판매내역 관리', icon: ShoppingBag },
+    { id: 'settings', label: '14. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
   ];
 
   // 1단계(작물군) & 2단계(작물 및 세부 품종) 통합 관리 섹션 렌더러 (기초 코드 관리 > 농작물 기초 코드 및 2. 농작물 3단계 마스터 공용)
@@ -32431,6 +32733,404 @@ export default function AdminDashboardPage() {
                     </div>
                   );
                 })()}
+              </div>
+            );
+          })()}
+
+          {/* ==================== 13. 농자재 판매 관리 (회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명 검색 및 판매내역 관리) ==================== */}
+          {activeTab === 'agro_sales_management' && (() => {
+            const CATEGORY_1ST_OPTIONS = ['비료', '영양제', '병해충관리제', '씨', '모종'];
+            const PRESET_CATEGORY_2ND_BY_1ST: Record<string, string[]> = {
+              비료: ['밑거름·복합비료', '유기질 퇴비', '웃거름(추비)', '토양개량제'],
+              영양제: ['칼슘·붕소 영양제', '발근·활착 촉진제', '생육·비대 영양제'],
+              병해충관리제: ['살균제', '살충제', '친환경·복합방제제'],
+              씨: ['정품 보증 종자'],
+              모종: ['우량 포트 육묘'],
+            };
+
+            const dynamic2ndSet = new Set<string>();
+            if (salesCategory1stFilter === 'ALL') {
+              Object.values(PRESET_CATEGORY_2ND_BY_1ST).forEach((arr) =>
+                arr.forEach((v) => dynamic2ndSet.add(v))
+              );
+              adminAgroSalesList.forEach((it) => {
+                const c2 = inferAgroCategory2nd(it, inferAgroCategory1st(it));
+                if (c2) dynamic2ndSet.add(c2);
+              });
+            } else {
+              (PRESET_CATEGORY_2ND_BY_1ST[salesCategory1stFilter] || []).forEach((v) =>
+                dynamic2ndSet.add(v)
+              );
+              adminAgroSalesList
+                .filter((it) => inferAgroCategory1st(it) === salesCategory1stFilter)
+                .forEach((it) => {
+                  const c2 = inferAgroCategory2nd(it, salesCategory1stFilter);
+                  if (c2) dynamic2ndSet.add(c2);
+                });
+            }
+            const category2ndOptions = Array.from(dynamic2ndSet);
+
+            const filteredSales = adminAgroSalesList.filter((item) => {
+              const memberIdStr = String(item.member_id || item.email || 'CloudBae@naver.com').toLowerCase();
+              const memberNameStr = String(item.member_name || '').toLowerCase();
+              const cat1 = inferAgroCategory1st(item);
+              const cat2 = inferAgroCategory2nd(item, cat1);
+              const prodName = String(item.productName || item.product_name || '').toLowerCase();
+
+              if (salesMemberIdFilter.trim()) {
+                const qMember = salesMemberIdFilter.trim().toLowerCase();
+                if (!memberIdStr.includes(qMember) && !memberNameStr.includes(qMember)) {
+                  return false;
+                }
+              }
+              if (salesCategory1stFilter !== 'ALL' && cat1 !== salesCategory1stFilter) {
+                return false;
+              }
+              if (salesCategory2ndFilter !== 'ALL' && cat2 !== salesCategory2ndFilter) {
+                return false;
+              }
+              if (salesProductNameFilter.trim()) {
+                const qProd = salesProductNameFilter.trim().toLowerCase();
+                if (!prodName.includes(qProd)) {
+                  return false;
+                }
+              }
+              return true;
+            });
+
+            const totalSalesCount = filteredSales.length;
+            const totalSalesQty = filteredSales.reduce(
+              (sum, it) => sum + Math.max(1, Number(it.qty) || 1),
+              0
+            );
+            const totalSalesAmount = filteredSales.reduce(
+              (sum, it) => sum + (Number(it.totalPrice) || 0),
+              0
+            );
+
+            return (
+              <div className="space-y-6 w-full">
+                {/* 상단 헤더 배너 */}
+                <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-extrabold border border-emerald-400/30">
+                        13. 농자재 판매 관리 · 회원 구매/판매 내역 통합 관제
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+                        회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명(이름) 조건 검색
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-extrabold mt-2">
+                      13. 농자재 판매 관리 (회원별 농자재 구매·판매 내역 통합 관리)
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      회원이 장바구니 또는 재배일정 확인 페이지에서 구매한 농자재 판매내역을 회원 아이디(ID), 농자재 1·2차 구분, 생육과정 구분 정보 및 농자재명과 함께 조회·관리합니다.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminAgroSalesList(loadMergedAdminAgroSales());
+                        showToast('최신 농자재 판매 내역을 동기화했습니다.');
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      판매내역 새로고침
+                    </button>
+                  </div>
+                </div>
+
+                {/* 상단 KPI 요약 카드 */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500">조회된 판매 건수</div>
+                    <div className="text-2xl font-black text-slate-900 mt-1">
+                      {totalSalesCount.toLocaleString()}건
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                      전체 누적 {adminAgroSalesList.length}건 중 조건 일치
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-emerald-700">총 판매 수량</div>
+                    <div className="text-2xl font-black text-emerald-800 mt-1">
+                      {totalSalesQty.toLocaleString()}개
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      비료 · 영양제 · 병해충관리제 · 씨 · 모종 합산
+                    </div>
+                  </div>
+                  <div className="bg-emerald-950 text-white rounded-2xl p-4 shadow-xs">
+                    <div className="text-xs font-bold text-emerald-300">조회 조건 총 판매 금액</div>
+                    <div className="text-2xl font-black text-white mt-1">
+                      {totalSalesAmount.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-emerald-200 mt-0.5">
+                      회원 5% 즉시할인 적용 실결제액 합계
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4대 검색 조건 바: 회원ID / 농자재 1차 구분 / 농자재 2차 구분 / 농자재명(이름) */}
+                <div className="bg-white rounded-2xl border-2 border-emerald-600/30 p-5 shadow-xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        농자재 판매내역 상세 검색 조건 (회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명)
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSalesMemberIdFilter('');
+                        setSalesCategory1stFilter('ALL');
+                        setSalesCategory2ndFilter('ALL');
+                        setSalesProductNameFilter('');
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      검색조건 초기화
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    {/* 1. 회원ID */}
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1.5">
+                        ① 회원ID 검색
+                      </label>
+                      <input
+                        type="text"
+                        value={salesMemberIdFilter}
+                        onChange={(e) => setSalesMemberIdFilter(e.target.value)}
+                        placeholder="예: CloudBae@naver.com"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    {/* 2. 농자재 1차 구분 */}
+                    <div>
+                      <label className="block font-extrabold text-emerald-800 mb-1.5">
+                        ② 농자재 1차 구분
+                      </label>
+                      <select
+                        value={salesCategory1stFilter}
+                        onChange={(e) => {
+                          setSalesCategory1stFilter(e.target.value);
+                          setSalesCategory2ndFilter('ALL');
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="ALL">농자재 1차 구분 전체</option>
+                        {CATEGORY_1ST_OPTIONS.map((c1) => (
+                          <option key={c1} value={c1}>
+                            {c1}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 3. 농자재 2차 구분 */}
+                    <div>
+                      <label className="block font-extrabold text-teal-800 mb-1.5">
+                        ③ 농자재 2차 구분
+                      </label>
+                      <select
+                        value={salesCategory2ndFilter}
+                        onChange={(e) => setSalesCategory2ndFilter(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="ALL">농자재 2차 구분 전체</option>
+                        {category2ndOptions.map((c2) => (
+                          <option key={c2} value={c2}>
+                            {c2}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 4. 농자재명(이름) */}
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1.5">
+                        ④ 농자재명(이름)
+                      </label>
+                      <input
+                        type="text"
+                        value={salesProductNameFilter}
+                        onChange={(e) => setSalesProductNameFilter(e.target.value)}
+                        placeholder="예: 칼슘보론, 유박퇴비, 슈퍼복합비료..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 판매 내역 리스트 테이블 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        농자재 판매 내역 리스트 (총 {filteredSales.length}건)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        회원 아이디(회원ID) · 농자재 1차 구분 · 농자재 2차 구분 · 생육과정 구분 · 농자재명(이름) · 수량 · 결제금액 · 상태 관리
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-900 text-white border-b border-slate-800">
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">순번 / 주문번호</th>
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">회원 아이디 (회원ID)</th>
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">농자재 1차 구분</th>
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">농자재 2차 구분</th>
+                          <th className="py-3.5 px-3 font-extrabold">생육과정 구분 정보 (작물 · 생육단계 · 세부과정)</th>
+                          <th className="py-3.5 px-3 font-extrabold">농자재명(이름) · 규격 · 제조사</th>
+                          <th className="py-3.5 px-3 font-extrabold text-right whitespace-nowrap">수량 / 결제금액</th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap">입금/배송 상태 · 관리</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {filteredSales.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-12 text-center text-slate-500 font-bold">
+                              검색 조건(회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명)에 일치하는 판매 내역이 없습니다.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredSales.map((sale, idx) => {
+                            const cat1 = inferAgroCategory1st(sale);
+                            const cat2 = inferAgroCategory2nd(sale, cat1);
+                            const qty = Math.max(1, Number(sale.qty) || 1);
+                            const totalPrice = Number(
+                              sale.totalPrice ?? (Number(sale.unitPrice) || 0) * qty
+                            );
+                            const memberId = sale.member_id || sale.email || 'CloudBae@naver.com';
+
+                            return (
+                              <tr key={sale.id || idx} className="hover:bg-slate-50/90 transition">
+                                {/* 1. 순번 / 주문번호 / 일시 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <div className="font-mono font-extrabold text-slate-900">
+                                    #{idx + 1} · {sale.orderNo || sale.id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
+                                    {sale.purchasedAt || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 2. 회원 아이디 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-mono font-extrabold text-xs inline-block">
+                                    {memberId}
+                                  </span>
+                                  {sale.member_name && (
+                                    <div className="text-[11px] font-bold text-slate-600 mt-1">
+                                      회원명: {sale.member_name}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 3. 농자재 1차 구분 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-extrabold text-xs inline-block">
+                                    {cat1}
+                                  </span>
+                                </td>
+
+                                {/* 4. 농자재 2차 구분 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <span className="px-2.5 py-1 rounded-lg bg-teal-50 text-teal-900 border border-teal-200 font-extrabold text-xs inline-block">
+                                    {cat2}
+                                  </span>
+                                </td>
+
+                                {/* 5. 생육과정 구분 정보 */}
+                                <td className="py-3.5 px-3 align-top min-w-[220px]">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2 py-0.5 rounded bg-emerald-800 text-white text-[10.5px] font-extrabold">
+                                      {sale.cropTitle || '재배작물'}
+                                    </span>
+                                    {sale.region && (
+                                      <span className="text-[11px] text-slate-600 font-semibold">
+                                        {sale.region}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="font-extrabold text-slate-800 mt-1">
+                                    {sale.stageGroupName || '본밭 생육단계'}
+                                  </div>
+                                  <div className="text-[11px] text-amber-900 font-bold mt-0.5">
+                                    └ {sale.subItemName || sale.processName || '생육과정 맞춤 공정'}
+                                  </div>
+                                </td>
+
+                                {/* 6. 농자재명(이름) · 규격 · 제조사 */}
+                                <td className="py-3.5 px-3 align-top min-w-[230px]">
+                                  <div className="font-black text-slate-900 text-xs sm:text-sm leading-snug">
+                                    {sale.productName || sale.product_name}
+                                  </div>
+                                  <div className="text-[11px] text-slate-600 mt-1">
+                                    포장규격: <strong className="text-slate-800">{sale.unitSpec || '1개'}</strong> · 제조사:{' '}
+                                    <strong className="text-slate-800">{sale.manufacturer || '한팜인증'}</strong>
+                                  </div>
+                                  {sale.paymentMethod && (
+                                    <div className="text-[10.5px] text-emerald-700 font-bold mt-0.5">
+                                      결제계좌: {sale.paymentMethod}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 7. 수량 / 결제금액 */}
+                                <td className="py-3.5 px-3 text-right whitespace-nowrap align-top">
+                                  <div className="font-extrabold text-slate-800">
+                                    {qty}
+                                    {sale.unitLabel || '개'}
+                                  </div>
+                                  <div className="text-sm font-black text-emerald-700 mt-0.5">
+                                    {totalPrice.toLocaleString()}원
+                                  </div>
+                                </td>
+
+                                {/* 8. 상태 변경 및 삭제 */}
+                                <td className="py-3.5 px-3 text-center whitespace-nowrap align-top">
+                                  <div className="flex flex-col items-center gap-1.5">
+                                    <select
+                                      value={sale.deliveryStatus || '입금대기 · 산지발송 준비'}
+                                      onChange={(e) => handleUpdateAdminSaleStatus(sale.id, e.target.value)}
+                                      className="px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50/70 text-emerald-900 font-extrabold text-[11px] cursor-pointer"
+                                    >
+                                      <option value="입금대기 · 산지발송 준비">입금대기 · 산지발송 준비</option>
+                                      <option value="입금확인 · 출고중">입금확인 · 출고중</option>
+                                      <option value="배송중">배송중</option>
+                                      <option value="배송완료">배송완료</option>
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteAdminSaleItem(sale.id)}
+                                      className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      삭제
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             );
           })()}
