@@ -16095,7 +16095,7 @@ export default function UserIntroPage() {
                     </div>
                   )}
 
-                  {/* 구매 내역 리스트 (모바일: 세로 스택 카드 / PC: 3단 그리드 [① 재배일정 정보 | ② 생육과정 정보 | ③ 구매 제품 정보]) */}
+                  {/* 구매 내역 리스트 (사진, 제품명, 구매수량, 포장규격, 제조사 표시) */}
                   {filteredPurchases.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center space-y-2 bg-slate-50/50">
                       <div className="text-sm font-extrabold text-slate-700">
@@ -16106,247 +16106,60 @@ export default function UserIntroPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {filteredPurchases.map((entry: any) => (
                         <div
                           key={entry.id}
-                          className="rounded-2xl border-2 border-slate-200 hover:border-emerald-400 transition overflow-hidden bg-white shadow-2xs"
+                          className="rounded-2xl border border-slate-200 hover:border-emerald-400 transition overflow-hidden bg-white shadow-2xs p-3.5 sm:p-4 flex items-center justify-between gap-3.5"
                         >
-                          {/* 카드 상단 주문 메타 헤더 */}
-                          <div className="bg-[#E9F7F1] px-4 py-2.5 border-b border-emerald-200 flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="px-2.5 py-0.5 rounded-md bg-emerald-700 text-white font-mono text-xs font-extrabold">
-                                {entry.orderNo}
-                              </span>
-                              <span className="text-xs font-bold text-slate-700">
-                                구매일시: <span className="font-mono">{entry.purchasedAt}</span>
-                              </span>
-                              <span className="px-2.5 py-0.5 rounded-full bg-white border border-emerald-300 text-emerald-800 text-[11px] font-extrabold">
-                                ✓ {entry.deliveryStatus || '구매완료 · 적기 배송예정'}
-                              </span>
-                            </div>
+                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                            {/* 사진 */}
+                            <img
+                              src={resolveAgroProductThumbUrl(entry)}
+                              alt={entry.productName}
+                              onError={handleAgroThumbImgError}
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-contain p-1 border border-slate-200 bg-slate-50 shrink-0"
+                            />
 
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-emerald-900">
-                                결제금액:{' '}
-                                <span className="text-sm font-extrabold text-emerald-700">
-                                  {Number(entry.totalPrice || 0).toLocaleString()}원
-                                </span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const reqNo = entry.requestNo || 'REQ-20261106-009';
-                                  setSelectedRequestNo(reqNo);
-                                  setExpandedScheduleRequestNo(reqNo);
-                                  setActiveMenu('재배일정 확인');
-                                  setMobileScheduleStep('detail');
-                                  const matchedStage = (provisionData?.scheduleItems || []).find(
-                                    (si: any) =>
-                                      si.item_id === entry.stageItemId ||
-                                      si.sub_item_name === entry.subItemName
-                                  );
-                                  if (matchedStage) {
-                                    handleSelectStageItem(matchedStage);
-                                  }
-                                  if (typeof window !== 'undefined') {
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }
-                                }}
-                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 text-[11px] font-extrabold cursor-pointer transition"
-                              >
-                                해당 생육과정 보기 ›
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteStagePurchaseItem(entry)}
-                                className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-[11px] font-extrabold cursor-pointer transition inline-flex items-center gap-1"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                <span>삭제</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* 카드 본문: ① 구매한 재배 일정 정보 | ② 생육과정 정보 | ③ 구매한 제품 정보 */}
-                          <div className="p-3.5 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
-                            {/* ① 구매한 재배 일정 정보 */}
-                            <div className="lg:col-span-4 rounded-xl bg-slate-50 border border-slate-200 p-3.5 flex flex-col justify-between space-y-2.5">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                                  <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>① 구매한 재배 일정 정보</span>
-                                  </span>
-                                  <span className="font-mono text-[10px] font-bold text-slate-500">
-                                    {entry.requestNo}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white text-xs font-extrabold">
-                                    {entry.cropTitle}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] font-bold">
-                                    {entry.plantingType} 재배
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold">
-                                    {Number(entry.areaPyeong || 300).toLocaleString()}평
-                                  </span>
-                                </div>
-
-                                <div className="text-xs text-slate-700 space-y-1 pt-0.5">
-                                  <div className="flex items-start gap-1.5">
-                                    <span className="text-slate-500 font-semibold shrink-0">
-                                      재배지역:
-                                    </span>
-                                    <span className="font-bold text-slate-900">{entry.region}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-slate-500 font-semibold shrink-0">
-                                      정식/파종일:
-                                    </span>
-                                    <span className="font-mono font-bold text-slate-800">
-                                      {entry.plantingDate}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-slate-500 font-semibold shrink-0">
-                                      수확예정일:
-                                    </span>
-                                    <span className="font-mono font-bold text-emerald-800">
-                                      {entry.expectedHarvestDate}
-                                    </span>
-                                  </div>
-                                </div>
+                            {/* 제품명, 구매수량, 포장규격, 제조사 */}
+                            <div className="min-w-0 flex-1 space-y-1.5">
+                              <div className="font-extrabold text-slate-900 text-sm sm:text-base leading-snug break-keep">
+                                {entry.productName}
                               </div>
-
-                              <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] text-slate-500 font-semibold">
-                                <span>작물분류: {entry.cropCategory || '엽채류'}</span>
-                                <span className="text-emerald-700 font-bold">48주 스마트일정 연동</span>
-                              </div>
-                            </div>
-
-                            {/* ② 생육과정 정보 */}
-                            <div className="lg:col-span-4 rounded-xl bg-emerald-50/50 border border-emerald-200 p-3.5 flex flex-col justify-between space-y-2.5">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between border-b border-emerald-200/80 pb-1.5">
-                                  <span className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
-                                    <Sprout className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>② 생육과정 정보</span>
-                                  </span>
-                                  <span className="font-mono text-[10px] font-extrabold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
-                                    {entry.processCode}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span
-                                    style={{ backgroundColor: entry.stageColor || '#16a34a' }}
-                                    className="px-2.5 py-0.5 rounded-md text-white text-[11px] font-extrabold"
-                                  >
-                                    {entry.stageGroupName}
-                                  </span>
-                                  <span className="font-extrabold text-slate-900 text-xs sm:text-sm">
-                                    {entry.subItemName}
-                                  </span>
-                                </div>
-
-                                <div className="rounded-lg bg-white border border-emerald-200 px-2.5 py-1.5 text-xs space-y-0.5">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-emerald-800">
-                                      📅 과정 추천 진행일
-                                    </span>
-                                    <span className="text-[10px] font-mono font-bold text-emerald-700">
-                                      목표 PGDD {entry.targetPgdd}℃
-                                    </span>
-                                  </div>
-                                  <div className="font-mono font-extrabold text-slate-900 text-xs">
-                                    {formatYmdWithWeekday(entry.startDate)}{' '}
-                                    {entry.startWeekLabel ? `(${entry.startWeekLabel})` : ''}
-                                  </div>
-                                </div>
-
-                                <p className="text-[11px] text-slate-700 leading-relaxed line-clamp-2">
-                                  {entry.workDescription}
-                                </p>
-                              </div>
-
-                              <div className="pt-2 border-t border-emerald-200/70 flex items-center justify-between text-[11px] font-bold text-emerald-800">
-                                <span>공정명: {entry.processName}</span>
-                                <span>생육단계 처방 완료</span>
-                              </div>
-                            </div>
-
-                            {/* ③ 구매한 제품 정보 */}
-                            <div className="lg:col-span-4 rounded-xl bg-white border-2 border-emerald-400 p-3.5 flex flex-col justify-between space-y-2.5">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                                  <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                                    <PackageCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>③ 구매한 제품 정보</span>
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold">
-                                    ✓ 구매한 제품 ({entry.qty}
-                                    {entry.unitLabel})
-                                  </span>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                  <img
-                                    src={resolveAgroProductThumbUrl(entry)}
-                                    alt={entry.productName}
-                                    onError={handleAgroThumbImgError}
-                                    className="w-16 h-16 rounded-xl object-cover border border-slate-200 bg-slate-50 shrink-0"
-                                  />
-                                  <div className="min-w-0 flex-1 space-y-1">
-                                    <div className="flex items-center gap-1 flex-wrap">
-                                      <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                                        {entry.subType}
-                                      </span>
-                                      <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
-                                        {entry.manufacturer}
-                                      </span>
-                                      {entry.matchScore && (
-                                        <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
-                                          추천 {entry.matchScore}점
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="font-extrabold text-slate-900 text-xs sm:text-sm leading-snug">
-                                      {entry.productName}
-                                    </div>
-                                    <div className="text-[11px] text-slate-500 font-semibold">
-                                      포장규격: {entry.unitSpec} (권장 {entry.recommendedQty}
-                                      {entry.unitLabel})
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {entry.categorySpecBadge && (
-                                  <div className="text-[11px] text-indigo-900 bg-indigo-50/70 border border-indigo-100 rounded-lg px-2.5 py-1 font-semibold truncate">
-                                    {entry.categorySpecBadge}
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 flex items-center justify-between text-xs">
-                                <div>
-                                  <span className="text-slate-600 font-semibold">구매수량: </span>
-                                  <span className="font-extrabold text-emerald-900">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600 font-semibold">
+                                <span>
+                                  구매수량:{' '}
+                                  <strong className="text-emerald-700 font-extrabold">
                                     {entry.qty}
                                     {entry.unitLabel}
-                                  </span>
-                                  <span className="text-[11px] text-slate-500 ml-1">
-                                    (@{Number(entry.unitPrice || 0).toLocaleString()}원)
-                                  </span>
-                                </div>
-                                <div className="font-extrabold text-emerald-800 text-sm">
-                                  {Number(entry.totalPrice || 0).toLocaleString()}원
-                                </div>
+                                  </strong>
+                                </span>
+                                <span className="text-slate-300">|</span>
+                                <span>
+                                  포장규격:{' '}
+                                  <strong className="text-slate-800 font-bold">
+                                    {entry.unitSpec}
+                                  </strong>
+                                </span>
+                                <span className="text-slate-300">|</span>
+                                <span>
+                                  제조사:{' '}
+                                  <strong className="text-slate-800 font-bold">
+                                    {entry.manufacturer}
+                                  </strong>
+                                </span>
                               </div>
                             </div>
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStagePurchaseItem(entry)}
+                            className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 hover:border-rose-600 text-xs font-extrabold cursor-pointer transition inline-flex items-center gap-1 shrink-0"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>삭제</span>
+                          </button>
                         </div>
                       ))}
                     </div>
