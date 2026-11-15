@@ -1463,27 +1463,39 @@ if (typeof window !== 'undefined') {
       return jsonResponse({ ok: true, config: nextConfig });
     }
 
-    // Supabase DB에서 최신 회원·재배지·작물플랜·주문내역·삭제키를 실시간 조회하여 snap.mypage 및 localStorage 동기화
+    // Supabase DB에서 최신 회원·재배지·작물플랜·재배일정요청·주문내역·삭제키를 실시간 조회하여 snap.mypage 및 localStorage 동기화
     const syncMyPageFromSupabase = async (emailInput = 'CloudBae@naver.com') => {
       const mp = (snap.mypage = snap.mypage || {});
       try {
-        const [sbMembers, sbLands, sbPlans, sbOrders, sbSyncRows] = await Promise.all([
+        const [sbMembers, sbLands, sbPlans, sbReqs, sbOrders, sbSyncRows] = await Promise.all([
           sbSelect('user_member', 'select=*'),
           sbSelect('member_farmland', 'select=*&order=created_at.asc'),
           sbSelect('member_crop_plan', 'select=*&order=crop_plan_id.asc'),
+          sbSelect('member_schedule_request', 'select=*&order=requested_at.desc'),
           sbSelect('member_agro_order', 'select=*&order=ordered_at.desc'),
           sbSelect('member_ui_sync_state', 'select=*'),
         ]);
 
-        let deletedKeysSet = new Set<string>();
+        let deletedRequestKeysSet = new Set<string>();
+        let deletedConfirmedKeysSet = new Set<string>();
         if (Array.isArray(sbSyncRows)) {
           for (const sr of sbSyncRows) {
-            if (sr?.state_key === 'deleted_schedule_keys_v1') {
+            if (sr?.state_key === 'deleted_request_keys_v2') {
               try {
                 const parsedDel = JSON.parse(sr.state_json || '[]');
                 if (Array.isArray(parsedDel)) {
-                  parsedDel.forEach((k) => deletedKeysSet.add(String(k)));
-                  localStorage.setItem('hanfarm_deleted_schedule_keys_v1', JSON.stringify(parsedDel));
+                  parsedDel.forEach((k) => deletedRequestKeysSet.add(String(k)));
+                  localStorage.setItem('hanfarm_deleted_request_keys_v2', JSON.stringify(parsedDel));
+                }
+              } catch {
+                // ignore
+              }
+            } else if (sr?.state_key === 'deleted_confirmed_schedules_v1') {
+              try {
+                const parsedDel = JSON.parse(sr.state_json || '[]');
+                if (Array.isArray(parsedDel)) {
+                  parsedDel.forEach((k) => deletedConfirmedKeysSet.add(String(k)));
+                  localStorage.setItem('hanfarm_deleted_confirmed_schedules_v1', JSON.stringify(parsedDel));
                 }
               } catch {
                 // ignore
@@ -1537,8 +1549,10 @@ if (typeof window !== 'undefined') {
         if (Array.isArray(sbPlans)) {
           const validPlans = sbPlans.filter(
             (cp: any) =>
-              !deletedKeysSet.has(String(cp.crop_plan_id || '')) &&
-              !deletedKeysSet.has(String(cp.request_no || ''))
+              !deletedRequestKeysSet.has(String(cp.crop_plan_id || '')) &&
+              !deletedRequestKeysSet.has(String(cp.request_no || '')) &&
+              !deletedConfirmedKeysSet.has(String(cp.crop_plan_id || '')) &&
+              !deletedConfirmedKeysSet.has(String(cp.request_no || ''))
           );
           const seenReqNos = new Set<string>();
           const seenPlanIds = new Set<string>();
@@ -1559,6 +1573,21 @@ if (typeof window !== 'undefined') {
           for (const dupId of duplicatePlanIdsToDelete) {
             sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(dupId)}`).catch(() => {});
           }
+        }
+        if (Array.isArray(sbReqs)) {
+          const validReqs = sbReqs.filter(
+            (r: any) => !deletedRequestKeysSet.has(String(r.request_no || ''))
+          );
+          const seenR = new Set<string>();
+          const dedupedReqs: any[] = [];
+          for (const r of validReqs) {
+            const rNo = String(r?.request_no || '').trim();
+            if (!rNo || seenR.has(rNo)) continue;
+            seenR.add(rNo);
+            dedupedReqs.push(r);
+          }
+          mp.scheduleRequests = dedupedReqs;
+          snap.scheduleRequests = { items: dedupedReqs, total: dedupedReqs.length };
         }
         if (Array.isArray(sbOrders)) {
           mp.orders = sbOrders.map((ord: any) => {
@@ -1752,12 +1781,24 @@ if (typeof window !== 'undefined') {
       const memberCropPlans = allCropPlans.filter(
         (c: any) => !c.email || String(c.email).toLowerCase() === targetEmail
       );
+      const allScheduleReqs = Array.isArray(mp.scheduleRequests)
+        ? mp.scheduleRequests
+        : Array.isArray(snap.scheduleRequests?.items)
+        ? snap.scheduleRequests.items
+        : [];
+      const memberScheduleRequests = allScheduleReqs.filter(
+        (r: any) =>
+          !r.member_id ||
+          String(r.member_id).toLowerCase().includes(targetEmail) ||
+          targetEmail === 'cloudbae@naver.com'
+      );
       return jsonResponse({
         ok: true,
         ...mp,
         member: mp.member || getDefaultCloudBaeMember(),
         farmlands: memberFarmlands,
         cropPlans: memberCropPlans,
+        scheduleRequests: memberScheduleRequests,
         orders: Array.isArray(mp.orders) ? mp.orders : [],
       });
     }
@@ -2147,7 +2188,9 @@ if (typeof window !== 'undefined') {
       crop_plan_id?: string;
       request_no?: string;
       display_request_no?: string;
+      only_provision?: boolean;
     }) {
+      const onlyProvision = Boolean(params.only_provision);
       const mp = (snap.mypage = snap.mypage || {});
       const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
       const matchedCropPlan = (mp.cropPlans || []).find(
@@ -2168,12 +2211,131 @@ if (typeof window !== 'undefined') {
         new Set([params.crop_plan_id, matchedCropPlan?.crop_plan_id].filter(Boolean))
       ) as string[];
 
+      // [중요] 재배일정 확인 데이터만 삭제(only_provision === true)하는 경우:
+      // 재배일정 요청(member_schedule_request) 데이터는 절대 삭제하지 않고 보존하여 재요청이 가능하도록 유지!
+      if (onlyProvision) {
+        if (matchedCropPlan && targetReqNos[0]) {
+          const rNo = targetReqNos[0];
+          const existingReqList: any[] = Array.isArray(sr.items) ? [...sr.items] : [];
+          const hasReqInSr = existingReqList.some((r: any) => r.request_no === rNo);
+          if (!hasReqInSr) {
+            const preservedReq = {
+              request_no: rNo,
+              member_id: matchedCropPlan.email || 'CloudBae@naver.com',
+              member_contact: '010-2026-0109',
+              group_id: matchedCropPlan.group_id || 'GRP-LEAF',
+              group_name: matchedCropPlan.group_name || '엽채류',
+              crop_id: 'CRP-CABBAGE',
+              crop_name: matchedCropPlan.crop_name || '가을배추',
+              cultivar_id: 'CV-BRM3',
+              item_name_3rd: matchedCropPlan.cultivar_name || '불암3호',
+              system_id: 'SYS-FIELD-01',
+              system_name: '노지 재배',
+              bjd_code: '4313010700',
+              sido: matchedCropPlan.sido || '충청북도',
+              sigungu: matchedCropPlan.sigungu || '충주시',
+              eupmyeondong: matchedCropPlan.eupmyeondong || '단월동',
+              detail_address: matchedCropPlan.detail_address || '',
+              area_pyeong: Number(matchedCropPlan.area_pyeong) || 300,
+              cultivation_type: '노지',
+              land_category: '전',
+              planting_method: String(matchedCropPlan.planting_type || '').includes('씨') ? '직파(씨)' : '모종',
+              desired_start_date: matchedCropPlan.planting_date || '2026-08-25',
+              expected_harvest_date: matchedCropPlan.expected_harvest_date || '2026-11-15',
+              mulching_yn: 1,
+              irrigation_type: '점적관수',
+              is_organic: 0,
+              soil_test_linked_yn: 1,
+              target_yield_kg: 3500,
+              etc_notes: '',
+              request_status: '재요청가능(일정삭제됨)',
+              requested_at: matchedCropPlan.created_at || getKstNowStr(),
+            };
+            existingReqList.unshift(preservedReq);
+            sr.items = existingReqList;
+            sr.total = existingReqList.length;
+            await sbUpsert('member_schedule_request', preservedReq, 'request_no');
+          } else {
+            sr.items = existingReqList.map((r: any) =>
+              targetReqNos.includes(r.request_no)
+                ? { ...r, request_status: '재요청가능(일정삭제됨)' }
+                : r
+            );
+            const updatedReq = sr.items.find((r: any) => targetReqNos.includes(r.request_no));
+            if (updatedReq) {
+              await sbUpsert('member_schedule_request', updatedReq, 'request_no');
+            }
+          }
+          mp.scheduleRequests = sr.items;
+        }
+
+        // 1. 마이페이지/재배일정 확인 플랜 리스트에서만 제거
+        mp.cropPlans = (mp.cropPlans || []).filter(
+          (cp: any) =>
+            !targetPlanIds.includes(cp.crop_plan_id) && !targetReqNos.includes(cp.request_no)
+        );
+        persistMyPage(mp);
+
+        // 2. localStorage 및 Supabase에 재배일정 확인 삭제 키(deleted_confirmed_schedules_v1)만 기록
+        let nextConfirmedDeleted: string[] = [];
+        try {
+          const recDbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
+          const recDb = JSON.parse(localStorage.getItem(recDbKey) || '{}');
+          [...targetReqNos, ...targetPlanIds].forEach((k) => {
+            delete recDb[k];
+          });
+          localStorage.setItem(recDbKey, JSON.stringify(recDb));
+
+          const customKey = 'hanfarm_custom_schedule_items_v1';
+          const customDb = JSON.parse(localStorage.getItem(customKey) || '{}');
+          [...targetReqNos, ...targetPlanIds].forEach((k) => {
+            delete customDb[k];
+          });
+          localStorage.setItem(customKey, JSON.stringify(customDb));
+
+          const confDelKey = 'hanfarm_deleted_confirmed_schedules_v1';
+          const prevConfDeleted: string[] = JSON.parse(localStorage.getItem(confDelKey) || '[]');
+          nextConfirmedDeleted = Array.from(
+            new Set([...prevConfDeleted, ...targetReqNos, ...targetPlanIds])
+          );
+          localStorage.setItem(confDelKey, JSON.stringify(nextConfirmedDeleted));
+        } catch {
+          // ignore
+        }
+
+        for (const rNo of targetReqNos) {
+          await Promise.all([
+            sbDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`),
+            sbDelete('schedule_provision_custom_item', `request_no=eq.${encodeURIComponent(rNo)}`),
+            sbDelete('schedule_stage_recommendation_log', `request_no=eq.${encodeURIComponent(rNo)}`),
+            sbDelete('cultivation_history_log', `request_id=eq.${encodeURIComponent(rNo)}`),
+          ]);
+        }
+        for (const pId of targetPlanIds) {
+          await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(pId)}`);
+        }
+        if (nextConfirmedDeleted.length > 0) {
+          await sbUpsert(
+            'member_ui_sync_state',
+            {
+              state_key: 'deleted_confirmed_schedules_v1',
+              member_email: 'CloudBae@naver.com',
+              state_json: JSON.stringify(nextConfirmedDeleted),
+              updated_at: getKstNowStr(),
+            },
+            'state_key'
+          );
+        }
+
+        return { mp, targetReqNos, targetPlanIds };
+      }
+
+      // [요청 자체를 삭제하는 경우 (onlyProvision === false)]
       // 1. 마이페이지 재배작물 플랜 리스트 삭제
       mp.cropPlans = (mp.cropPlans || []).filter(
         (cp: any) =>
           !targetPlanIds.includes(cp.crop_plan_id) && !targetReqNos.includes(cp.request_no)
       );
-      persistMyPage(mp);
 
       // 2. 재배일정 요청 리스트 삭제
       sr.items = (sr.items || []).filter(
@@ -2181,6 +2343,8 @@ if (typeof window !== 'undefined') {
           !targetReqNos.includes(r.request_no) && !targetPlanIds.includes(r.crop_plan_id)
       );
       sr.total = sr.items.length;
+      mp.scheduleRequests = sr.items;
+      persistMyPage(mp);
 
       // 3. 재배일정 제공(scheduleProvision) 내 요청 목록 삭제
       if (snap.scheduleProvision && Array.isArray(snap.scheduleProvision.allRequests)) {
@@ -2220,7 +2384,7 @@ if (typeof window !== 'undefined') {
         });
         localStorage.setItem(customKey, JSON.stringify(customDb));
 
-        const delKey = 'hanfarm_deleted_schedule_keys_v1';
+        const delKey = 'hanfarm_deleted_request_keys_v2';
         const prevDeleted: string[] = JSON.parse(localStorage.getItem(delKey) || '[]');
         nextDeleted = Array.from(
           new Set([...prevDeleted, ...targetReqNos, ...targetPlanIds])
@@ -2248,7 +2412,7 @@ if (typeof window !== 'undefined') {
         await sbUpsert(
           'member_ui_sync_state',
           {
-            state_key: 'deleted_schedule_keys_v1',
+            state_key: 'deleted_request_keys_v2',
             member_email: 'CloudBae@naver.com',
             state_json: JSON.stringify(nextDeleted),
             updated_at: getKstNowStr(),
@@ -2342,7 +2506,7 @@ if (typeof window !== 'undefined') {
       try {
         const [sbReqs, sbDelSync] = await Promise.all([
           sbSelect('member_schedule_request', 'select=*&order=requested_at.desc'),
-          sbSelect('member_ui_sync_state', 'select=*&state_key=eq.deleted_schedule_keys_v1'),
+          sbSelect('member_ui_sync_state', 'select=*&state_key=eq.deleted_request_keys_v2'),
         ]);
         const deletedSet = new Set<string>();
         if (Array.isArray(sbDelSync) && sbDelSync[0]?.state_json) {
@@ -2454,11 +2618,41 @@ if (typeof window !== 'undefined') {
       if (planIdx >= 0) cropPlans[planIdx] = syncedPlan;
       else cropPlans.unshift(syncedPlan);
       mp.cropPlans = deduplicateCropPlanList(cropPlans);
+      mp.scheduleRequests = sr.items;
       persistMyPage(mp);
+
+      // 재요청/저장 시 재배일정 확인 삭제 키(deleted_confirmed_schedules_v1)에서 해당 요청 키 제거 (일정 복원)
+      let nextConfDeleted: string[] | null = null;
+      try {
+        const confDelKey = 'hanfarm_deleted_confirmed_schedules_v1';
+        const prevConfDeleted: string[] = JSON.parse(localStorage.getItem(confDelKey) || '[]');
+        if (prevConfDeleted.includes(reqNo) || prevConfDeleted.includes(resolvedPlanId)) {
+          nextConfDeleted = prevConfDeleted.filter(
+            (k) => k !== reqNo && k !== resolvedPlanId
+          );
+          localStorage.setItem(confDelKey, JSON.stringify(nextConfDeleted));
+        }
+      } catch {
+        // ignore
+      }
 
       await Promise.all([
         sbUpsert('member_schedule_request', rowData, 'request_no'),
         sbUpsert('member_crop_plan', syncedPlan, 'crop_plan_id'),
+        ...(nextConfDeleted !== null
+          ? [
+              sbUpsert(
+                'member_ui_sync_state',
+                {
+                  state_key: 'deleted_confirmed_schedules_v1',
+                  member_email: 'CloudBae@naver.com',
+                  state_json: JSON.stringify(nextConfDeleted),
+                  updated_at: getKstNowStr(),
+                },
+                'state_key'
+              ),
+            ]
+          : []),
       ]);
       return jsonResponse({ ok: true, item: rowData, cropPlan: syncedPlan });
     }

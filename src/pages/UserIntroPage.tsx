@@ -457,6 +457,15 @@ export default function UserIntroPage() {
     startY: number;
   } | null>(null);
   const [localAddedCropRequests, setLocalAddedCropRequests] = useState<any[]>([]);
+  const [myScheduleRequests, setMyScheduleRequests] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('hanfarm_my_schedule_requests_v1');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [reRequestTargetCrop, setReRequestTargetCrop] = useState<any | null>(null);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
   const isSubmittingScheduleReqRef = React.useRef<boolean>(false);
   const [reqForm, setReqForm] = useState({
@@ -595,10 +604,19 @@ export default function UserIntroPage() {
         })
       : defaultCloudBaeCropList;
 
-  // 삭제된 재배일정 요청/플랜 키 영구 추적 상태 (재배일정 요청 · 재배일정 확인 · 마이페이지 동기화)
+  // 삭제된 재배일정 요청 키 영구 추적 상태 (재배일정 요청 페이지에서 요청 자체를 삭제한 경우만 기록)
   const [deletedScheduleKeys, setDeletedScheduleKeys] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('hanfarm_deleted_schedule_keys_v1') || '[]');
+      return JSON.parse(localStorage.getItem('hanfarm_deleted_request_keys_v2') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  // 삭제된 재배일정 확인(생성된 일정) 키 추적 상태 (재배일정 확인 데이터만 삭제하고 재배일정 요청 데이터는 보존하여 재요청 가능)
+  const [deletedConfirmedScheduleKeys, setDeletedConfirmedScheduleKeys] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hanfarm_deleted_confirmed_schedules_v1') || '[]');
     } catch {
       return [];
     }
@@ -1100,19 +1118,70 @@ export default function UserIntroPage() {
     };
   };
 
+  const requestListFromSaved = myScheduleRequests.map((sr: any, idx: number) => {
+    const reqNo = sr.request_no || sr.display_request_no || `REQ-20261111-${idx + 1}`;
+    const planId = sr.crop_plan_id || `CPLAN-${reqNo}`;
+    const isSeed =
+      String(sr.planting_method || sr.planting_type || '').includes('씨') ||
+      String(sr.planting_method || sr.planting_type || '').includes('직파');
+    const pDate = String(sr.desired_start_date || sr.planting_date || '2026-08-25');
+    const wk = getWeekdayNameFromYmd(pDate);
+    const dateDot = pDate.replace(/-/g, '.');
+    const cropName = sr.crop_name || sr.crop_short || '가을배추';
+    const cultivarName = sr.item_name_3rd || sr.cultivar_name || '불암3호';
+    const detailTrimmed = String(sr.detail_address || '').trim();
+    const region =
+      sr.region ||
+      `${sr.sido || '충청북도'} ${sr.sigungu || '충주시'} ${sr.eupmyeondong || '단월동'}${
+        detailTrimmed ? ` ${detailTrimmed}` : ''
+      }`;
+    const gradients = [
+      'from-emerald-700 via-green-600 to-teal-800',
+      'from-green-700 via-emerald-600 to-lime-800',
+      'from-teal-700 via-emerald-600 to-cyan-800',
+    ];
+    return {
+      crop_plan_id: planId,
+      request_no: reqNo,
+      display_request_no: reqNo,
+      group_id: sr.group_id || 'GRP-LEAF',
+      group_name: sr.group_name || '엽채류 (잎채소)',
+      crop_title: sr.crop_title || `${cropName} (${cultivarName})`,
+      crop_short: cropName,
+      cultivar_name: cultivarName,
+      badge: sr.badge || (isSeed ? '노지 직파(씨)' : '노지 정식(모종)'),
+      region,
+      sido: sr.sido || '충청북도',
+      sigungu: sr.sigungu || '충주시',
+      eupmyeondong: sr.eupmyeondong || '단월동',
+      detail_address: detailTrimmed,
+      area_pyeong: Number(sr.area_pyeong || 300),
+      planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
+      planting_label:
+        sr.planting_label || `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
+      planting_date: pDate,
+      expected_harvest_date: sr.expected_harvest_date || '2026-11-15',
+      current_stage_name: sr.current_stage_name || '01. 토양 준비 및 밑거름',
+      progress_pct: Number(sr.progress_pct ?? 15),
+      status_text: sr.status_text || '맞춤 일정 산출 완료',
+      request_status: sr.request_status || '일정산출완료',
+      temp_avg: sr.temp_avg || '18.5°C',
+      rain_mm: sr.rain_mm || '2mm',
+      next_task_dday: sr.next_task_dday || '추천 진행일 대기',
+      opt_temp: sr.opt_temp || '18~20℃ 적온',
+      thumb_gradient: sr.thumb_gradient || gradients[idx % gradients.length],
+    };
+  });
+
   const rawCombinedCropList = [
-    ...localAddedCropRequests.filter(
-      (loc) =>
-        !baseCropList.some(
-          (b) =>
-            (b.crop_plan_id && b.crop_plan_id === loc.crop_plan_id) ||
-            (b.request_no && b.request_no === loc.request_no)
-        )
-    ),
+    ...localAddedCropRequests,
     ...baseCropList,
+    ...requestListFromSaved,
   ];
   const seenScheduleReqKeys = new Set<string>();
-  const cloudBaeCropList = rawCombinedCropList
+
+  // 1) [재배일정 요청] 전용 리스트: 재배일정 확인 데이터를 삭제하더라도 재배일정 요청 데이터는 삭제되지 않고 유지되어 재요청 가능!
+  const scheduleRequestCropList = rawCombinedCropList
     .filter((crop: any) => {
       const keysToCheck = [
         crop.crop_plan_id,
@@ -1132,21 +1201,290 @@ export default function UserIntroPage() {
     })
     .map((crop: any) => {
       const reqNo = crop.request_no || 'REQ-20261106-009';
+      const keysToCheck = [
+        crop.crop_plan_id,
+        crop.request_no,
+        crop.display_request_no,
+      ].filter(Boolean);
+      const isConfirmedScheduleDeleted =
+        keysToCheck.some((k) => deletedConfirmedScheduleKeys.includes(String(k))) ||
+        String(crop.request_status || '').includes('삭제');
       const summary = getScheduleCompletionSummary(reqNo, Number(crop.progress_pct ?? 60));
       return {
         ...crop,
-        progress_pct: summary.progressPct,
-        completed_stage_count: summary.completedCount,
+        isConfirmedScheduleDeleted,
+        progress_pct: isConfirmedScheduleDeleted ? 0 : summary.progressPct,
+        completed_stage_count: isConfirmedScheduleDeleted ? 0 : summary.completedCount,
         total_stage_count: summary.totalCount,
-        pending_modified_count: summary.pendingModifiedCount,
-        current_stage_name: summary.currentStageName,
-        status_text: summary.statusText,
-        next_task_dday:
-          summary.completedCount >= summary.totalCount ? '완료' : crop.next_task_dday || '2일 후',
+        pending_modified_count: isConfirmedScheduleDeleted ? 0 : summary.pendingModifiedCount,
+        current_stage_name: isConfirmedScheduleDeleted
+          ? '생성된 일정 삭제됨 (재배일정 재요청 가능)'
+          : summary.currentStageName,
+        status_text: isConfirmedScheduleDeleted
+          ? '생성된 재배일정 삭제됨 · 재요청 가능'
+          : summary.statusText,
+        next_task_dday: isConfirmedScheduleDeleted
+          ? '재요청 대기'
+          : summary.completedCount >= summary.totalCount
+          ? '완료'
+          : crop.next_task_dday || '2일 후',
       };
     });
 
-  // 재배일정 요청 및 재배일정 리스트 통합 연쇄 삭제 핸들러 (요청 + 16개 생육과정 일정 + 추천 제품·근거 + 이력 모두 삭제)
+  // 2) [재배일정 확인] 및 [마이페이지] 전용 리스트: 재배일정 확인 데이터가 삭제된 항목은 제외
+  const cloudBaeCropList = scheduleRequestCropList.filter(
+    (crop: any) => !crop.isConfirmedScheduleDeleted
+  );
+
+  // [재배일정 확인] 데이터만 단독 삭제 핸들러 (재배일정 요청 데이터는 절대 삭제하지 않고 유지하여 재요청 가능하도록 처리)
+  const handleDeleteConfirmedScheduleOnly = async (crop: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!crop) return;
+
+    const displayReqNo = crop.display_request_no || crop.request_no || crop.crop_plan_id;
+    const cropTitle = crop.crop_title || `${crop.crop_short || '작물'} (${crop.cultivar_name || ''})`;
+
+    const confirmed = window.confirm(
+      `[${cropTitle} · ${displayReqNo}] 생성된 재배일정 확인 데이터를 삭제하시겠습니까?\n\n※ 생성된 [재배일정 확인] 데이터(16개 생육과정 세부 일정 및 진행율)만 삭제되며, [재배일정 요청] 데이터는 삭제되지 않고 그대로 유지되어 언제든 재배일정을 다시 재요청하실 수 있습니다.`
+    );
+    if (!confirmed) return;
+
+    const keysToDelete = Array.from(
+      new Set([crop.crop_plan_id, crop.request_no, crop.display_request_no].filter(Boolean))
+    ) as string[];
+
+    // 1. 재배일정 요청 데이터를 myScheduleRequests 및 localAddedCropRequests에 보존 (재요청 가능 상태)
+    const preservedRequestItem = {
+      ...crop,
+      request_no: crop.request_no || displayReqNo,
+      display_request_no: displayReqNo,
+      crop_plan_id: crop.crop_plan_id || `CPLAN-${displayReqNo}`,
+      request_status: '재요청가능(일정삭제됨)',
+    };
+    setMyScheduleRequests((prev) => {
+      const next = [
+        preservedRequestItem,
+        ...prev.filter(
+          (r: any) =>
+            !keysToDelete.includes(r.request_no) &&
+            !keysToDelete.includes(r.display_request_no) &&
+            !keysToDelete.includes(r.crop_plan_id)
+        ),
+      ];
+      try {
+        localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    setLocalAddedCropRequests((prev) => {
+      const exists = prev.some(
+        (it) =>
+          keysToDelete.includes(it.crop_plan_id) ||
+          keysToDelete.includes(it.request_no) ||
+          keysToDelete.includes(it.display_request_no)
+      );
+      if (exists) {
+        return prev.map((it) =>
+          keysToDelete.includes(it.crop_plan_id) ||
+          keysToDelete.includes(it.request_no) ||
+          keysToDelete.includes(it.display_request_no)
+            ? { ...it, request_status: '재요청가능(일정삭제됨)' }
+            : it
+        );
+      }
+      return [preservedRequestItem, ...prev];
+    });
+
+    // 2. 재배일정 확인 삭제 키(deletedConfirmedScheduleKeys)에만 추가
+    setDeletedConfirmedScheduleKeys((prev) => {
+      const next = Array.from(new Set([...prev, ...keysToDelete]));
+      try {
+        localStorage.setItem('hanfarm_deleted_confirmed_schedules_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'deleted_confirmed_schedules_v1',
+          state_value: next,
+        }),
+      }).catch(() => {});
+      return next;
+    });
+
+    // 3. 생육과정 완료 상태 및 커스텀 일정·추천 캐시 초기화 (재요청 시 새로 생성되도록)
+    setStageItemCompletions((prev) => {
+      const next = { ...prev };
+      keysToDelete.forEach((k) => {
+        delete next[k];
+      });
+      try {
+        localStorage.setItem('hanfarm_stage_item_completions_v2', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'stage_item_completions_v2',
+          state_value: next,
+        }),
+      }).catch(() => {});
+      return next;
+    });
+
+    try {
+      const recDbKey = 'hanfarm_schedule_stage_recommendations_db_v1';
+      const recDb = JSON.parse(localStorage.getItem(recDbKey) || '{}');
+      keysToDelete.forEach((k) => {
+        delete recDb[k];
+      });
+      localStorage.setItem(recDbKey, JSON.stringify(recDb));
+
+      const customKey = 'hanfarm_custom_schedule_items_v1';
+      const customDb = JSON.parse(localStorage.getItem(customKey) || '{}');
+      keysToDelete.forEach((k) => {
+        delete customDb[k];
+      });
+      localStorage.setItem(customKey, JSON.stringify(customDb));
+    } catch {
+      // ignore
+    }
+
+    setMyCropPlans((prev) =>
+      prev.filter(
+        (cp: any) =>
+          !keysToDelete.includes(cp.crop_plan_id) && !keysToDelete.includes(cp.request_no)
+      )
+    );
+
+    if (expandedScheduleRequestNo && keysToDelete.includes(expandedScheduleRequestNo)) {
+      setExpandedScheduleRequestNo(null);
+      setHoveredProvisionItem(null);
+      setClickedProvisionItem(null);
+      setSelectedStageItem(null);
+    }
+
+    if (myPageProgressDetailReqNo && keysToDelete.includes(myPageProgressDetailReqNo)) {
+      setMyPageProgressDetailReqNo(null);
+      setMyPageStageDetailItem(null);
+    }
+
+    if (keysToDelete.includes(selectedRequestNo)) {
+      const remaining = cloudBaeCropList.filter(
+        (c: any) =>
+          !keysToDelete.includes(c.crop_plan_id) &&
+          !keysToDelete.includes(c.request_no) &&
+          !keysToDelete.includes(c.display_request_no)
+      );
+      setPurchaseSelectionMap({});
+      if (remaining[0]?.request_no) {
+        setSelectedRequestNo(remaining[0].request_no);
+      } else {
+        setSelectedRequestNo('');
+        setProvisionData(null);
+      }
+    }
+
+    // 4. 백엔드에 only_provision: true 로 전달하여 재배일정 요청(member_schedule_request)은 보존하고 생성된 일정 데이터만 삭제
+    try {
+      await fetch('/api/member-schedule-requests/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          request_no: crop.request_no,
+          crop_plan_id: crop.crop_plan_id,
+          display_request_no: crop.display_request_no,
+          only_provision: true,
+        }),
+      });
+    } catch {
+      // ignore
+    }
+
+    try {
+      const r = await fetch('/api/mypage/crops/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          crop_plan_id: crop.crop_plan_id,
+          request_no: crop.request_no,
+          display_request_no: crop.display_request_no,
+          only_provision: true,
+        }),
+      });
+      const res = await r.json();
+      if (res?.ok) {
+        applyMyPagePayload(res);
+      }
+    } catch {
+      // ignore
+    }
+
+    const msg = `[${cropTitle} · ${displayReqNo}] 생성된 재배일정 확인 데이터가 삭제되었습니다. [재배일정 요청] 메뉴에서 언제든 재배일정을 다시 재요청하실 수 있습니다.`;
+    setPurchaseToastMessage(msg);
+    setMyPageToast(msg);
+    setTimeout(() => {
+      setPurchaseToastMessage('');
+      setMyPageToast('');
+    }, 4000);
+  };
+
+  // [재배일정 요청] 페이지에서 기존 요청 항목으로 재배일정 재요청(재생성) 모달 열기 핸들러
+  const handleReRequestSchedule = (crop: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    if (!crop) return;
+
+    const regionParts = String(crop.region || '충청북도 충주시 단월동')
+      .trim()
+      .split(/\s+/);
+    const parsedSido = crop.sido || regionParts[0] || '충청북도';
+    const parsedSigungu = crop.sigungu || regionParts[1] || '충주시';
+    const parsedDong = crop.eupmyeondong || regionParts[2] || '단월동';
+    const parsedDetail =
+      crop.detail_address !== undefined
+        ? crop.detail_address
+        : regionParts.slice(3).join(' ');
+    const isSeed =
+      String(crop.planting_type || crop.badge || '').includes('씨') ||
+      String(crop.planting_type || crop.badge || '').includes('직파');
+
+    setReRequestTargetCrop(crop);
+    setReqForm({
+      farmland_id: '',
+      sido: parsedSido,
+      sigungu: parsedSigungu,
+      eupmyeondong: parsedDong,
+      detail_address: parsedDetail || '',
+      group_id: crop.group_id || 'GRP-LEAF',
+      group_name: crop.group_name || '엽채류 (잎채소)',
+      crop_name: crop.crop_short || '가을배추',
+      cultivar_name: crop.cultivar_name || '불암3호',
+      planting_type: isSeed ? '씨' : '모종',
+      planting_date: crop.planting_date || '2026-08-25',
+      area_pyeong: Number(crop.area_pyeong || 300),
+      soil_ph: Number(crop.soil_ph || 6.2),
+      soil_ec: Number(crop.soil_ec || 1.1),
+    });
+    setReqFormSubmitted(false);
+    setScheduleReqModalPos({ x: 0, y: 0 });
+    setIsScheduleReqModelessOpen(true);
+  };
+
+  // [재배일정 요청] 페이지에서 요청 자체를 삭제할 때의 핸들러
   const handleDeleteScheduleAndCascade = async (crop: any, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
@@ -1157,7 +1495,7 @@ export default function UserIntroPage() {
     const cropTitle = crop.crop_title || `${crop.crop_short || '작물'} (${crop.cultivar_name || ''})`;
 
     const confirmed = window.confirm(
-      `[${cropTitle} · ${displayReqNo}] 재배일정 요청 데이터를 삭제하시겠습니까?\n\n※ 삭제 시 연동된 [재배일정 확인] 데이터(16개 생육과정 세부 일정, 완료 진행률 및 맞춤 추천 농자재 데이터)까지 모두 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`
+      `[${cropTitle} · ${displayReqNo}] 재배일정 요청 데이터를 삭제하시겠습니까?\n\n※ 요청 데이터 삭제 시 연동된 [재배일정 확인] 데이터까지 모두 함께 삭제됩니다.\n\n정말 삭제하시겠습니까?`
     );
     if (!confirmed) return;
 
@@ -1169,7 +1507,7 @@ export default function UserIntroPage() {
     setDeletedScheduleKeys((prev) => {
       const next = Array.from(new Set([...prev, ...keysToDelete]));
       try {
-        localStorage.setItem('hanfarm_deleted_schedule_keys_v1', JSON.stringify(next));
+        localStorage.setItem('hanfarm_deleted_request_keys_v2', JSON.stringify(next));
       } catch {
         // ignore
       }
@@ -1178,7 +1516,7 @@ export default function UserIntroPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: loggedInUser.email || 'CloudBae@naver.com',
-          state_key: 'deleted_schedule_keys_v1',
+          state_key: 'deleted_request_keys_v2',
           state_value: next,
         }),
       }).catch(() => {});
@@ -1225,6 +1563,20 @@ export default function UserIntroPage() {
       // ignore
     }
 
+    setMyScheduleRequests((prev) => {
+      const next = prev.filter(
+        (r: any) =>
+          !keysToDelete.includes(r.crop_plan_id) &&
+          !keysToDelete.includes(r.request_no) &&
+          !keysToDelete.includes(r.display_request_no)
+      );
+      try {
+        localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
     setLocalAddedCropRequests((prev) =>
       prev.filter(
         (it) =>
@@ -1281,7 +1633,7 @@ export default function UserIntroPage() {
       }
     }
 
-    // 3. 백엔드 DB (member_schedule_request, member_crop_plan, schedule_provision_custom_item, schedule_stage_recommendation_log, cultivation_history_log, schedule_request) 연쇄 삭제 호출
+    // 3. 백엔드 DB 연쇄 삭제 호출 (only_provision: false)
     try {
       await fetch('/api/member-schedule-requests/delete', {
         method: 'POST',
@@ -1291,6 +1643,7 @@ export default function UserIntroPage() {
           request_no: crop.request_no,
           crop_plan_id: crop.crop_plan_id,
           display_request_no: crop.display_request_no,
+          only_provision: false,
         }),
       });
     } catch {
@@ -1306,6 +1659,7 @@ export default function UserIntroPage() {
           crop_plan_id: crop.crop_plan_id,
           request_no: crop.request_no,
           display_request_no: crop.display_request_no,
+          only_provision: false,
         }),
       });
       const res = await r.json();
@@ -1316,7 +1670,7 @@ export default function UserIntroPage() {
       // ignore
     }
 
-    const msg = `[${cropTitle} · ${displayReqNo}] 재배일정 요청과 연관된 생육과정 일정 데이터 및 맞춤 추천 제품·근거 데이터가 모두 삭제되었습니다.`;
+    const msg = `[${cropTitle} · ${displayReqNo}] 재배일정 요청과 연관된 생육과정 일정 데이터가 모두 삭제되었습니다.`;
     setPurchaseToastMessage(msg);
     setMyPageToast(msg);
     setTimeout(() => {
@@ -1355,29 +1709,64 @@ export default function UserIntroPage() {
       if (modFlags.soil_topo_microclimate_offset === false) baseSpanDays -= 2;
       if (modFlags.ai_multivariate_pgdd_model === false) baseSpanDays += 3;
       const harvestYmd = addDaysToYmd(pDate, baseSpanDays);
-      const existingReqKeys = new Set(
-        [
-          ...cloudBaeCropList.flatMap((c: any) => [
-            c.request_no,
-            c.display_request_no,
-            c.crop_plan_id,
-          ]),
-          ...myCropPlans.flatMap((c: any) => [c.request_no, c.crop_plan_id]),
-          ...deletedScheduleKeys,
-        ]
-          .filter(Boolean)
-          .map((k) => String(k).trim())
-      );
-      let nextIdx = cloudBaeCropList.length + 1;
-      let newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
-      while (
-        existingReqKeys.has(newReqDisplayNo) ||
-        existingReqKeys.has(`CPLAN-${newReqDisplayNo}`)
-      ) {
-        nextIdx += 1;
+
+      // 재요청 모드인 경우 기존 요청번호(request_no)와 플랜ID(crop_plan_id)를 그대로 재사용하여 중복 생성 없이 일정을 재생성!
+      let newReqDisplayNo = '';
+      let newPlanId = '';
+      if (reRequestTargetCrop?.request_no) {
+        newReqDisplayNo = String(
+          reRequestTargetCrop.request_no || reRequestTargetCrop.display_request_no
+        ).trim();
+        newPlanId = String(
+          reRequestTargetCrop.crop_plan_id || `CPLAN-${newReqDisplayNo}`
+        ).trim();
+      } else {
+        const existingReqKeys = new Set(
+          [
+            ...scheduleRequestCropList.flatMap((c: any) => [
+              c.request_no,
+              c.display_request_no,
+              c.crop_plan_id,
+            ]),
+            ...myCropPlans.flatMap((c: any) => [c.request_no, c.crop_plan_id]),
+            ...deletedScheduleKeys,
+          ]
+            .filter(Boolean)
+            .map((k) => String(k).trim())
+        );
+        let nextIdx = scheduleRequestCropList.length + 1;
         newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
+        while (
+          existingReqKeys.has(newReqDisplayNo) ||
+          existingReqKeys.has(`CPLAN-${newReqDisplayNo}`)
+        ) {
+          nextIdx += 1;
+          newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
+        }
+        newPlanId = `CPLAN-${newReqDisplayNo}`;
       }
-      const newPlanId = `CPLAN-${newReqDisplayNo}`;
+
+      // 재요청 시: 재배일정 확인 삭제 키(deletedConfirmedScheduleKeys)에서 제거하여 [재배일정 확인]에 즉시 복원
+      const keysToRestore = [newReqDisplayNo, newPlanId].filter(Boolean);
+      setDeletedConfirmedScheduleKeys((prev) => {
+        if (!prev.some((k) => keysToRestore.includes(k))) return prev;
+        const next = prev.filter((k) => !keysToRestore.includes(k));
+        try {
+          localStorage.setItem('hanfarm_deleted_confirmed_schedules_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        fetch('/api/client-sync-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loggedInUser.email || 'CloudBae@naver.com',
+            state_key: 'deleted_confirmed_schedules_v1',
+            state_value: next,
+          }),
+        }).catch(() => {});
+        return next;
+      });
 
       const detailTrimmed = String(reqForm.detail_address || '').trim();
       const regionLabel = `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}${
@@ -1395,6 +1784,9 @@ export default function UserIntroPage() {
         cultivar_name: reqForm.cultivar_name,
         badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
         region: regionLabel,
+        sido: reqForm.sido,
+        sigungu: reqForm.sigungu,
+        eupmyeondong: reqForm.eupmyeondong,
         detail_address: detailTrimmed,
         area_pyeong: Number(reqForm.area_pyeong || 300),
         planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
@@ -1404,6 +1796,7 @@ export default function UserIntroPage() {
         current_stage_name: '01. 토양 준비 및 밑거름 (신규 산출 완료)',
         progress_pct: 15,
         status_text: `맞춤 일정 산출 완료 (로직 ${enabledRuleCount}개·AI ${enabledAiCount}개 모듈 적용)`,
+        request_status: '일정산출완료',
         temp_avg: modFlags.past_climate_blend_avg !== false ? '18.5°C' : '18.1°C',
         rain_mm: '2mm',
         next_task_dday: '추천 진행일 대기',
@@ -1414,6 +1807,23 @@ export default function UserIntroPage() {
         soil_ec: reqForm.soil_ec,
       };
 
+      setMyScheduleRequests((prev) => {
+        const next = [
+          newItem,
+          ...prev.filter(
+            (r: any) =>
+              r.crop_plan_id !== newPlanId &&
+              r.request_no !== newReqDisplayNo &&
+              r.display_request_no !== newReqDisplayNo
+          ),
+        ];
+        try {
+          localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        return next;
+      });
       setLocalAddedCropRequests((prev) => [
         newItem,
         ...prev.filter(
@@ -1424,6 +1834,7 @@ export default function UserIntroPage() {
         ),
       ]);
       setSelectedRequestNo(newReqDisplayNo);
+      setReRequestTargetCrop(null);
       setReqFormSubmitted(true);
 
       try {
@@ -1743,6 +2154,26 @@ export default function UserIntroPage() {
         )
       );
     }
+    if (Array.isArray(res.scheduleRequests)) {
+      setMyScheduleRequests((prev) => {
+        const merged = [...res.scheduleRequests, ...prev];
+        const seen = new Set<string>();
+        const deduped: any[] = [];
+        for (const r of merged) {
+          if (!r) continue;
+          const rNo = String(r.request_no || r.display_request_no || '').trim();
+          if (!rNo || seen.has(rNo)) continue;
+          seen.add(rNo);
+          deduped.push(r);
+        }
+        try {
+          localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(deduped));
+        } catch {
+          // ignore
+        }
+        return deduped;
+      });
+    }
     if (Array.isArray(res.orders)) {
       const sanitizedOrders = res.orders.map((ord: any) => ({
         ...ord,
@@ -1799,8 +2230,11 @@ export default function UserIntroPage() {
             // ignore
           }
         }
-        if (Array.isArray(states.deleted_schedule_keys_v1)) {
-          setDeletedScheduleKeys(states.deleted_schedule_keys_v1);
+        if (Array.isArray(states.deleted_request_keys_v2)) {
+          setDeletedScheduleKeys(states.deleted_request_keys_v2);
+        }
+        if (Array.isArray(states.deleted_confirmed_schedules_v1)) {
+          setDeletedConfirmedScheduleKeys(states.deleted_confirmed_schedules_v1);
         }
         if (
           states.schedule_generation_module_v1 &&
@@ -5345,12 +5779,13 @@ export default function UserIntroPage() {
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
                 <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-slate-900 truncate">
-                  요청한 내 재배일정 ({cloudBaeCropList.length}건)
+                  요청한 내 재배일정 ({scheduleRequestCropList.length}건)
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => {
+                  setReRequestTargetCrop(null);
                   setReqFormSubmitted(false);
                   setReqForm((prev) => ({ ...prev, farmland_id: '' }));
                   setScheduleReqModalPos({ x: 0, y: 0 });
@@ -7432,8 +7867,8 @@ export default function UserIntroPage() {
 
                             <button
                               type="button"
-                              onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
-                              title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
+                              onClick={(e) => handleDeleteConfirmedScheduleOnly(crop, e)}
+                              title="생성된 재배일정 확인 데이터만 삭제 (재배일정 요청 데이터는 유지되어 재요청 가능)"
                               className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -12108,14 +12543,14 @@ export default function UserIntroPage() {
                         ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
                       </span>
                       <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[13px] sm:text-sm font-extrabold">
-                        총 {cloudBaeCropList.length}건 요청 완료
+                        총 {scheduleRequestCropList.length}건 요청 완료
                       </span>
                     </div>
                     <h2 className="text-[19px] sm:text-2xl font-black text-slate-900 mt-1.5 whitespace-nowrap truncate">
-                      요청한 내 재배일정 리스트 ({cloudBaeCropList.length}건)
+                      요청한 내 재배일정 리스트 ({scheduleRequestCropList.length}건)
                     </h2>
                     <p className="text-[14.5px] sm:text-base font-semibold text-slate-600 mt-1 leading-relaxed">
-                      해당 아이디로 요청하여 산출된 맞춤형 재배일정 내역입니다. 우측 <strong>[재배일정 요청]</strong> 버튼을 누르면 새로운 모달리스 폼에서 추가 재배일정을 요청할 수 있습니다.
+                      해당 아이디로 요청한 맞춤형 재배일정 내역입니다. 생성된 재배일정을 삭제하더라도 요청 데이터는 이곳에 그대로 보존되며 언제든 <strong>[재배일정 재요청]</strong>을 진행할 수 있습니다.
                     </p>
                   </div>
                 </div>
@@ -12124,6 +12559,7 @@ export default function UserIntroPage() {
                   <button
                     type="button"
                     onClick={() => {
+                      setReRequestTargetCrop(null);
                       setReqFormSubmitted(false);
                       setScheduleReqModalPos({ x: 0, y: 0 });
                       setIsScheduleReqModelessOpen(true);
@@ -12146,7 +12582,7 @@ export default function UserIntroPage() {
               {/* 해당 아이디의 재배일정 요청 이력 카드 리스트 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 표시) */}
               <div className="space-y-3.5">
                 {(() => {
-                  if (cloudBaeCropList.length === 0) {
+                  if (scheduleRequestCropList.length === 0) {
                     return (
                       <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 sm:p-12 text-center space-y-3">
                         <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center font-black text-xl">
@@ -12162,6 +12598,7 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
+                              setReRequestTargetCrop(null);
                               setReqFormSubmitted(false);
                               setScheduleReqModalPos({ x: 0, y: 0 });
                               setIsScheduleReqModelessOpen(true);
@@ -12175,16 +12612,16 @@ export default function UserIntroPage() {
                     );
                   }
 
-                  const rawActiveReqCropIdx = cloudBaeCropList.findIndex(
+                  const rawActiveReqCropIdx = scheduleRequestCropList.findIndex(
                     (c: any) => c.request_no === selectedRequestNo
                   );
                   const activeMobileReqCropIdx =
                     rawActiveReqCropIdx >= 0 ? rawActiveReqCropIdx : 0;
-                  const totalReqCropCount = cloudBaeCropList.length;
+                  const totalReqCropCount = scheduleRequestCropList.length;
 
                   const handleStepMobileReqCrop = (targetIdx: number) => {
                     if (targetIdx < 0 || targetIdx >= totalReqCropCount) return;
-                    const targetCrop = cloudBaeCropList[targetIdx];
+                    const targetCrop = scheduleRequestCropList[targetIdx];
                     if (!targetCrop) return;
                     setSelectedRequestNo(targetCrop.request_no);
                     if (selectedReqDetailCrop) {
@@ -12198,7 +12635,7 @@ export default function UserIntroPage() {
                     }
                   };
 
-                  return cloudBaeCropList.map((crop: any, idx: number) => {
+                  return scheduleRequestCropList.map((crop: any, idx: number) => {
                     const displayReqNo = crop.display_request_no || crop.request_no;
                     const isDetailSelected =
                       selectedReqDetailCrop &&
@@ -12238,9 +12675,15 @@ export default function UserIntroPage() {
                                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[13px] sm:text-sm">
                                   {crop.badge}
                                 </span>
-                                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[12.5px] sm:text-[13px]">
-                                  산출완료
-                                </span>
+                                {crop.isConfirmedScheduleDeleted ? (
+                                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[12.5px] sm:text-[13px]">
+                                    일정 미생성 (재요청 가능)
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[12.5px] sm:text-[13px]">
+                                    산출완료
+                                  </span>
+                                )}
                               </div>
                               <div className="font-black text-[19px] sm:text-[22px] text-slate-950 mt-1 truncate leading-snug">
                                 {crop.crop_title}
@@ -12288,8 +12731,8 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          {/* 우측: 세부보기 버튼 + 일정확인 버튼 + 삭제 버튼 */}
-                          <div className="flex items-center justify-end gap-2 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-100">
+                          {/* 우측: 세부보기 버튼 + 일정확인/재요청 버튼 + 요청삭제 버튼 */}
+                          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-100">
                             <button
                               type="button"
                               onClick={() => {
@@ -12304,7 +12747,7 @@ export default function UserIntroPage() {
                                   });
                                 }
                               }}
-                              className={`px-4 py-3 rounded-xl border font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                              className={`px-3.5 py-3 rounded-xl border font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
                                 isDetailSelected
                                   ? 'bg-slate-900 text-white border-slate-900'
                                   : 'bg-white hover:bg-emerald-50 text-slate-900 border-slate-300 hover:border-emerald-400'
@@ -12313,25 +12756,41 @@ export default function UserIntroPage() {
                               <span>세부보기</span>
                             </button>
 
+                            {!crop.isConfirmedScheduleDeleted && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRequestNo(crop.request_no);
+                                  setExpandedScheduleRequestNo(crop.request_no);
+                                  setActiveMenu('재배일정 확인');
+                                  setMobileScheduleStep('detail');
+                                }}
+                                className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                              >
+                                <span>일정확인</span>
+                                <ChevronRight className="w-4 h-4" />
+                              </button>
+                            )}
+
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelectedRequestNo(crop.request_no);
-                                setExpandedScheduleRequestNo(crop.request_no);
-                                setActiveMenu('재배일정 확인');
-                                setMobileScheduleStep('detail');
-                              }}
-                              className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                              onClick={(e) => handleReRequestSchedule(crop, e)}
+                              title="해당 재배일정 요청 정보로 재배일정을 다시 생성(재요청)합니다"
+                              className={`px-4 py-3 rounded-xl font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
+                                crop.isConfirmedScheduleDeleted
+                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                                  : 'border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
+                              }`}
                             >
-                              <span>일정확인</span>
-                              <ChevronRight className="w-4 h-4" />
+                              <FileEdit className="w-4 h-4" />
+                              <span>재배일정 재요청</span>
                             </button>
 
                             <button
                               type="button"
                               onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
-                              title="해당 재배일정 요청 및 연관된 일정·추천제품 데이터 모두 삭제"
-                              className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                              title="해당 재배일정 요청 데이터를 삭제합니다"
+                              className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
                             >
                               <Trash2 className="w-4 h-4" />
                               <span>삭제</span>
@@ -12595,7 +13054,9 @@ export default function UserIntroPage() {
                           {loggedInUser.email || 'CloudBae@naver.com'}
                         </span>
                         <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                          맞춤형 재배일정 요청 (기후·토양 연동)
+                          {reRequestTargetCrop
+                            ? `재배일정 재요청 (${reRequestTargetCrop.display_request_no || reRequestTargetCrop.request_no})`
+                            : '맞춤형 재배일정 요청 (기후·토양 연동)'}
                         </h3>
                       </div>
                       <p className="text-[11px] text-slate-500 font-semibold">
@@ -12606,7 +13067,10 @@ export default function UserIntroPage() {
                     {/* 우측 상단 닫기 버튼 */}
                     <button
                       type="button"
-                      onClick={() => setIsScheduleReqModelessOpen(false)}
+                      onClick={() => {
+                        setReRequestTargetCrop(null);
+                        setIsScheduleReqModelessOpen(false);
+                      }}
                       className="absolute top-3 right-3.5 z-20 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
                     >
                       <X className="w-4 h-4" />
@@ -12616,6 +13080,18 @@ export default function UserIntroPage() {
 
                   {/* 모달리스 폼 본문 */}
                   <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 bg-white">
+                    {reRequestTargetCrop && !reqFormSubmitted && (
+                      <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="font-extrabold text-amber-900">
+                            🔄 [{reRequestTargetCrop.display_request_no || reRequestTargetCrop.request_no}] {reRequestTargetCrop.crop_title} 재배일정 재요청 모드
+                          </div>
+                          <p className="mt-0.5 text-[11.5px] text-amber-800">
+                            기존 요청 정보가 자동으로 불러와졌습니다. 희망 시작일·품종·면적 등을 조정하거나 그대로 아래 <strong>[재배일정 재요청하기]</strong>를 눌러 새로운 일정을 생성하세요.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {/* 기후 데이터 대입 원칙 안내 배너 */}
                     <div className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-3.5 text-xs text-slate-700 space-y-1">
                       <div className="font-extrabold text-emerald-900 flex items-center gap-1.5">
@@ -13132,7 +13608,10 @@ export default function UserIntroPage() {
                         <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
                           <button
                             type="button"
-                            onClick={() => setIsScheduleReqModelessOpen(false)}
+                            onClick={() => {
+                              setReRequestTargetCrop(null);
+                              setIsScheduleReqModelessOpen(false);
+                            }}
                             className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm cursor-pointer"
                           >
                             취소
@@ -13143,7 +13622,11 @@ export default function UserIntroPage() {
                             className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm transition cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                           >
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>맞춤 재배일정 산출 요청하기</span>
+                            <span>
+                              {reRequestTargetCrop
+                                ? '재배일정 재요청하기 (일정 재생성)'
+                                : '맞춤 재배일정 산출 요청하기'}
+                            </span>
                           </button>
                         </div>
                       </div>
@@ -16264,7 +16747,7 @@ export default function UserIntroPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={(e) => handleDeleteScheduleAndCascade(activeRegCrop, e)}
+                                  onClick={(e) => handleDeleteConfirmedScheduleOnly(activeRegCrop, e)}
                                   className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition inline-flex items-center gap-1"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -16341,7 +16824,7 @@ export default function UserIntroPage() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
+                                  onClick={(e) => handleDeleteConfirmedScheduleOnly(crop, e)}
                                   className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition inline-flex items-center gap-1"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -16562,8 +17045,8 @@ export default function UserIntroPage() {
 
                                 <button
                                   type="button"
-                                  onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
-                                  title="해당 재배일정 및 연관된 생육공정 일정·추천제품 데이터 모두 삭제"
+                                  onClick={(e) => handleDeleteConfirmedScheduleOnly(crop, e)}
+                                  title="생성된 재배일정 확인 데이터만 삭제 (재배일정 요청 데이터는 유지되어 재요청 가능)"
                                   className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
                                 >
                                   <Trash2 className="w-4 h-4 shrink-0" />

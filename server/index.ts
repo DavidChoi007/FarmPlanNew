@@ -5289,6 +5289,7 @@ const server = http.createServer(async (req, res) => {
       const reqNoInput = String(body.request_no || '').trim();
       const cropPlanIdInput = String(body.crop_plan_id || '').trim();
       const displayReqNoInput = String(body.display_request_no || '').trim();
+      const onlyProvision = Boolean(body.only_provision);
 
       // crop_plan_id만 전달된 경우 연결된 request_no 조회
       let resolvedReqNo = reqNoInput;
@@ -5306,8 +5307,25 @@ const server = http.createServer(async (req, res) => {
       );
 
       for (const rNo of targetReqNos) {
-        // 1. 재배일정 요청 마스터 테이블 삭제
-        db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+        if (onlyProvision) {
+          // 재배일정 확인 데이터만 삭제 시: 재배일정 요청(member_schedule_request)은 삭제하지 않고 상태만 업데이트
+          db.prepare(
+            "UPDATE member_schedule_request SET request_status = '재요청가능(일정삭제됨)' WHERE request_no = ?"
+          ).run(rNo);
+          const updatedReqRow = db
+            .prepare('SELECT * FROM member_schedule_request WHERE request_no = ?')
+            .get(rNo) as Record<string, any> | undefined;
+          if (updatedReqRow) {
+            await supabaseRestUpsert('member_schedule_request', updatedReqRow, 'request_no');
+          }
+        } else {
+          // 1. 재배일정 요청 마스터 테이블 삭제
+          db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+          await supabaseRestDelete(
+            'member_schedule_request',
+            `request_no=eq.${encodeURIComponent(rNo)}`
+          );
+        }
         // 2. 회원 작물재배 플랜 리스트 테이블 삭제
         db.prepare('DELETE FROM member_crop_plan WHERE request_no = ?').run(rNo);
         // 3. 연관된 생육과정별 커스텀 일정 및 맞춤 자재 명세(materials_json) 데이터 삭제
@@ -5325,15 +5343,13 @@ const server = http.createServer(async (req, res) => {
         // 5. 연관된 생육단계/작업 수행 이력 로그 및 관제 요청 데이터 삭제
         try {
           db.prepare('DELETE FROM cultivation_history_log WHERE request_id = ?').run(rNo);
-          db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+          if (!onlyProvision) {
+            db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+          }
         } catch {
           // ignore
         }
 
-        await supabaseRestDelete(
-          'member_schedule_request',
-          `request_no=eq.${encodeURIComponent(rNo)}`
-        );
         await supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`);
         await supabaseRestDelete(
           'schedule_provision_custom_item',
@@ -5347,7 +5363,9 @@ const server = http.createServer(async (req, res) => {
           'cultivation_history_log',
           `request_id=eq.${encodeURIComponent(rNo)}`
         );
-        await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+        if (!onlyProvision) {
+          await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+        }
       }
 
       if (cropPlanIdInput) {
@@ -9161,12 +9179,16 @@ const server = http.createServer(async (req, res) => {
           }
         })(),
       }));
+      const scheduleRequests = db
+        .prepare('SELECT * FROM member_schedule_request ORDER BY requested_at DESC, request_no DESC')
+        .all() as any[];
       const safeMember = { ...member };
       delete safeMember.password;
       return {
         member: safeMember,
         farmlands,
         cropPlans,
+        scheduleRequests,
         orders,
       };
     };
@@ -10102,11 +10124,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/mypage/crops/delete' && req.method === 'POST') {
-      const { email, crop_plan_id, request_no, display_request_no } = await readJsonBody(req);
+      const { email, crop_plan_id, request_no, display_request_no, only_provision } =
+        await readJsonBody(req);
+      const onlyProvision = only_provision !== false;
       const existingPlan = crop_plan_id
         ? (db
-            .prepare('SELECT request_no FROM member_crop_plan WHERE crop_plan_id = ?')
-            .get(crop_plan_id) as { request_no?: string } | undefined)
+            .prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?')
+            .get(crop_plan_id) as Record<string, any> | undefined)
         : undefined;
       const targetReqNos = Array.from(
         new Set([request_no, display_request_no, existingPlan?.request_no].filter(Boolean))
@@ -10121,7 +10145,23 @@ const server = http.createServer(async (req, res) => {
       }
 
       for (const rNo of targetReqNos) {
-        db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+        if (onlyProvision) {
+          db.prepare(
+            "UPDATE member_schedule_request SET request_status = '재요청가능(일정삭제됨)' WHERE request_no = ?"
+          ).run(rNo);
+          const updatedReqRow = db
+            .prepare('SELECT * FROM member_schedule_request WHERE request_no = ?')
+            .get(rNo) as Record<string, any> | undefined;
+          if (updatedReqRow) {
+            await supabaseRestUpsert('member_schedule_request', updatedReqRow, 'request_no');
+          }
+        } else {
+          db.prepare('DELETE FROM member_schedule_request WHERE request_no = ?').run(rNo);
+          await supabaseRestDelete(
+            'member_schedule_request',
+            `request_no=eq.${encodeURIComponent(rNo)}`
+          );
+        }
         db.prepare('DELETE FROM member_crop_plan WHERE request_no = ?').run(rNo);
         try {
           db.prepare('DELETE FROM schedule_provision_custom_item WHERE request_no = ?').run(rNo);
@@ -10135,15 +10175,13 @@ const server = http.createServer(async (req, res) => {
         }
         try {
           db.prepare('DELETE FROM cultivation_history_log WHERE request_id = ?').run(rNo);
-          db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+          if (!onlyProvision) {
+            db.prepare('DELETE FROM schedule_request WHERE request_id = ?').run(rNo);
+          }
         } catch {
           // ignore
         }
 
-        await supabaseRestDelete(
-          'member_schedule_request',
-          `request_no=eq.${encodeURIComponent(rNo)}`
-        );
         await supabaseRestDelete('member_crop_plan', `request_no=eq.${encodeURIComponent(rNo)}`);
         await supabaseRestDelete(
           'schedule_provision_custom_item',
@@ -10157,7 +10195,9 @@ const server = http.createServer(async (req, res) => {
           'cultivation_history_log',
           `request_id=eq.${encodeURIComponent(rNo)}`
         );
-        await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+        if (!onlyProvision) {
+          await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+        }
       }
 
       const payload = buildMemberMyPagePayload(email || 'CloudBae@naver.com');

@@ -1487,6 +1487,30 @@ export default function AdminDashboardPage() {
     loadScheduleProvisionData();
   };
 
+  const handleDeleteScheduleProvisionOnly = async (requestNo: string, itemName: string) => {
+    if (
+      !window.confirm(
+        `[${requestNo} - ${itemName}] 생성된 재배일정 확인(제공) 데이터만 삭제하시겠습니까?\n\n※ 생성된 재배일정 데이터만 삭제되며, [재배일정 요청] 원문 데이터는 삭제되지 않고 유지되어 언제든 재배일정을 다시 재요청(재생성)할 수 있습니다.`
+      )
+    )
+      return;
+    await fetch('/api/member-schedule-requests/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ request_no: requestNo, only_provision: true }),
+    });
+    showToast(
+      `재배일정 확인(제공) 데이터 [${requestNo}] 삭제 완료 (재배일정 요청 데이터는 재요청을 위해 유지됨)`
+    );
+    if (provisionRequestNo === requestNo) {
+      setIsProvisionScheduleModalOpen(false);
+      setClickedProvisionItem(null);
+      setHoveredProvisionItem(null);
+    }
+    executeScheduleReqSearch();
+    loadScheduleProvisionData();
+  };
+
   useEffect(() => {
     loadReqDongs(reqSidoFilter, reqSigunguFilter);
   }, [reqSidoFilter, reqSigunguFilter]);
@@ -9827,7 +9851,7 @@ export default function AdminDashboardPage() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteScheduleReq(req.request_no, req.item_name_3rd)}
+                                      onClick={() => handleDeleteScheduleProvisionOnly(req.request_no, req.item_name_3rd)}
                                       className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
