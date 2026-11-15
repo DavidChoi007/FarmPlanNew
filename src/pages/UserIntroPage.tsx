@@ -1822,10 +1822,17 @@ export default function UserIntroPage() {
         }
         if (Array.isArray(states.stage_purchase_history_v1)) {
           setStagePurchaseHistory(
-            states.stage_purchase_history_v1.map((item: any) => {
+            states.stage_purchase_history_v1.map((item: any, idx: number) => {
               const safeThumb = resolveAgroProductThumbUrl(item);
+              const safeId =
+                item?.id ||
+                item?.purchase_id ||
+                item?.orderNo ||
+                item?.order_no ||
+                `PUR-SYNC-${idx}`;
               return {
                 ...item,
+                id: safeId,
                 thumbnailUrl: safeThumb,
                 thumbnail_url: safeThumb,
               };
@@ -2932,8 +2939,18 @@ export default function UserIntroPage() {
     return defaultStagePurchases;
   });
 
-  const handleDeleteStagePurchaseItem = async (entry: any) => {
-    if (!entry) return;
+  const handleDeleteStagePurchaseItem = async (entryOrId: any, targetIndex?: number) => {
+    if (entryOrId === null || entryOrId === undefined) return;
+    const isStringId = typeof entryOrId === 'string';
+    const entry = isStringId
+      ? stagePurchaseHistory.find(
+          (p: any, i: number) =>
+            (p.id || p.purchase_id || `SPUR-ROW-${i}`) === entryOrId ||
+            `agro-purchase-${i}` === entryOrId ||
+            (p.orderNo || p.order_no) === entryOrId
+        ) || { id: entryOrId }
+      : entryOrId;
+
     const productName = entry.productName || entry.product_name || '농자재 상품';
     const orderNo = entry.orderNo || entry.order_no || '';
     if (
@@ -2944,11 +2961,17 @@ export default function UserIntroPage() {
       return;
     }
 
-    const targetId = entry.id || entry.purchase_id || '';
+    const targetId = isStringId ? entryOrId : entry.id || entry.purchase_id || '';
     setStagePurchaseHistory((prev) => {
       const updated = prev.filter((p: any, idx: number) => {
+        if (typeof targetIndex === 'number' && idx === targetIndex) {
+          return false;
+        }
+        if (!isStringId && p === entry) {
+          return false;
+        }
         const pId = p.id || p.purchase_id || `SPUR-ROW-${idx}`;
-        if (targetId && pId === targetId) return false;
+        if (targetId && (pId === targetId || `agro-purchase-${idx}` === targetId)) return false;
         if (
           orderNo &&
           (p.orderNo || p.order_no) === orderNo &&
@@ -2968,7 +2991,9 @@ export default function UserIntroPage() {
           const parsedSales = JSON.parse(existingSalesRaw);
           if (Array.isArray(parsedSales)) {
             const filteredSales = parsedSales.filter(
-              (s: any) => (s.id || s.purchase_id) !== targetId && (s.orderNo || s.order_no) !== orderNo
+              (s: any) =>
+                (targetId ? (s.id || s.purchase_id) !== targetId : true) &&
+                (orderNo ? (s.orderNo || s.order_no) !== orderNo : true)
             );
             localStorage.setItem('hanfarm_admin_agro_sales_v1', JSON.stringify(filteredSales));
           }
@@ -16965,6 +16990,16 @@ export default function UserIntroPage() {
                         <Sprout className="w-3.5 h-3.5" />
                         <span>생육과정 농자재 추가 구매</span>
                       </button>
+                      {stagePurchaseHistory.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleDeleteAllStagePurchases}
+                          className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>전체 내역 삭제</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -17114,7 +17149,10 @@ export default function UserIntroPage() {
 
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteStagePurchaseItem(item.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteStagePurchaseItem(item, idx);
+                                  }}
                                   className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-extrabold cursor-pointer inline-flex items-center gap-1 transition"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
