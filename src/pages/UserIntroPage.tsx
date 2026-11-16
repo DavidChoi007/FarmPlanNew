@@ -183,6 +183,7 @@ export default function UserIntroPage() {
   const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
   const [showSignupPw, setShowSignupPw] = useState<boolean>(false);
   const [showSignupPwConfirm, setShowSignupPwConfirm] = useState<boolean>(false);
+  const [showAllMobileScheduleCrops, setShowAllMobileScheduleCrops] = useState<boolean>(false);
 
   // 회원가입 폼 (1단계: 이메일/아이디·중복확인·비밀번호 / 2단계: 이름(닉네임)·휴대폰인증·관심유형·약관동의 / 3단계: 가입완료)
   const [signupForm, setSignupForm] = useState<{
@@ -6291,7 +6292,11 @@ export default function UserIntroPage() {
   return (
     <div
       className={`min-h-screen ${
-        activeMenu === '홈' ? 'bg-white lg:bg-[#F8FAFC]' : 'bg-[#F8FAFC]'
+        activeMenu === '홈'
+          ? 'bg-white lg:bg-[#F8FAFC]'
+          : activeMenu === '재배일정 확인'
+          ? 'bg-[#F7F9F7] lg:bg-[#F8FAFC]'
+          : 'bg-[#F8FAFC]'
       } text-slate-900 flex flex-col break-keep ${
         isLegacyAndroidWebView ? 'pb-12' : ''
       }`}
@@ -6304,7 +6309,9 @@ export default function UserIntroPage() {
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
         className={`${
-          activeMenu === '홈' ? 'hidden lg:block' : 'block'
+          activeMenu === '홈' || activeMenu === '재배일정 확인'
+            ? 'hidden lg:block'
+            : 'block'
         } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
         style={{
           paddingTop: isLegacyAndroidWebView
@@ -6725,7 +6732,7 @@ export default function UserIntroPage() {
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
       <main
         className={`flex-1 max-w-[1600px] w-full mx-auto ${
-          activeMenu === '홈'
+          activeMenu === '홈' || activeMenu === '재배일정 확인'
             ? 'px-0 py-0 lg:px-10 lg:py-6 space-y-0 lg:space-y-6'
             : 'px-3.5 sm:px-10 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6'
         }`}
@@ -8317,13 +8324,666 @@ export default function UserIntroPage() {
 
         {/* ==================== [탭 2: 재배일정 확인 (회원 ID: CloudBae 전용 반응형 PC & 모바일 뷰)] ==================== */}
         {activeMenu === '재배일정 확인' && (
-          <div className="space-y-4 sm:space-y-6">
-            {renderScheduleNavigationTabs()}
+          <>
+            {/* ==================== 모바일 전용 재배일정 확인(재배관리) 뷰 (첨부 시안 1:1 구현 · lg:hidden) ==================== */}
+            {(() => {
+              const formatKoreanMonthDayWeekday = (ymd: string, fallbackText = '10월 27일(화)') => {
+                if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return fallbackText;
+                const m = Number(ymd.slice(5, 7));
+                const d = Number(ymd.slice(8, 10));
+                const wk = getWeekdayNameFromYmd(ymd) || '화';
+                return `${m}월 ${d}일(${wk})`;
+              };
 
-            {/* ---------- 1단계: CloudBae 님의 작물재배 리스트 (항목 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) ---------- */}
-            <section
-              className="block bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4"
-            >
+              const resolveCropThumbByShortName = (name: string) => {
+                const n = String(name || '');
+                if (n.includes('마늘') || n.includes('양파')) {
+                  return '/images/crops/crop-thumb-garlic.jpg';
+                }
+                if (n.includes('오이') || n.includes('호박') || n.includes('고추')) {
+                  return '/images/crops/crop-thumb-cucumber.jpg';
+                }
+                return '/images/crops/crop-thumb-cabbage.jpg';
+              };
+
+              // 회원의 실제 재배작물(cloudBaeCropList)을 기반으로 상단 선택 카드 및 하단 재배일정 데이터를 구성
+              const realCropItems = cloudBaeCropList.map((crop: any, idx: number) => {
+                const reqNo = crop.request_no || `REQ-MOB-${idx + 1}`;
+                const rawShort = String(crop.crop_short || crop.crop_name || '배추').trim();
+                const shortName = rawShort === '가을배추' || rawShort === '봄배추' ? '배추' : rawShort;
+                const summary = getScheduleCompletionSummary(
+                  reqNo,
+                  Number(crop.progress_pct ?? 65),
+                  crop.planting_date
+                );
+                const pct = Number(crop.progress_pct ?? summary.progressPct ?? 65);
+                const stgText = String(crop.current_stage_name || summary.currentStageName || '');
+
+                let stageBadge = '결구기';
+                let activeStepIdx: 0 | 1 | 2 | 3 = 2;
+                if (pct >= 95 || stgText.includes('수확')) {
+                  stageBadge = '수확기';
+                  activeStepIdx = 3;
+                } else if (pct >= 55 || stgText.includes('결구') || stgText.includes('비대')) {
+                  stageBadge = '결구기';
+                  activeStepIdx = 2;
+                } else if (pct >= 25 || stgText.includes('생육') || stgText.includes('추비')) {
+                  stageBadge = shortName.includes('마늘') ? '활착기' : '생육기';
+                  activeStepIdx = 1;
+                } else {
+                  stageBadge = '정식';
+                  activeStepIdx = 0;
+                }
+
+                const nextRawSub = String(
+                  summary.nextUncompleted?.sub_item_name ||
+                    summary.nextUncompleted?.subItemName ||
+                    ''
+                )
+                  .replace(/\s*\([^)]*\)/g, '')
+                  .trim();
+
+                let nextTaskTitle = '추비 2차';
+                let nextTaskDesc = '결구 촉진 · 생육 강화';
+                if (nextRawSub) {
+                  if (nextRawSub.includes('2차 웃거름') || nextRawSub.includes('2차 추비')) {
+                    nextTaskTitle = '추비 2차';
+                    nextTaskDesc = '결구 촉진 · 생육 강화';
+                  } else if (nextRawSub.includes('1차 웃거름') || nextRawSub.includes('1차 추비')) {
+                    nextTaskTitle = '추비 1차';
+                    nextTaskDesc = '초기 생육 촉진 · 외엽 확보';
+                  } else {
+                    nextTaskTitle = nextRawSub;
+                    nextTaskDesc =
+                      summary.nextUncompleted?.work_content ||
+                      `${stageBadge} 맞춤 영농 관리 · 생육 강화`;
+                  }
+                }
+
+                const nextRawYmd =
+                  summary.nextUncompleted?.start_date ||
+                  (summary.nextUncompleted?.offsetDays !== undefined
+                    ? addDaysToYmd(
+                        crop.planting_date || '2026-08-25',
+                        Number(summary.nextUncompleted.offsetDays)
+                      )
+                    : '2026-10-27');
+
+                return {
+                  id: reqNo,
+                  request_no: reqNo,
+                  isRealCrop: true,
+                  shortName,
+                  thumbUrl: resolveCropThumbByShortName(shortName),
+                  stageBadge,
+                  cultivationMethod: String(crop.badge || '').includes('시설') ? '시설' : '노지',
+                  areaPyeong: Number(crop.area_pyeong || 500),
+                  activeStepIdx,
+                  nextTaskTitle,
+                  nextTaskDesc,
+                  nextTaskDateLabel: formatKoreanMonthDayWeekday(nextRawYmd, '10월 27일(화)'),
+                };
+              });
+
+              // 기본 시안 3대 작물 (회원의 등록 작물이 3개 미만일 때 함께 나열하여 작물별 전환 즉시 체험 가능)
+              const fallbackPresets = [
+                {
+                  id: 'REQ-20261106-009',
+                  request_no: 'REQ-20261106-009',
+                  isRealCrop: false,
+                  shortName: '배추',
+                  thumbUrl: '/images/crops/crop-thumb-cabbage.jpg',
+                  stageBadge: '결구기',
+                  cultivationMethod: '노지',
+                  areaPyeong: 500,
+                  activeStepIdx: 2 as const,
+                  nextTaskTitle: '추비 2차',
+                  nextTaskDesc: '결구 촉진 · 생육 강화',
+                  nextTaskDateLabel: '10월 27일(화)',
+                },
+                {
+                  id: 'PRESET-GARLIC-01',
+                  request_no: 'PRESET-GARLIC-01',
+                  isRealCrop: false,
+                  shortName: '마늘',
+                  thumbUrl: '/images/crops/crop-thumb-garlic.jpg',
+                  stageBadge: '활착기',
+                  cultivationMethod: '노지',
+                  areaPyeong: 300,
+                  activeStepIdx: 1 as const,
+                  nextTaskTitle: '뿌리 활착 1차 추비',
+                  nextTaskDesc: '초기 뿌리 활착 · 월동 전 생육 강화',
+                  nextTaskDateLabel: '11월 5일(목)',
+                },
+                {
+                  id: 'PRESET-CUCUMBER-01',
+                  request_no: 'PRESET-CUCUMBER-01',
+                  isRealCrop: false,
+                  shortName: '오이',
+                  thumbUrl: '/images/crops/crop-thumb-cucumber.jpg',
+                  stageBadge: '생육기',
+                  cultivationMethod: '시설',
+                  areaPyeong: 200,
+                  activeStepIdx: 1 as const,
+                  nextTaskTitle: '덩굴 유인 및 적심',
+                  nextTaskDesc: '원줄기 세력 유지 · 측지 정리 및 관주',
+                  nextTaskDateLabel: '10월 30일(금)',
+                },
+              ];
+
+              const combinedMobileCrops = [...realCropItems];
+              for (const preset of fallbackPresets) {
+                if (combinedMobileCrops.length >= 3) break;
+                const alreadyHasSameName = combinedMobileCrops.some(
+                  (c) => c.shortName === preset.shortName
+                );
+                if (!alreadyHasSameName) {
+                  combinedMobileCrops.push(preset);
+                }
+              }
+
+              const activeCropItem =
+                combinedMobileCrops.find((c) => c.request_no === selectedRequestNo) ||
+                combinedMobileCrops[0];
+
+              const visibleCropTabs = showAllMobileScheduleCrops
+                ? combinedMobileCrops
+                : combinedMobileCrops.slice(0, 3);
+
+              const greetingUserName = loggedInUser.isLoggedIn
+                ? loggedInUser.name || '홍길동'
+                : '홍길동';
+
+              const fourStepLabels = ['정식', '생육기', '결구기', '수확기'];
+
+              return (
+                <div
+                  className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none"
+                  style={{
+                    paddingTop: isLegacyAndroidWebView
+                      ? 'max(28px, env(safe-area-inset-top, 28px))'
+                      : 'env(safe-area-inset-top, 0px)',
+                  }}
+                >
+                  {/* 1. 상단 헤더: [한팜 재배관리] + 우측 [알림 벨(레드도트)] & [프로필 아이콘] */}
+                  <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMenu('홈')}
+                      className="flex items-center gap-2.5 text-left cursor-pointer"
+                    >
+                      <div className="w-[36px] h-[36px] rounded-[10px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_6px_rgba(14,113,47,0.22)] shrink-0">
+                        <svg viewBox="0 0 32 32" className="w-[23px] h-[23px]" fill="none">
+                          <path
+                            d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
+                            stroke="#FFFFFF"
+                            strokeWidth="2.1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
+                            stroke="#FFFFFF"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
+                            stroke="#FFFFFF"
+                            strokeWidth="2.1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
+                            stroke="#FFFFFF"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
+                            stroke="#FFFFFF"
+                            strokeWidth="2.1"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[23px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
+                          한팜
+                        </span>
+                        <span className="text-[20px] font-bold text-[#111827] tracking-[-0.03em] leading-none">
+                          재배관리
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* 우측 알림 벨(레드 도트) + 프로필 아이콘 */}
+                    <div className="flex items-center gap-3.5">
+                      <button
+                        type="button"
+                        onClick={() => setIsMobileGnbDrawerOpen(true)}
+                        aria-label="알림 및 메뉴"
+                        className="relative w-8 h-8 flex items-center justify-center text-[#1F2937] cursor-pointer"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
+                          <path
+                            d="M18 8.5A6 6 0 006 8.5C6 15.5 3.5 17 3.5 17H20.5S18 15.5 18 8.5Z"
+                            stroke="#1F2937"
+                            strokeWidth="1.9"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M13.73 20.5A2 2 0 0110.27 20.5"
+                            stroke="#1F2937"
+                            strokeWidth="1.9"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#EF4444] ring-2 ring-[#F7F9F7]" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenu('마이페이지');
+                          setMyPageTab('FARMLAND');
+                        }}
+                        aria-label="마이페이지"
+                        className="w-8 h-8 flex items-center justify-center text-[#1F2937] cursor-pointer"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
+                          <circle cx="12" cy="8" r="4" stroke="#1F2937" strokeWidth="1.9" />
+                          <path
+                            d="M5 20C5 16.5 8.1 14 12 14C15.9 14 19 16.5 19 20"
+                            stroke="#1F2937"
+                            strokeWidth="1.9"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. 회원 인사말 타이틀 */}
+                  <div className="px-4 pt-2 pb-3">
+                    <h1 className="text-[23px] min-[390px]:text-[24.5px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
+                      {greetingUserName}님, 안녕하세요!
+                    </h1>
+                  </div>
+
+                  <div className="px-3.5 space-y-3.5">
+                    {/* 3. 내 재배작물 N개 상단 선택 영역 */}
+                    <section className="rounded-[22px] bg-[#EFF5F1] p-3.5 space-y-3">
+                      <div className="flex items-center justify-between px-0.5">
+                        <div className="flex items-center gap-2">
+                          <svg viewBox="0 0 28 28" className="w-6 h-6 shrink-0" fill="none">
+                            <path
+                              d="M14 21.5V11M14 14.5C14 10.5 10.8 8 6.8 8C6.8 12 10 14.5 14 14.5ZM14 13C14 9 17.2 6.5 21.2 6.5C21.2 10.5 18 13 14 13Z"
+                              stroke="#0E712F"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M6.5 22.5C9.5 20.8 18.5 20.8 21.5 22.5"
+                              stroke="#0E712F"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <div className="text-[17px] min-[390px]:text-[18px] font-black tracking-[-0.03em]">
+                            <span className="text-[#111827]">내 재배작물 </span>
+                            <span className="text-[#0E712F]">{combinedMobileCrops.length}개</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveMenu('재배일정 요청')}
+                          className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-[#1F2937] hover:text-[#0E712F] cursor-pointer transition"
+                        >
+                          <span>작물 추가</span>
+                          <span className="w-6 h-6 rounded-full border-[1.5px] border-[#0E712F] bg-white text-[#0E712F] inline-flex items-center justify-center">
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* 재배작물 가로 선택 카드 리스트 + [••• 전체보기] */}
+                      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-stretch">
+                        {visibleCropTabs.map((item) => {
+                          const isSelectedCrop = item.request_no === activeCropItem.request_no;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedRequestNo(item.request_no);
+                                setMyPageStageDetailItem(null);
+                              }}
+                              className={`rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
+                                isSelectedCrop
+                                  ? 'bg-white border-[1.8px] border-[#0E712F] shadow-[0_2px_10px_rgba(14,113,47,0.1)]'
+                                  : 'bg-white/95 border border-transparent hover:bg-white'
+                              }`}
+                            >
+                              <div className="w-[42px] h-[42px] min-[390px]:w-[46px] min-[390px]:h-[46px] rounded-[11px] overflow-hidden shrink-0 bg-slate-100">
+                                <img
+                                  src={item.thumbUrl}
+                                  alt={item.shortName}
+                                  className="w-full h-full object-cover block"
+                                />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
+                                  {item.shortName}
+                                </div>
+                                <div className="mt-0.5 text-[11.5px] min-[390px]:text-[12px] font-medium text-[#4B5563] tracking-[-0.02em] leading-tight truncate">
+                                  {item.stageBadge}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+
+                        {/* 우측 ••• 전체보기 버튼 */}
+                        <button
+                          type="button"
+                          onClick={() => setShowAllMobileScheduleCrops((prev) => !prev)}
+                          className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px]"
+                        >
+                          <div className="flex items-center gap-1 text-[#6B7280]">
+                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                          </div>
+                          <span className="text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                            {showAllMobileScheduleCrops ? '접기' : '전체보기'}
+                          </span>
+                        </button>
+                      </div>
+                    </section>
+
+                    {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 */}
+                    <section
+                      onClick={() => {
+                        if (activeCropItem.isRealCrop) {
+                          setSelectedRequestNo(activeCropItem.request_no);
+                          setMyPageStageDetailItem(null);
+                          setMyPageProgressDetailReqNo(activeCropItem.request_no);
+                        }
+                      }}
+                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-[58px] h-[58px] min-[390px]:w-[62px] min-[390px]:h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 shadow-2xs">
+                            <img
+                              src={activeCropItem.thumbUrl}
+                              alt={activeCropItem.shortName}
+                              className="w-full h-full object-cover block"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
+                              {activeCropItem.shortName} 재배현황
+                            </h2>
+                            <p className="mt-0.5 text-[14px] min-[390px]:text-[14.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                              {activeCropItem.cultivationMethod} ·{' '}
+                              {activeCropItem.areaPyeong.toLocaleString()}평
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="px-3.5 py-1.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[14px] min-[390px]:text-[14.5px] font-extrabold tracking-[-0.02em]">
+                            {activeCropItem.stageBadge}
+                          </span>
+                          <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                        </div>
+                      </div>
+
+                      {/* 4단계 생육 진행 스텝 바 (정식 ── 생육기 ── 결구기 ── 수확기) */}
+                      <div className="px-4 pt-0.5 pb-1">
+                        <div className="relative flex items-center justify-between">
+                          {/* 연결 라인 0 -> 1 */}
+                          <div
+                            className={`absolute left-[14px] w-[calc(33.333%-14px)] top-[13px] h-[2.5px] transition-colors ${
+                              activeCropItem.activeStepIdx >= 1 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {/* 연결 라인 1 -> 2 */}
+                          <div
+                            className={`absolute left-[33.333%] w-[33.333%] top-[13px] h-[2.5px] transition-colors ${
+                              activeCropItem.activeStepIdx >= 2 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                            }`}
+                            aria-hidden="true"
+                          />
+                          {/* 연결 라인 2 -> 3 */}
+                          <div
+                            className={`absolute left-[66.666%] right-[14px] top-[13px] h-[2.5px] transition-colors ${
+                              activeCropItem.activeStepIdx >= 3 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                            }`}
+                            aria-hidden="true"
+                          />
+
+                          {fourStepLabels.map((stepLabel, sIdx) => {
+                            const isCompletedStep = sIdx < activeCropItem.activeStepIdx;
+                            const isCurrentStep = sIdx === activeCropItem.activeStepIdx;
+                            const displayLabel =
+                              sIdx === 1 && activeCropItem.shortName === '마늘'
+                                ? '활착기'
+                                : stepLabel;
+
+                            return (
+                              <div
+                                key={stepLabel}
+                                className="relative z-10 flex flex-col items-center gap-2 bg-white px-1"
+                              >
+                                {isCompletedStep ? (
+                                  <div className="w-[26px] h-[26px] rounded-full bg-[#15803D] text-white flex items-center justify-center">
+                                    <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                      <path
+                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                        stroke="#FFFFFF"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </div>
+                                ) : isCurrentStep ? (
+                                  <div className="w-[28px] h-[28px] rounded-full border-[2.5px] border-[#15803D] bg-white flex items-center justify-center">
+                                    <span className="w-[16px] h-[16px] rounded-full bg-[#15803D]" />
+                                  </div>
+                                ) : (
+                                  <div className="w-[26px] h-[26px] rounded-full border-[2px] border-[#CBD5E1] bg-white" />
+                                )}
+
+                                <span
+                                  className={`text-[13.5px] tracking-[-0.02em] whitespace-nowrap ${
+                                    isCurrentStep
+                                      ? 'font-black text-[#111827]'
+                                      : isCompletedStep
+                                      ? 'font-medium text-[#374151]'
+                                      : 'font-medium text-[#4B5563]'
+                                  }`}
+                                >
+                                  {displayLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 */}
+                    <section
+                      onClick={() => {
+                        if (activeCropItem.isRealCrop) {
+                          setSelectedRequestNo(activeCropItem.request_no);
+                          setMyPageStageDetailItem(null);
+                          setMyPageProgressDetailReqNo(activeCropItem.request_no);
+                        }
+                      }}
+                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0" fill="none">
+                          <rect
+                            x="3.5"
+                            y="5"
+                            width="17"
+                            height="15.5"
+                            rx="2.8"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          />
+                          <circle cx="9" cy="13.5" r="1" fill="#0E712F" />
+                          <circle cx="15" cy="13.5" r="1" fill="#0E712F" />
+                          <circle cx="9" cy="17" r="1" fill="#0E712F" />
+                          <circle cx="12" cy="17" r="1" fill="#0E712F" />
+                        </svg>
+                        <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                          다음 농작업
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pl-7">
+                        <div className="min-w-0">
+                          <div className="text-[20px] min-[390px]:text-[21px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
+                            {activeCropItem.nextTaskTitle}
+                          </div>
+                          <div className="mt-1 text-[13.5px] min-[390px]:text-[14px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
+                            {activeCropItem.nextTaskDesc}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="px-3.5 py-2 rounded-full bg-[#F4F7F4] border border-[#E5EAE6] inline-flex items-center gap-1.5">
+                            <svg viewBox="0 0 20 20" className="w-4 h-4 shrink-0" fill="none">
+                              <rect
+                                x="2.5"
+                                y="4"
+                                width="15"
+                                height="13.5"
+                                rx="2.2"
+                                stroke="#0E712F"
+                                strokeWidth="1.7"
+                              />
+                              <path
+                                d="M6.5 2.5V5M13.5 2.5V5M2.5 7.8H17.5"
+                                stroke="#0E712F"
+                                strokeWidth="1.7"
+                                strokeLinecap="round"
+                              />
+                              <circle cx="7.5" cy="11" r="0.9" fill="#0E712F" />
+                              <circle cx="12.5" cy="11" r="0.9" fill="#0E712F" />
+                              <circle cx="7.5" cy="14" r="0.9" fill="#0E712F" />
+                              <circle cx="10" cy="14" r="0.9" fill="#0E712F" />
+                            </svg>
+                            <span className="text-[14px] min-[390px]:text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] whitespace-nowrap">
+                              {activeCropItem.nextTaskDateLabel}
+                            </span>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* 6. 하단 3열 카드 (농자재 구매 / 생육단계 확인 / 작업기록) — 요청에 따라 기능·링크 미연결 */}
+                    <section className="grid grid-cols-3 gap-2.5 pt-0.5">
+                      {/* 카드 1: 농자재 구매 (링크 미연결) */}
+                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <path
+                            d="M8.5 14.5H27.5L26 27.5H10L8.5 14.5Z"
+                            stroke="#15803D"
+                            strokeWidth="2.2"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M13.5 14.5V11.5C13.5 9 15.5 7 18 7C20.5 7 22.5 9 22.5 11.5V14.5"
+                            stroke="#15803D"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          농자재 구매
+                        </span>
+                      </div>
+
+                      {/* 카드 2: 생육단계 확인 (링크 미연결) */}
+                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <path
+                            d="M7.5 13C7.5 11.6 8.6 10.5 10 10.5H12.8L14.5 8H21.5L23.2 10.5H26C27.4 10.5 28.5 11.6 28.5 13V24.5C28.5 25.9 27.4 27 26 27H10C8.6 27 7.5 25.9 7.5 24.5V13Z"
+                            stroke="#15803D"
+                            strokeWidth="2.2"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="18" cy="18.8" r="4" stroke="#15803D" strokeWidth="2.2" />
+                        </svg>
+                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          생육단계 확인
+                        </span>
+                      </div>
+
+                      {/* 카드 3: 작업기록 (링크 미연결) */}
+                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <rect
+                            x="9"
+                            y="8"
+                            width="18"
+                            height="21"
+                            rx="3"
+                            stroke="#15803D"
+                            strokeWidth="2.2"
+                          />
+                          <path
+                            d="M14 6.5H22V9.5H14V6.5Z"
+                            fill="#FFFFFF"
+                            stroke="#15803D"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M14 19L16.8 21.8L22.5 15.8"
+                            stroke="#15803D"
+                            strokeWidth="2.3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          작업기록
+                        </span>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* ==================== 데스크톱(PC) 전용 재배일정 확인 뷰 (hidden lg:block) ==================== */}
+            <div className="hidden lg:block space-y-4 sm:space-y-6">
+              {renderScheduleNavigationTabs()}
+
+              {/* ---------- 1단계: CloudBae 님의 작물재배 리스트 (항목 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) ---------- */}
+              <section
+                className="block bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-6 shadow-2xs space-y-4"
+              >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
@@ -13226,8 +13886,9 @@ export default function UserIntroPage() {
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* ==================== [탭 3: 재배일정 요청 (해당 아이디 재배일정 요청 이력 리스트 + 모달리스 요청 폼)] ==================== */}
@@ -20107,12 +20768,13 @@ export default function UserIntroPage() {
         )}
       </main>
 
-      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 모바일 메인 홈 및 농작물 구매 모바일 고정뷰에서는 숨김) */}
+      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 모바일 메인 홈·재배일정 확인 및 농작물 구매 모바일 고정뷰에서는 숨김) */}
       <footer
         className={`bg-white border-t border-slate-200/80 py-6 mt-8 ${
           activeMenu === '홈' ? 'pb-6' : 'pb-24 lg:pb-6'
         } ${
           activeMenu === '홈' ||
+          activeMenu === '재배일정 확인' ||
           activeMenu === '농작물 구매' ||
           activeMenu === '농자재 판매' ||
           activeMenu === '비료' ||
@@ -21130,18 +21792,18 @@ export default function UserIntroPage() {
           );
         })()}
 
-      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 페이지에서는 숨김, 내부 서브 페이지에서만 노출) ==================== */}
+      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 1:1 스타일) ==================== */}
       {activeMenu !== '홈' && (
         <nav
           aria-label="모바일 하단 주 메뉴"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_28px_rgba(15,23,42,0.08)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white rounded-t-[24px] border-t border-slate-200/80 shadow-[0_-6px_24px_rgba(15,23,42,0.06)]"
           style={{
             paddingBottom: isLegacyAndroidWebView
               ? 'max(14px, env(safe-area-inset-bottom, 14px))'
               : 'env(safe-area-inset-bottom, 0px)',
           }}
         >
-          <div className="grid grid-cols-4 gap-1.5 h-[64px] max-w-lg mx-auto px-2.5 py-1.5 items-stretch">
+          <div className="grid grid-cols-4 h-[68px] max-w-lg mx-auto px-2 items-center">
             {/* 1. 홈 */}
             {(() => {
               const isHomeActive = activeMenu === '홈';
@@ -21152,20 +21814,17 @@ export default function UserIntroPage() {
                     setActiveMenu('홈');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
-                    isHomeActive
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                  }`}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <Home
-                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
-                      isHomeActive ? 'text-white' : 'text-[#334155]'
-                    }`}
-                  />
+                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                    <path
+                      d="M4.5 12.2L14 4.5L23.5 12.2V22.5C23.5 23.3 22.8 24 22 24H17V17.5C17 16.7 16.3 16 15.5 16H12.5C11.7 16 11 16.7 11 17.5V24H6C5.2 24 4.5 23.3 4.5 22.5V12.2Z"
+                      fill="#15803D"
+                    />
+                  </svg>
                   <span
-                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
-                      isHomeActive ? 'text-white' : 'text-slate-900'
+                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                      isHomeActive ? 'font-black text-[#0E712F]' : 'font-bold text-[#0E712F]'
                     }`}
                   >
                     홈
@@ -21174,7 +21833,7 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* 2. 재배일정 */}
+            {/* 2. 재배관리 (재배일정 확인 / 요청) */}
             {(() => {
               const isScheduleActive =
                 activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청';
@@ -21186,29 +21845,31 @@ export default function UserIntroPage() {
                     setMobileScheduleStep('list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
-                    isScheduleActive
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                  }`}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <Calendar
-                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
-                      isScheduleActive ? 'text-white' : 'text-[#334155]'
-                    }`}
-                  />
+                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                    <path
+                      d="M14 23.5V11.5M14 16C14 11.5 10.5 8.5 6 8.5C6 13 9.5 16 14 16ZM14 14C14 9.5 17.5 6.5 22 6.5C22 11 18.5 14 14 14Z"
+                      stroke={isScheduleActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                   <span
-                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
-                      isScheduleActive ? 'text-white' : 'text-slate-900'
+                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                      isScheduleActive
+                        ? 'font-extrabold text-[#0E712F]'
+                        : 'font-medium text-[#4B5563]'
                     }`}
                   >
-                    재배일정
+                    재배관리
                   </span>
                 </button>
               );
             })()}
 
-            {/* 3. 농자재 판매 */}
+            {/* 3. 농자재 (농작물 구매 / 농자재 판매) */}
             {(() => {
               const isAgroActive =
                 activeMenu === '농작물 구매' ||
@@ -21227,29 +21888,43 @@ export default function UserIntroPage() {
                     setActiveMenu('농작물 구매');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
-                    isAgroActive
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                  }`}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <Sprout
-                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
-                      isAgroActive ? 'text-white' : 'text-[#334155]'
-                    }`}
-                  />
+                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                    <path
+                      d="M4.5 6.5H8L10.4 17.5H21L23.2 9.5H9"
+                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <circle
+                      cx="11.5"
+                      cy="22"
+                      r="1.7"
+                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="1.8"
+                    />
+                    <circle
+                      cx="19.5"
+                      cy="22"
+                      r="1.7"
+                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="1.8"
+                    />
+                  </svg>
                   <span
-                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
-                      isAgroActive ? 'text-white' : 'text-slate-900'
+                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                      isAgroActive ? 'font-extrabold text-[#0E712F]' : 'font-medium text-[#4B5563]'
                     }`}
                   >
-                    농자재 판매
+                    농자재
                   </span>
                 </button>
               );
             })()}
 
-            {/* 4. 마이페이지 */}
+            {/* 4. MY (마이페이지) */}
             {(() => {
               const isMyPageActive = activeMenu === '마이페이지';
               return (
@@ -21260,23 +21935,31 @@ export default function UserIntroPage() {
                     setMyPageTab('FARMLAND');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-1 transition-all duration-150 cursor-pointer overflow-hidden ${
-                    isMyPageActive
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                  }`}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <User
-                    className={`w-[18px] h-[18px] stroke-[2.2] shrink-0 ${
-                      isMyPageActive ? 'text-white' : 'text-[#334155]'
-                    }`}
-                  />
+                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                    <circle
+                      cx="14"
+                      cy="9.5"
+                      r="4.2"
+                      stroke={isMyPageActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="1.9"
+                    />
+                    <path
+                      d="M6.5 22.5C6.5 18.6 9.8 16 14 16C18.2 16 21.5 18.6 21.5 22.5"
+                      stroke={isMyPageActive ? '#0E712F' : '#4B5563'}
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                    />
+                  </svg>
                   <span
-                    className={`text-[11.5px] min-[390px]:text-[12.5px] sm:text-[13.5px] leading-tight tracking-tight whitespace-nowrap font-extrabold ${
-                      isMyPageActive ? 'text-white' : 'text-slate-900'
+                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                      isMyPageActive
+                        ? 'font-extrabold text-[#0E712F]'
+                        : 'font-medium text-[#4B5563]'
                     }`}
                   >
-                    마이페이지
+                    MY
                   </span>
                 </button>
               );
