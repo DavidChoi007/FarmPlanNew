@@ -19396,101 +19396,36 @@ export default function UserIntroPage() {
                         </div>
                       </div>
 
-                      {/* 휴대폰번호 * */}
+                      {/* 휴대폰번호 * (인증번호 없이 전화번호만 직접 입력) */}
                       <div>
                         <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
                           휴대폰번호 <span className="text-[#DC2626]">*</span>
                         </label>
-                        <div className="space-y-2.5">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
-                              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
-                                <rect
-                                  x="6.5"
-                                  y="3"
-                                  width="11"
-                                  height="18"
-                                  rx="2.2"
-                                  stroke="currentColor"
-                                  strokeWidth="1.7"
-                                />
-                                <circle cx="12" cy="17.8" r="1" fill="currentColor" />
-                              </svg>
-                              <input
-                                type="tel"
-                                value={signupForm.phone}
-                                onChange={(e) =>
-                                  setSignupForm({
-                                    ...signupForm,
-                                    phone: e.target.value,
-                                    phoneVerified: false,
-                                  })
-                                }
-                                placeholder="010-1234-5678"
-                                className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#6B7280] focus:outline-none"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleSendPhoneAuthCode}
-                              className="h-[48px] px-3.5 rounded-[12px] border-[1.5px] border-[#0E712F] bg-white hover:bg-[#F0FDF4] text-[#0E712F] font-bold text-[14px] whitespace-nowrap cursor-pointer transition shrink-0"
-                            >
-                              인증번호 받기
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
-                              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
-                                <path
-                                  d="M12 3L19 6V11.5C19 16.2 15.9 19.9 12 21C8.1 19.9 5 16.2 5 11.5V6L12 3Z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.7"
-                                  strokeLinejoin="round"
-                                />
-                                <path
-                                  d="M9.5 12L11.2 13.7L14.8 10.1"
-                                  stroke="currentColor"
-                                  strokeWidth="1.7"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              <input
-                                type="text"
-                                maxLength={6}
-                                value={signupForm.phoneAuthCode}
-                                onChange={(e) =>
-                                  setSignupForm({
-                                    ...signupForm,
-                                    phoneAuthCode: e.target.value,
-                                    phoneVerified: false,
-                                  })
-                                }
-                                placeholder="인증번호 6자리 입력"
-                                className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleVerifyPhoneAuthCode}
-                              className={`h-[48px] min-w-[96px] px-4 rounded-[12px] font-bold text-[14px] whitespace-nowrap cursor-pointer transition shrink-0 ${
-                                signupForm.phoneVerified
-                                  ? 'bg-[#0E712F] text-white'
-                                  : signupForm.phoneAuthCode.trim().length > 0
-                                  ? 'bg-[#0E712F] text-white'
-                                  : 'bg-[#D1D5DB] text-[#6B7280]'
-                              }`}
-                            >
-                              {signupForm.phoneVerified ? '인증완료' : '확인'}
-                            </button>
-                          </div>
-
-                          {signupForm.phoneAuthMsg && (
-                            <div className="text-[12px] font-bold text-[#0E712F]">
-                              {signupForm.phoneAuthMsg}
-                            </div>
-                          )}
+                        <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                          <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                            <rect
+                              x="6.5"
+                              y="3"
+                              width="11"
+                              height="18"
+                              rx="2.2"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                            />
+                            <circle cx="12" cy="17.8" r="1" fill="currentColor" />
+                          </svg>
+                          <input
+                            type="tel"
+                            value={signupForm.phone}
+                            onChange={(e) =>
+                              setSignupForm({
+                                ...signupForm,
+                                phone: e.target.value,
+                              })
+                            }
+                            placeholder="010-1234-5678"
+                            className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                          />
                         </div>
                       </div>
 
