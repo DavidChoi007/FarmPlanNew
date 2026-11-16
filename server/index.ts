@@ -41,7 +41,7 @@ function initMemberAndMyPageTables() {
       member_id TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      signup_type TEXT NOT NULL DEFAULT 'EMAIL', -- EMAIL | GOOGLE_GMAIL
+      signup_type TEXT NOT NULL DEFAULT 'EMAIL', -- EMAIL | NAVER | GOOGLE_GMAIL | APPLE
       name TEXT NOT NULL,
       nickname TEXT NOT NULL DEFAULT '',
       gender TEXT NOT NULL DEFAULT '남성',
@@ -51,8 +51,32 @@ function initMemberAndMyPageTables() {
       road_address_detail TEXT DEFAULT '',
       postal_code TEXT DEFAULT '27481',
       phone TEXT DEFAULT '010-2026-0109',
+      phone_verified INTEGER NOT NULL DEFAULT 1,
+      interest_types TEXT NOT NULL DEFAULT '["농업인(직업 재배)"]',
+      agree_terms INTEGER NOT NULL DEFAULT 1,
+      agree_privacy INTEGER NOT NULL DEFAULT 1,
+      agree_marketing INTEGER NOT NULL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now', 'localtime'))
     );
+  `);
+
+  // 기존 로컬 SQLite user_member 테이블에 3단계 회원가입 신규 컬럼 마이그레이션
+  const alterMemberCols = [
+    `ALTER TABLE user_member ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE user_member ADD COLUMN interest_types TEXT NOT NULL DEFAULT '["농업인(직업 재배)"]'`,
+    `ALTER TABLE user_member ADD COLUMN agree_terms INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE user_member ADD COLUMN agree_privacy INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE user_member ADD COLUMN agree_marketing INTEGER NOT NULL DEFAULT 0`,
+  ];
+  for (const sql of alterMemberCols) {
+    try {
+      db.exec(sql);
+    } catch {
+      // 이미 컬럼이 존재하는 경우 무시
+    }
+  }
+
+  db.exec(`
 
     CREATE TABLE IF NOT EXISTS member_farmland (
       farmland_id TEXT PRIMARY KEY,
@@ -336,6 +360,12 @@ async function syncAgroMaterialSchemaToSupabase() {
         ADD COLUMN IF NOT EXISTS sido TEXT DEFAULT '충청북도',
         ADD COLUMN IF NOT EXISTS sigungu TEXT DEFAULT '충주시',
         ADD COLUMN IF NOT EXISTS eupmyeondong TEXT DEFAULT '단월동';
+      ALTER TABLE public.user_member
+        ADD COLUMN IF NOT EXISTS phone_verified INTEGER DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS interest_types TEXT DEFAULT '["농업인(직업 재배)"]',
+        ADD COLUMN IF NOT EXISTS agree_terms INTEGER DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS agree_privacy INTEGER DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS agree_marketing INTEGER DEFAULT 0;
       DELETE FROM public.growth_type_code
       WHERE type_code IN ('WORK', 'STAGE');
       UPDATE public.crop_growth_process_plan
@@ -364,8 +394,9 @@ async function syncAgroMaterialSchemaToSupabase() {
       const insMem = db.prepare(`
         INSERT OR REPLACE INTO user_member (
           member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
+          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const m of remoteMembers) {
         insMem.run(
@@ -382,6 +413,11 @@ async function syncAgroMaterialSchemaToSupabase() {
           m.road_address_detail || '',
           m.postal_code || '27481',
           m.phone || '010-2026-0109',
+          m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
+          String(m.interest_types || '["농업인(직업 재배)"]'),
+          m.agree_terms !== undefined ? Number(m.agree_terms) : 1,
+          m.agree_privacy !== undefined ? Number(m.agree_privacy) : 1,
+          m.agree_marketing !== undefined ? Number(m.agree_marketing) : 0,
           m.created_at || ''
         );
       }
@@ -9240,16 +9276,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 2. 회원가입 API (일반 아이디 / 이메일 가입 & Google Gmail 가입)
+    // 2. 회원가입 API (3단계 회원가입: 계정정보 ➔ 기본정보·약관동의 ➔ 가입완료)
     if (pathname === '/api/auth/signup' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const email = String(body.email || '').trim();
       const password = String(body.password || '1234').trim();
-      const signupType =
-        String(body.signup_type || 'EMAIL').toUpperCase() === 'GOOGLE_GMAIL'
-          ? 'GOOGLE_GMAIL'
-          : 'EMAIL';
-      const name = String(body.name || email.split('@')[0] || '신규회원').trim();
+      const rawSignupType = String(body.signup_type || 'EMAIL').toUpperCase();
+      const signupType = ['EMAIL', 'NAVER', 'GOOGLE_GMAIL', 'APPLE'].includes(rawSignupType)
+        ? rawSignupType
+        : 'EMAIL';
+      const name = String(body.name || body.nickname || email.split('@')[0] || '신규회원').trim();
       const gender = String(body.gender || '남성').trim();
       const birthDate = String(body.birth_date || '1980-01-01').trim();
       const age = Number(body.age) || 46;
@@ -9259,6 +9295,13 @@ const server = http.createServer(async (req, res) => {
       const roadAddressDetail = String(body.road_address_detail || '').trim();
       const postalCode = String(body.postal_code || '27481').trim();
       const phone = String(body.phone || '010-0000-0000').trim();
+      const phoneVerified = body.phone_verified !== undefined ? (body.phone_verified ? 1 : 0) : 1;
+      const interestTypes = Array.isArray(body.interest_types)
+        ? JSON.stringify(body.interest_types)
+        : String(body.interest_types || '["농업인(직업 재배)"]');
+      const agreeTerms = body.agree_terms !== undefined ? (body.agree_terms ? 1 : 0) : 1;
+      const agreePrivacy = body.agree_privacy !== undefined ? (body.agree_privacy ? 1 : 0) : 1;
+      const agreeMarketing = body.agree_marketing ? 1 : 0;
 
       if (!email) {
         sendJson(res, { ok: false, message: '아이디 또는 이메일 주소를 입력해 주세요.' }, 400);
@@ -9271,20 +9314,21 @@ const server = http.createServer(async (req, res) => {
       if (dup) {
         sendJson(
           res,
-          { ok: false, message: `이미 가입된 이메일(${email})입니다.` },
+          { ok: false, message: `이미 가입된 아이디/이메일(${email})입니다.` },
           409
         );
         return;
       }
 
       const memberId = `MEM-${Date.now()}`;
-      const nickname = email.split('@')[0] || name;
+      const nickname = String(body.nickname || name || email.split('@')[0]).trim();
 
       db.prepare(`
         INSERT INTO user_member (
           member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
+          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         memberId,
         email,
@@ -9298,7 +9342,12 @@ const server = http.createServer(async (req, res) => {
         roadAddress,
         roadAddressDetail,
         postalCode,
-        phone
+        phone,
+        phoneVerified,
+        interestTypes,
+        agreeTerms,
+        agreePrivacy,
+        agreeMarketing
       );
 
       // 신규 가입 회원을 위한 기본 예시 재배지 1곳 자동 세팅 (도로명 주소에서 시도/시군구 추출 가능 시 연동)
@@ -9538,8 +9587,9 @@ const server = http.createServer(async (req, res) => {
           const stmt = db.prepare(`
             INSERT OR REPLACE INTO user_member (
               member_id, email, password, signup_type, name, nickname,
-              gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
+              phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
           for (const m of sbMembers) {
             if (!m?.member_id) continue;
@@ -9557,6 +9607,11 @@ const server = http.createServer(async (req, res) => {
               String(m.road_address_detail || ''),
               String(m.postal_code || '27481'),
               String(m.phone || '010-0000-0000'),
+              m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
+              String(m.interest_types || '["농업인(직업 재배)"]'),
+              m.agree_terms !== undefined ? Number(m.agree_terms) : 1,
+              m.agree_privacy !== undefined ? Number(m.agree_privacy) : 1,
+              m.agree_marketing !== undefined ? Number(m.agree_marketing) : 0,
               String(m.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
             );
           }

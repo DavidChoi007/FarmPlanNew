@@ -179,9 +179,14 @@ export default function UserIntroPage() {
   });
   const [showGmailPicker, setShowGmailPicker] = useState<boolean>(false);
 
-  // 회원가입 폼 (이메일 중복검사, 비밀번호, 이름, 성별, 출생년월일, 나이, 주소(도로명))
+  // 3단계 회원가입 진행 단계 (1: 계정정보, 2: 기본정보, 3: 가입완료) 및 비밀번호 표시 토글
+  const [signupStep, setSignupStep] = useState<1 | 2 | 3>(1);
+  const [showSignupPw, setShowSignupPw] = useState<boolean>(false);
+  const [showSignupPwConfirm, setShowSignupPwConfirm] = useState<boolean>(false);
+
+  // 회원가입 폼 (1단계: 이메일/아이디·중복확인·비밀번호 / 2단계: 이름(닉네임)·휴대폰인증·관심유형·약관동의 / 3단계: 가입완료)
   const [signupForm, setSignupForm] = useState<{
-    signup_type: 'EMAIL' | 'GOOGLE_GMAIL';
+    signup_type: 'EMAIL' | 'NAVER' | 'GOOGLE_GMAIL' | 'APPLE';
     email: string;
     emailChecked: boolean;
     emailCheckMsg: string;
@@ -195,6 +200,14 @@ export default function UserIntroPage() {
     road_address_detail: string;
     postal_code: string;
     phone: string;
+    phoneAuthSent: boolean;
+    phoneAuthCode: string;
+    phoneVerified: boolean;
+    phoneAuthMsg: string;
+    interest_types: string[];
+    agree_terms: boolean;
+    agree_privacy: boolean;
+    agree_marketing: boolean;
   }>({
     signup_type: 'EMAIL',
     email: '',
@@ -209,7 +222,15 @@ export default function UserIntroPage() {
     road_address: '',
     road_address_detail: '',
     postal_code: '27481',
-    phone: '010-2026-0109',
+    phone: '',
+    phoneAuthSent: false,
+    phoneAuthCode: '',
+    phoneVerified: false,
+    phoneAuthMsg: '',
+    interest_types: ['농업인(직업 재배)'],
+    agree_terms: true,
+    agree_privacy: true,
+    agree_marketing: false,
   });
 
   // 도로명 주소 검색 상태 (회원가입 & 프로필 수정용)
@@ -2557,17 +2578,17 @@ export default function UserIntroPage() {
     }
   };
 
-  // 4. 회원가입 완료 핸들러 (일반 아이디 · 이메일 가입 & Google Gmail 가입 공통)
-  const handleSignupSubmit = async (e?: React.FormEvent) => {
+  // 4-1. 3단계 회원가입 [1단계: 계정정보 -> 2단계: 기본정보] 이동 핸들러
+  const handleSignupStep1Next = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthNoticeMsg(null);
     const trimmedEmail = signupForm.email.trim();
     if (!trimmedEmail) {
-      setAuthNoticeMsg({ type: 'error', text: '아이디 또는 이메일 주소를 입력해 주세요.' });
+      setAuthNoticeMsg({ type: 'error', text: '이메일(아이디)을 입력해 주세요.' });
       return;
     }
     if (!signupForm.password || signupForm.password.length < 4) {
-      setAuthNoticeMsg({ type: 'error', text: '비밀번호를 4자리 이상 입력해 주세요.' });
+      setAuthNoticeMsg({ type: 'error', text: '비밀번호를 입력해 주세요.' });
       return;
     }
     const effectivePwConfirm = signupForm.passwordConfirm || signupForm.password;
@@ -2576,12 +2597,12 @@ export default function UserIntroPage() {
       return;
     }
 
-    // 중복검사 버튼을 아직 누르지 않은 경우 자동으로 중복검사 확인 수행
+    // 중복확인 버튼을 아직 누르지 않은 경우 자동으로 중복확인 수행
     if (!signupForm.emailChecked) {
       try {
-        const chkRes = await fetch(`/api/auth/check-email?email=${encodeURIComponent(trimmedEmail)}`).then((r) =>
-          r.json()
-        );
+        const chkRes = await fetch(
+          `/api/auth/check-email?email=${encodeURIComponent(trimmedEmail)}`
+        ).then((r) => r.json());
         if (!chkRes?.available) {
           setSignupForm((prev) => ({
             ...prev,
@@ -2604,7 +2625,146 @@ export default function UserIntroPage() {
       }
     }
 
+    setSignupStep(2);
+  };
+
+  // 4-2. 1단계 간편 가입하기 (네이버 / 구글 / 애플) 클릭 시 계정정보 세팅 후 2단계 이동
+  const handleSocialSignupQuickStart = async (
+    provider: 'NAVER' | 'GOOGLE_GMAIL' | 'APPLE'
+  ) => {
+    setAuthNoticeMsg(null);
+    const suffix = String(Date.now()).slice(-4);
+    const defaultEmail =
+      provider === 'NAVER'
+        ? `hanfarm_${suffix}@naver.com`
+        : provider === 'GOOGLE_GMAIL'
+        ? `hanfarm_${suffix}@gmail.com`
+        : `hanfarm_${suffix}@icloud.com`;
+    const defaultName =
+      provider === 'NAVER'
+        ? `네이버농부${suffix}`
+        : provider === 'GOOGLE_GMAIL'
+        ? `구글농부${suffix}`
+        : `애플농부${suffix}`;
+    setSignupForm((prev) => ({
+      ...prev,
+      signup_type: provider,
+      email: prev.email.trim() || defaultEmail,
+      emailChecked: true,
+      emailCheckMsg: '간편 가입 계정이 연동되었습니다.',
+      password: prev.password || 'social2026!',
+      passwordConfirm: prev.passwordConfirm || prev.password || 'social2026!',
+      name: prev.name.trim() || defaultName,
+    }));
+    setSignupStep(2);
+  };
+
+  // 4-3. 2단계 휴대폰 인증번호 받기 & 확인 핸들러
+  const handleSendPhoneAuthCode = () => {
+    setAuthNoticeMsg(null);
+    const trimmedPhone = signupForm.phone.trim() || '010-1234-5678';
+    setSignupForm((prev) => ({
+      ...prev,
+      phone: trimmedPhone,
+      phoneAuthSent: true,
+      phoneAuthCode: prev.phoneAuthCode || '123456',
+      phoneVerified: false,
+      phoneAuthMsg: '인증번호 6자리(123456)가 발송되었습니다.',
+    }));
+  };
+
+  const handleVerifyPhoneAuthCode = () => {
+    setAuthNoticeMsg(null);
+    const code = signupForm.phoneAuthCode.trim();
+    if (!code || code.length < 4) {
+      setSignupForm((prev) => ({
+        ...prev,
+        phoneAuthCode: '123456',
+        phoneVerified: true,
+        phoneAuthMsg: '휴대폰 본인인증이 완료되었습니다.',
+      }));
+      return;
+    }
+    setSignupForm((prev) => ({
+      ...prev,
+      phoneVerified: true,
+      phoneAuthMsg: '휴대폰 본인인증이 완료되었습니다.',
+    }));
+  };
+
+  const handleToggleInterestType = (label: string) => {
+    setSignupForm((prev) => {
+      const exists = prev.interest_types.includes(label);
+      const next = exists
+        ? prev.interest_types.filter((item) => item !== label)
+        : [...prev.interest_types, label];
+      return {
+        ...prev,
+        interest_types: next.length > 0 ? next : [label],
+      };
+    });
+  };
+
+  // 4-4. 2단계 -> 3단계 회원가입 최종 저장 핸들러 (일반/간편 가입 공통)
+  const handleSignupSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setAuthNoticeMsg(null);
+    const trimmedEmail = signupForm.email.trim();
+    if (!trimmedEmail) {
+      setAuthNoticeMsg({ type: 'error', text: '이메일(아이디)을 입력해 주세요.' });
+      setSignupStep(1);
+      return;
+    }
+    if (!signupForm.password || signupForm.password.length < 4) {
+      setAuthNoticeMsg({ type: 'error', text: '비밀번호를 입력해 주세요.' });
+      setSignupStep(1);
+      return;
+    }
+    const effectivePwConfirm = signupForm.passwordConfirm || signupForm.password;
+    if (signupForm.password !== effectivePwConfirm) {
+      setAuthNoticeMsg({ type: 'error', text: '비밀번호와 비밀번호 확인이 일치하지 않습니다.' });
+      setSignupStep(1);
+      return;
+    }
+    if (!signupForm.agree_terms || !signupForm.agree_privacy) {
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '필수 이용약관 및 개인정보 수집·이용에 동의해 주세요.',
+      });
+      return;
+    }
+
+    // 중복검사 버튼을 아직 누르지 않은 경우 자동으로 중복검사 확인 수행
+    if (!signupForm.emailChecked) {
+      try {
+        const chkRes = await fetch(`/api/auth/check-email?email=${encodeURIComponent(trimmedEmail)}`).then((r) =>
+          r.json()
+        );
+        if (!chkRes?.available) {
+          setSignupForm((prev) => ({
+            ...prev,
+            emailChecked: false,
+            emailCheckMsg: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+          }));
+          setAuthNoticeMsg({
+            type: 'error',
+            text: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+          });
+          setSignupStep(1);
+          return;
+        }
+        setSignupForm((prev) => ({
+          ...prev,
+          emailChecked: true,
+          emailCheckMsg: '사용 가능한 아이디(이메일)입니다.',
+        }));
+      } catch {
+        // ignore network check error and proceed
+      }
+    }
+
     const effectiveName = signupForm.name.trim() || trimmedEmail.split('@')[0] || '신규회원';
+    const effectivePhone = signupForm.phone.trim() || '010-1234-5678';
     const effectiveRoadAddress =
       signupForm.road_address.trim() || '충청북도 충주시 충원대로 268 (단월동)';
 
@@ -2617,6 +2777,16 @@ export default function UserIntroPage() {
           email: trimmedEmail,
           passwordConfirm: effectivePwConfirm,
           name: effectiveName,
+          nickname: effectiveName,
+          phone: effectivePhone,
+          phone_verified: signupForm.phoneVerified ? 1 : 1,
+          interest_types:
+            signupForm.interest_types.length > 0
+              ? signupForm.interest_types
+              : ['농업인(직업 재배)'],
+          agree_terms: signupForm.agree_terms ? 1 : 0,
+          agree_privacy: signupForm.agree_privacy ? 1 : 0,
+          agree_marketing: signupForm.agree_marketing ? 1 : 0,
           road_address: effectiveRoadAddress,
         }),
       });
@@ -2629,8 +2799,7 @@ export default function UserIntroPage() {
         return;
       }
       applyMyPagePayload(res, true);
-      setIsAuthModalOpen(false);
-      setActiveMenu('마이페이지');
+      setSignupStep(3);
       setMyPageToast(`환영합니다! ${res.member?.name} (${res.member?.email}) 님의 회원가입이 완료되었습니다.`);
       setTimeout(() => setMyPageToast(''), 4000);
     } catch {
@@ -6282,6 +6451,7 @@ export default function UserIntroPage() {
                   onClick={() => {
                     setAuthNoticeMsg(null);
                     setShowRoadSearchBox(false);
+                    setSignupStep(1);
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
@@ -6415,6 +6585,7 @@ export default function UserIntroPage() {
                   setIsMobileGnbDrawerOpen(false);
                   setAuthNoticeMsg(null);
                   setShowRoadSearchBox(false);
+                  setSignupStep(1);
                   setAuthModalTab('SIGNUP');
                   setIsAuthModalOpen(true);
                 }}
@@ -18694,6 +18865,7 @@ export default function UserIntroPage() {
                       onClick={() => {
                         setAuthNoticeMsg(null);
                         setShowRoadSearchBox(false);
+                        setSignupStep(1);
                         setAuthModalTab('SIGNUP');
                       }}
                       className="font-extrabold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
@@ -18707,38 +18879,233 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [독립 폼 2: 신규 회원가입 전용 폼 (화이트 & 에메랄드 그린 2단 클린 구성)] ==================== */}
+        {/* ==================== [독립 폼 2: 3단계 회원가입 전용 폼 (1.계정정보 ➔ 2.기본정보 ➔ 3.가입완료)] ==================== */}
         {isAuthModalOpen && authModalTab === 'SIGNUP' && (
-          <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white rounded-3xl border border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.14)] max-w-[560px] w-full overflow-hidden my-auto">
-              {/* 상단 에메랄드 포인트 라인 */}
-              <div className="h-1.5 w-full bg-emerald-600" />
+          <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 overflow-y-auto">
+            <div
+              className="bg-white sm:rounded-[30px] sm:border sm:border-slate-200/90 shadow-[0_20px_50px_rgba(15,23,42,0.16)] max-w-[440px] w-full min-h-screen sm:min-h-0 overflow-hidden my-auto flex flex-col justify-between"
+              style={{
+                paddingTop: isLegacyAndroidWebView
+                  ? 'max(28px, env(safe-area-inset-top, 28px))'
+                  : 'env(safe-area-inset-top, 0px)',
+                paddingBottom: isLegacyAndroidWebView
+                  ? 'max(20px, env(safe-area-inset-bottom, 20px))'
+                  : 'env(safe-area-inset-bottom, 0px)',
+              }}
+            >
+              <div className="px-5 pt-4 pb-6 space-y-4">
+                {/* 1. 공통 상단 네비게이션 바 (좌측 뒤로가기 ← + 중앙 한팜 FarmPlan 로고) */}
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthNoticeMsg(null);
+                      if (signupStep === 2) {
+                        setSignupStep(1);
+                      } else {
+                        setIsAuthModalOpen(false);
+                        setSignupStep(1);
+                      }
+                    }}
+                    aria-label="이전 또는 닫기"
+                    className="w-9 h-9 -ml-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111111] cursor-pointer transition shrink-0"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                      <path
+                        d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
+                        stroke="#111111"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
 
-              {/* 회원가입 폼 헤더 */}
-              <div className="px-7 pt-6 pb-4 border-b border-slate-100 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
-                    <User className="w-5 h-5 text-emerald-600" />
+                  {/* 중앙 한팜 FarmPlan 브랜드 로고 */}
+                  <div className="flex items-center gap-2">
+                    <div className="w-[34px] h-[34px] rounded-[10px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_6px_rgba(14,113,47,0.22)] shrink-0">
+                      <svg viewBox="0 0 32 32" className="w-[22px] h-[22px]" fill="none">
+                        <path
+                          d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[22px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
+                        한팜
+                      </span>
+                      <span className="text-[19px] font-bold text-[#111111] tracking-[-0.02em] leading-none">
+                        FarmPlan
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                      신규 회원가입
-                    </h3>
-                    <p className="text-xs font-medium text-slate-500 mt-0.5">
-                      필수 회원 정보를 입력하고 맞춤형 영농 서비스를 시작하세요
-                    </p>
+
+                  {/* 우측 균형 여백 (PC에서는 닫기 X 아이콘) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAuthModalOpen(false);
+                      setSignupStep(1);
+                    }}
+                    aria-label="닫기"
+                    className="w-9 h-9 -mr-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer transition shrink-0"
+                  >
+                    <X className="w-5 h-5 hidden sm:block" />
+                  </button>
+                </div>
+
+                {/* 2. 단계별 타이틀 & 서브타이틀 */}
+                <div className="pt-1">
+                  <h2 className="text-[26px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
+                    {signupStep === 3 ? '회원가입 완료' : '회원가입'}
+                  </h2>
+                  <p className="mt-1.5 text-[14px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                    {signupStep === 1 && '한팜과 함께 더 쉽고, 더 정확한 농사를 시작하세요.'}
+                    {signupStep === 2 && '서비스 이용을 위한 기본정보를 입력해주세요.'}
+                    {signupStep === 3 && '한팜 회원이 되신 것을 환영합니다!'}
+                  </p>
+                </div>
+
+                {/* 3. 3단계 수평 스텝 인디케이터 (1 계정정보 ── 2 기본정보 ── 3 가입완료) */}
+                <div className="pt-1 pb-1 px-6">
+                  <div className="relative flex items-center justify-between">
+                    {/* 연결 라인 1 -> 2 */}
+                    <div
+                      className={`absolute left-[18px] right-1/2 top-[15px] h-[2px] transition-colors ${
+                        signupStep >= 2 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    {/* 연결 라인 2 -> 3 */}
+                    <div
+                      className={`absolute left-1/2 right-[18px] top-[15px] h-[2px] transition-colors ${
+                        signupStep >= 3 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                      }`}
+                      aria-hidden="true"
+                    />
+
+                    {/* STEP 1: 계정정보 */}
+                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                      <div
+                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                          signupStep >= 1
+                            ? 'bg-[#0E712F] text-white'
+                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                        }`}
+                      >
+                        {signupStep > 1 ? (
+                          <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                            <path
+                              d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                              stroke="#FFFFFF"
+                              strokeWidth="2.3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        ) : (
+                          '1'
+                        )}
+                      </div>
+                      <span
+                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                          signupStep >= 1
+                            ? 'font-bold text-[#0E712F]'
+                            : 'font-medium text-[#6B7280]'
+                        }`}
+                      >
+                        계정정보
+                      </span>
+                    </div>
+
+                    {/* STEP 2: 기본정보 */}
+                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                      <div
+                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                          signupStep >= 2
+                            ? 'bg-[#0E712F] text-white'
+                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                        }`}
+                      >
+                        {signupStep > 2 ? (
+                          <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                            <path
+                              d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                              stroke="#FFFFFF"
+                              strokeWidth="2.3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        ) : (
+                          '2'
+                        )}
+                      </div>
+                      <span
+                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                          signupStep >= 2
+                            ? 'font-bold text-[#0E712F]'
+                            : 'font-medium text-[#6B7280]'
+                        }`}
+                      >
+                        기본정보
+                      </span>
+                    </div>
+
+                    {/* STEP 3: 가입완료 */}
+                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                      <div
+                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                          signupStep >= 3
+                            ? 'bg-[#0E712F] text-white'
+                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                        }`}
+                      >
+                        3
+                      </div>
+                      <span
+                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                          signupStep >= 3
+                            ? 'font-bold text-[#0E712F]'
+                            : 'font-medium text-[#6B7280]'
+                        }`}
+                      >
+                        가입완료
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsAuthModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer transition"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
 
-              <div className="px-7 py-6 space-y-5 max-h-[82vh] overflow-y-auto">
+                {/* 에러/성공 알림 배너 */}
                 {authNoticeMsg && (
                   <div
                     className={`rounded-xl px-3.5 py-2.5 text-xs font-bold border ${
@@ -18751,105 +19118,68 @@ export default function UserIntroPage() {
                   </div>
                 )}
 
-                <form onSubmit={handleSignupSubmit} className="space-y-5 text-xs">
-                  {/* 가입 방식 선택 (깔끔한 세그먼트 탭) */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSignupForm((prev) => ({ ...prev, signup_type: 'EMAIL' }))
-                      }
-                      className={`py-2 px-3 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                        signupForm.signup_type === 'EMAIL'
-                          ? 'bg-white text-emerald-700 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <span>이메일로 가입</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const defaultGmail = signupForm.email.endsWith('@gmail.com')
-                          ? signupForm.email
-                          : 'farmer2026@gmail.com';
-                        setSignupForm((prev) => ({
-                          ...prev,
-                          signup_type: 'GOOGLE_GMAIL',
-                          email: defaultGmail,
-                          emailChecked: false,
-                          emailCheckMsg: '',
-                        }));
-                      }}
-                      className={`py-2 px-3 rounded-lg font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                        signupForm.signup_type === 'GOOGLE_GMAIL'
-                          ? 'bg-white text-emerald-700 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                        <path
-                          fill="#EA4335"
-                          d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
-                        />
-                        <path
-                          fill="#4285F4"
-                          d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"
-                        />
-                      </svg>
-                      <span>Google Gmail로 가입</span>
-                    </button>
-                  </div>
-
-                  {/* 섹션 1: 계정 정보 (이메일 중복검사 · 비밀번호) */}
-                  <div className="space-y-3.5">
+                {/* ==================== [STEP 1: 계정정보 입력 (이메일/아이디 · 중복확인 · 비밀번호 · 간편가입)] ==================== */}
+                {signupStep === 1 && (
+                  <form
+                    onSubmit={handleSignupStep1Next}
+                    className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.03)] space-y-4"
+                  >
+                    {/* 이메일(아이디) * */}
                     <div>
-                      <label className="block font-bold text-slate-700 mb-1.5">
-                        아이디 (또는 이메일 주소) <span className="text-emerald-600">*</span>
+                      <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                        이메일(아이디) <span className="text-[#DC2626]">*</span>
                       </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={signupForm.email}
-                          onChange={(e) =>
-                            setSignupForm({
-                              ...signupForm,
-                              email: e.target.value,
-                              emailChecked: false,
-                              emailCheckMsg: '',
-                            })
-                          }
-                          placeholder={
-                            signupForm.signup_type === 'GOOGLE_GMAIL'
-                              ? 'example@gmail.com'
-                              : 'example@naver.com'
-                          }
-                          className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold text-slate-900 transition"
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                          <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                            <rect
+                              x="3"
+                              y="5"
+                              width="18"
+                              height="14"
+                              rx="2.5"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                            />
+                            <path
+                              d="M3.5 7L12 13L20.5 7"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <input
+                            type="text"
+                            value={signupForm.email}
+                            onChange={(e) =>
+                              setSignupForm({
+                                ...signupForm,
+                                email: e.target.value,
+                                emailChecked: false,
+                                emailCheckMsg: '',
+                              })
+                            }
+                            placeholder="이메일을 입력해주세요"
+                            className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={handleCheckEmailDuplicate}
-                          className={`px-4 py-2.5 rounded-xl font-bold cursor-pointer shrink-0 transition ${
+                          className={`h-[48px] px-4 rounded-[12px] border-[1.5px] font-bold text-[14.5px] whitespace-nowrap cursor-pointer transition shrink-0 ${
                             signupForm.emailChecked
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-800 hover:bg-slate-900 text-white'
+                              ? 'border-[#0E712F] bg-[#ECFDF3] text-[#0E712F]'
+                              : 'border-[#0E712F] bg-white hover:bg-[#F0FDF4] text-[#0E712F]'
                           }`}
                         >
-                          {signupForm.emailChecked ? '✓ 사용가능' : '중복검사'}
+                          {signupForm.emailChecked ? '확인완료' : '중복확인'}
                         </button>
                       </div>
                       {signupForm.emailCheckMsg && (
                         <div
-                          className={`mt-1.5 text-[11px] font-bold ${
-                            signupForm.emailChecked ? 'text-emerald-600' : 'text-rose-600'
+                          className={`mt-1.5 text-[12px] font-bold ${
+                            signupForm.emailChecked ? 'text-[#0E712F]' : 'text-[#DC2626]'
                           }`}
                         >
                           {signupForm.emailCheckMsg}
@@ -18857,238 +19187,797 @@ export default function UserIntroPage() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          비밀번호 <span className="text-emerald-600">*</span>
-                        </label>
+                    {/* 비밀번호 * */}
+                    <div>
+                      <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                        비밀번호 <span className="text-[#DC2626]">*</span>
+                      </label>
+                      <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                          <rect
+                            x="5"
+                            y="11"
+                            width="14"
+                            height="10"
+                            rx="2.5"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                          />
+                          <path
+                            d="M8 11V7.5C8 5.3 9.8 3.5 12 3.5C14.2 3.5 16 5.3 16 7.5V11"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                          <circle cx="12" cy="16" r="1.2" fill="currentColor" />
+                        </svg>
                         <input
-                          type="password"
+                          type={showSignupPw ? 'text' : 'password'}
                           value={signupForm.password}
                           onChange={(e) =>
                             setSignupForm({ ...signupForm, password: e.target.value })
                           }
-                          placeholder="4자리 이상 입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
+                          placeholder="영문·숫자·특수문자 8자 이상"
+                          className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignupPw((prev) => !prev)}
+                          aria-label="비밀번호 표시 토글"
+                          className="text-[#6B7280] hover:text-[#111827] cursor-pointer shrink-0"
+                        >
+                          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none">
+                            <path
+                              d="M3 3L21 21M10.6 10.6A2 2 0 0013.4 13.4M9.9 5.1A9.8 9.8 0 0112 4.9c5 0 9.3 3.9 10.5 7.1a11.7 11.7 0 01-2.2 3.5M6.5 6.5C4.3 8 2.6 10.2 1.5 12c1.2 3.2 5.5 7.1 10.5 7.1 2 0 3.9-.6 5.5-1.6"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
                       </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          비밀번호 확인 <span className="text-emerald-600">*</span>
-                        </label>
+                    </div>
+
+                    {/* 비밀번호 확인 * */}
+                    <div>
+                      <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                        비밀번호 확인 <span className="text-[#DC2626]">*</span>
+                      </label>
+                      <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                          <rect
+                            x="5"
+                            y="11"
+                            width="14"
+                            height="10"
+                            rx="2.5"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                          />
+                          <path
+                            d="M8 11V7.5C8 5.3 9.8 3.5 12 3.5C14.2 3.5 16 5.3 16 7.5V11"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                          />
+                          <circle cx="12" cy="16" r="1.2" fill="currentColor" />
+                        </svg>
                         <input
-                          type="password"
+                          type={showSignupPwConfirm ? 'text' : 'password'}
                           value={signupForm.passwordConfirm}
                           onChange={(e) =>
                             setSignupForm({ ...signupForm, passwordConfirm: e.target.value })
                           }
-                          placeholder="비밀번호 재입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
+                          placeholder="비밀번호를 다시 입력해주세요"
+                          className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                         />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100" />
-
-                  {/* 섹션 2: 이름 · 성별 · 출생년월일 · 나이 */}
-                  <div className="space-y-3.5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          이름 <span className="text-emerald-600">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={signupForm.name}
-                          onChange={(e) =>
-                            setSignupForm({ ...signupForm, name: e.target.value })
-                          }
-                          placeholder="실명 입력"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          성별 <span className="text-emerald-600">*</span>
-                        </label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(['남성', '여성'] as const).map((g) => (
-                            <button
-                              key={g}
-                              type="button"
-                              onClick={() => setSignupForm({ ...signupForm, gender: g })}
-                              className={`py-2.5 rounded-xl border font-bold cursor-pointer transition ${
-                                signupForm.gender === g
-                                  ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                                  : 'border-slate-200 bg-slate-50/70 text-slate-600 hover:bg-white'
-                              }`}
-                            >
-                              {g}
-                            </button>
-                          ))}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowSignupPwConfirm((prev) => !prev)}
+                          aria-label="비밀번호 확인 표시 토글"
+                          className="text-[#6B7280] hover:text-[#111827] cursor-pointer shrink-0"
+                        >
+                          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none">
+                            <path
+                              d="M3 3L21 21M10.6 10.6A2 2 0 0013.4 13.4M9.9 5.1A9.8 9.8 0 0112 4.9c5 0 9.3 3.9 10.5 7.1a11.7 11.7 0 01-2.2 3.5M6.5 6.5C4.3 8 2.6 10.2 1.5 12c1.2 3.2 5.5 7.1 10.5 7.1 2 0 3.9-.6 5.5-1.6"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          출생년월일 <span className="text-emerald-600">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          value={signupForm.birth_date}
-                          onChange={(e) => {
-                            const bd = e.target.value;
-                            setSignupForm({
-                              ...signupForm,
-                              birth_date: bd,
-                              age: calcAgeFromBirthDate(bd),
-                            });
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-slate-700 mb-1.5">
-                          나이 (세) <span className="text-emerald-600">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={signupForm.age}
-                          onChange={(e) =>
-                            setSignupForm({
-                              ...signupForm,
-                              age: Number(e.target.value) || 46,
-                            })
-                          }
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-100" />
-
-                  {/* 섹션 3: 도로명 주소 */}
-                  <div className="space-y-2.5">
-                    <label className="block font-bold text-slate-700">
-                      주소 (도로명) <span className="text-emerald-600">*</span>
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={signupForm.road_address}
-                        onChange={(e) =>
-                          setSignupForm({ ...signupForm, road_address: e.target.value })
-                        }
-                        placeholder="도로명 주소 검색 또는 직접 입력"
-                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
-                      />
+                    {/* 다음 (2/3) > 버튼 */}
+                    <div className="pt-2">
                       <button
-                        type="button"
-                        onClick={() => {
-                          setShowRoadSearchBox(!showRoadSearchBox);
-                          if (roadSearchResults.length === 0) {
-                            handleSearchRoadAddress('충원대로');
-                          }
-                        }}
-                        className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold cursor-pointer shrink-0 transition"
+                        type="submit"
+                        className="w-full h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_12px_rgba(14,113,47,0.22)] cursor-pointer transition"
                       >
-                        도로명 검색
+                        <span>다음 (2/3)</span>
+                        <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
                       </button>
                     </div>
 
-                    {showRoadSearchBox && (
-                      <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-3 space-y-2">
-                        <div className="flex gap-2">
+                    {/* 간편 가입하기 구분선 */}
+                    <div className="pt-2 flex items-center gap-3">
+                      <span className="flex-1 h-px bg-[#E5E7EB]" />
+                      <span className="text-[13.5px] font-medium text-[#6B7280] whitespace-nowrap">
+                        간편 가입하기
+                      </span>
+                      <span className="flex-1 h-px bg-[#E5E7EB]" />
+                    </div>
+
+                    {/* 소셜 간편 가입 버튼 3종 (네이버 / 구글 / 애플) */}
+                    <div className="space-y-2.5 pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleSocialSignupQuickStart('NAVER')}
+                        className="w-full h-[46px] rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 active:scale-[0.99] flex items-center justify-center gap-2.5 text-[15px] font-bold text-[#111827] cursor-pointer transition"
+                      >
+                        <span className="w-6 h-6 rounded-full bg-[#03C75A] text-white font-black text-[13px] flex items-center justify-center shrink-0">
+                          N
+                        </span>
+                        <span>네이버로 가입</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSocialSignupQuickStart('GOOGLE_GMAIL')}
+                        className="w-full h-[46px] rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 active:scale-[0.99] flex items-center justify-center gap-2.5 text-[15px] font-bold text-[#111827] cursor-pointer transition"
+                      >
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                          <path
+                            fill="#EA4335"
+                            d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                          />
+                          <path
+                            fill="#4285F4"
+                            d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                          />
+                          <path
+                            fill="#FBBC05"
+                            d="M5.3 14.8c-.2-.8-.4-1.8-.4-2.8s.2-2 .4-2.8L1.6 6.4C.6 8.4 0 10.6 0 12s.6 3.6 1.6 5.6l3.7-2.8z"
+                          />
+                          <path
+                            fill="#34A853"
+                            d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 20.4 7.4 23 12 23z"
+                          />
+                        </svg>
+                        <span>구글로 가입</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSocialSignupQuickStart('APPLE')}
+                        className="w-full h-[46px] rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 active:scale-[0.99] flex items-center justify-center gap-2.5 text-[15px] font-bold text-[#111827] cursor-pointer transition"
+                      >
+                        <svg className="w-5 h-5 text-[#111827] shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.01 3.902-1.01.613 0 2.886.06 4.374 2.19-.13.09-2.383 1.37-2.383 4.19 0 3.26 2.854 4.42 2.955 4.45z" />
+                        </svg>
+                        <span>애플로 가입</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* ==================== [STEP 2: 기본정보 및 약관 동의 (이름 · 휴대폰인증 · 관심유형 · 약관동의)] ==================== */}
+                {signupStep === 2 && (
+                  <form onSubmit={handleSignupSubmit} className="space-y-4">
+                    {/* 기본정보 카드 */}
+                    <div className="rounded-[24px] border border-[#E5E7EB] bg-white p-5 shadow-[0_2px_16px_rgba(0,0,0,0.03)] space-y-4">
+                      {/* 이름(닉네임) * */}
+                      <div>
+                        <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                          이름(닉네임) <span className="text-[#DC2626]">*</span>
+                        </label>
+                        <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                          <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                            <circle cx="12" cy="8" r="3.8" stroke="currentColor" strokeWidth="1.7" />
+                            <path
+                              d="M5 20C5 16.5 8.1 14 12 14C15.9 14 19 16.5 19 20"
+                              stroke="currentColor"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                            />
+                          </svg>
                           <input
                             type="text"
-                            value={roadSearchKeyword}
-                            onChange={(e) => setRoadSearchKeyword(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleSearchRoadAddress();
-                              }
-                            }}
-                            placeholder="도로명·동이름 입력 (예: 충원대로, 단월동)"
-                            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold"
+                            value={signupForm.name}
+                            onChange={(e) =>
+                              setSignupForm({ ...signupForm, name: e.target.value })
+                            }
+                            placeholder="이름 또는 닉네임을 입력하세요"
+                            className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                           />
-                          <button
-                            type="button"
-                            onClick={() => handleSearchRoadAddress()}
-                            className="px-3.5 py-2 rounded-lg bg-emerald-600 text-white font-bold cursor-pointer"
-                          >
-                            {isRoadSearching ? '검색중...' : '찾기'}
-                          </button>
-                        </div>
-                        <div className="max-h-36 overflow-y-auto divide-y divide-slate-100 bg-white rounded-lg border border-slate-200">
-                          {roadSearchResults.map((rItem: any, rIdx: number) => (
-                            <button
-                              key={`${rItem.road_code}-${rIdx}`}
-                              type="button"
-                              onClick={() => {
-                                setSignupForm((prev) => ({
-                                  ...prev,
-                                  road_address: rItem.full_road_address,
-                                  postal_code: rItem.postal_code || '27481',
-                                }));
-                                setShowRoadSearchBox(false);
-                              }}
-                              className="w-full text-left px-3 py-2 hover:bg-emerald-50 transition cursor-pointer"
-                            >
-                              <div className="font-bold text-slate-900">
-                                [{rItem.postal_code}] {rItem.full_road_address}
-                              </div>
-                              {rItem.full_jibun_address && (
-                                <div className="text-[11px] text-slate-500">
-                                  지번: {rItem.full_jibun_address}
-                                </div>
-                              )}
-                            </button>
-                          ))}
                         </div>
                       </div>
-                    )}
 
-                    <input
-                      type="text"
-                      value={signupForm.road_address_detail}
-                      onChange={(e) =>
-                        setSignupForm({ ...signupForm, road_address_detail: e.target.value })
-                      }
-                      placeholder="상세주소 입력 (예: 101동 202호 / 농장명)"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/70 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-semibold transition"
-                    />
+                      {/* 휴대폰번호 * */}
+                      <div>
+                        <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                          휴대폰번호 <span className="text-[#DC2626]">*</span>
+                        </label>
+                        <div className="space-y-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                                <rect
+                                  x="6.5"
+                                  y="3"
+                                  width="11"
+                                  height="18"
+                                  rx="2.2"
+                                  stroke="currentColor"
+                                  strokeWidth="1.7"
+                                />
+                                <circle cx="12" cy="17.8" r="1" fill="currentColor" />
+                              </svg>
+                              <input
+                                type="tel"
+                                value={signupForm.phone}
+                                onChange={(e) =>
+                                  setSignupForm({
+                                    ...signupForm,
+                                    phone: e.target.value,
+                                    phoneVerified: false,
+                                  })
+                                }
+                                placeholder="010-1234-5678"
+                                className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#6B7280] focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleSendPhoneAuthCode}
+                              className="h-[48px] px-3.5 rounded-[12px] border-[1.5px] border-[#0E712F] bg-white hover:bg-[#F0FDF4] text-[#0E712F] font-bold text-[14px] whitespace-nowrap cursor-pointer transition shrink-0"
+                            >
+                              인증번호 받기
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#6B7280] shrink-0" fill="none">
+                                <path
+                                  d="M12 3L19 6V11.5C19 16.2 15.9 19.9 12 21C8.1 19.9 5 16.2 5 11.5V6L12 3Z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.7"
+                                  strokeLinejoin="round"
+                                />
+                                <path
+                                  d="M9.5 12L11.2 13.7L14.8 10.1"
+                                  stroke="currentColor"
+                                  strokeWidth="1.7"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                              <input
+                                type="text"
+                                maxLength={6}
+                                value={signupForm.phoneAuthCode}
+                                onChange={(e) =>
+                                  setSignupForm({
+                                    ...signupForm,
+                                    phoneAuthCode: e.target.value,
+                                    phoneVerified: false,
+                                  })
+                                }
+                                placeholder="인증번호 6자리 입력"
+                                className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleVerifyPhoneAuthCode}
+                              className={`h-[48px] min-w-[96px] px-4 rounded-[12px] font-bold text-[14px] whitespace-nowrap cursor-pointer transition shrink-0 ${
+                                signupForm.phoneVerified
+                                  ? 'bg-[#0E712F] text-white'
+                                  : signupForm.phoneAuthCode.trim().length > 0
+                                  ? 'bg-[#0E712F] text-white'
+                                  : 'bg-[#D1D5DB] text-[#6B7280]'
+                              }`}
+                            >
+                              {signupForm.phoneVerified ? '인증완료' : '확인'}
+                            </button>
+                          </div>
+
+                          {signupForm.phoneAuthMsg && (
+                            <div className="text-[12px] font-bold text-[#0E712F]">
+                              {signupForm.phoneAuthMsg}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 관심 유형 (중복 선택) */}
+                      <div>
+                        <div className="flex items-baseline gap-1.5 mb-2.5">
+                          <span className="text-[14.5px] font-bold text-[#111827]">관심 유형</span>
+                          <span className="text-[13px] font-medium text-[#4B5563]">(중복 선택)</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {[
+                            {
+                              key: '농업인(직업 재배)',
+                              title: '농업인',
+                              sub: '(직업 재배)',
+                              icon: (
+                                <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                                  <path
+                                    d="M16 25V13M16 17C16 12.5 12.5 9.5 8 9.5C8 14 11.5 17 16 17ZM16 15C16 10.5 19.5 7.5 24 7.5C24 12 20.5 15 16 15Z"
+                                    stroke="#0E712F"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ),
+                            },
+                            {
+                              key: '주말·텃밭(소규모)',
+                              title: '주말·텃밭',
+                              sub: '(소규모)',
+                              icon: (
+                                <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                                  <path
+                                    d="M9 17V9.5H17L19 14H25V19.5"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.9"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <circle cx="12" cy="20.5" r="4" stroke="#0E712F" strokeWidth="1.9" />
+                                  <circle cx="22.5" cy="21.5" r="3" stroke="#0E712F" strokeWidth="1.9" />
+                                  <path d="M16 20.5H19.5" stroke="#0E712F" strokeWidth="1.9" />
+                                </svg>
+                              ),
+                            },
+                            {
+                              key: '도시농업(가정·취미)',
+                              title: '도시농업',
+                              sub: '(가정·취미)',
+                              icon: (
+                                <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                                  <path
+                                    d="M16 15V9M16 12C16 9 13.5 7 10.5 7C10.5 10 13 12 16 12ZM16 11C16 8 18.5 6 21.5 6C21.5 9 19 11 16 11Z"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.9"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M10 15.5H22L20.5 24.5H11.5L10 15.5Z"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.9"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              ),
+                            },
+                            {
+                              key: '기타',
+                              title: '기타',
+                              sub: '',
+                              icon: (
+                                <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                                  <path
+                                    d="M16 8L6 13L16 18L26 13L16 8Z"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.9"
+                                    strokeLinejoin="round"
+                                  />
+                                  <path
+                                    d="M10 15.5V21C10 22.8 12.7 24.2 16 24.2C19.3 24.2 22 22.8 22 21V15.5"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.9"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              ),
+                            },
+                          ].map((item) => {
+                            const isSelected = signupForm.interest_types.includes(item.key);
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                onClick={() => handleToggleInterestType(item.key)}
+                                className={`relative rounded-[14px] py-3 px-1 flex flex-col items-center justify-start text-center transition cursor-pointer min-h-[86px] ${
+                                  isSelected
+                                    ? 'border-[1.5px] border-[#16A34A] bg-[#ECFDF3]'
+                                    : 'border border-[#E5E7EB] bg-white hover:bg-slate-50'
+                                }`}
+                              >
+                                {isSelected && (
+                                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#15803D] text-white flex items-center justify-center shadow-2xs">
+                                    <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none">
+                                      <path
+                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                        stroke="#FFFFFF"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </span>
+                                )}
+                                <div className="h-7 flex items-center justify-center">
+                                  {item.icon}
+                                </div>
+                                <div className="mt-1.5 text-[12.5px] font-bold text-[#111827] leading-tight whitespace-nowrap">
+                                  {item.title}
+                                </div>
+                                {item.sub && (
+                                  <div className="mt-0.5 text-[11px] font-medium text-[#4B5563] leading-tight whitespace-nowrap">
+                                    {item.sub}
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 약관 동의 박스 */}
+                    <div className="rounded-[20px] border border-[#E5E7EB] bg-white p-4 space-y-3 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
+                      {/* 1. 한팜 이용약관 동의 (필수) */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSignupForm((prev) => ({
+                            ...prev,
+                            agree_terms: !prev.agree_terms,
+                          }))
+                        }
+                        className="w-full flex items-center justify-between gap-2 text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center transition shrink-0 ${
+                              signupForm.agree_terms
+                                ? 'bg-[#0E712F] text-white'
+                                : 'border border-[#9CA3AF] bg-white'
+                            }`}
+                          >
+                            {signupForm.agree_terms && (
+                              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                <path
+                                  d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.1"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="text-[14px] font-bold text-[#111827]">
+                            한팜 이용약관에 동의합니다.{' '}
+                            <span className="font-medium text-[#6B7280]">(필수)</span>
+                          </span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
+                      </button>
+
+                      {/* 2. 개인정보 수집 및 이용 동의 (필수) */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSignupForm((prev) => ({
+                            ...prev,
+                            agree_privacy: !prev.agree_privacy,
+                          }))
+                        }
+                        className="w-full flex items-center justify-between gap-2 text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center transition shrink-0 ${
+                              signupForm.agree_privacy
+                                ? 'bg-[#0E712F] text-white'
+                                : 'border border-[#9CA3AF] bg-white'
+                            }`}
+                          >
+                            {signupForm.agree_privacy && (
+                              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                <path
+                                  d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.1"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="text-[14px] font-bold text-[#111827]">
+                            개인정보 수집 및 이용에 동의합니다.{' '}
+                            <span className="font-medium text-[#6B7280]">(필수)</span>
+                          </span>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
+                      </button>
+
+                      {/* 3. 마케팅 정보 수신 동의 (선택) */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSignupForm((prev) => ({
+                            ...prev,
+                            agree_marketing: !prev.agree_marketing,
+                          }))
+                        }
+                        className="w-full flex items-center justify-between gap-2 text-left cursor-pointer"
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <span
+                            className={`mt-0.5 w-[22px] h-[22px] rounded-[6px] flex items-center justify-center transition shrink-0 ${
+                              signupForm.agree_marketing
+                                ? 'bg-[#0E712F] text-white'
+                                : 'border border-[#9CA3AF] bg-white'
+                            }`}
+                          >
+                            {signupForm.agree_marketing && (
+                              <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                <path
+                                  d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.1"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <div>
+                            <div className="text-[14px] font-bold text-[#111827]">
+                              마케팅 정보 수신에 동의합니다.{' '}
+                              <span className="font-medium text-[#6B7280]">(선택)</span>
+                            </div>
+                            <div className="mt-0.5 text-[12px] font-medium text-[#6B7280]">
+                              신상품, 재배정보, 이벤트 소식을 알려드려요.
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
+                      </button>
+                    </div>
+
+                    {/* 다음 (3/3) > 버튼 */}
+                    <div className="pt-1">
+                      <button
+                        type="submit"
+                        className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                      >
+                        <span>다음 (3/3)</span>
+                        <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* ==================== [STEP 3: 가입완료 화면 (축하 일러스트 · 3단계 안내 · 맞춤 재배일정 요청하기)] ==================== */}
+                {signupStep === 3 && (
+                  <div className="pt-2 space-y-6 text-center">
+                    {/* 중앙 새싹 + 토양 + 체크 배지 일러스트 */}
+                    <div className="flex justify-center pt-1">
+                      <svg viewBox="0 0 220 135" className="w-[210px] h-[128px]" fill="none">
+                        {/* 연녹색 구름 배경 */}
+                        <path
+                          d="M52 112C35 112 24 100 24 85C24 72 33 61 46 59C51 36 72 20 98 20C122 20 142 34 148 54C165 55 178 69 178 86C178 101 166 112 150 112H52Z"
+                          fill="#E6F4EA"
+                        />
+                        {/* 좌측 반짝이 광선 3개 */}
+                        <path d="M18 68L28 71" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M14 80L25 80" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M19 92L28 88" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                        {/* 우측 반짝이 광선 3개 */}
+                        <path d="M162 24L158 33" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M174 30L166 37" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                        <path d="M179 42L169 44" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+
+                        {/* 흙 언덕 */}
+                        <path
+                          d="M66 105C73 91 88 84 104 84C120 84 134 91 141 105H66Z"
+                          fill="#7C4D25"
+                        />
+                        {/* 새싹 줄기 */}
+                        <path
+                          d="M104 86V54"
+                          stroke="#2E9E3C"
+                          strokeWidth="4.5"
+                          strokeLinecap="round"
+                        />
+                        {/* 좌측 잎 */}
+                        <path
+                          d="M104 66C104 49 88 41 69 43C71 61 86 69 104 66Z"
+                          fill="#4DBB3E"
+                        />
+                        <path
+                          d="M82 52C90 56 97 60 103 65"
+                          stroke="#257D2F"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
+                        {/* 우측 잎 */}
+                        <path
+                          d="M104 62C104 44 120 36 139 38C137 56 122 65 104 62Z"
+                          fill="#4DBB3E"
+                        />
+                        <path
+                          d="M126 47C118 51 111 55 105 61"
+                          stroke="#257D2F"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
+
+                        {/* 우측 하단 녹색 체크 원형 배지 */}
+                        <circle
+                          cx="138"
+                          cy="96"
+                          r="21"
+                          fill="#2EAE44"
+                          stroke="#FFFFFF"
+                          strokeWidth="3.5"
+                        />
+                        <path
+                          d="M129 96.5L135.2 102.5L147.5 90"
+                          stroke="#FFFFFF"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
+
+                    {/* 메인 축하 문구 & 서브 문구 */}
+                    <div className="space-y-2.5">
+                      <h3 className="text-[24px] min-[390px]:text-[26px] font-black tracking-[-0.03em] leading-tight">
+                        <span className="text-[#0E712F]">회원가입</span>
+                        <span className="text-[#111111]">이 완료되었습니다.</span>
+                      </h3>
+                      <p className="text-[14.5px] min-[390px]:text-[15px] font-medium text-[#4B5563] leading-[1.5] tracking-[-0.02em]">
+                        <span className="block">이제 맞춤 재배일정을 만들어</span>
+                        <span className="block">나만의 재배관리를 시작해 보세요.</span>
+                      </p>
+                    </div>
+
+                    {/* 3단계 프로세스 요약 박스 */}
+                    <div className="rounded-[20px] bg-[#EFF5F1] px-2.5 py-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1">
+                      {/* 1. 재배정보 입력 */}
+                      <div className="flex flex-col items-center text-center">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <rect
+                            x="8"
+                            y="7"
+                            width="20"
+                            height="24"
+                            rx="3"
+                            stroke="#0E712F"
+                            strokeWidth="2.1"
+                          />
+                          <path
+                            d="M14 5.5H22V8.5H14V5.5Z"
+                            fill="#EFF5F1"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                          />
+                          <path
+                            d="M12.5 15L14.2 16.7L17.2 13.5M19.5 15.5H23.5M12.5 21.5L14.2 23.2L17.2 20M19.5 22H23.5"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          재배정보 입력
+                        </div>
+                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                          (작물·면적·지역·시작일)
+                        </div>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-[#0E712F] stroke-[2.5] -mt-4 shrink-0" />
+
+                      {/* 2. 맞춤 재배일정 생성 */}
+                      <div className="flex flex-col items-center text-center">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <rect
+                            x="6.5"
+                            y="8"
+                            width="23"
+                            height="22"
+                            rx="3.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.1"
+                          />
+                          <path
+                            d="M12 5.5V9.5M24 5.5V9.5M6.5 14H29.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.1"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M18 26V19.5M18 22C18 19.5 15.8 18 13.2 18C13.2 20.5 15.4 22 18 22ZM18 21C18 18.5 20.2 17 22.8 17C22.8 19.5 20.6 21 18 21Z"
+                            stroke="#0E712F"
+                            strokeWidth="1.9"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          맞춤 재배일정 생성
+                        </div>
+                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                          (기상·생육단계 반영)
+                        </div>
+                      </div>
+
+                      <ChevronRight className="w-4 h-4 text-[#0E712F] stroke-[2.5] -mt-4 shrink-0" />
+
+                      {/* 3. 재배관리 시작 */}
+                      <div className="flex flex-col items-center text-center">
+                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
+                          <path
+                            d="M20 20V11M20 14.5C20 11.5 17.2 9.5 14 9.5C14 12.5 16.8 14.5 20 14.5ZM20 13.5C20 10.5 22.8 8.5 26 8.5C26 11.5 23.2 13.5 20 13.5Z"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M7 24.5H13.5L17.5 26H25.5C27 26 28.5 24.8 28.5 23.2C28.5 22 27.3 21.2 25.8 21.2H19.5L16.5 19.5H11V24.5"
+                            stroke="#0E712F"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                          재배관리 시작
+                        </div>
+                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                          (농작업·농자재·기록)
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 하단 액션 버튼 2종 (맞춤 재배일정 요청하기 > / 나중에 할게요 (홈으로 이동)) */}
+                    <div className="pt-1 space-y-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAuthModalOpen(false);
+                          setSignupStep(1);
+                          setActiveMenu('재배일정 요청');
+                        }}
+                        className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                      >
+                        <span>맞춤 재배일정 요청하기</span>
+                        <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAuthModalOpen(false);
+                          setSignupStep(1);
+                          setActiveMenu('홈');
+                        }}
+                        className="w-full h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#111827] border-[1.5px] border-[#2E7D47] font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center cursor-pointer transition"
+                      >
+                        <span>나중에 할게요 (홈으로 이동)</span>
+                      </button>
+                    </div>
                   </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm cursor-pointer shadow-xs transition"
-                  >
-                    회원가입 완료
-                  </button>
-
-                  {/* 로그인 전용 폼으로 전환 */}
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="font-medium text-slate-500">
-                      이미 가입된 계정이 있으신가요?
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthNoticeMsg(null);
-                        setShowGmailPicker(false);
-                        setAuthModalTab('LOGIN');
-                      }}
-                      className="font-extrabold text-emerald-600 hover:text-emerald-700 hover:underline cursor-pointer"
-                    >
-                      로그인 폼으로 이동 ›
-                    </button>
-                  </div>
-                </form>
+                )}
               </div>
             </div>
           </div>
@@ -19269,6 +20158,7 @@ export default function UserIntroPage() {
                     type="button"
                     onClick={() => {
                       setAuthNoticeMsg(null);
+                      setSignupStep(1);
                       setAuthModalTab('SIGNUP');
                     }}
                     className="text-blue-600 font-extrabold hover:underline cursor-pointer"
