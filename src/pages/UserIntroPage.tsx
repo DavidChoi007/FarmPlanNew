@@ -12770,24 +12770,8 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          {/* 중앙: 요청 재배지 주소·평수 + 추천 정식/파종일 & 수확예정일 + 현재 생육단계 */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                            <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
-                              <div className="text-[13px] sm:text-sm text-slate-500 font-extrabold">요청 재배지 · 면적</div>
-                              <div className="text-[16px] sm:text-[18px] font-black text-slate-900 mt-1 truncate">{crop.region}</div>
-                              <div className="text-[14px] sm:text-[15px] text-emerald-700 font-extrabold mt-0.5">
-                                {Number(crop.area_pyeong).toLocaleString()}평 ({crop.planting_type})
-                              </div>
-                            </div>
-
-                            <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
-                              <div className="text-[13px] sm:text-sm text-slate-500 font-extrabold">기후 연동 추천 시작일 · 수확예정</div>
-                              <div className="text-[16px] sm:text-[18px] font-black text-slate-900 mt-1 truncate">{crop.planting_label}</div>
-                              <div className="text-[14px] sm:text-[15px] text-slate-600 font-bold mt-0.5">
-                                수확예정: {crop.expected_harvest_date}
-                              </div>
-                            </div>
-
+                          {/* 중앙: 현재 생육단계 */}
+                          <div className="grid grid-cols-1 gap-3 flex-1 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
                             <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-[13px] sm:text-sm text-slate-500 font-extrabold">현재 진행 단계</span>
