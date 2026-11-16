@@ -60,13 +60,18 @@ function initMemberAndMyPageTables() {
     );
   `);
 
-  // 기존 로컬 SQLite user_member 테이블에 3단계 회원가입 신규 컬럼 마이그레이션
+  // 기존 로컬 SQLite user_member 및 member_schedule_request 테이블에 신규 컬럼 마이그레이션
   const alterMemberCols = [
     `ALTER TABLE user_member ADD COLUMN phone_verified INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE user_member ADD COLUMN interest_types TEXT NOT NULL DEFAULT '["농업인(직업 재배)"]'`,
     `ALTER TABLE user_member ADD COLUMN agree_terms INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE user_member ADD COLUMN agree_privacy INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE user_member ADD COLUMN agree_marketing INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE member_schedule_request ADD COLUMN soil_condition TEXT NOT NULL DEFAULT '사양토'`,
+    `ALTER TABLE member_schedule_request ADD COLUMN facility_env_json TEXT NOT NULL DEFAULT '["멀칭","부직포"]'`,
+    `ALTER TABLE member_schedule_request ADD COLUMN schedule_base_type TEXT NOT NULL DEFAULT 'OPTIMAL_AUTO'`,
+    `ALTER TABLE member_schedule_request ADD COLUMN schedule_base_date TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE member_schedule_request ADD COLUMN area_unit TEXT NOT NULL DEFAULT '평'`,
   ];
   for (const sql of alterMemberCols) {
     try {
@@ -366,6 +371,12 @@ async function syncAgroMaterialSchemaToSupabase() {
         ADD COLUMN IF NOT EXISTS agree_terms INTEGER DEFAULT 1,
         ADD COLUMN IF NOT EXISTS agree_privacy INTEGER DEFAULT 1,
         ADD COLUMN IF NOT EXISTS agree_marketing INTEGER DEFAULT 0;
+      ALTER TABLE public.member_schedule_request
+        ADD COLUMN IF NOT EXISTS soil_condition TEXT DEFAULT '사양토',
+        ADD COLUMN IF NOT EXISTS facility_env_json TEXT DEFAULT '["멀칭","부직포"]',
+        ADD COLUMN IF NOT EXISTS schedule_base_type TEXT DEFAULT 'OPTIMAL_AUTO',
+        ADD COLUMN IF NOT EXISTS schedule_base_date TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS area_unit TEXT DEFAULT '평';
       DELETE FROM public.growth_type_code
       WHERE type_code IN ('WORK', 'STAGE');
       UPDATE public.crop_growth_process_plan
@@ -5230,6 +5241,26 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
+      const facilityEnvArr: string[] = Array.isArray(body.facility_env)
+        ? body.facility_env
+        : typeof body.facility_env_json === 'string' && body.facility_env_json.startsWith('[')
+        ? (() => {
+            try {
+              return JSON.parse(body.facility_env_json);
+            } catch {
+              return ['멀칭', '부직포'];
+            }
+          })()
+        : ['멀칭', '부직포'];
+      const facilityEnvJson = JSON.stringify(facilityEnvArr);
+      const soilCondition = String(body.soil_condition || '사양토').trim();
+      const scheduleBaseType = String(body.schedule_base_type || 'OPTIMAL_AUTO').trim();
+      const scheduleBaseDate = String(body.schedule_base_date || body.desired_start_date || '2026-08-25').trim();
+      const areaUnit = String(body.area_unit || '평').trim();
+      const autoNotes =
+        body.etc_notes ||
+        `토양:${soilCondition} | 관수:${body.irrigation_type || '점적관수'} | 환경:${facilityEnvArr.join(',')} | 일정기준:${scheduleBaseType}(${scheduleBaseDate})`;
+
       const rowData = {
         request_no,
         member_id,
@@ -5247,20 +5278,32 @@ const server = http.createServer(async (req, res) => {
         sigungu,
         eupmyeondong,
         detail_address: body.detail_address || '',
-        area_pyeong: Number(body.area_pyeong) || 300,
-        cultivation_type: body.cultivation_type || '노지재배',
+        area_pyeong: Number(body.area_pyeong) || 500,
+        cultivation_type: body.cultivation_type || '노지',
         land_category: body.land_category || '전(밭)',
         planting_method: body.planting_method || '육묘정식',
         desired_start_date: body.desired_start_date || '2026-08-25',
         expected_harvest_date: body.expected_harvest_date || '2026-11-15',
-        mulching_yn: body.mulching_yn ? 1 : 0,
+        mulching_yn:
+          body.mulching_yn !== undefined
+            ? body.mulching_yn
+              ? 1
+              : 0
+            : facilityEnvArr.includes('멀칭')
+            ? 1
+            : 0,
         irrigation_type: body.irrigation_type || '점적관수',
         is_organic: body.is_organic ? 1 : 0,
         soil_test_linked_yn: body.soil_test_linked_yn !== undefined ? (body.soil_test_linked_yn ? 1 : 0) : 1,
         target_yield_kg: Number(body.target_yield_kg) || 0,
-        etc_notes: body.etc_notes || '',
+        etc_notes: autoNotes,
         request_status: body.request_status || '일정산출완료',
         requested_at: body.requested_at || now,
+        soil_condition: soilCondition,
+        facility_env_json: facilityEnvJson,
+        schedule_base_type: scheduleBaseType,
+        schedule_base_date: scheduleBaseDate,
+        area_unit: areaUnit,
       };
 
       db.prepare(`
@@ -5270,15 +5313,17 @@ const server = http.createServer(async (req, res) => {
           bjd_code, sido, sigungu, eupmyeondong, detail_address,
           area_pyeong, cultivation_type, land_category, planting_method,
           desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
-          is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+          soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         rowData.request_no, rowData.member_id, rowData.member_contact,
         rowData.group_id, rowData.group_name, rowData.crop_id, rowData.crop_name, rowData.cultivar_id, rowData.item_name_3rd, rowData.system_id, rowData.system_name,
         rowData.bjd_code, rowData.sido, rowData.sigungu, rowData.eupmyeondong, rowData.detail_address,
         rowData.area_pyeong, rowData.cultivation_type, rowData.land_category, rowData.planting_method,
         rowData.desired_start_date, rowData.expected_harvest_date, rowData.mulching_yn, rowData.irrigation_type,
-        rowData.is_organic, rowData.soil_test_linked_yn, rowData.target_yield_kg, rowData.etc_notes, rowData.request_status, rowData.requested_at
+        rowData.is_organic, rowData.soil_test_linked_yn, rowData.target_yield_kg, rowData.etc_notes, rowData.request_status, rowData.requested_at,
+        rowData.soil_condition, rowData.facility_env_json, rowData.schedule_base_type, rowData.schedule_base_date, rowData.area_unit
       );
 
       // 요청 회원의 member_crop_plan과 실시간 매칭 동기화

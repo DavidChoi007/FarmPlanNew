@@ -489,20 +489,52 @@ export default function UserIntroPage() {
   });
   const [reRequestTargetCrop, setReRequestTargetCrop] = useState<any | null>(null);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
+  const [mobileReqStep, setMobileReqStep] = useState<1 | 2 | 3>(1);
+  const [isMoreCropModalOpen, setIsMoreCropModalOpen] = useState<boolean>(false);
+  const [isMobileAddrPickerOpen, setIsMobileAddrPickerOpen] = useState<boolean>(false);
   const isSubmittingScheduleReqRef = React.useRef<boolean>(false);
-  const [reqForm, setReqForm] = useState({
+  const [reqForm, setReqForm] = useState<{
+    farmland_id: string;
+    sido: string;
+    sigungu: string;
+    eupmyeondong: string;
+    detail_address: string;
+    group_id: string;
+    group_name: string;
+    crop_name: string;
+    cultivar_name: string;
+    planting_type: string;
+    cultivation_type: '노지' | '시설(하우스)';
+    planting_date: string;
+    area_pyeong: number;
+    area_unit: '평' | '㎡';
+    soil_condition: '사양토' | '양토' | '점질토' | '모름';
+    irrigation_type: '관수 없음' | '고랑관수' | '점적관수' | '스프링클러';
+    facility_env: string[];
+    schedule_base_type: 'OPTIMAL_AUTO' | 'SOWING_DATE' | 'PLANTING_DATE' | 'TARGET_HARVEST_DATE';
+    schedule_base_date: string;
+    soil_ph: number;
+    soil_ec: number;
+  }>({
     farmland_id: '',
     sido: '충청북도',
     sigungu: '충주시',
-    eupmyeondong: '단월동',
+    eupmyeondong: '봉방동',
     detail_address: '',
     group_id: 'GRP-LEAF',
     group_name: '엽채류 (잎채소)',
-    crop_name: '가을배추',
+    crop_name: '배추',
     cultivar_name: '불암3호',
     planting_type: '모종',
+    cultivation_type: '노지',
     planting_date: '2026-08-25',
-    area_pyeong: 300,
+    area_pyeong: 500,
+    area_unit: '평',
+    soil_condition: '사양토',
+    irrigation_type: '점적관수',
+    facility_env: ['멀칭', '부직포'],
+    schedule_base_type: 'OPTIMAL_AUTO',
+    schedule_base_date: '2026-08-25',
     soil_ph: 6.2,
     soil_ec: 1.1,
   });
@@ -1626,7 +1658,8 @@ export default function UserIntroPage() {
       String(crop.planting_type || crop.badge || '').includes('직파');
 
     setReRequestTargetCrop(crop);
-    setReqForm({
+    setReqForm((prev) => ({
+      ...prev,
       farmland_id: '',
       sido: parsedSido,
       sigungu: parsedSigungu,
@@ -1634,14 +1667,26 @@ export default function UserIntroPage() {
       detail_address: parsedDetail || '',
       group_id: crop.group_id || 'GRP-LEAF',
       group_name: crop.group_name || '엽채류 (잎채소)',
-      crop_name: crop.crop_short || '가을배추',
+      crop_name: crop.crop_short || '배추',
       cultivar_name: crop.cultivar_name || '불암3호',
       planting_type: isSeed ? '씨' : '모종',
+      cultivation_type: String(crop.badge || crop.cultivation_type || '').includes('시설')
+        ? '시설(하우스)'
+        : '노지',
       planting_date: crop.planting_date || '2026-08-25',
-      area_pyeong: Number(crop.area_pyeong || 300),
+      area_pyeong: Number(crop.area_pyeong || 500),
+      area_unit: (crop.area_unit as '평' | '㎡') || '평',
+      soil_condition: (crop.soil_condition as any) || '사양토',
+      irrigation_type: (crop.irrigation_type as any) || '점적관수',
+      facility_env: Array.isArray(crop.facility_env)
+        ? crop.facility_env
+        : ['멀칭', '부직포'],
+      schedule_base_type: (crop.schedule_base_type as any) || 'OPTIMAL_AUTO',
+      schedule_base_date: crop.schedule_base_date || crop.planting_date || '2026-08-25',
       soil_ph: Number(crop.soil_ph || 6.2),
       soil_ec: Number(crop.soil_ec || 1.1),
-    });
+    }));
+    setMobileReqStep(1);
     setReqFormSubmitted(false);
     setScheduleReqModalPos({ x: 0, y: 0 });
     setIsScheduleReqModelessOpen(true);
@@ -1851,8 +1896,13 @@ export default function UserIntroPage() {
       const enabledRuleCount = genModConfig.items.filter((i) => i.category === 'RULE_LOGIC' && i.enabled).length;
       const enabledAiCount = genModConfig.items.filter((i) => i.category === 'AI_AGENT' && i.enabled).length;
 
-      const isSeed = String(reqForm.planting_type || '').includes('씨');
-      const rawDesiredDate = reqForm.planting_date || '2026-08-25';
+      const isSeed =
+        reqForm.schedule_base_type === 'SOWING_DATE' ||
+        String(reqForm.planting_type || '').includes('씨');
+      const rawDesiredDate =
+        reqForm.schedule_base_type !== 'OPTIMAL_AUTO' && reqForm.schedule_base_date
+          ? reqForm.schedule_base_date
+          : reqForm.planting_date || '2026-08-25';
       // 선택된 일정 생성 모듈(RULE-03 모종 최적온도 시작 / RULE-04 씨 발아온도 조기 시작 / AI-02 농작업 적기 탐색) 반영
       let startShiftDays = 0;
       if (isSeed && modFlags.seed_germination_early_start === false) {
@@ -1862,16 +1912,23 @@ export default function UserIntroPage() {
       } else if (modFlags.ai_work_date_optimizer === false) {
         startShiftDays = 0;
       }
-      const pDate = addDaysToYmd(rawDesiredDate, startShiftDays);
-      const wk = getWeekdayNameFromYmd(pDate);
-      const dateDot = pDate.replace(/-/g, '.');
 
       // 선택된 일정 생성 모듈(RULE-05 지역별 PGDD, RULE-06 토양·지형 미기후 보정, AI-01 다변량 생육속도 모델) 기반 재배일수 산출
       let baseSpanDays = 82;
       if (modFlags.regional_pgdd_matching === false) baseSpanDays -= 3;
       if (modFlags.soil_topo_microclimate_offset === false) baseSpanDays -= 2;
       if (modFlags.ai_multivariate_pgdd_model === false) baseSpanDays += 3;
-      const harvestYmd = addDaysToYmd(pDate, baseSpanDays);
+
+      const pDate =
+        reqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && reqForm.schedule_base_date
+          ? addDaysToYmd(reqForm.schedule_base_date, -baseSpanDays)
+          : addDaysToYmd(rawDesiredDate, startShiftDays);
+      const wk = getWeekdayNameFromYmd(pDate);
+      const dateDot = pDate.replace(/-/g, '.');
+      const harvestYmd =
+        reqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && reqForm.schedule_base_date
+          ? reqForm.schedule_base_date
+          : addDaysToYmd(pDate, baseSpanDays);
 
       // 재요청 모드인 경우 기존 요청번호(request_no)와 플랜ID(crop_plan_id)를 그대로 재사용하여 중복 생성 없이 일정을 재생성!
       let newReqDisplayNo = '';
@@ -1937,6 +1994,16 @@ export default function UserIntroPage() {
       }`;
 
       const ownerEmail = loggedInUser.email || 'CloudBae@naver.com';
+      const normalizedCropName =
+        reqForm.crop_name === '배추' ? '가을배추' : reqForm.crop_name || '가을배추';
+      const cultMethodBadge =
+        reqForm.cultivation_type === '시설(하우스)'
+          ? isSeed
+            ? '시설 직파(씨)'
+            : '시설 정식(모종)'
+          : isSeed
+          ? '노지 직파(씨)'
+          : '노지 정식(모종)';
       const newItem = {
         crop_plan_id: newPlanId,
         request_no: newReqDisplayNo,
@@ -1945,16 +2012,23 @@ export default function UserIntroPage() {
         member_id: ownerEmail,
         group_id: reqForm.group_id || 'GRP-LEAF',
         group_name: reqForm.group_name || '엽채류 (잎채소)',
-        crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
-        crop_short: reqForm.crop_name,
+        crop_title: `${normalizedCropName} (${reqForm.cultivar_name})`,
+        crop_short: normalizedCropName,
         cultivar_name: reqForm.cultivar_name,
-        badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+        badge: cultMethodBadge,
+        cultivation_type: reqForm.cultivation_type,
         region: regionLabel,
         sido: reqForm.sido,
         sigungu: reqForm.sigungu,
         eupmyeondong: reqForm.eupmyeondong,
         detail_address: detailTrimmed,
-        area_pyeong: Number(reqForm.area_pyeong || 300),
+        area_pyeong: Number(reqForm.area_pyeong || 500),
+        area_unit: reqForm.area_unit || '평',
+        soil_condition: reqForm.soil_condition || '사양토',
+        irrigation_type: reqForm.irrigation_type || '점적관수',
+        facility_env: reqForm.facility_env || ['멀칭', '부직포'],
+        schedule_base_type: reqForm.schedule_base_type || 'OPTIMAL_AUTO',
+        schedule_base_date: reqForm.schedule_base_date || pDate,
         planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
         planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
         planting_date: pDate,
@@ -1968,7 +2042,7 @@ export default function UserIntroPage() {
         next_task_dday: '추천 진행일 대기',
         opt_temp: '18~20℃ 적온',
         thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
-        requested_at: '2026-11-11',
+        requested_at: '2026-11-16',
         soil_ph: reqForm.soil_ph,
         soil_ec: reqForm.soil_ec,
       };
@@ -2018,10 +2092,18 @@ export default function UserIntroPage() {
             sigungu: reqForm.sigungu,
             eupmyeondong: reqForm.eupmyeondong,
             detail_address: detailTrimmed,
-            crop_name: reqForm.crop_name,
+            crop_name: normalizedCropName,
             item_name_3rd: reqForm.cultivar_name,
-            planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
-            area_pyeong: Number(reqForm.area_pyeong || 300),
+            cultivation_type: reqForm.cultivation_type,
+            planting_method: cultMethodBadge,
+            area_pyeong: Number(reqForm.area_pyeong || 500),
+            area_unit: reqForm.area_unit || '평',
+            soil_condition: reqForm.soil_condition || '사양토',
+            irrigation_type: reqForm.irrigation_type || '점적관수',
+            facility_env: reqForm.facility_env || ['멀칭', '부직포'],
+            mulching_yn: (reqForm.facility_env || []).includes('멀칭') ? 1 : 0,
+            schedule_base_type: reqForm.schedule_base_type || 'OPTIMAL_AUTO',
+            schedule_base_date: reqForm.schedule_base_date || pDate,
             desired_start_date: pDate,
             expected_harvest_date: harvestYmd,
           }),
@@ -2045,10 +2127,10 @@ export default function UserIntroPage() {
             sigungu: reqForm.sigungu,
             eupmyeondong: reqForm.eupmyeondong,
             detail_address: detailTrimmed,
-            crop_name: reqForm.crop_name,
+            crop_name: normalizedCropName,
             cultivar_name: reqForm.cultivar_name,
             planting_type: reqForm.planting_type,
-            area_pyeong: Number(reqForm.area_pyeong || 300),
+            area_pyeong: Number(reqForm.area_pyeong || 500),
             planting_date: pDate,
             progress_pct: 15,
           }),
@@ -2063,6 +2145,10 @@ export default function UserIntroPage() {
 
       setSelectedRequestNo(newReqDisplayNo);
       setExpandedScheduleRequestNo(newReqDisplayNo);
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setMobileReqStep(1);
+        setActiveMenu('재배일정 확인');
+      }
       await loadScheduleProvision(newReqDisplayNo, { gdd_mode: patentGddMode }).catch(() => {});
     } finally {
       isSubmittingScheduleReqRef.current = false;
@@ -6355,7 +6441,7 @@ export default function UserIntroPage() {
       className={`min-h-screen ${
         activeMenu === '홈'
           ? 'bg-white lg:bg-[#F8FAFC]'
-          : activeMenu === '재배일정 확인'
+          : activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청'
           ? 'bg-[#F7F9F7] lg:bg-[#F8FAFC]'
           : 'bg-[#F8FAFC]'
       } text-slate-900 flex flex-col break-keep ${
@@ -6370,7 +6456,9 @@ export default function UserIntroPage() {
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
         className={`${
-          activeMenu === '홈' || activeMenu === '재배일정 확인'
+          activeMenu === '홈' ||
+          activeMenu === '재배일정 확인' ||
+          activeMenu === '재배일정 요청'
             ? 'hidden lg:block'
             : 'block'
         } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
@@ -6793,7 +6881,9 @@ export default function UserIntroPage() {
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
       <main
         className={`flex-1 max-w-[1600px] w-full mx-auto ${
-          activeMenu === '홈' || activeMenu === '재배일정 확인'
+          activeMenu === '홈' ||
+          activeMenu === '재배일정 확인' ||
+          activeMenu === '재배일정 요청'
             ? 'px-0 py-0 lg:px-10 lg:py-6 space-y-0 lg:space-y-6'
             : 'px-3.5 sm:px-10 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6'
         }`}
@@ -8400,12 +8490,21 @@ export default function UserIntroPage() {
 
               const resolveCropThumbByShortName = (name: string) => {
                 const n = String(name || '');
-                if (n.includes('마늘') || n.includes('양파')) {
-                  return '/images/crops/crop-thumb-garlic.jpg';
-                }
-                if (n.includes('오이') || n.includes('호박') || n.includes('고추')) {
-                  return '/images/crops/crop-thumb-cucumber.jpg';
-                }
+                if (n.includes('마늘')) return '/images/crops/crop-thumb-garlic.jpg';
+                if (n.includes('오이')) return '/images/crops/crop-thumb-cucumber.jpg';
+                if (n.includes('고추')) return '/images/crops/req-crop-pepper.jpg';
+                if (n.includes('시금치')) return '/images/crops/req-crop-spinach.jpg';
+                if (n.includes('토마토')) return '/images/crops/req-crop-tomato.jpg';
+                if (n.includes('감자')) return '/images/crops/req-crop-potato.jpg';
+                if (n.includes('고구마')) return '/images/crops/req-crop-sweetpotato.jpg';
+                if (n.includes('무')) return '/images/crops/req-crop-radish.jpg';
+                if (n.includes('당근')) return '/images/crops/req-crop-carrot.jpg';
+                if (n.includes('양파')) return '/images/crops/req-crop-onion.jpg';
+                if (n.includes('대파')) return '/images/crops/req-crop-greenonion.jpg';
+                if (n.includes('상추')) return '/images/crops/req-crop-lettuce.jpg';
+                if (n.includes('콩')) return '/images/crops/req-crop-bean.jpg';
+                if (n.includes('수박')) return '/images/crops/req-crop-watermelon.jpg';
+                if (n.includes('참외')) return '/images/crops/req-crop-melon.jpg';
                 return '/images/crops/crop-thumb-cabbage.jpg';
               };
 
@@ -14043,13 +14142,1577 @@ export default function UserIntroPage() {
           </>
         )}
 
-        {/* ==================== [탭 3: 재배일정 요청 (해당 아이디 재배일정 요청 이력 리스트 + 모달리스 요청 폼)] ==================== */}
+        {/* ==================== [탭 3: 재배일정 요청 (모바일 3단계 작물 추가 UI & PC 요청 리스트 + 모달리스 요청 폼)] ==================== */}
         {activeMenu === '재배일정 요청' && (
-          <div className="space-y-4 sm:space-y-6">
-            {renderScheduleNavigationTabs()}
+          <>
+            {/* ==================== 모바일 전용 3단계 작물 추가(재배일정 요청) UI (첨부 시안 1~3번 1:1 구현 · lg:hidden) ==================== */}
+            {(() => {
+              // 시스템 전체 등록 작물 카탈로그 (이미지 · 작물명 · 작물군 · 기본품종 · 작물구분)
+              const allSystemCropCatalog: Array<{
+                cropKey: string;
+                displayName: string;
+                groupId: string;
+                groupName: string;
+                imgUrl: string;
+                defaultCultivar: string;
+                defaultCultivarDisplay: string;
+                plantingType: '모종' | '씨';
+                cultivars: Array<{ value: string; label: string; plantingType: '모종' | '씨' }>;
+              }> = [
+                {
+                  cropKey: '배추',
+                  displayName: '배추',
+                  groupId: 'GRP-LEAF',
+                  groupName: '엽채류 (잎채소)',
+                  imgUrl: '/images/crops/req-crop-cabbage.jpg',
+                  defaultCultivar: '불암3호',
+                  defaultCultivarDisplay: '김장배추 · 불암3호',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '불암3호', label: '김장배추 (예: 불암3호)', plantingType: '모종' },
+                    { value: '불암플러스', label: '김장배추 (불암플러스)', plantingType: '모종' },
+                    { value: '휘파람골드', label: '김장배추 (휘파람골드)', plantingType: '모종' },
+                    { value: '청명가을', label: '가을직파배추 (청명가을)', plantingType: '씨' },
+                    { value: '춘광', label: '봄·가을배추 (춘광)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '마늘',
+                  displayName: '마늘',
+                  groupId: 'GRP-SPICE',
+                  groupName: '조미채소류 (양념류)',
+                  imgUrl: '/images/crops/req-crop-garlic.jpg',
+                  defaultCultivar: '홍산마늘',
+                  defaultCultivarDisplay: '한지·난지겸용 · 홍산마늘',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '홍산마늘', label: '한지·난지겸용 (예: 홍산마늘)', plantingType: '씨' },
+                    { value: '남도마늘', label: '난지형 조생종 (남도마늘)', plantingType: '씨' },
+                    { value: '대서마늘', label: '다수확 대과종 (대서마늘)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '오이',
+                  displayName: '오이',
+                  groupId: 'GRP-FRUIT',
+                  groupName: '과채류 (열매채소)',
+                  imgUrl: '/images/crops/req-crop-cucumber.jpg',
+                  defaultCultivar: '백다다기오이',
+                  defaultCultivarDisplay: '다수확 · 백다다기오이',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '백다다기오이', label: '다수확 오이 (예: 백다다기오이)', plantingType: '모종' },
+                    { value: '취청오이', label: '청오이 (취청오이)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '고추',
+                  displayName: '고추',
+                  groupId: 'GRP-SPICE',
+                  groupName: '조미채소류 (양념류)',
+                  imgUrl: '/images/crops/req-crop-pepper.jpg',
+                  defaultCultivar: '칼라탄',
+                  defaultCultivarDisplay: '복합내병계 · 칼라탄',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '칼라탄', label: '복합내병계 고추 (예: 칼라탄)', plantingType: '모종' },
+                    { value: 'PR탄탄대군', label: '탄저·역병 내병계 (PR탄탄대군)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '시금치',
+                  displayName: '시금치',
+                  groupId: 'GRP-LEAF',
+                  groupName: '엽채류 (잎채소)',
+                  imgUrl: '/images/crops/req-crop-spinach.jpg',
+                  defaultCultivar: '포항초 (재래종)',
+                  defaultCultivarDisplay: '노지월동 · 포항초',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '포항초 (재래종)', label: '노지·월동 시금치 (예: 포항초)', plantingType: '씨' },
+                    { value: '사계절시금치', label: '내추대성 (사계절시금치)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '상추',
+                  displayName: '상추',
+                  groupId: 'GRP-LEAF',
+                  groupName: '엽채류 (잎채소)',
+                  imgUrl: '/images/crops/req-crop-lettuce.jpg',
+                  defaultCultivar: '청치마상추',
+                  defaultCultivarDisplay: '잎상추 · 청치마상추',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '청치마상추', label: '잎상추 (예: 청치마상추)', plantingType: '모종' },
+                    { value: '적치마상추', label: '적상추 (적치마상추)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '감자',
+                  displayName: '감자',
+                  groupId: 'GRP-FOOD',
+                  groupName: '식량작물 (서류·곡류)',
+                  imgUrl: '/images/crops/req-crop-potato.jpg',
+                  defaultCultivar: '수미 (Superior)',
+                  defaultCultivarDisplay: '봄·가을감자 · 수미',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '수미 (Superior)', label: '표준 감자 (예: 수미)', plantingType: '씨' },
+                    { value: '두백', label: '분질 감자 (두백)', plantingType: '씨' },
+                    { value: '설봉', label: '다수확 감자 (설봉)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '고구마',
+                  displayName: '고구마',
+                  groupId: 'GRP-FOOD',
+                  groupName: '식량작물 (서류·곡류)',
+                  imgUrl: '/images/crops/req-crop-sweetpotato.jpg',
+                  defaultCultivar: '베니하루카 (꿀고구마)',
+                  defaultCultivarDisplay: '꿀고구마 · 베니하루카',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '베니하루카 (꿀고구마)', label: '꿀고구마 (예: 베니하루카)', plantingType: '모종' },
+                    { value: '호풍미', label: '호박고구마 (호풍미)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '토마토',
+                  displayName: '토마토',
+                  groupId: 'GRP-FRUIT',
+                  groupName: '과채류 (열매채소)',
+                  imgUrl: '/images/crops/req-crop-tomato.jpg',
+                  defaultCultivar: '도태랑토마토',
+                  defaultCultivarDisplay: '완숙토마토 · 도태랑',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '도태랑토마토', label: '완숙토마토 (예: 도태랑)', plantingType: '모종' },
+                    { value: '대추방울토마토', label: '방울토마토 (대추방울)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '양파',
+                  displayName: '양파',
+                  groupId: 'GRP-SPICE',
+                  groupName: '조미채소류 (양념류)',
+                  imgUrl: '/images/crops/req-crop-onion.jpg',
+                  defaultCultivar: '케이원',
+                  defaultCultivarDisplay: '중만생 저장형 · 케이원',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '케이원', label: '중만생 양파 (예: 케이원)', plantingType: '모종' },
+                    { value: '신기루', label: '조생종 양파 (신기루)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '대파',
+                  displayName: '대파',
+                  groupId: 'GRP-SPICE',
+                  groupName: '조미채소류 (양념류)',
+                  imgUrl: '/images/crops/req-crop-greenonion.jpg',
+                  defaultCultivar: '까만보석',
+                  defaultCultivarDisplay: '외대파 · 까만보석',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '까만보석', label: '교잡종 외대파 (예: 까만보석)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '무',
+                  displayName: '무',
+                  groupId: 'GRP-ROOT',
+                  groupName: '근채류 (뿌리채소)',
+                  imgUrl: '/images/crops/req-crop-radish.jpg',
+                  defaultCultivar: '청아무',
+                  defaultCultivarDisplay: '김장무 · 청아무',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '청아무', label: '가을 김장무 (예: 청아무)', plantingType: '씨' },
+                    { value: '관동여름무', label: '고랭지·여름무 (관동여름무)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '당근',
+                  displayName: '당근',
+                  groupId: 'GRP-ROOT',
+                  groupName: '근채류 (뿌리채소)',
+                  imgUrl: '/images/crops/req-crop-carrot.jpg',
+                  defaultCultivar: '신흑전5촌',
+                  defaultCultivarDisplay: '다수확 당근 · 신흑전5촌',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '신흑전5촌', label: '봄·가을 당근 (예: 신흑전5촌)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '콩',
+                  displayName: '콩',
+                  groupId: 'GRP-FOOD',
+                  groupName: '식량작물 (서류·곡류)',
+                  imgUrl: '/images/crops/req-crop-bean.jpg',
+                  defaultCultivar: '대원콩',
+                  defaultCultivarDisplay: '장류·두부용 · 대원콩',
+                  plantingType: '씨',
+                  cultivars: [
+                    { value: '대원콩', label: '장류·두부용 콩 (예: 대원콩)', plantingType: '씨' },
+                    { value: '선유콩', label: '다수확 콩 (선유콩)', plantingType: '씨' },
+                  ],
+                },
+                {
+                  cropKey: '수박',
+                  displayName: '수박',
+                  groupId: 'GRP-FRUIT',
+                  groupName: '과채류 (열매채소)',
+                  imgUrl: '/images/crops/req-crop-watermelon.jpg',
+                  defaultCultivar: '스피드꿀수박',
+                  defaultCultivarDisplay: '고당도 · 스피드꿀수박',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '스피드꿀수박', label: '고당도 수박 (예: 스피드꿀수박)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '참외',
+                  displayName: '참외',
+                  groupId: 'GRP-FRUIT',
+                  groupName: '과채류 (열매채소)',
+                  imgUrl: '/images/crops/req-crop-melon.jpg',
+                  defaultCultivar: '오복꿀참외',
+                  defaultCultivarDisplay: '고당도 · 오복꿀참외',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '오복꿀참외', label: '고당도 참외 (예: 오복꿀참외)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '봄배추',
+                  displayName: '봄배추',
+                  groupId: 'GRP-LEAF',
+                  groupName: '엽채류 (잎채소)',
+                  imgUrl: '/images/crops/req-crop-cabbage.jpg',
+                  defaultCultivar: '춘광',
+                  defaultCultivarDisplay: '봄배추 · 춘광',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '춘광', label: '봄배추 (예: 춘광)', plantingType: '모종' },
+                    { value: '불암3호', label: '봄·가을배추 (불암3호)', plantingType: '모종' },
+                  ],
+                },
+                {
+                  cropKey: '월동배추',
+                  displayName: '월동배추',
+                  groupId: 'GRP-LEAF',
+                  groupName: '엽채류 (잎채소)',
+                  imgUrl: '/images/crops/req-crop-cabbage.jpg',
+                  defaultCultivar: '해남1호',
+                  defaultCultivarDisplay: '월동배추 · 해남1호',
+                  plantingType: '모종',
+                  cultivars: [
+                    { value: '해남1호', label: '월동배추 (예: 해남1호)', plantingType: '모종' },
+                    { value: '동풍', label: '월동배추 (동풍)', plantingType: '모종' },
+                  ],
+                },
+              ];
 
-            {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
-            <section className="bg-white rounded-3xl border border-slate-200/90 p-3.5 sm:p-7 shadow-2xs space-y-5">
+              const currentCropKey =
+                reqForm.crop_name === '가을배추' ? '배추' : reqForm.crop_name || '배추';
+              const selectedCropSpec =
+                allSystemCropCatalog.find(
+                  (c) => c.cropKey === currentCropKey || c.displayName === reqForm.crop_name
+                ) || allSystemCropCatalog[0];
+
+              // 1단계 상단 5개 기본 슬롯: 배추, 마늘, 오이, 고추, 시금치 (만약 더보기에서 다른 작물을 선택했다면 5번째 슬롯에 해당 선택 작물을 표시)
+              const topFiveBaseKeys = ['배추', '마늘', '오이', '고추', '시금치'];
+              const topFiveCrops = topFiveBaseKeys.map((k, idx) => {
+                if (
+                  idx === 4 &&
+                  !topFiveBaseKeys.includes(selectedCropSpec.cropKey)
+                ) {
+                  return selectedCropSpec;
+                }
+                return (
+                  allSystemCropCatalog.find((c) => c.cropKey === k) ||
+                  allSystemCropCatalog[idx]
+                );
+              });
+
+              const handleSelectCropCard = (
+                cropSpec: (typeof allSystemCropCatalog)[number]
+              ) => {
+                const firstCv = cropSpec.cultivars[0]?.value || cropSpec.defaultCultivar;
+                const firstPType =
+                  cropSpec.cultivars[0]?.plantingType || cropSpec.plantingType;
+                setReqForm((prev) => ({
+                  ...prev,
+                  group_id: cropSpec.groupId,
+                  group_name: cropSpec.groupName,
+                  crop_name: cropSpec.cropKey,
+                  cultivar_name: firstCv,
+                  planting_type: firstPType,
+                }));
+              };
+
+              const shortSido = String(reqForm.sido || '충청북도')
+                .replace('충청북도', '충북')
+                .replace('충청남도', '충남')
+                .replace('경상북도', '경북')
+                .replace('경상남도', '경남')
+                .replace('전라북도', '전북')
+                .replace('전라남도', '전남')
+                .replace('강원특별자치도', '강원')
+                .replace('제주특별자치도', '제주')
+                .replace('경기도', '경기');
+              const shortAddressLabel = `${shortSido} ${reqForm.sigungu || '충주시'} ${
+                reqForm.eupmyeondong || '봉방동'
+              }${reqForm.detail_address ? ` ${reqForm.detail_address}` : ''}`;
+
+              const formatYmdToKoreanFull = (ymd: string) => {
+                if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '2026년 8월 25일';
+                const [y, m, d] = ymd.split('-').map(Number);
+                return `${y}년 ${m}월 ${d}일`;
+              };
+
+              const cropSummaryTitle =
+                selectedCropSpec.cropKey === '배추'
+                  ? `배추 (김장배추 · ${reqForm.cultivar_name || '불암3호'})`
+                  : `${selectedCropSpec.displayName} (${reqForm.cultivar_name || selectedCropSpec.defaultCultivar})`;
+
+              const toggleFacilityEnvItem = (envLabel: string) => {
+                setReqForm((prev) => {
+                  const cur = Array.isArray(prev.facility_env) ? prev.facility_env : [];
+                  const exists = cur.includes(envLabel);
+                  const next = exists
+                    ? cur.filter((x) => x !== envLabel)
+                    : [...cur, envLabel];
+                  return {
+                    ...prev,
+                    facility_env: next,
+                  };
+                });
+              };
+
+              const scheduleBaseLabelMap: Record<
+                typeof reqForm.schedule_base_type,
+                string
+              > = {
+                OPTIMAL_AUTO: '최적 재배일정 (선택 안함)',
+                SOWING_DATE: `파종일 기준 (${formatYmdToKoreanFull(reqForm.schedule_base_date)})`,
+                PLANTING_DATE: `정식일 기준 (${formatYmdToKoreanFull(reqForm.schedule_base_date)})`,
+                TARGET_HARVEST_DATE: `목표 수확일 기준 (${formatYmdToKoreanFull(reqForm.schedule_base_date)})`,
+              };
+
+              return (
+                <>
+                  <div
+                    className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none"
+                    style={{
+                      paddingTop: isLegacyAndroidWebView
+                        ? 'max(28px, env(safe-area-inset-top, 28px))'
+                        : 'env(safe-area-inset-top, 0px)',
+                    }}
+                  >
+                    {/* 1. 상단 공통 네비게이션 바 (좌측 ← 뒤로가기 + 중앙 한팜 로고) */}
+                    <div className="px-4 pt-3.5 pb-1 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (mobileReqStep === 3) {
+                            setMobileReqStep(2);
+                          } else if (mobileReqStep === 2) {
+                            setMobileReqStep(1);
+                          } else {
+                            setActiveMenu('재배일정 확인');
+                          }
+                        }}
+                        aria-label="이전 단계 또는 돌아가기"
+                        className="w-9 h-9 -ml-1 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-[#111111] cursor-pointer transition shrink-0"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                          <path
+                            d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
+                            stroke="#111111"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+
+                      <div className="flex items-center gap-2">
+                        <div className="w-[34px] h-[34px] rounded-[10px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_6px_rgba(14,113,47,0.22)] shrink-0">
+                          <svg viewBox="0 0 32 32" className="w-[22px] h-[22px]" fill="none">
+                            <path
+                              d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
+                              stroke="#FFFFFF"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
+                              stroke="#FFFFFF"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
+                              stroke="#FFFFFF"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
+                              stroke="#FFFFFF"
+                              strokeWidth="1.7"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
+                              stroke="#FFFFFF"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[22px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
+                            한팜
+                          </span>
+                          {mobileReqStep >= 2 && (
+                            <span className="text-[19px] font-bold text-[#111111] tracking-[-0.02em] leading-none">
+                              FarmPlan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="w-9 h-9 shrink-0" aria-hidden="true" />
+                    </div>
+
+                    {/* 2. 단계별 타이틀 & 서브타이틀 */}
+                    <div className="px-4 pt-1 pb-2 text-center">
+                      <h1 className="text-[22px] min-[390px]:text-[24px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
+                        {mobileReqStep === 1 && '작물 추가 (재배정보 입력)'}
+                        {mobileReqStep === 2 && '작물 추가 (추가 재배조건 입력)'}
+                        {mobileReqStep === 3 && '작물 추가 (입력내용 확인)'}
+                      </h1>
+                      {mobileReqStep === 2 && (
+                        <p className="mt-1 text-[11.5px] min-[390px]:text-[12px] font-medium text-[#4B5563] tracking-[-0.03em]">
+                          필요한 정보만 선택해 주세요. 선택하지 않아도 지역과 기후에 맞는 최적 재배일정을 제공합니다.
+                        </p>
+                      )}
+                      {mobileReqStep === 3 && (
+                        <p className="mt-1 text-[13px] min-[390px]:text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                          입력한 내용을 확인하고 맞춤 재배일정을 생성하세요.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 3. 3단계 수평 스텝 인디케이터 */}
+                    <div className="px-10 py-2">
+                      <div className="relative flex items-center justify-between">
+                        {/* 연결선 1 -> 2 */}
+                        <div
+                          className={`absolute left-[18px] right-1/2 top-[15px] h-[2px] transition-colors ${
+                            mobileReqStep >= 2 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {/* 연결선 2 -> 3 */}
+                        <div
+                          className={`absolute left-1/2 right-[18px] top-[15px] h-[2px] transition-colors ${
+                            mobileReqStep >= 3 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                          }`}
+                          aria-hidden="true"
+                        />
+
+                        {/* 스텝 1: 기본정보 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1 bg-[#F7F9F7] px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold ${
+                              mobileReqStep >= 1
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            {mobileReqStep > 1 ? (
+                              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                                <path
+                                  d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              '1'
+                            )}
+                          </div>
+                          <span className="text-[12.5px] font-bold text-[#0E712F] tracking-[-0.02em] whitespace-nowrap">
+                            기본정보
+                          </span>
+                        </div>
+
+                        {/* 스텝 2: 재배조건 / 추가조건(선택) / 추가조건 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1 bg-[#F7F9F7] px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold ${
+                              mobileReqStep >= 2
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            {mobileReqStep > 2 ? (
+                              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                                <path
+                                  d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              '2'
+                            )}
+                          </div>
+                          <span
+                            className={`text-[12.5px] tracking-[-0.02em] whitespace-nowrap ${
+                              mobileReqStep >= 2
+                                ? 'font-bold text-[#0E712F]'
+                                : 'font-medium text-[#6B7280]'
+                            }`}
+                          >
+                            {mobileReqStep === 1
+                              ? '재배조건'
+                              : mobileReqStep === 2
+                              ? '추가조건(선택)'
+                              : '추가조건'}
+                          </span>
+                        </div>
+
+                        {/* 스텝 3: 확인 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1 bg-[#F7F9F7] px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold ${
+                              mobileReqStep >= 3
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            3
+                          </div>
+                          <span
+                            className={`text-[12.5px] tracking-[-0.02em] whitespace-nowrap ${
+                              mobileReqStep >= 3
+                                ? 'font-bold text-[#0E712F]'
+                                : 'font-medium text-[#6B7280]'
+                            }`}
+                          >
+                            확인
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ==================== [모바일 STEP 1: 기본정보 입력 (첨부 이미지 1번)] ==================== */}
+                    {mobileReqStep === 1 && (
+                      <div className="px-3.5 pt-1 space-y-2.5">
+                        {/* 1) 작물 선택 * 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <label className="block text-[14.5px] font-bold text-[#111827] mb-2.5">
+                            작물 선택 <span className="text-[#DC2626]">*</span>
+                          </label>
+                          <div className="grid grid-cols-6 gap-1.5 items-stretch">
+                            {topFiveCrops.map((cropItem) => {
+                              const isSelected =
+                                selectedCropSpec.cropKey === cropItem.cropKey;
+                              return (
+                                <button
+                                  key={cropItem.cropKey}
+                                  type="button"
+                                  onClick={() => handleSelectCropCard(cropItem)}
+                                  className={`relative rounded-[14px] py-2 px-1 flex flex-col items-center justify-between text-center cursor-pointer transition ${
+                                    isSelected
+                                      ? 'border-[1.8px] border-[#0E712F] bg-[#F4FBF6] shadow-2xs'
+                                      : 'border border-[#E5E7EB] bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#0E712F] text-white flex items-center justify-center shadow-2xs z-10">
+                                      <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none">
+                                        <path
+                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                          stroke="#FFFFFF"
+                                          strokeWidth="2.1"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    </span>
+                                  )}
+                                  <div className="w-[44px] h-[40px] flex items-center justify-center overflow-hidden">
+                                    <img
+                                      src={cropItem.imgUrl}
+                                      alt={cropItem.displayName}
+                                      className="w-full h-full object-contain block"
+                                    />
+                                  </div>
+                                  <span className="mt-1 text-[12px] font-bold text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                                    {cropItem.displayName}
+                                  </span>
+                                </button>
+                              );
+                            })}
+
+                            {/* ••• 더보기 버튼 (클릭 시 전체 작물 모달리스 창 오픈) */}
+                            <button
+                              type="button"
+                              onClick={() => setIsMoreCropModalOpen(true)}
+                              className="rounded-[14px] border border-[#E5E7EB] bg-white hover:bg-slate-50 py-2 px-1 flex flex-col items-center justify-between text-center cursor-pointer transition"
+                            >
+                              <div className="w-[44px] h-[40px] flex items-center justify-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#111827]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#111827]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#111827]" />
+                              </div>
+                              <span className="mt-1 text-[11.5px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                                더보기
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* 2) 품종 (선택) 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                            품종 (선택)
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={reqForm.cultivar_name}
+                              onChange={(e) => {
+                                const cvVal = e.target.value;
+                                const matched = selectedCropSpec.cultivars.find(
+                                  (c) => c.value === cvVal
+                                );
+                                setReqForm((prev) => ({
+                                  ...prev,
+                                  cultivar_name: cvVal,
+                                  planting_type: matched?.plantingType || prev.planting_type,
+                                }));
+                              }}
+                              className="w-full h-[46px] px-3.5 pr-9 rounded-[12px] border border-[#D1D5DB] bg-white text-[14.5px] font-medium text-[#111827] appearance-none focus:outline-none focus:border-[#0E712F]"
+                            >
+                              {selectedCropSpec.cultivars.map((cv) => (
+                                <option key={cv.value} value={cv.value}>
+                                  {cv.label}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563]" />
+                          </div>
+                        </div>
+
+                        {/* 3) 재배방식 * & 재배면적 * 2열 카드 */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {/* 재배방식 * */}
+                          <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                            <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                              재배방식 <span className="text-[#DC2626]">*</span>
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              {(['노지', '시설(하우스)'] as const).map((method) => {
+                                const isActive = reqForm.cultivation_type === method;
+                                return (
+                                  <button
+                                    key={method}
+                                    type="button"
+                                    onClick={() =>
+                                      setReqForm((prev) => ({
+                                        ...prev,
+                                        cultivation_type: method,
+                                      }))
+                                    }
+                                    className={`h-[44px] rounded-[11px] font-bold text-[13px] min-[390px]:text-[13.5px] tracking-[-0.03em] whitespace-nowrap cursor-pointer transition ${
+                                      isActive
+                                        ? 'bg-[#0E712F] text-white shadow-2xs'
+                                        : 'bg-white border border-[#D1D5DB] text-[#111827] hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    {method}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* 재배면적 * */}
+                          <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                            <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                              재배면적 <span className="text-[#DC2626]">*</span>
+                            </label>
+                            <div className="h-[44px] rounded-[11px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3 flex items-center justify-between gap-1">
+                              <input
+                                type="number"
+                                min={1}
+                                value={reqForm.area_pyeong}
+                                onChange={(e) =>
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    area_pyeong: Number(e.target.value) || 0,
+                                  }))
+                                }
+                                className="w-full bg-transparent text-[15px] font-bold text-[#111827] focus:outline-none"
+                              />
+                              <select
+                                value={reqForm.area_unit}
+                                onChange={(e) =>
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    area_unit: e.target.value as '평' | '㎡',
+                                  }))
+                                }
+                                className="bg-transparent text-[14px] font-bold text-[#111827] focus:outline-none cursor-pointer shrink-0"
+                              >
+                                <option value="평">평</option>
+                                <option value="㎡">㎡</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 4) 재배지 주소 * 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)] space-y-2.5">
+                          <label className="block text-[14.5px] font-bold text-[#111827]">
+                            재배지 주소 <span className="text-[#DC2626]">*</span>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsMobileAddrPickerOpen((prev) => !prev)
+                              }
+                              className="flex-1 h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3 flex items-center gap-2 text-left cursor-pointer"
+                            >
+                              <svg viewBox="0 0 20 20" className="w-4.5 h-4.5 shrink-0" fill="none">
+                                <path
+                                  d="M10 17.5C10 17.5 15.5 12.6 15.5 8.2C15.5 5.1 13 2.5 10 2.5C7 2.5 4.5 5.1 4.5 8.2C4.5 12.6 10 17.5 10 17.5Z"
+                                  fill="#0E712F"
+                                />
+                                <circle cx="10" cy="8" r="2" fill="#FFFFFF" />
+                              </svg>
+                              <span className="text-[14.5px] font-medium text-[#111827] truncate">
+                                {shortAddressLabel}
+                              </span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReqForm((prev) => ({
+                                  ...prev,
+                                  sido: '충청북도',
+                                  sigungu: '충주시',
+                                  eupmyeondong: '봉방동',
+                                  detail_address: '',
+                                }));
+                                setIsMobileAddrPickerOpen(false);
+                              }}
+                              className="h-[46px] px-3 rounded-[12px] border border-[#D1D5DB] bg-white hover:bg-slate-50 flex items-center gap-1.5 text-[13px] font-bold text-[#111827] whitespace-nowrap cursor-pointer shrink-0"
+                            >
+                              <svg viewBox="0 0 20 20" className="w-4 h-4 text-[#0E712F]" fill="none">
+                                <circle cx="10" cy="10" r="6" stroke="currentColor" strokeWidth="1.7" />
+                                <circle cx="10" cy="10" r="2" fill="currentColor" />
+                                <path
+                                  d="M10 2V4M10 16V18M2 10H4M16 10H18"
+                                  stroke="currentColor"
+                                  strokeWidth="1.7"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <span>내 위치</span>
+                            </button>
+                          </div>
+
+                          {/* 주소 클릭 시 펼쳐지는 시/도 · 시/군/구 · 읍/면/동 선택 패널 */}
+                          {isMobileAddrPickerOpen && (
+                            <div className="rounded-xl bg-[#F4F8F5] border border-[#CFE3D5] p-3 space-y-2">
+                              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                                <select
+                                  value={reqForm.sido}
+                                  onChange={(e) => {
+                                    const nextSido = e.target.value;
+                                    const nextSigungu =
+                                      Object.keys(KOREA_ADMIN_TREE[nextSido] || {})[0] ||
+                                      '충주시';
+                                    const nextDong =
+                                      (KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [])[0] ||
+                                      '봉방동';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      sido: nextSido,
+                                      sigungu: nextSigungu,
+                                      eupmyeondong: nextDong,
+                                    }));
+                                  }}
+                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                                >
+                                  {Object.keys(KOREA_ADMIN_TREE).map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={reqForm.sigungu}
+                                  onChange={(e) => {
+                                    const nextSg = e.target.value;
+                                    const nextDong =
+                                      (KOREA_ADMIN_TREE[reqForm.sido]?.[nextSg] || [])[0] ||
+                                      '봉방동';
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      sigungu: nextSg,
+                                      eupmyeondong: nextDong,
+                                    }));
+                                  }}
+                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                                >
+                                  {Object.keys(KOREA_ADMIN_TREE[reqForm.sido] || {}).map(
+                                    (sg) => (
+                                      <option key={sg} value={sg}>
+                                        {sg}
+                                      </option>
+                                    )
+                                  )}
+                                </select>
+                                <select
+                                  value={reqForm.eupmyeondong}
+                                  onChange={(e) => {
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      eupmyeondong: e.target.value,
+                                    }));
+                                    setIsMobileAddrPickerOpen(false);
+                                  }}
+                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                                >
+                                  {Array.from(
+                                    new Set([
+                                      '봉방동',
+                                      ...(KOREA_ADMIN_TREE[reqForm.sido]?.[
+                                        reqForm.sigungu
+                                      ] || []),
+                                      reqForm.eupmyeondong,
+                                    ])
+                                  )
+                                    .filter(Boolean)
+                                    .map((d) => (
+                                      <option key={d} value={d}>
+                                        {d}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 5) 재배 시작일 (파종/정식일) * 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                            재배 시작일 (파종/정식일) <span className="text-[#DC2626]">*</span>
+                          </label>
+                          <label className="relative h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3.5 flex items-center justify-between cursor-pointer">
+                            <div className="flex items-center gap-2.5">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0" fill="none">
+                                <rect
+                                  x="3.5"
+                                  y="5"
+                                  width="17"
+                                  height="15.5"
+                                  rx="2.5"
+                                  stroke="#0E712F"
+                                  strokeWidth="1.9"
+                                />
+                                <path
+                                  d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
+                                  stroke="#0E712F"
+                                  strokeWidth="1.9"
+                                  strokeLinecap="round"
+                                />
+                                <circle cx="9" cy="13.5" r="1" fill="#0E712F" />
+                                <circle cx="15" cy="13.5" r="1" fill="#0E712F" />
+                                <circle cx="9" cy="17" r="1" fill="#0E712F" />
+                                <circle cx="12" cy="17" r="1" fill="#0E712F" />
+                              </svg>
+                              <span className="text-[15px] font-bold text-[#111827]">
+                                {formatYmdToKoreanFull(reqForm.planting_date)}
+                              </span>
+                            </div>
+                            <ChevronDown className="w-4 h-4 text-[#4B5563]" />
+                            <input
+                              type="date"
+                              value={reqForm.planting_date}
+                              onChange={(e) =>
+                                setReqForm((prev) => ({
+                                  ...prev,
+                                  planting_date: e.target.value,
+                                  schedule_base_date: e.target.value,
+                                }))
+                              }
+                              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                            />
+                          </label>
+                        </div>
+
+                        {/* 6) 하단 [다음 (재배조건 설정) >] 버튼 */}
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setMobileReqStep(2)}
+                            className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                          >
+                            <span>다음 (재배조건 설정)</span>
+                            <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ==================== [모바일 STEP 2: 추가 재배조건 입력 (첨부 이미지 2번)] ==================== */}
+                    {mobileReqStep === 2 && (
+                      <div className="px-3.5 pt-1 space-y-3">
+                        {/* 1) 상단 선택 작물 요약 배너 + [✏️ 수정] 버튼 */}
+                        <div className="rounded-[18px] bg-[#EEF4F0] px-3.5 py-2.5 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-[46px] h-[46px] rounded-[12px] bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                              <img
+                                src={selectedCropSpec.imgUrl}
+                                alt={selectedCropSpec.displayName}
+                                className="w-full h-full object-contain block"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[15.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                {cropSummaryTitle}
+                              </div>
+                              <div className="mt-0.5 text-[12px] font-medium text-[#374151] tracking-[-0.02em] truncate">
+                                {reqForm.cultivation_type} <span className="text-[#9CA3AF]">|</span>{' '}
+                                {reqForm.area_pyeong}
+                                {reqForm.area_unit} <span className="text-[#9CA3AF]">|</span>{' '}
+                                {shortAddressLabel}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setMobileReqStep(1)}
+                            className="px-3 py-1.5 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[12.5px] font-bold text-[#111827] inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <span>✎</span>
+                            <span>수정</span>
+                          </button>
+                        </div>
+
+                        {/* 2) 추가 재배조건 (선택) 섹션 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-1.5 px-0.5">
+                            <div className="text-[15px] font-black text-[#111827] tracking-[-0.03em] shrink-0">
+                              추가 재배조건 <span className="font-semibold text-[13px]">(선택)</span>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-full bg-[#E8F5EC] text-[#0E712F] text-[10.5px] font-bold tracking-[-0.03em] truncate">
+                              선택한 정보는 시비·관수·병해충 관리 등 맞춤 안내에 활용됩니다.
+                            </span>
+                          </div>
+
+                          <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3 space-y-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                            {/* 토양조건 */}
+                            <div className="flex items-center gap-2">
+                              <div className="w-[88px] shrink-0 flex items-center gap-1.5">
+                                <span className="text-base">🪨</span>
+                                <span className="text-[13px] font-bold text-[#111827] tracking-[-0.03em]">
+                                  토양조건
+                                </span>
+                              </div>
+                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                                {(['사양토', '양토', '점질토', '모름'] as const).map((soil) => {
+                                  const isSel = reqForm.soil_condition === soil;
+                                  return (
+                                    <button
+                                      key={soil}
+                                      type="button"
+                                      onClick={() =>
+                                        setReqForm((prev) => ({
+                                          ...prev,
+                                          soil_condition: soil,
+                                        }))
+                                      }
+                                      className={`relative h-[36px] rounded-[10px] text-[12px] font-bold tracking-[-0.03em] cursor-pointer transition ${
+                                        isSel
+                                          ? 'border-[1.5px] border-[#0E712F] bg-[#ECFDF3] text-[#111827]'
+                                          : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
+                                      }`}
+                                    >
+                                      {isSel && (
+                                        <span className="absolute -top-1.5 -right-1 w-4 h-4 rounded-full bg-[#0E712F] text-white flex items-center justify-center text-[9px]">
+                                          ✓
+                                        </span>
+                                      )}
+                                      {soil}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* 관수방식 */}
+                            <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5">
+                              <div className="w-[88px] shrink-0 flex items-center gap-1.5">
+                                <span className="text-base">💧</span>
+                                <span className="text-[13px] font-bold text-[#111827] tracking-[-0.03em]">
+                                  관수방식
+                                </span>
+                              </div>
+                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                                {(
+                                  ['관수 없음', '고랑관수', '점적관수', '스프링클러'] as const
+                                ).map((irr) => {
+                                  const isSel = reqForm.irrigation_type === irr;
+                                  return (
+                                    <button
+                                      key={irr}
+                                      type="button"
+                                      onClick={() =>
+                                        setReqForm((prev) => ({
+                                          ...prev,
+                                          irrigation_type: irr,
+                                        }))
+                                      }
+                                      className={`relative h-[36px] rounded-[10px] text-[11.5px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
+                                        isSel
+                                          ? 'border-[1.5px] border-[#0E712F] bg-[#ECFDF3] text-[#111827]'
+                                          : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
+                                      }`}
+                                    >
+                                      {isSel && (
+                                        <span className="absolute -top-1.5 -right-1 w-4 h-4 rounded-full bg-[#0E712F] text-white flex items-center justify-center text-[9px]">
+                                          ✓
+                                        </span>
+                                      )}
+                                      {irr}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* 재배시설 및 환경 */}
+                            <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5">
+                              <div className="w-[88px] shrink-0 flex items-center gap-1">
+                                <span className="text-sm">🏠</span>
+                                <span className="text-[12px] font-bold text-[#111827] tracking-[-0.04em] whitespace-nowrap">
+                                  재배시설 및 환경
+                                </span>
+                              </div>
+                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                                {(['멀칭', '부직포', '비닐피복', '기타'] as const).map((env) => {
+                                  const isChecked = (reqForm.facility_env || []).includes(
+                                    env
+                                  );
+                                  return (
+                                    <button
+                                      key={env}
+                                      type="button"
+                                      onClick={() => toggleFacilityEnvItem(env)}
+                                      className={`h-[36px] rounded-[10px] px-1 flex items-center justify-center gap-1 text-[11.5px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
+                                        isChecked
+                                          ? 'border border-[#0E712F] bg-[#F4FBF6] text-[#111827]'
+                                          : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`w-3.5 h-3.5 rounded-[3px] flex items-center justify-center text-[9px] shrink-0 ${
+                                          isChecked
+                                            ? 'bg-[#0E712F] text-white'
+                                            : 'border border-[#9CA3AF] bg-white'
+                                        }`}
+                                      >
+                                        {isChecked ? '✓' : ''}
+                                      </span>
+                                      <span>{env}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 3) 일정 기준 설정 (선택) 섹션 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3.5 space-y-3 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <svg viewBox="0 0 24 24" className="w-5 h-5 text-[#0E712F]" fill="none">
+                                <rect
+                                  x="3.5"
+                                  y="5"
+                                  width="17"
+                                  height="15.5"
+                                  rx="2.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.9"
+                                />
+                                <path
+                                  d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.9"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <span className="text-[15px] font-black text-[#111827] tracking-[-0.03em]">
+                                일정 기준 설정 <span className="text-[13px] font-semibold">(선택)</span>
+                              </span>
+                            </div>
+
+                            <div className="px-2.5 py-1 rounded-xl bg-[#E8F5EC] text-[#0E712F] text-[10px] font-bold leading-snug tracking-[-0.03em] text-right">
+                              선택하지 않으면 지역·기후·품종에 맞는
+                              <br />
+                              최적 재배일정이 자동으로 제공됩니다.
+                            </div>
+                          </div>
+
+                          {/* 4열 라디오 카드 그리드 */}
+                          <div className="grid grid-cols-4 gap-1.5 items-stretch">
+                            {[
+                              {
+                                key: 'OPTIMAL_AUTO' as const,
+                                title: '선택 안함',
+                                sub: '(최적 재배일정)',
+                                desc: '지역·기후·품종 기준의 최적 파종·정식·수확 일정을 자동 제안',
+                                hasDate: false,
+                              },
+                              {
+                                key: 'SOWING_DATE' as const,
+                                title: '파종일 기준',
+                                sub: '',
+                                desc: '입력한 파종일을 기준으로 정식·수확시기 산정',
+                                hasDate: true,
+                              },
+                              {
+                                key: 'PLANTING_DATE' as const,
+                                title: '정식일 기준',
+                                sub: '',
+                                desc: '입력한 정식일을 기준으로 생육 및 수확시기 산정',
+                                hasDate: true,
+                              },
+                              {
+                                key: 'TARGET_HARVEST_DATE' as const,
+                                title: '목표 수확일 기준',
+                                sub: '',
+                                desc: '원하는 수확일에 맞춰 파종·정식 시기 역산 제안',
+                                hasDate: true,
+                              },
+                            ].map((opt) => {
+                              const isSelected = reqForm.schedule_base_type === opt.key;
+                              return (
+                                <div
+                                  key={opt.key}
+                                  onClick={() =>
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      schedule_base_type: opt.key,
+                                    }))
+                                  }
+                                  className={`rounded-[14px] p-2 flex flex-col justify-between text-center cursor-pointer transition ${
+                                    isSelected
+                                      ? 'border-[1.8px] border-[#0E712F] bg-[#ECFDF3]'
+                                      : 'border border-[#E5E7EB] bg-white hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div>
+                                    {/* 상단 라디오 원형 */}
+                                    <div className="flex justify-start">
+                                      <span
+                                        className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                                          isSelected
+                                            ? 'border-[2px] border-[#0E712F] bg-white'
+                                            : 'border border-[#9CA3AF] bg-white'
+                                        }`}
+                                      >
+                                        {isSelected && (
+                                          <span className="w-2 h-2 rounded-full bg-[#0E712F]" />
+                                        )}
+                                      </span>
+                                    </div>
+
+                                    {/* 아이콘 */}
+                                    <div className="h-7 flex items-center justify-center mt-0.5 text-[#0E712F]">
+                                      <Sprout className="w-5 h-5" />
+                                    </div>
+
+                                    <div className="mt-1 text-[11.5px] font-black text-[#111827] tracking-[-0.04em] leading-tight">
+                                      {opt.title}
+                                    </div>
+                                    {opt.sub && (
+                                      <div className="text-[10.5px] font-bold text-[#111827] tracking-[-0.04em] leading-tight">
+                                        {opt.sub}
+                                      </div>
+                                    )}
+
+                                    {opt.hasDate && (
+                                      <label
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="relative mt-1.5 h-[26px] rounded-md border border-[#D1D5DB] bg-white px-1 flex items-center justify-center gap-0.5 text-[10px] font-bold text-[#374151] cursor-pointer"
+                                      >
+                                        <span>
+                                          {isSelected && reqForm.schedule_base_date
+                                            ? reqForm.schedule_base_date.slice(5)
+                                            : '날짜 선택'}
+                                        </span>
+                                        <ChevronDown className="w-3 h-3" />
+                                        <input
+                                          type="date"
+                                          value={reqForm.schedule_base_date}
+                                          onChange={(e) =>
+                                            setReqForm((prev) => ({
+                                              ...prev,
+                                              schedule_base_type: opt.key,
+                                              schedule_base_date: e.target.value,
+                                            }))
+                                          }
+                                          className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
+
+                                  <p className="mt-2 text-[9.5px] font-medium text-[#4B5563] leading-[1.3] tracking-[-0.04em] break-keep">
+                                    {opt.desc}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 4) 일정 설정 안내 민트 박스 */}
+                        <div className="rounded-[18px] bg-[#ECF6EE] px-4 py-3 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-[13.5px] font-black text-[#111827]">
+                            <span className="text-[#0E712F]">🎯</span>
+                            <span>일정 설정 안내</span>
+                          </div>
+                          <ul className="text-[11.5px] font-medium text-[#374151] space-y-1 leading-snug pl-3 list-disc">
+                            <li>파종일, 정식일, 목표 수확일 중 하나만 선택할 수 있습니다.</li>
+                            <li>
+                              선택하지 않으면 지역의 기후와 품종 정보를 바탕으로 최적 재배일정이 제공됩니다.
+                            </li>
+                            <li>
+                              일정은 생성 후에도 재배관리 화면에서 언제든지 수정할 수 있습니다.
+                            </li>
+                          </ul>
+                        </div>
+
+                        {/* 5) 하단 [< 이전] & [다음 (입력내용 확인) >] 버튼 */}
+                        <div className="pt-1 flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setMobileReqStep(1)}
+                            className="w-[108px] h-[52px] rounded-full border border-[#9CA3AF] bg-white hover:bg-slate-50 text-[#111827] font-bold text-[15.5px] flex items-center justify-center gap-1 shrink-0 cursor-pointer transition"
+                          >
+                            <ChevronLeft className="w-4 h-4 stroke-[2.4]" />
+                            <span>이전</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setMobileReqStep(3)}
+                            className="flex-1 h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                          >
+                            <span>다음 (입력내용 확인)</span>
+                            <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ==================== [모바일 STEP 3: 입력내용 확인 및 일정 생성 (첨부 이미지 3번)] ==================== */}
+                    {mobileReqStep === 3 && (
+                      <div className="px-3.5 pt-1 space-y-3">
+                        {/* 1) 상단 선택 작물 요약 배너 */}
+                        <div className="rounded-[18px] bg-[#EEF4F0] px-3.5 py-2.5 flex items-center gap-3">
+                          <div className="w-[48px] h-[48px] rounded-[12px] bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                            <img
+                              src={selectedCropSpec.imgUrl}
+                              alt={selectedCropSpec.displayName}
+                              className="w-full h-full object-contain block"
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[16px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                              {cropSummaryTitle}
+                            </div>
+                            <div className="mt-0.5 text-[12.5px] font-medium text-[#374151] tracking-[-0.02em] truncate">
+                              {reqForm.cultivation_type} <span className="text-[#9CA3AF]">|</span>{' '}
+                              {reqForm.area_pyeong}
+                              {reqForm.area_unit} <span className="text-[#9CA3AF]">|</span>{' '}
+                              {shortAddressLabel}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2) 기본정보 확인 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-4 space-y-3 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Sprout className="w-5 h-5 text-[#0E712F]" />
+                              <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                                기본정보
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setMobileReqStep(1)}
+                              className="px-3 py-1 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[12px] font-bold text-[#111827] inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>✎</span>
+                              <span>수정</span>
+                            </button>
+                          </div>
+
+                          <div className="divide-y divide-slate-100 text-[13.5px]">
+                            {[
+                              { label: '작물 / 품종', val: cropSummaryTitle },
+                              { label: '재배방식', val: reqForm.cultivation_type },
+                              {
+                                label: '재배면적',
+                                val: `${reqForm.area_pyeong}${reqForm.area_unit}`,
+                              },
+                              { label: '재배지 주소', val: shortAddressLabel },
+                            ].map((row) => (
+                              <div
+                                key={row.label}
+                                className="py-2 first:pt-0.5 last:pb-0.5 flex items-center gap-3"
+                              >
+                                <span className="w-[104px] px-2.5 py-1 rounded-lg bg-[#EEF5F0] text-[#374151] font-bold text-[12.5px] text-center shrink-0">
+                                  {row.label}
+                                </span>
+                                <span className="font-bold text-[#111827] truncate">
+                                  {row.val}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 3) 추가 재배조건 (선택) 확인 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-4 space-y-3 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#0E712F] font-black">⚙️</span>
+                              <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                                추가 재배조건 <span className="text-[13px] font-semibold">(선택)</span>
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setMobileReqStep(2)}
+                              className="px-3 py-1 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[12px] font-bold text-[#111827] inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>✎</span>
+                              <span>수정</span>
+                            </button>
+                          </div>
+
+                          <div className="divide-y divide-slate-100 text-[13.5px]">
+                            {[
+                              { label: '토양조건', val: reqForm.soil_condition },
+                              { label: '관수방식', val: reqForm.irrigation_type },
+                              {
+                                label: '재배시설 및 환경',
+                                val:
+                                  (reqForm.facility_env || []).length > 0
+                                    ? reqForm.facility_env.join(', ')
+                                    : '선택 없음',
+                              },
+                            ].map((row) => (
+                              <div
+                                key={row.label}
+                                className="py-2 first:pt-0.5 last:pb-0.5 flex items-center gap-3"
+                              >
+                                <span className="w-[104px] px-2.5 py-1 rounded-lg bg-[#EEF5F0] text-[#374151] font-bold text-[12.5px] text-center shrink-0">
+                                  {row.label}
+                                </span>
+                                <span className="font-bold text-[#111827] truncate">
+                                  {row.val}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 4) 일정 기준 확인 카드 */}
+                        <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-4 space-y-3 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Calendar className="w-5 h-5 text-[#0E712F]" />
+                              <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                                일정 기준
+                              </span>
+                            </div>
+                            <div className="flex-1 px-3 py-1.5 rounded-xl bg-[#ECF6EE] text-[#111827] text-[13.5px] font-bold flex items-center gap-1.5">
+                              <Sprout className="w-4 h-4 text-[#0E712F] shrink-0" />
+                              <span className="truncate">
+                                {scheduleBaseLabelMap[reqForm.schedule_base_type]}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-[#F4F8F5] border border-[#DCE8DF] p-3 flex items-start gap-2 text-[12px] font-medium text-[#374151] leading-relaxed">
+                            <span className="text-[#0E712F] font-black mt-0.5">ⓘ</span>
+                            <p>
+                              선택한 일정 기준에 따라 지역({reqForm.sigungu || '충주'})의 기후와 작물 특성을 반영한 최적의 파종·정식·수확 시기로 맞춤 재배일정을 생성합니다.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* 5) 하단 [< 이전] & [📅 맞춤 재배일정 생성하기 >] 버튼 */}
+                        <div className="pt-1 flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() => setMobileReqStep(2)}
+                            className="w-[108px] h-[54px] rounded-full border border-[#9CA3AF] bg-white hover:bg-slate-50 text-[#111827] font-bold text-[15.5px] flex items-center justify-center gap-1 shrink-0 cursor-pointer transition"
+                          >
+                            <ChevronLeft className="w-4 h-4 stroke-[2.4]" />
+                            <span>이전</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleSubmitScheduleReqForm}
+                            className="flex-1 h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                          >
+                            <Calendar className="w-5 h-5" />
+                            <span>맞춤 재배일정 생성하기</span>
+                            <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ==================== [모바일 & PC 공통: '••• 더보기' 클릭 시 열리는 전체 농작물 이미지 선택 모달리스 창] ==================== */}
+                  {isMoreCropModalOpen && (
+                    <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
+                      <div className="pointer-events-auto w-full max-w-lg max-h-[86vh] flex flex-col rounded-[26px] border-2 border-[#0E712F] bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden">
+                        {/* 모달리스 창 상단 헤더 */}
+                        <div className="bg-[#ECF6EE] border-b border-[#CFE3D5] px-4 py-3.5 flex items-center justify-between gap-2 shrink-0">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-xl bg-[#0E712F] text-white flex items-center justify-center shrink-0">
+                              <Sprout className="w-4.5 h-4.5" />
+                            </div>
+                            <div>
+                              <h3 className="text-[17px] font-black text-[#111827] leading-tight">
+                                전체 재배작물 선택 ({allSystemCropCatalog.length}종)
+                              </h3>
+                              <p className="text-[11.5px] font-semibold text-[#4B5563]">
+                                재배할 농작물 이미지를 터치하여 선택하세요
+                              </p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsMoreCropModalOpen(false)}
+                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-300 font-extrabold text-xs inline-flex items-center gap-1 cursor-pointer transition"
+                          >
+                            <X className="w-4 h-4" />
+                            <span>닫기</span>
+                          </button>
+                        </div>
+
+                        {/* 모달리스 창 본문: 전체 작물 이미지 카드 그리드 */}
+                        <div className="p-4 overflow-y-auto flex-1 bg-white space-y-3">
+                          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+                            {allSystemCropCatalog.map((cropItem) => {
+                              const isSelected =
+                                selectedCropSpec.cropKey === cropItem.cropKey;
+                              return (
+                                <button
+                                  key={cropItem.cropKey}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSelectCropCard(cropItem);
+                                    setIsMoreCropModalOpen(false);
+                                  }}
+                                  className={`relative rounded-[16px] py-2.5 px-1.5 flex flex-col items-center justify-between text-center cursor-pointer transition ${
+                                    isSelected
+                                      ? 'border-[2px] border-[#0E712F] bg-[#F4FBF6] shadow-xs'
+                                      : 'border border-[#E5E7EB] bg-white hover:border-emerald-300 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {isSelected && (
+                                    <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#0E712F] text-white flex items-center justify-center shadow-2xs z-10">
+                                      <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none">
+                                        <path
+                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                          stroke="#FFFFFF"
+                                          strokeWidth="2.1"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    </span>
+                                  )}
+                                  <div className="w-[54px] h-[48px] flex items-center justify-center overflow-hidden">
+                                    <img
+                                      src={cropItem.imgUrl}
+                                      alt={cropItem.displayName}
+                                      className="w-full h-full object-contain block"
+                                    />
+                                  </div>
+                                  <span className="mt-1.5 text-[13px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                                    {cropItem.displayName}
+                                  </span>
+                                  <span className="text-[10px] font-medium text-[#6B7280] truncate max-w-full">
+                                    {cropItem.defaultCultivar}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 모달리스 창 하단 닫기 바 */}
+                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+                          <span className="text-xs font-extrabold text-[#0E712F]">
+                            현재 선택: {selectedCropSpec.displayName} ({reqForm.cultivar_name})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsMoreCropModalOpen(false)}
+                            className="px-4 py-2 rounded-xl bg-[#0E712F] text-white font-extrabold text-xs cursor-pointer"
+                          >
+                            선택 완료
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* ==================== 데스크톱(PC) 전용 재배일정 요청 뷰 (hidden lg:block) ==================== */}
+            <div className="hidden lg:block space-y-4 sm:space-y-6">
+              {renderScheduleNavigationTabs()}
+
+              {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
+              <section className="bg-white rounded-3xl border border-slate-200/90 p-3.5 sm:p-7 shadow-2xs space-y-5">
               <div className="hidden lg:flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div className="flex items-start sm:items-center gap-3">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
@@ -15022,7 +16685,16 @@ export default function UserIntroPage() {
                               </div>
 
                               <div>
-                                <label className="block font-bold text-slate-700 mb-1">농작물 선택 (2단계 작물)</label>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="block font-bold text-slate-700">농작물 선택 (2단계 작물)</label>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsMoreCropModalOpen(true)}
+                                    className="px-2 py-0.5 rounded-lg bg-[#ECF6EE] hover:bg-[#D9EFE0] text-[#0E712F] font-extrabold text-[11px] inline-flex items-center gap-1 cursor-pointer transition"
+                                  >
+                                    <span>••• 이미지로 더보기 선택</span>
+                                  </button>
+                                </div>
                                 <select
                                   value={reqForm.crop_name}
                                   onChange={(e) => {
@@ -15071,6 +16743,31 @@ export default function UserIntroPage() {
                               </div>
 
                               <div>
+                                <label className="block font-bold text-slate-700 mb-1">재배방식 (노지 / 시설)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {(['노지', '시설(하우스)'] as const).map((cType) => {
+                                    const isSel = reqForm.cultivation_type === cType;
+                                    return (
+                                      <button
+                                        key={cType}
+                                        type="button"
+                                        onClick={() =>
+                                          setReqForm((prev) => ({ ...prev, cultivation_type: cType }))
+                                        }
+                                        className={`py-2.5 rounded-xl font-bold text-xs sm:text-sm cursor-pointer transition ${
+                                          isSel
+                                            ? 'bg-[#0E712F] text-white border border-[#0E712F]'
+                                            : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        {cType}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              <div>
                                 <label className="block font-bold text-slate-700 mb-1">작물구분 (씨 / 모종)</label>
                                 <select
                                   value={reqForm.planting_type}
@@ -15083,25 +16780,142 @@ export default function UserIntroPage() {
                               </div>
 
                               <div>
-                                <label className="block font-bold text-slate-700 mb-1">희망 시작(정식/파종) 기준일</label>
+                                <label className="block font-bold text-slate-700 mb-1">재배 시작일 (파종/정식일)</label>
                                 <input
                                   type="date"
                                   value={reqForm.planting_date}
-                                  onChange={(e) => setReqForm({ ...reqForm, planting_date: e.target.value })}
+                                  onChange={(e) =>
+                                    setReqForm({
+                                      ...reqForm,
+                                      planting_date: e.target.value,
+                                      schedule_base_date: e.target.value,
+                                    })
+                                  }
                                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
                                 />
                               </div>
 
                               <div>
-                                <label className="block font-bold text-slate-700 mb-1">재배 면적 (평)</label>
-                                <input
-                                  type="number"
-                                  value={reqForm.area_pyeong}
+                                <label className="block font-bold text-slate-700 mb-1">재배 면적</label>
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    value={reqForm.area_pyeong}
+                                    onChange={(e) =>
+                                      setReqForm({ ...reqForm, area_pyeong: Number(e.target.value) || 300 })
+                                    }
+                                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                  />
+                                  <select
+                                    value={reqForm.area_unit}
+                                    onChange={(e) =>
+                                      setReqForm({ ...reqForm, area_unit: e.target.value as '평' | '㎡' })
+                                    }
+                                    className="w-20 px-2.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                                  >
+                                    <option value="평">평</option>
+                                    <option value="㎡">㎡</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* 추가 재배조건 (토양조건 / 관수방식 / 재배시설 및 환경) */}
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">토양조건 (선택)</label>
+                                <select
+                                  value={reqForm.soil_condition}
                                   onChange={(e) =>
-                                    setReqForm({ ...reqForm, area_pyeong: Number(e.target.value) || 300 })
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      soil_condition: e.target.value as any,
+                                    }))
                                   }
                                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
-                                />
+                                >
+                                  <option value="사양토">사양토</option>
+                                  <option value="양토">양토</option>
+                                  <option value="점질토">점질토</option>
+                                  <option value="모름">모름</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">관수방식 (선택)</label>
+                                <select
+                                  value={reqForm.irrigation_type}
+                                  onChange={(e) =>
+                                    setReqForm((prev) => ({ ...prev, irrigation_type: e.target.value }))
+                                  }
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  <option value="점적관수">점적관수</option>
+                                  <option value="고랑관수">고랑관수</option>
+                                  <option value="스프링클러">스프링클러</option>
+                                  <option value="관수 없음">관수 없음</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1">일정 기준 설정 (선택)</label>
+                                <select
+                                  value={reqForm.schedule_base_type}
+                                  onChange={(e) =>
+                                    setReqForm((prev) => ({
+                                      ...prev,
+                                      schedule_base_type: e.target.value as any,
+                                    }))
+                                  }
+                                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                >
+                                  <option value="OPTIMAL_AUTO">선택 안함 (최적 재배일정 자동 제안)</option>
+                                  <option value="SOWING_DATE">파종일 기준</option>
+                                  <option value="PLANTING_DATE">정식일 기준</option>
+                                  <option value="TARGET_HARVEST_DATE">목표 수확일 기준</option>
+                                </select>
+                              </div>
+
+                              <div className="sm:col-span-2 lg:col-span-3">
+                                <label className="block font-bold text-slate-700 mb-1.5">
+                                  재배시설 및 환경 (중복 선택 가능)
+                                </label>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {['멀칭', '부직포', '비닐피복', '기타'].map((envItem) => {
+                                    const isChecked = (reqForm.facility_env || []).includes(envItem);
+                                    return (
+                                      <button
+                                        key={envItem}
+                                        type="button"
+                                        onClick={() =>
+                                          setReqForm((prev) => {
+                                            const cur = Array.isArray(prev.facility_env)
+                                              ? prev.facility_env
+                                              : [];
+                                            const next = cur.includes(envItem)
+                                              ? cur.filter((x) => x !== envItem)
+                                              : [...cur, envItem];
+                                            return { ...prev, facility_env: next };
+                                          })
+                                        }
+                                        className={`px-3.5 py-2 rounded-xl border font-bold text-xs flex items-center gap-1.5 cursor-pointer transition ${
+                                          isChecked
+                                            ? 'border-[#0E712F] bg-[#F4FBF6] text-[#0E712F]'
+                                            : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <span
+                                          className={`w-4 h-4 rounded flex items-center justify-center text-[10px] ${
+                                            isChecked
+                                              ? 'bg-[#0E712F] text-white'
+                                              : 'border border-slate-300 bg-white text-transparent'
+                                          }`}
+                                        >
+                                          ✓
+                                        </span>
+                                        <span>{envItem}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
                           );
@@ -15138,6 +16952,7 @@ export default function UserIntroPage() {
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* ==================== [탭 4: 농작물 구매 (비료 / 영양제 / 병해충방지제 / 씨 / 모종 통합 탭 구분 + 관리자 DB 실시간 연동)] ==================== */}
@@ -20920,13 +22735,14 @@ export default function UserIntroPage() {
         )}
       </main>
 
-      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 모바일 메인 홈·재배일정 확인 및 농작물 구매 모바일 고정뷰에서는 숨김) */}
+      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 모바일 메인 홈·재배일정 확인/요청 및 농작물 구매 모바일 고정뷰에서는 숨김) */}
       <footer
         className={`bg-white border-t border-slate-200/80 py-6 mt-8 ${
           activeMenu === '홈' ? 'pb-6' : 'pb-24 lg:pb-6'
         } ${
           activeMenu === '홈' ||
           activeMenu === '재배일정 확인' ||
+          activeMenu === '재배일정 요청' ||
           activeMenu === '농작물 구매' ||
           activeMenu === '농자재 판매' ||
           activeMenu === '비료' ||
@@ -21964,8 +23780,8 @@ export default function UserIntroPage() {
           );
         })()}
 
-      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 1:1 스타일) ==================== */}
-      {activeMenu !== '홈' && (
+      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 3단계 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 1:1 스타일) ==================== */}
+      {activeMenu !== '홈' && activeMenu !== '재배일정 요청' && (
         <nav
           aria-label="모바일 하단 주 메뉴"
           className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white rounded-t-[24px] border-t border-slate-200/80 shadow-[0_-6px_24px_rgba(15,23,42,0.06)]"
