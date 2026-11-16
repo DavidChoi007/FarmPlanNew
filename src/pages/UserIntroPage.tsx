@@ -1260,10 +1260,71 @@ export default function UserIntroPage() {
     };
   });
 
+  const serverAllRequestsMapped = (Array.isArray(provisionData?.allRequests)
+    ? provisionData.allRequests
+    : []
+  ).map((sr: any, idx: number) => {
+    const reqNo = sr.request_no || sr.display_request_no || `REQ-SRV-${idx + 1}`;
+    const planId = sr.crop_plan_id || `CPLAN-${reqNo}`;
+    const isSeed =
+      String(sr.planting_method || sr.planting_type || '').includes('씨') ||
+      String(sr.planting_method || sr.planting_type || '').includes('직파');
+    const pDate = String(sr.desired_start_date || sr.planting_date || '2026-08-25');
+    const wk = getWeekdayNameFromYmd(pDate);
+    const dateDot = pDate.replace(/-/g, '.');
+    const cropName = sr.crop_name || sr.crop_short || '가을배추';
+    const cultivarName = sr.item_name_3rd || sr.cultivar_name || '불암3호';
+    const detailTrimmed = String(sr.detail_address || '').trim();
+    const region =
+      sr.region ||
+      `${sr.sido || '충청북도'} ${sr.sigungu || '충주시'} ${sr.eupmyeondong || '단월동'}${
+        detailTrimmed ? ` ${detailTrimmed}` : ''
+      }`;
+    const gradients = [
+      'from-emerald-700 via-green-600 to-teal-800',
+      'from-green-700 via-emerald-600 to-lime-800',
+      'from-teal-700 via-emerald-600 to-cyan-800',
+    ];
+    return {
+      crop_plan_id: planId,
+      request_no: reqNo,
+      display_request_no: reqNo,
+      email: sr.email || sr.member_id || 'CloudBae@naver.com',
+      member_id: sr.member_id || sr.email || 'CloudBae@naver.com',
+      group_id: sr.group_id || 'GRP-LEAF',
+      group_name: sr.group_name || '엽채류 (잎채소)',
+      crop_title: sr.crop_title || `${cropName} (${cultivarName})`,
+      crop_short: cropName,
+      cultivar_name: cultivarName,
+      badge: sr.badge || (isSeed ? '노지 직파(씨)' : '노지 정식(모종)'),
+      region,
+      sido: sr.sido || '충청북도',
+      sigungu: sr.sigungu || '충주시',
+      eupmyeondong: sr.eupmyeondong || '단월동',
+      detail_address: detailTrimmed,
+      area_pyeong: Number(sr.area_pyeong || 300),
+      planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
+      planting_label:
+        sr.planting_label || `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
+      planting_date: pDate,
+      expected_harvest_date: sr.expected_harvest_date || '2026-11-15',
+      current_stage_name: sr.current_stage_name || '01. 재배 준비',
+      progress_pct: Number(sr.progress_pct ?? 0),
+      status_text: sr.status_text || '맞춤 일정 산출 완료',
+      request_status: sr.request_status || '일정산출완료',
+      temp_avg: sr.temp_avg || '18.5°C',
+      rain_mm: sr.rain_mm || '2mm',
+      next_task_dday: sr.next_task_dday || '추천 진행일 대기',
+      opt_temp: sr.opt_temp || '18~20℃ 적온',
+      thumb_gradient: sr.thumb_gradient || gradients[idx % gradients.length],
+    };
+  });
+
   const rawCombinedCropList = [
     ...localAddedCropRequests,
     ...baseCropList,
     ...requestListFromSaved,
+    ...serverAllRequestsMapped,
   ];
   const seenScheduleReqKeys = new Set<string>();
   const currentActiveEmailLower = String(loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
@@ -8325,14 +8386,16 @@ export default function UserIntroPage() {
         {/* ==================== [탭 2: 재배일정 확인 (회원 ID: CloudBae 전용 반응형 PC & 모바일 뷰)] ==================== */}
         {activeMenu === '재배일정 확인' && (
           <>
-            {/* ==================== 모바일 전용 재배일정 확인(재배관리) 뷰 (첨부 시안 1:1 구현 · lg:hidden) ==================== */}
+            {/* ==================== 모바일 전용 재배일정 확인(재배관리) 뷰 (실제 현재 시점 getTodayKstYmd() 기준 동적 산출 · lg:hidden) ==================== */}
             {(() => {
-              const formatKoreanMonthDayWeekday = (ymd: string, fallbackText = '10월 27일(화)') => {
-                if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return fallbackText;
-                const m = Number(ymd.slice(5, 7));
-                const d = Number(ymd.slice(8, 10));
-                const wk = getWeekdayNameFromYmd(ymd) || '화';
-                return `${m}월 ${d}일(${wk})`;
+              const todayKstYmd = getTodayKstYmd();
+
+              const formatKoreanMonthDayWeekday = (ymd: string) => {
+                const target = ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : todayKstYmd;
+                const m = Number(target.slice(5, 7));
+                const d = Number(target.slice(8, 10));
+                const wk = getWeekdayNameFromYmd(target) || '';
+                return wk ? `${m}월 ${d}일(${wk})` : `${m}월 ${d}일`;
               };
 
               const resolveCropThumbByShortName = (name: string) => {
@@ -8346,73 +8409,178 @@ export default function UserIntroPage() {
                 return '/images/crops/crop-thumb-cabbage.jpg';
               };
 
-              // 회원의 실제 재배작물(cloudBaeCropList)을 기반으로 상단 선택 카드 및 하단 재배일정 데이터를 구성
-              const realCropItems = cloudBaeCropList.map((crop: any, idx: number) => {
+              // 특정 작물(request_no)의 16개 생육과정을 실제 현재 날짜(todayKstYmd)와 비교하여 현재 생육단계 및 다음 농작업을 정확히 산출
+              const buildRealTimeCropScheduleCard = (crop: any, idx: number) => {
                 const reqNo = crop.request_no || `REQ-MOB-${idx + 1}`;
                 const rawShort = String(crop.crop_short || crop.crop_name || '배추').trim();
-                const shortName = rawShort === '가을배추' || rawShort === '봄배추' ? '배추' : rawShort;
-                const summary = getScheduleCompletionSummary(
-                  reqNo,
-                  Number(crop.progress_pct ?? 65),
-                  crop.planting_date
-                );
-                const pct = Number(crop.progress_pct ?? summary.progressPct ?? 65);
-                const stgText = String(crop.current_stage_name || summary.currentStageName || '');
+                const shortName =
+                  rawShort === '가을배추' || rawShort === '봄배추' ? '배추' : rawShort;
+                const basePlantingYmd =
+                  crop.planting_date && /^\d{4}-\d{2}-\d{2}$/.test(crop.planting_date)
+                    ? crop.planting_date
+                    : crop.desired_start_date &&
+                      /^\d{4}-\d{2}-\d{2}$/.test(crop.desired_start_date)
+                    ? crop.desired_start_date
+                    : '2026-08-25';
 
-                let stageBadge = '결구기';
-                let activeStepIdx: 0 | 1 | 2 | 3 = 2;
-                if (pct >= 95 || stgText.includes('수확')) {
-                  stageBadge = '수확기';
-                  activeStepIdx = 3;
-                } else if (pct >= 55 || stgText.includes('결구') || stgText.includes('비대')) {
-                  stageBadge = '결구기';
-                  activeStepIdx = 2;
-                } else if (pct >= 25 || stgText.includes('생육') || stgText.includes('추비')) {
-                  stageBadge = shortName.includes('마늘') ? '활착기' : '생육기';
-                  activeStepIdx = 1;
+                const isActiveProvisionForCrop =
+                  provisionData &&
+                  Array.isArray(provisionData.scheduleItems) &&
+                  provisionData.scheduleItems.length > 0 &&
+                  (provisionData.activeRequest?.request_no === reqNo ||
+                    selectedRequestNo === reqNo);
+
+                type EvalStage = {
+                  itemId: string;
+                  stepOrder: number;
+                  stageGroupName: string;
+                  subItemName: string;
+                  workContent: string;
+                  effDate: string;
+                  isRecognized: boolean;
+                };
+
+                let evaluatedStages: EvalStage[] = [];
+
+                if (isActiveProvisionForCrop) {
+                  evaluatedStages = (provisionData.scheduleItems as any[]).map(
+                    (it: any, sIdx: number) => {
+                      const st = getStageItemCompletionState(reqNo, it);
+                      const meta = STANDARD_16_STAGE_META.find(
+                        (m) => m.itemId === st.itemId
+                      );
+                      return {
+                        itemId: st.itemId,
+                        stepOrder: Number(it.step_order || meta?.stepOrder || sIdx + 1),
+                        stageGroupName: String(
+                          it.stage_group_name || meta?.stageGroupName || '생육 관리'
+                        ).trim(),
+                        subItemName: String(
+                          it.sub_item_name || meta?.subItemName || '농작업'
+                        ).trim(),
+                        workContent: String(it.work_content || '').trim(),
+                        effDate: st.effectiveDate,
+                        isRecognized: st.isRecognized,
+                      };
+                    }
+                  );
                 } else {
-                  stageBadge = '정식';
-                  activeStepIdx = 0;
+                  const reqMap = stageItemCompletions[reqNo] || {};
+                  evaluatedStages = STANDARD_16_STAGE_META.map((m) => {
+                    const draftKey = `${reqNo}__${m.itemId}`;
+                    let effDate = addDaysToYmd(basePlantingYmd, m.offsetDays);
+                    if (
+                      inlineStageDateDrafts[draftKey] &&
+                      /^\d{4}-\d{2}-\d{2}$/.test(inlineStageDateDrafts[draftKey])
+                    ) {
+                      effDate = inlineStageDateDrafts[draftKey];
+                    } else if (reqNo === 'REQ-20261106-009') {
+                      if (m.itemId === 'SCH-13') effDate = '2026-10-28';
+                      if (m.itemId === 'SCH-14') effDate = '2026-11-15';
+                      if (m.itemId === 'SCH-15') effDate = '2026-11-18';
+                      if (m.itemId === 'SCH-16') effDate = '2026-11-25';
+                    }
+                    const e = reqMap[m.itemId];
+                    let isRecognized = false;
+                    if (e && e.completed === false && e.confirmedDate === effDate) {
+                      isRecognized = false;
+                    } else if (e?.completed) {
+                      isRecognized = true;
+                    } else {
+                      isRecognized = diffDaysBetweenYmd(effDate, todayKstYmd) >= 1;
+                    }
+                    return {
+                      itemId: m.itemId,
+                      stepOrder: m.stepOrder,
+                      stageGroupName: m.stageGroupName,
+                      subItemName: m.subItemName,
+                      workContent: '',
+                      effDate,
+                      isRecognized,
+                    };
+                  });
                 }
 
-                const nextRawSub = String(
-                  summary.nextUncompleted?.sub_item_name ||
-                    summary.nextUncompleted?.subItemName ||
-                    ''
-                )
-                  .replace(/\s*\([^)]*\)/g, '')
-                  .trim();
+                evaluatedStages.sort((a, b) => a.stepOrder - b.stepOrder);
+                const uncompletedStages = evaluatedStages.filter((s) => !s.isRecognized);
+                const completedStages = evaluatedStages.filter((s) => s.isRecognized);
+                const nextStage = uncompletedStages[0] || null;
+                const lastCompletedStage =
+                  completedStages[completedStages.length - 1] || null;
+                const isAllCompleted = uncompletedStages.length === 0 && evaluatedStages.length > 0;
 
-                let nextTaskTitle = '추비 2차';
-                let nextTaskDesc = '결구 촉진 · 생육 강화';
-                if (nextRawSub) {
-                  if (nextRawSub.includes('2차 웃거름') || nextRawSub.includes('2차 추비')) {
-                    nextTaskTitle = '추비 2차';
-                    nextTaskDesc = '결구 촉진 · 생육 강화';
-                  } else if (nextRawSub.includes('1차 웃거름') || nextRawSub.includes('1차 추비')) {
-                    nextTaskTitle = '추비 1차';
-                    nextTaskDesc = '초기 생육 촉진 · 외엽 확보';
+                // 현재 시점(todayKstYmd) 기준 진행 중인 단계 판정 (nextStage.stepOrder 기준)
+                let stageBadge = '재배준비';
+                let activeStepIdx: 0 | 1 | 2 | 3 = 0;
+
+                if (isAllCompleted) {
+                  stageBadge = '수확완료';
+                  activeStepIdx = 3;
+                } else if (nextStage) {
+                  const ord = nextStage.stepOrder;
+                  if (ord <= 3) {
+                    stageBadge = '재배준비';
+                    activeStepIdx = 0;
+                  } else if (ord <= 6) {
+                    stageBadge = '파종·육묘';
+                    activeStepIdx = 0;
+                  } else if (ord <= 8) {
+                    stageBadge = ord === 7 ? '정식기' : '활착기';
+                    activeStepIdx = 0;
+                  } else if (ord <= 11) {
+                    stageBadge = '생육기';
+                    activeStepIdx = 1;
+                  } else if (ord <= 14) {
+                    stageBadge = '병해충관리';
+                    activeStepIdx = 2;
                   } else {
-                    nextTaskTitle = nextRawSub;
-                    nextTaskDesc =
-                      summary.nextUncompleted?.work_content ||
-                      `${stageBadge} 맞춤 영농 관리 · 생육 강화`;
+                    stageBadge = '수확기';
+                    activeStepIdx = 3;
                   }
                 }
 
-                const nextRawYmd =
-                  summary.nextUncompleted?.start_date ||
-                  (summary.nextUncompleted?.offsetDays !== undefined
-                    ? addDaysToYmd(
-                        crop.planting_date || '2026-08-25',
-                        Number(summary.nextUncompleted.offsetDays)
-                      )
-                    : '2026-10-27');
+                // 다음 농작업(nextStage) 제목 · 요약 설명 · 예정일(M월 D일(요일))
+                let nextTaskTitle = '전 공정 수확 완료';
+                let nextTaskDesc = '수확 및 선별·저장 관리가 모두 완료되었습니다.';
+                let nextTaskDateLabel = formatKoreanMonthDayWeekday(
+                  lastCompletedStage?.effDate || todayKstYmd
+                );
+
+                if (nextStage) {
+                  nextTaskTitle = nextStage.subItemName;
+                  if (nextStage.workContent) {
+                    nextTaskDesc = nextStage.workContent;
+                  } else {
+                    const descByItemId: Record<string, string> = {
+                      'SCH-01': '전작물 잔재물 제거 및 포장 배수로 정비',
+                      'SCH-02': '토양검정 맞춤 밑거름 시비 및 경운 작업',
+                      'SCH-03': '배수·통기성 확보를 위한 두둑 및 멀칭 조성',
+                      'SCH-04': '우량 코팅종자 준비 및 육묘 트레이 파종',
+                      'SCH-05': '육묘상 적정 온도·수분 유지 및 본엽 관리',
+                      'SCH-06': '정식 전 외기 순화 및 육묘기 병해충 예방',
+                      'SCH-07': '본밭 재식거리 준수 정식 및 초기 활착 관수',
+                      'SCH-08': '초기 뿌리 활착 점검 및 고온기 수분 관리',
+                      'SCH-09': '생장 촉진을 위한 웃거름 시비 및 토양 수분 관리',
+                      'SCH-10': '외엽 확보 및 생육 균일도 유지를 위한 잎·줄기 관리',
+                      'SCH-11': '시기별 생육량 점검 및 미량요소 영양 상태 확인',
+                      'SCH-12': '기상 예보 연동 주요 병해충 예찰 및 포장 정기 점검',
+                      'SCH-13': '강우 전후 무름병·노균병 및 해충 적기 예방 방제',
+                      'SCH-14': '수확 전 포장 위생 관리 및 안전사용기준(PLS) 점검',
+                      'SCH-15': '결구·성숙 충실도 확인 및 한계온도 도래 전 적기 수확',
+                      'SCH-16': '수확 후 현장 예건·등급별 선별 및 저온저장 관리',
+                    };
+                    nextTaskDesc =
+                      descByItemId[nextStage.itemId] ||
+                      `${nextStage.stageGroupName} · 현재 시점 맞춤 농작업 진행`;
+                  }
+                  nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
+                }
 
                 return {
                   id: reqNo,
                   request_no: reqNo,
                   isRealCrop: true,
+                  isAllCompleted,
                   shortName,
                   thumbUrl: resolveCropThumbByShortName(shortName),
                   stageBadge,
@@ -8421,66 +8589,31 @@ export default function UserIntroPage() {
                   activeStepIdx,
                   nextTaskTitle,
                   nextTaskDesc,
-                  nextTaskDateLabel: formatKoreanMonthDayWeekday(nextRawYmd, '10월 27일(화)'),
+                  nextTaskDateLabel,
                 };
-              });
+              };
 
-              // 기본 시안 3대 작물 (회원의 등록 작물이 3개 미만일 때 함께 나열하여 작물별 전환 즉시 체험 가능)
-              const fallbackPresets = [
-                {
-                  id: 'REQ-20261106-009',
-                  request_no: 'REQ-20261106-009',
-                  isRealCrop: false,
-                  shortName: '배추',
-                  thumbUrl: '/images/crops/crop-thumb-cabbage.jpg',
-                  stageBadge: '결구기',
-                  cultivationMethod: '노지',
-                  areaPyeong: 500,
-                  activeStepIdx: 2 as const,
-                  nextTaskTitle: '추비 2차',
-                  nextTaskDesc: '결구 촉진 · 생육 강화',
-                  nextTaskDateLabel: '10월 27일(화)',
-                },
-                {
-                  id: 'PRESET-GARLIC-01',
-                  request_no: 'PRESET-GARLIC-01',
-                  isRealCrop: false,
-                  shortName: '마늘',
-                  thumbUrl: '/images/crops/crop-thumb-garlic.jpg',
-                  stageBadge: '활착기',
-                  cultivationMethod: '노지',
-                  areaPyeong: 300,
-                  activeStepIdx: 1 as const,
-                  nextTaskTitle: '뿌리 활착 1차 추비',
-                  nextTaskDesc: '초기 뿌리 활착 · 월동 전 생육 강화',
-                  nextTaskDateLabel: '11월 5일(목)',
-                },
-                {
-                  id: 'PRESET-CUCUMBER-01',
-                  request_no: 'PRESET-CUCUMBER-01',
-                  isRealCrop: false,
-                  shortName: '오이',
-                  thumbUrl: '/images/crops/crop-thumb-cucumber.jpg',
-                  stageBadge: '생육기',
-                  cultivationMethod: '시설',
-                  areaPyeong: 200,
-                  activeStepIdx: 1 as const,
-                  nextTaskTitle: '덩굴 유인 및 적심',
-                  nextTaskDesc: '원줄기 세력 유지 · 측지 정리 및 관주',
-                  nextTaskDateLabel: '10월 30일(금)',
-                },
-              ];
+              // 회원의 실제 재배작물 리스트(cloudBaeCropList)를 현재 시점 기준으로 산출 (목록이 비어있을 경우 현재 활성 요청 1건을 기준으로 동적 산출)
+              const sourceCrops =
+                cloudBaeCropList.length > 0
+                  ? cloudBaeCropList
+                  : [
+                      {
+                        request_no:
+                          provisionData?.activeRequest?.request_no ||
+                          selectedRequestNo ||
+                          'REQ-20261106-009',
+                        crop_short: provisionData?.activeRequest?.crop_name || '배추',
+                        badge: provisionData?.activeRequest?.planting_method || '노지 정식(모종)',
+                        area_pyeong: Number(provisionData?.activeRequest?.area_pyeong || 500),
+                        planting_date:
+                          provisionData?.activeRequest?.desired_start_date || '2026-08-25',
+                      },
+                    ];
 
-              const combinedMobileCrops = [...realCropItems];
-              for (const preset of fallbackPresets) {
-                if (combinedMobileCrops.length >= 3) break;
-                const alreadyHasSameName = combinedMobileCrops.some(
-                  (c) => c.shortName === preset.shortName
-                );
-                if (!alreadyHasSameName) {
-                  combinedMobileCrops.push(preset);
-                }
-              }
+              const combinedMobileCrops = sourceCrops.map((c: any, idx: number) =>
+                buildRealTimeCropScheduleCard(c, idx)
+              );
 
               const activeCropItem =
                 combinedMobileCrops.find((c) => c.request_no === selectedRequestNo) ||
@@ -8491,10 +8624,15 @@ export default function UserIntroPage() {
                 : combinedMobileCrops.slice(0, 3);
 
               const greetingUserName = loggedInUser.isLoggedIn
-                ? loggedInUser.name || '홍길동'
+                ? loggedInUser.name || '회원'
                 : '홍길동';
 
-              const fourStepLabels = ['정식', '생육기', '결구기', '수확기'];
+              const step0Label =
+                activeCropItem.stageBadge === '재배준비' ||
+                activeCropItem.stageBadge === '파종·육묘'
+                  ? activeCropItem.stageBadge
+                  : '정식';
+              const fourStepLabels = [step0Label, '생육기', '결구기', '수확기'];
 
               return (
                 <div
@@ -8652,7 +8790,7 @@ export default function UserIntroPage() {
                       </div>
 
                       {/* 재배작물 가로 선택 카드 리스트 + [••• 전체보기] */}
-                      <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-stretch">
+                      <div className="flex items-stretch gap-2 overflow-x-auto no-scrollbar">
                         {visibleCropTabs.map((item) => {
                           const isSelectedCrop = item.request_no === activeCropItem.request_no;
                           return (
@@ -8663,7 +8801,7 @@ export default function UserIntroPage() {
                                 setSelectedRequestNo(item.request_no);
                                 setMyPageStageDetailItem(null);
                               }}
-                              className={`rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
+                              className={`flex-1 min-w-[96px] rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
                                 isSelectedCrop
                                   ? 'bg-white border-[1.8px] border-[#0E712F] shadow-[0_2px_10px_rgba(14,113,47,0.1)]'
                                   : 'bg-white/95 border border-transparent hover:bg-white'
@@ -8692,7 +8830,7 @@ export default function UserIntroPage() {
                         <button
                           type="button"
                           onClick={() => setShowAllMobileScheduleCrops((prev) => !prev)}
-                          className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px]"
+                          className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px] shrink-0"
                         >
                           <div className="flex items-center gap-1 text-[#6B7280]">
                             <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
@@ -8771,8 +8909,11 @@ export default function UserIntroPage() {
                           />
 
                           {fourStepLabels.map((stepLabel, sIdx) => {
-                            const isCompletedStep = sIdx < activeCropItem.activeStepIdx;
-                            const isCurrentStep = sIdx === activeCropItem.activeStepIdx;
+                            const isCompletedStep =
+                              activeCropItem.isAllCompleted || sIdx < activeCropItem.activeStepIdx;
+                            const isCurrentStep =
+                              !activeCropItem.isAllCompleted &&
+                              sIdx === activeCropItem.activeStepIdx;
                             const displayLabel =
                               sIdx === 1 && activeCropItem.shortName === '마늘'
                                 ? '활착기'
