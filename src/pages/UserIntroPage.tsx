@@ -1207,6 +1207,8 @@ export default function UserIntroPage() {
       crop_plan_id: planId,
       request_no: reqNo,
       display_request_no: reqNo,
+      email: sr.email || sr.member_id || 'CloudBae@naver.com',
+      member_id: sr.member_id || sr.email || 'CloudBae@naver.com',
       group_id: sr.group_id || 'GRP-LEAF',
       group_name: sr.group_name || '엽채류 (잎채소)',
       crop_title: sr.crop_title || `${cropName} (${cultivarName})`,
@@ -1242,10 +1244,21 @@ export default function UserIntroPage() {
     ...requestListFromSaved,
   ];
   const seenScheduleReqKeys = new Set<string>();
+  const currentActiveEmailLower = String(loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
+  const isCurrentCloudBae =
+    !loggedInUser.isLoggedIn ||
+    currentActiveEmailLower === 'cloudbae@naver.com' ||
+    currentActiveEmailLower === 'cloudbae';
 
   // 1) [재배일정 요청] 전용 리스트: 재배일정 확인 데이터를 삭제하더라도 재배일정 요청 데이터는 삭제되지 않고 유지되어 재요청 가능!
   const scheduleRequestCropList = rawCombinedCropList
     .filter((crop: any) => {
+      if (!isCurrentCloudBae) {
+        const ownerStr = String(crop.email || crop.member_id || '').toLowerCase();
+        if (ownerStr && !ownerStr.includes(currentActiveEmailLower)) {
+          return false;
+        }
+      }
       const keysToCheck = [
         crop.crop_plan_id,
         crop.request_no,
@@ -1840,10 +1853,13 @@ export default function UserIntroPage() {
         detailTrimmed ? ` ${detailTrimmed}` : ''
       }`;
 
+      const ownerEmail = loggedInUser.email || 'CloudBae@naver.com';
       const newItem = {
         crop_plan_id: newPlanId,
         request_no: newReqDisplayNo,
         display_request_no: newReqDisplayNo,
+        email: ownerEmail,
+        member_id: ownerEmail,
         group_id: reqForm.group_id || 'GRP-LEAF',
         group_name: reqForm.group_name || '엽채류 (잎채소)',
         crop_title: `${reqForm.crop_name} (${reqForm.cultivar_name})`,
@@ -1900,7 +1916,6 @@ export default function UserIntroPage() {
             it.display_request_no !== newReqDisplayNo
         ),
       ]);
-      setSelectedRequestNo(newReqDisplayNo);
       setReRequestTargetCrop(null);
       setReqFormSubmitted(true);
 
@@ -1911,6 +1926,9 @@ export default function UserIntroPage() {
           body: JSON.stringify({
             request_no: newReqDisplayNo,
             crop_plan_id: newPlanId,
+            email: ownerEmail,
+            member_id: ownerEmail,
+            member_contact: loggedInUser.phone || '010-2026-0109',
             group_id: reqForm.group_id || 'GRP-LEAF',
             group_name: reqForm.group_name || '엽채류 (잎채소)',
             sido: reqForm.sido,
@@ -1934,7 +1952,7 @@ export default function UserIntroPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            email: loggedInUser.email || 'CloudBae@naver.com',
+            email: ownerEmail,
             crop_plan_id: newPlanId,
             request_no: newReqDisplayNo,
             farmland_id: reqForm.farmland_id || 'LAND-CB-01',
@@ -1959,6 +1977,10 @@ export default function UserIntroPage() {
       } catch {
         // ignore
       }
+
+      setSelectedRequestNo(newReqDisplayNo);
+      setExpandedScheduleRequestNo(newReqDisplayNo);
+      await loadScheduleProvision(newReqDisplayNo, { gdd_mode: patentGddMode }).catch(() => {});
     } finally {
       isSubmittingScheduleReqRef.current = false;
     }
@@ -2222,8 +2244,14 @@ export default function UserIntroPage() {
       );
     }
     if (Array.isArray(res.scheduleRequests)) {
+      const targetEmailLower = String(res.member?.email || loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
       setMyScheduleRequests((prev) => {
-        const merged = [...res.scheduleRequests, ...prev];
+        const filteredPrev = markLoggedIn
+          ? prev.filter((r: any) =>
+              String(r?.email || r?.member_id || '').toLowerCase().includes(targetEmailLower)
+            )
+          : prev;
+        const merged = [...res.scheduleRequests, ...filteredPrev];
         const seen = new Set<string>();
         const deduped: any[] = [];
         for (const r of merged) {
@@ -2405,14 +2433,14 @@ export default function UserIntroPage() {
     }
   };
 
-  // 1. 이메일 중복검사 핸들러
+  // 1. 아이디/이메일 중복검사 핸들러 (일반 아이디 test001 및 이메일 모두 지원)
   const handleCheckEmailDuplicate = async () => {
     const email = signupForm.email.trim();
-    if (!email || !email.includes('@')) {
+    if (!email) {
       setSignupForm((prev) => ({
         ...prev,
         emailChecked: false,
-        emailCheckMsg: '올바른 이메일 주소(예: user@naver.com)를 입력해 주세요.',
+        emailCheckMsg: '아이디 또는 이메일 주소를 입력해 주세요.',
       }));
       return;
     }
@@ -2422,7 +2450,9 @@ export default function UserIntroPage() {
       setSignupForm((prev) => ({
         ...prev,
         emailChecked: Boolean(res?.available),
-        emailCheckMsg: res?.message || (res?.available ? '사용 가능한 이메일입니다.' : '이미 사용 중인 이메일입니다.'),
+        emailCheckMsg:
+          res?.message ||
+          (res?.available ? '사용 가능한 아이디(이메일)입니다.' : '이미 사용 중인 아이디(이메일)입니다.'),
       }));
     } catch {
       setSignupForm((prev) => ({
@@ -2527,40 +2557,68 @@ export default function UserIntroPage() {
     }
   };
 
-  // 4. 회원가입 완료 핸들러 (이메일 가입 & Google Gmail 가입 공통)
+  // 4. 회원가입 완료 핸들러 (일반 아이디 · 이메일 가입 & Google Gmail 가입 공통)
   const handleSignupSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthNoticeMsg(null);
-    if (!signupForm.email.trim() || !signupForm.email.includes('@')) {
-      setAuthNoticeMsg({ type: 'error', text: '이메일 주소를 입력해 주세요.' });
-      return;
-    }
-    if (!signupForm.emailChecked) {
-      setAuthNoticeMsg({ type: 'error', text: '이메일 [중복검사] 버튼을 눌러 사용 가능 여부를 확인해 주세요.' });
+    const trimmedEmail = signupForm.email.trim();
+    if (!trimmedEmail) {
+      setAuthNoticeMsg({ type: 'error', text: '아이디 또는 이메일 주소를 입력해 주세요.' });
       return;
     }
     if (!signupForm.password || signupForm.password.length < 4) {
       setAuthNoticeMsg({ type: 'error', text: '비밀번호를 4자리 이상 입력해 주세요.' });
       return;
     }
-    if (signupForm.password !== signupForm.passwordConfirm) {
+    const effectivePwConfirm = signupForm.passwordConfirm || signupForm.password;
+    if (signupForm.password !== effectivePwConfirm) {
       setAuthNoticeMsg({ type: 'error', text: '비밀번호와 비밀번호 확인이 일치하지 않습니다.' });
       return;
     }
-    if (!signupForm.name.trim()) {
-      setAuthNoticeMsg({ type: 'error', text: '이름을 입력해 주세요.' });
-      return;
+
+    // 중복검사 버튼을 아직 누르지 않은 경우 자동으로 중복검사 확인 수행
+    if (!signupForm.emailChecked) {
+      try {
+        const chkRes = await fetch(`/api/auth/check-email?email=${encodeURIComponent(trimmedEmail)}`).then((r) =>
+          r.json()
+        );
+        if (!chkRes?.available) {
+          setSignupForm((prev) => ({
+            ...prev,
+            emailChecked: false,
+            emailCheckMsg: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+          }));
+          setAuthNoticeMsg({
+            type: 'error',
+            text: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+          });
+          return;
+        }
+        setSignupForm((prev) => ({
+          ...prev,
+          emailChecked: true,
+          emailCheckMsg: '사용 가능한 아이디(이메일)입니다.',
+        }));
+      } catch {
+        // ignore network check error and proceed
+      }
     }
-    if (!signupForm.road_address.trim()) {
-      setAuthNoticeMsg({ type: 'error', text: '주소(도로명)를 검색하거나 입력해 주세요.' });
-      return;
-    }
+
+    const effectiveName = signupForm.name.trim() || trimmedEmail.split('@')[0] || '신규회원';
+    const effectiveRoadAddress =
+      signupForm.road_address.trim() || '충청북도 충주시 충원대로 268 (단월동)';
 
     try {
       const r = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(signupForm),
+        body: JSON.stringify({
+          ...signupForm,
+          email: trimmedEmail,
+          passwordConfirm: effectivePwConfirm,
+          name: effectiveName,
+          road_address: effectiveRoadAddress,
+        }),
       });
       const res = await r.json();
       if (!r.ok || !res?.ok) {
@@ -3258,7 +3316,14 @@ export default function UserIntroPage() {
     });
   };
 
-  const resolveAgroCategory1stLabel = (rawCat?: string, rawSub?: string, rawName?: string): string => {
+  const resolveAgroCategory1stLabel = (rawCat?: any, rawSub?: string, rawName?: string): string => {
+    if (rawCat && typeof rawCat === 'object') {
+      return resolveAgroCategory1stLabel(
+        rawCat.material_category || rawCat.category_1st,
+        rawCat.subType || rawCat.sub_type || rawCat.categoryName,
+        rawCat.productName || rawCat.product_name
+      );
+    }
     const c = String(rawCat || '').toUpperCase().trim();
     if (c === 'FERTILIZER' || c.includes('비료')) return '비료';
     if (c === 'NUTRIENT' || c.includes('영양')) return '영양제';
@@ -3752,6 +3817,124 @@ export default function UserIntroPage() {
       lastEntry: matchedEntries[0] || null,
       entries: matchedEntries,
     };
+  };
+
+  const handleAddStageProductToCart = (params: {
+    cropObj?: any;
+    stageItem: any;
+    mat: any;
+    qty: number;
+  }) => {
+    const { cropObj, stageItem, mat, qty } = params;
+    if (!mat) return;
+
+    const targetCrop = cropObj || activeCropCard || cloudBaeCropList[0] || {};
+    const activeReq = provisionData?.activeRequest || {};
+    const reqNo =
+      targetCrop.request_no || activeReq.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const cropName =
+      targetCrop.crop_name ||
+      (activeReq.crop_name === '배추' ? '가을배추' : activeReq.crop_name) ||
+      '가을배추';
+    const cultivarName = targetCrop.cultivar_name || activeReq.item_name_3rd || '불암3호';
+    const cropTitle = targetCrop.crop_title || `${cropName} (${cultivarName})`;
+    const plantingType =
+      targetCrop.planting_type ||
+      (String(activeReq.planting_method || '').includes('씨') ? '씨' : '모종');
+    const region =
+      targetCrop.region ||
+      [activeReq.sido, activeReq.sigungu, activeReq.eupmyeondong].filter(Boolean).join(' ') ||
+      '충청북도 충주시 단월동';
+    const areaPyeong = Number(activeReq.area_pyeong || targetCrop.area_pyeong || 300);
+    const plantingDate =
+      targetCrop.planting_label || activeReq.desired_start_date || '2026-08-25';
+    const expectedHarvestDate =
+      targetCrop.expected_harvest_date || activeReq.expected_harvest_date || '2026-11-15';
+
+    const cleanSubName = String(stageItem?.sub_item_name || stageItem?.process_name || '생육과정')
+      .replace(/\s*\([^)]*\)/g, '')
+      .trim();
+    const stageGroupName = stageItem?.stage_group_name || stageItem?.stageName || '생육 관리';
+    const processCode = stageItem?.process_code || 'SCH-01';
+    const recommendedDate =
+      stageItem?.start_date || stageItem?.stageStartDate || curStart || plantingDate;
+    const targetPgdd = Number(stageItem?.target_pgdd ?? 0);
+    const workContent =
+      stageItem?.work_content ||
+      stageItem?.work_description ||
+      '생육 단계별 기온·토양 수분 조건을 확인하고 권장 사용량에 맞춰 살포합니다.';
+
+    const safeQty = Math.max(1, Math.min(99, Number(qty) || 1));
+    const unitPrice = Number(mat.unit_price || 18000);
+    const unitSpec = String(mat.unit_spec || '1개');
+    const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
+    const unitLabel = mat.unit_label || (unitMatch ? unitMatch[1] : '개');
+    const now = new Date();
+    const addedAt = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}.${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(
+      2,
+      '0'
+    )}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const thumbUrl = resolveAgroProductThumbUrl(mat);
+    const recDefaultQty = parseRecommendedQuantity(mat, areaPyeong);
+    const specBadge =
+      mat.category_spec_badge ||
+      mat.nutrient_ratio_summary ||
+      mat.core_Spec ||
+      mat.core_spec ||
+      `${mat.sub_type || '맞춤 농자재'} · ${unitSpec}`;
+
+    const newCartEntry = {
+      cartId: `CART-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      checked: true,
+      addedAt,
+      requestNo: reqNo,
+      cropTitle,
+      cropCategory: activeReq.group_name || '엽채류',
+      plantingType,
+      region,
+      areaPyeong,
+      plantingDate,
+      expectedHarvestDate,
+      stageGroupName,
+      stageColor: stageItem?.stage_color || '#16a34a',
+      processCode,
+      subItemName: cleanSubName,
+      processName: stageItem?.process_name || stageItem?.sub_item_name || cleanSubName,
+      startDate: recommendedDate,
+      startWeekLabel: stageItem?.start_week_label || '',
+      targetPgdd,
+      workDescription: workContent,
+      material_id: mat.material_id || 'FERT-PRD-01',
+      material_category: mat.material_category || 'FERTILIZER',
+      subType: mat.sub_type || '맞춤 농자재',
+      categoryName: mat.sub_type || '맞춤 농자재',
+      manufacturer: mat.manufacturer || '한팜인증',
+      brandName: mat.manufacturer || '한팜인증',
+      productName: mat.product_name || '생육과정 맞춤 추천 농자재',
+      unitSpec,
+      spec: unitSpec,
+      unitLabel,
+      unitPrice,
+      qty: safeQty,
+      recommendedQty: recDefaultQty,
+      matchScore: Number(mat.match_score || 96),
+      categorySpecBadge: specBadge,
+      usageNote: specBadge,
+      thumbnailUrl: thumbUrl,
+      thumbnail_url: thumbUrl,
+    };
+
+    saveMyCartItems((prev) => [newCartEntry, ...prev]);
+    const toastMsg = `[${newCartEntry.productName}] ${safeQty}${unitLabel}가 마이페이지 > 농자재 장바구니에 담겼습니다.`;
+    setPurchaseToastMessage(toastMsg);
+    setMyPageToast(toastMsg);
+    setTimeout(() => {
+      setPurchaseToastMessage('');
+      setMyPageToast('');
+    }, 3500);
   };
 
   const handlePurchaseStageRecommendedProduct = (params: {
@@ -11641,13 +11824,28 @@ export default function UserIntroPage() {
                               <span className="text-xs font-bold text-slate-600">{unitLabel}</span>
                             </div>
 
-                            <div className="flex items-center gap-2.5">
+                            <div className="flex items-center gap-2">
                               <div className="text-right">
                                 <div className="text-[10px] text-slate-500 font-semibold">합계금액</div>
                                 <div className="text-xs sm:text-sm font-extrabold text-emerald-800">
                                   {(unitPrice * recQty).toLocaleString()}원
                                 </div>
                               </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleAddStageProductToCart({
+                                    cropObj: provisionData.activeRequest,
+                                    stageItem: detailItem,
+                                    mat: topMat,
+                                    qty: recQty,
+                                  })
+                                }
+                                className="px-3 py-2 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
+                              >
+                                <ShoppingCart className="w-3.5 h-3.5" />
+                                <span>장바구니 담기</span>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() =>
@@ -17738,7 +17936,10 @@ export default function UserIntroPage() {
           );
 
           return (
-            <div className="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto">
+            <div
+              style={{ zIndex: 10050 }}
+              className="fixed inset-0 z-[10050] bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto"
+            >
               <div className="bg-white rounded-3xl border-2 border-emerald-500/90 shadow-[0_24px_64px_rgba(15,23,42,0.25)] max-w-4xl w-full overflow-hidden my-auto max-h-[92vh] flex flex-col">
                 {/* 상단 에메랄드 포인트 바 */}
                 <div className="h-2 w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 shrink-0" />
@@ -18352,11 +18553,11 @@ export default function UserIntroPage() {
                   <div className="space-y-3.5">
                     <div>
                       <label className="block font-bold text-slate-700 mb-1.5">
-                        이메일 주소 <span className="text-emerald-600">*</span>
+                        아이디 (또는 이메일 주소) <span className="text-emerald-600">*</span>
                       </label>
                       <div className="flex gap-2">
                         <input
-                          type="email"
+                          type="text"
                           value={signupForm.email}
                           onChange={(e) =>
                             setSignupForm({
@@ -19783,25 +19984,42 @@ export default function UserIntroPage() {
                                       </span>
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handlePurchaseStageRecommendedProduct({
-                                          cropObj: modalCrop,
-                                          stageItem: liveStageItem,
-                                          mat: topMat,
-                                          qty: recQty,
-                                        })
-                                      }
-                                      className="w-full py-2.5 px-3 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13.5px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
-                                    >
-                                      <ShoppingBag className="w-4 h-4 shrink-0" />
-                                      <span>
-                                        {purchasedInfo.isPurchased
-                                          ? `추가 구매 (${recQty}${unitLabel})`
-                                          : `제품 구매 (${recQty}${unitLabel})`}
-                                      </span>
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleAddStageProductToCart({
+                                            cropObj: modalCrop,
+                                            stageItem: liveStageItem,
+                                            mat: topMat,
+                                            qty: recQty,
+                                          })
+                                        }
+                                        className="w-full py-2.5 px-2.5 rounded-xl border border-emerald-400 bg-white hover:bg-emerald-50 text-emerald-800 text-[13px] font-black shadow-2xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                      >
+                                        <ShoppingCart className="w-4 h-4 shrink-0" />
+                                        <span>장바구니 담기</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handlePurchaseStageRecommendedProduct({
+                                            cropObj: modalCrop,
+                                            stageItem: liveStageItem,
+                                            mat: topMat,
+                                            qty: recQty,
+                                          })
+                                        }
+                                        className="w-full py-2.5 px-2.5 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
+                                      >
+                                        <ShoppingBag className="w-4 h-4 shrink-0" />
+                                        <span>
+                                          {purchasedInfo.isPurchased
+                                            ? `추가 구매 (${recQty}${unitLabel})`
+                                            : `제품 구매 (${recQty}${unitLabel})`}
+                                        </span>
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               );

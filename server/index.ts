@@ -351,10 +351,10 @@ async function syncAgroMaterialSchemaToSupabase() {
       WHERE POSITION('(' IN item_name) > 0;
       UPDATE public.member_schedule_request
       SET member_id = 'CloudBae@naver.com (배철민)'
-      WHERE member_id IS NULL OR member_id != 'CloudBae@naver.com (배철민)';
+      WHERE member_id IS NULL OR member_id = '';
       UPDATE public.schedule_request
       SET farmer_name = '배철민 (CloudBae@naver.com)'
-      WHERE farmer_name IS NULL OR farmer_name != '배철민 (CloudBae@naver.com)';
+      WHERE farmer_name IS NULL OR farmer_name = '';
       NOTIFY pgrst, 'reload schema';
     `);
 
@@ -5162,7 +5162,7 @@ const server = http.createServer(async (req, res) => {
       const now = kstDate.toISOString().replace('T', ' ').slice(0, 19);
 
       const request_no = (body.request_no || `REQ-${now.slice(0, 10).replace(/-/g, '')}-${String(Date.now()).slice(-3)}`).trim();
-      const member_id = 'CloudBae@naver.com (배철민)';
+      const member_id = String(body.member_id || body.email || 'CloudBae@naver.com (배철민)').trim();
       const member_contact = (body.member_contact || '010-2026-0109').trim();
       const group_id = body.group_id || 'GRP-LEAF';
       const group_name = body.group_name || '엽채류 (잎채소)';
@@ -5245,11 +5245,17 @@ const server = http.createServer(async (req, res) => {
         rowData.is_organic, rowData.soil_test_linked_yn, rowData.target_yield_kg, rowData.etc_notes, rowData.request_status, rowData.requested_at
       );
 
-      // CloudBae@naver.com (배철민) 회원의 member_crop_plan과 실시간 매칭 동기화
+      // 요청 회원의 member_crop_plan과 실시간 매칭 동기화
+      const ownerEmail = String(
+        body.email ||
+          (body.member_id ? String(body.member_id).split(' ')[0] : '') ||
+          'CloudBae@naver.com'
+      ).trim();
       const isSeedMethod =
         String(rowData.planting_method || '').includes('직파') ||
         String(rowData.planting_method || '').includes('점파') ||
-        String(rowData.planting_method || '').includes('종서');
+        String(rowData.planting_method || '').includes('종서') ||
+        String(rowData.planting_method || '').includes('씨');
       const targetPlanId = String(body.crop_plan_id || `CPLAN-${rowData.request_no}`).trim();
       db.prepare('DELETE FROM member_crop_plan WHERE request_no = ? AND crop_plan_id != ?').run(
         rowData.request_no,
@@ -5260,9 +5266,10 @@ const server = http.createServer(async (req, res) => {
           crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
           crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
           expected_harvest_date, current_stage_name, progress_pct, status_text
-        ) VALUES (?, 'CloudBae@naver.com', ?, 'LAND-CB-01', ?, ?, ?, ?, ?, ?, ?, ?, ?, '04. 생육 관리', 60, '생육 확인 필요 · 일정 연동됨')
+        ) VALUES (?, ?, ?, 'LAND-CB-01', ?, ?, ?, ?, ?, ?, ?, ?, ?, '04. 생육 관리', 60, '생육 확인 필요 · 일정 연동됨')
       `).run(
         targetPlanId,
+        ownerEmail,
         rowData.request_no,
         rowData.sido,
         rowData.sigungu,
@@ -9179,9 +9186,19 @@ const server = http.createServer(async (req, res) => {
           }
         })(),
       }));
-      const scheduleRequests = db
+      const allScheduleRequests = db
         .prepare('SELECT * FROM member_schedule_request ORDER BY requested_at DESC, request_no DESC')
         .all() as any[];
+      const targetEmailLower = String(member.email || '').toLowerCase();
+      const isCloudBae =
+        targetEmailLower === 'cloudbae@naver.com' || targetEmailLower === 'cloudbae';
+      const scheduleRequests = allScheduleRequests.filter((r) =>
+        isCloudBae
+          ? !r.member_id ||
+            String(r.member_id).toLowerCase().includes('cloudbae') ||
+            String(r.member_id).includes('배철민')
+          : String(r.member_id || '').toLowerCase().includes(targetEmailLower)
+      );
       const safeMember = { ...member };
       delete safeMember.password;
       return {
@@ -9193,13 +9210,13 @@ const server = http.createServer(async (req, res) => {
       };
     };
 
-    // 1. 이메일 중복검사 API
+    // 1. 이메일/아이디 중복검사 API
     if (pathname === '/api/auth/check-email' && req.method === 'GET') {
       const email = String(parsedUrl.searchParams.get('email') || '').trim();
-      if (!email || !email.includes('@')) {
+      if (!email) {
         sendJson(
           res,
-          { ok: false, available: false, message: '올바른 이메일 형식을 입력해 주세요.' },
+          { ok: false, available: false, message: '아이디 또는 이메일을 입력해 주세요.' },
           400
         );
         return;
@@ -9211,19 +9228,19 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, {
           ok: true,
           available: false,
-          message: `이미 가입된 이메일(${existing.email})입니다.`,
+          message: `이미 가입된 계정(${existing.email})입니다.`,
         });
       } else {
         sendJson(res, {
           ok: true,
           available: true,
-          message: '사용 가능한 이메일입니다.',
+          message: '사용 가능한 아이디(이메일)입니다.',
         });
       }
       return;
     }
 
-    // 2. 회원가입 API (이메일 가입 & Google Gmail 가입)
+    // 2. 회원가입 API (일반 아이디 / 이메일 가입 & Google Gmail 가입)
     if (pathname === '/api/auth/signup' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const email = String(body.email || '').trim();
@@ -9232,25 +9249,19 @@ const server = http.createServer(async (req, res) => {
         String(body.signup_type || 'EMAIL').toUpperCase() === 'GOOGLE_GMAIL'
           ? 'GOOGLE_GMAIL'
           : 'EMAIL';
-      const name = String(body.name || '').trim();
+      const name = String(body.name || email.split('@')[0] || '신규회원').trim();
       const gender = String(body.gender || '남성').trim();
       const birthDate = String(body.birth_date || '1980-01-01').trim();
       const age = Number(body.age) || 46;
-      const roadAddress = String(body.road_address || '').trim();
+      const roadAddress = String(
+        body.road_address || '충청북도 충주시 충원대로 268 (단월동)'
+      ).trim();
       const roadAddressDetail = String(body.road_address_detail || '').trim();
       const postalCode = String(body.postal_code || '27481').trim();
       const phone = String(body.phone || '010-0000-0000').trim();
 
-      if (!email || !email.includes('@')) {
-        sendJson(res, { ok: false, message: '이메일 주소를 정확히 입력해 주세요.' }, 400);
-        return;
-      }
-      if (!name) {
-        sendJson(res, { ok: false, message: '이름을 입력해 주세요.' }, 400);
-        return;
-      }
-      if (!roadAddress) {
-        sendJson(res, { ok: false, message: '도로명 주소를 검색 또는 입력해 주세요.' }, 400);
+      if (!email) {
+        sendJson(res, { ok: false, message: '아이디 또는 이메일 주소를 입력해 주세요.' }, 400);
         return;
       }
 
@@ -9368,14 +9379,52 @@ const server = http.createServer(async (req, res) => {
       const normalizedEmail =
         email.toLowerCase() === 'cloudbae' ? 'CloudBae@naver.com' : email;
 
-      const member = db
+      let member = db
         .prepare('SELECT * FROM user_member WHERE LOWER(email) = LOWER(?)')
         .get(normalizedEmail) as any;
 
       if (!member) {
+        try {
+          const remoteRows = await supabaseRestSelect(
+            'user_member',
+            `email=ilike.${encodeURIComponent(normalizedEmail)}`
+          );
+          if (Array.isArray(remoteRows) && remoteRows[0]) {
+            const m = remoteRows[0];
+            db.prepare(`
+              INSERT OR REPLACE INTO user_member (
+                member_id, email, password, signup_type, name, nickname,
+                gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+              m.member_id || `MEM-${Date.now()}`,
+              m.email,
+              m.password || '1234',
+              m.signup_type || 'EMAIL',
+              m.name || m.email,
+              m.nickname || '',
+              m.gender || '남성',
+              m.birth_date || '1980-01-01',
+              Number(m.age || 46),
+              m.road_address || '',
+              m.road_address_detail || '',
+              m.postal_code || '27481',
+              m.phone || '010-0000-0000',
+              m.created_at || ''
+            );
+            member = db
+              .prepare('SELECT * FROM user_member WHERE LOWER(email) = LOWER(?)')
+              .get(normalizedEmail) as any;
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!member) {
         sendJson(
           res,
-          { ok: false, message: '등록되지 않은 이메일 계정입니다. 이메일 주소를 확인하거나 회원가입을 진행해 주세요.' },
+          { ok: false, message: '등록되지 않은 계정입니다. 아이디(이메일)를 확인하거나 회원가입을 진행해 주세요.' },
           401
         );
         return;
@@ -9476,43 +9525,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 5. 마이페이지 통합 조회 API
-    if (pathname === '/api/mypage' && req.method === 'GET') {
-      await syncAdminMemberTablesFromSupabase();
-      const email = String(parsedUrl.searchParams.get('email') || 'CloudBae@naver.com').trim();
-      const payload = buildMemberMyPagePayload(email) || buildMemberMyPagePayload('CloudBae@naver.com');
-      sendJson(res, { ok: true, ...payload });
-      return;
-    }
-
-    // ==================== [관리자 회원정보 관리 (회원 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) API] ====================
-    const buildAdminMembersPayload = () => {
-      const members = db
-        .prepare('SELECT * FROM user_member ORDER BY created_at DESC, member_id ASC')
-        .all() as Record<string, any>[];
-      const farmlands = db
-        .prepare('SELECT * FROM member_farmland ORDER BY created_at ASC, farmland_id ASC')
-        .all() as Record<string, any>[];
-      const cropPlans = db
-        .prepare('SELECT * FROM member_crop_plan ORDER BY created_at ASC, crop_plan_id ASC')
-        .all() as Record<string, any>[];
-      return {
-        ok: true,
-        members,
-        farmlands,
-        cropPlans,
-      };
-    };
-
-    const syncAdminMemberTablesFromSupabase = async () => {
+    async function syncAdminMemberTablesFromSupabase() {
       try {
-        const [sbMembers, sbLands, sbPlans] = await Promise.all([
+        const [sbMembers, sbLands, sbPlans, sbReqs, sbOrders] = await Promise.all([
           supabaseRestSelect('user_member'),
           supabaseRestSelect('member_farmland'),
           supabaseRestSelect('member_crop_plan'),
+          supabaseRestSelect('member_schedule_request'),
+          supabaseRestSelect('member_agro_order'),
         ]);
-        if (Array.isArray(sbMembers)) {
-          db.prepare('DELETE FROM user_member').run();
+        if (Array.isArray(sbMembers) && sbMembers.length > 0) {
           const stmt = db.prepare(`
             INSERT OR REPLACE INTO user_member (
               member_id, email, password, signup_type, name, nickname,
@@ -9539,8 +9561,7 @@ const server = http.createServer(async (req, res) => {
             );
           }
         }
-        if (Array.isArray(sbLands)) {
-          db.prepare('DELETE FROM member_farmland').run();
+        if (Array.isArray(sbLands) && sbLands.length > 0) {
           const stmt = db.prepare(`
             INSERT OR REPLACE INTO member_farmland (
               farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
@@ -9565,8 +9586,7 @@ const server = http.createServer(async (req, res) => {
             );
           }
         }
-        if (Array.isArray(sbPlans)) {
-          db.prepare('DELETE FROM member_crop_plan').run();
+        if (Array.isArray(sbPlans) && sbPlans.length > 0) {
           const stmt = db.prepare(`
             INSERT OR REPLACE INTO member_crop_plan (
               crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
@@ -9597,9 +9617,112 @@ const server = http.createServer(async (req, res) => {
             );
           }
         }
+        if (Array.isArray(sbReqs) && sbReqs.length > 0) {
+          const stmt = db.prepare(`
+            INSERT OR REPLACE INTO member_schedule_request (
+              request_no, member_id, member_contact,
+              group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+              bjd_code, sido, sigungu, eupmyeondong, detail_address,
+              area_pyeong, cultivation_type, land_category, planting_method,
+              desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+              is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const r of sbReqs) {
+            if (!r?.request_no) continue;
+            stmt.run(
+              String(r.request_no),
+              String(r.member_id || 'CloudBae@naver.com (배철민)'),
+              String(r.member_contact || '010-2026-0109'),
+              String(r.group_id || 'GRP-LEAF'),
+              String(r.group_name || '엽채류'),
+              String(r.crop_id || 'CRP-CABBAGE'),
+              String(r.crop_name || '가을배추'),
+              String(r.cultivar_id || 'CV-BRM3'),
+              String(r.item_name_3rd || '불암3호'),
+              String(r.system_id || 'SYS-CAB-AUTUMN'),
+              String(r.system_name || '중부 노지 가을배추 표준작형'),
+              String(r.bjd_code || '4313010700'),
+              String(r.sido || '충청북도'),
+              String(r.sigungu || '충주시'),
+              String(r.eupmyeondong || '단월동'),
+              String(r.detail_address || ''),
+              Number(r.area_pyeong) || 300,
+              String(r.cultivation_type || '노지'),
+              String(r.land_category || '전'),
+              String(r.planting_method || '모종'),
+              String(r.desired_start_date || '2026-08-25'),
+              String(r.expected_harvest_date || '2026-11-15'),
+              Number(r.mulching_yn ?? 1),
+              String(r.irrigation_type || '점적관수'),
+              Number(r.is_organic ?? 0),
+              Number(r.soil_test_linked_yn ?? 1),
+              Number(r.target_yield_kg) || 3500,
+              String(r.etc_notes || ''),
+              String(r.request_status || '일정산출완료'),
+              String(r.requested_at || '')
+            );
+          }
+        }
+        if (Array.isArray(sbOrders) && sbOrders.length > 0) {
+          const stmt = db.prepare(`
+            INSERT OR REPLACE INTO member_agro_order (
+              order_no, email, ordered_at, purchase_title, crop_title, region_address,
+              delivery_option, payment_method, delivery_status, raw_total, discount_amount,
+              final_total, reward_points, items_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          for (const o of sbOrders) {
+            if (!o?.order_no) continue;
+            stmt.run(
+              String(o.order_no),
+              String(o.email || 'CloudBae@naver.com'),
+              String(o.ordered_at || ''),
+              String(o.purchase_title || ''),
+              String(o.crop_title || ''),
+              String(o.region_address || ''),
+              String(o.delivery_option || 'STAGE_SCHEDULED'),
+              String(o.payment_method || 'BANK_TRANSFER'),
+              String(o.delivery_status || ''),
+              Number(o.raw_total) || 0,
+              Number(o.discount_amount) || 0,
+              Number(o.final_total) || 0,
+              Number(o.reward_points) || 0,
+              String(o.items_json || '[]')
+            );
+          }
+        }
       } catch {
         // ignore network errors
       }
+    }
+
+    // 5. 마이페이지 통합 조회 API
+    if (pathname === '/api/mypage' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
+      const email = String(parsedUrl.searchParams.get('email') || 'CloudBae@naver.com').trim();
+      const payload = buildMemberMyPagePayload(email) || buildMemberMyPagePayload('CloudBae@naver.com');
+      sendJson(res, { ok: true, ...payload });
+      return;
+    }
+
+    // ==================== [관리자 회원정보 관리 (회원 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) API] ====================
+    const buildAdminMembersPayload = () => {
+      const members = db
+        .prepare('SELECT * FROM user_member ORDER BY created_at DESC, member_id ASC')
+        .all() as Record<string, any>[];
+      const farmlands = db
+        .prepare('SELECT * FROM member_farmland ORDER BY created_at ASC, farmland_id ASC')
+        .all() as Record<string, any>[];
+      const cropPlans = db
+        .prepare('SELECT * FROM member_crop_plan ORDER BY created_at ASC, crop_plan_id ASC')
+        .all() as Record<string, any>[];
+      return {
+        ok: true,
+        members,
+        farmlands,
+        cropPlans,
+      };
     };
 
     if (pathname === '/api/admin/members' && req.method === 'GET') {

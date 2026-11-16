@@ -1531,23 +1531,47 @@ if (typeof window !== 'undefined') {
           }
         }
 
+        const localMembers = getStoredMembers();
+        const mergedMembers: any[] = [...localMembers];
         if (Array.isArray(sbMembers) && sbMembers.length > 0) {
-          saveStoredMembers(sbMembers);
+          for (const sm of sbMembers) {
+            if (!sm?.email) continue;
+            const idx = mergedMembers.findIndex(
+              (m: any) => String(m.email || '').toLowerCase() === String(sm.email).toLowerCase()
+            );
+            if (idx >= 0) mergedMembers[idx] = { ...mergedMembers[idx], ...sm };
+            else mergedMembers.push(sm);
+          }
+          saveStoredMembers(mergedMembers);
+        }
+        if (mergedMembers.length > 0) {
           const matchedMember =
-            sbMembers.find(
+            mergedMembers.find(
               (m: any) => String(m.email || '').toLowerCase() === String(emailInput).toLowerCase()
             ) ||
-            sbMembers.find((m: any) => String(m.email || '').toLowerCase() === 'cloudbae@naver.com') ||
-            sbMembers[0];
+            (String(emailInput).toLowerCase() === 'cloudbae@naver.com'
+              ? mergedMembers.find(
+                  (m: any) => String(m.email || '').toLowerCase() === 'cloudbae@naver.com'
+                ) || mergedMembers[0]
+              : null);
           if (matchedMember) {
             mp.member = matchedMember;
           }
         }
         if (Array.isArray(sbLands)) {
-          mp.farmlands = sbLands;
+          const prevLands = Array.isArray(mp.farmlands) ? mp.farmlands : [];
+          const mergedLands = [...sbLands];
+          for (const pl of prevLands) {
+            if (pl?.farmland_id && !mergedLands.some((sl: any) => sl.farmland_id === pl.farmland_id)) {
+              mergedLands.push(pl);
+            }
+          }
+          mp.farmlands = mergedLands;
         }
         if (Array.isArray(sbPlans)) {
-          const validPlans = sbPlans.filter(
+          const prevPlans = Array.isArray(mp.cropPlans) ? mp.cropPlans : [];
+          const combinedPlans = [...prevPlans, ...sbPlans];
+          const validPlans = combinedPlans.filter(
             (cp: any) =>
               !deletedRequestKeysSet.has(String(cp.crop_plan_id || '')) &&
               !deletedRequestKeysSet.has(String(cp.request_no || '')) &&
@@ -1562,7 +1586,7 @@ if (typeof window !== 'undefined') {
             const rNo = String(cp?.request_no || '').trim();
             const pId = String(cp?.crop_plan_id || '').trim();
             if ((rNo && seenReqNos.has(rNo)) || (pId && seenPlanIds.has(pId))) {
-              if (pId) duplicatePlanIdsToDelete.push(pId);
+              if (pId && !seenPlanIds.has(pId)) duplicatePlanIdsToDelete.push(pId);
               continue;
             }
             if (rNo) seenReqNos.add(rNo);
@@ -1575,7 +1599,13 @@ if (typeof window !== 'undefined') {
           }
         }
         if (Array.isArray(sbReqs)) {
-          const validReqs = sbReqs.filter(
+          const prevReqs = Array.isArray(mp.scheduleRequests)
+            ? mp.scheduleRequests
+            : Array.isArray(snap.scheduleRequests?.items)
+            ? snap.scheduleRequests.items
+            : [];
+          const combinedReqs = [...prevReqs, ...sbReqs];
+          const validReqs = combinedReqs.filter(
             (r: any) => !deletedRequestKeysSet.has(String(r.request_no || ''))
           );
           const seenR = new Set<string>();
@@ -1613,20 +1643,76 @@ if (typeof window !== 'undefined') {
       return mp;
     };
 
+    const buildFilteredMyPageResponse = (mpInput: any, emailHint?: string) => {
+      const mp = mpInput || snap.mypage || {};
+      const members = getStoredMembers();
+      const rawTarget = String(emailHint || mp.member?.email || 'CloudBae@naver.com').trim();
+      const targetEmail = rawTarget.toLowerCase();
+      const isCloudBae = targetEmail === 'cloudbae@naver.com' || targetEmail === 'cloudbae';
+
+      const matchedMember =
+        members.find((m: any) => String(m.email || '').toLowerCase() === targetEmail) ||
+        (mp.member && String(mp.member.email || '').toLowerCase() === targetEmail ? mp.member : null) ||
+        (isCloudBae ? getDefaultCloudBaeMember() : { ...(mp.member || {}), email: rawTarget, name: mp.member?.name || rawTarget });
+
+      const allFarmlands = Array.isArray(mp.farmlands) ? mp.farmlands : [];
+      const allCropPlans = Array.isArray(mp.cropPlans) ? mp.cropPlans : [];
+      const allOrders = Array.isArray(mp.orders) ? mp.orders : [];
+      const allScheduleReqs = Array.isArray(mp.scheduleRequests)
+        ? mp.scheduleRequests
+        : Array.isArray(snap.scheduleRequests?.items)
+        ? snap.scheduleRequests.items
+        : [];
+
+      const memberFarmlands = allFarmlands.filter((f: any) =>
+        isCloudBae
+          ? !f.email || String(f.email).toLowerCase() === 'cloudbae@naver.com'
+          : String(f.email || '').toLowerCase() === targetEmail
+      );
+      const memberCropPlans = allCropPlans.filter((c: any) =>
+        isCloudBae
+          ? !c.email || String(c.email).toLowerCase() === 'cloudbae@naver.com'
+          : String(c.email || '').toLowerCase() === targetEmail
+      );
+      const memberScheduleRequests = allScheduleReqs.filter((r: any) =>
+        isCloudBae
+          ? !r.member_id ||
+            String(r.member_id).toLowerCase().includes('cloudbae') ||
+            String(r.member_id).includes('배철민')
+          : String(r.member_id || r.email || '').toLowerCase().includes(targetEmail)
+      );
+      const memberOrders = allOrders.filter((o: any) =>
+        isCloudBae
+          ? !o.email || String(o.email).toLowerCase() === 'cloudbae@naver.com'
+          : String(o.email || '').toLowerCase() === targetEmail
+      );
+
+      return {
+        ok: true,
+        ...mp,
+        member: matchedMember,
+        farmlands: memberFarmlands,
+        cropPlans: memberCropPlans,
+        scheduleRequests: memberScheduleRequests,
+        orders: memberOrders,
+      };
+    };
+
     if (p === '/api/auth/check-email') {
       const email = (u.searchParams.get('email') || '').trim().toLowerCase();
-      if (!email || !email.includes('@')) {
-        return jsonResponse({ ok: false, available: false, message: '올바른 이메일 형식을 입력해 주세요.' }, 400);
+      if (!email) {
+        return jsonResponse({ ok: false, available: false, message: '아이디 또는 이메일을 입력해 주세요.' }, 400);
       }
       const sbMembers = await sbSelect('user_member', 'select=email');
-      const members = Array.isArray(sbMembers) && sbMembers.length > 0 ? sbMembers : getStoredMembers();
+      const localMembers = getStoredMembers();
+      const members = Array.isArray(sbMembers) && sbMembers.length > 0 ? [...sbMembers, ...localMembers] : localMembers;
       const exists =
         email === 'cloudbae@naver.com' ||
         members.some((m) => String(m.email || '').toLowerCase() === email);
       return jsonResponse({
         ok: true,
         available: !exists,
-        message: exists ? '이미 가입된 이메일입니다.' : '사용 가능한 이메일입니다.',
+        message: exists ? '이미 가입된 아이디(이메일)입니다.' : '사용 가능한 아이디(이메일)입니다.',
       });
     }
 
@@ -1643,14 +1729,7 @@ if (typeof window !== 'undefined') {
         const existing = members.find((m) => String(m.email || '').toLowerCase() === gmailEmail.toLowerCase());
         if (existing) {
           const mp = snap.mypage || {};
-          return jsonResponse({
-            ok: true,
-            ...mp,
-            member: existing,
-            farmlands: Array.isArray(mp.farmlands) ? mp.farmlands : [],
-            cropPlans: Array.isArray(mp.cropPlans) ? mp.cropPlans : [],
-            orders: Array.isArray(mp.orders) ? mp.orders : [],
-          });
+          return jsonResponse(buildFilteredMyPageResponse(mp, existing.email));
         }
         return jsonResponse({
           ok: true,
@@ -1674,7 +1753,7 @@ if (typeof window !== 'undefined') {
         return jsonResponse(
           {
             ok: false,
-            message: '등록되지 않은 이메일 계정입니다. (기본 계정: CloudBae@naver.com / 1234)',
+            message: '등록되지 않은 계정입니다. 아이디(이메일)를 확인하거나 회원가입을 진행해 주세요.',
           },
           401
         );
@@ -1685,36 +1764,31 @@ if (typeof window !== 'undefined') {
         return jsonResponse(
           {
             ok: false,
-            message: '비밀번호가 일치하지 않습니다. (기본 비밀번호: 1234)',
+            message: '비밀번호가 일치하지 않습니다.',
           },
           401
         );
       }
 
       const mp = (snap.mypage = snap.mypage || {});
-      mp.member = { ...found, name: found.name || '배철민' };
+      mp.member = { ...found, name: found.name || normalizedEmail };
       persistMyPage(mp);
 
-      return jsonResponse({
-        ok: true,
-        ...mp,
-        member: mp.member,
-        farmlands: Array.isArray(mp.farmlands) ? mp.farmlands : [],
-        cropPlans: Array.isArray(mp.cropPlans) ? mp.cropPlans : [],
-        orders: Array.isArray(mp.orders) ? mp.orders : [],
-      });
+      return jsonResponse(buildFilteredMyPageResponse(mp, mp.member.email));
     }
 
     if (p === '/api/auth/signup' && method === 'POST') {
       const body = parseBody(init);
       const members = getStoredMembers();
+      const rawIdOrEmail = String(body.email || 'user@naver.com').trim();
+      const resolvedName = String(body.name || rawIdOrEmail.split('@')[0] || '신규회원').trim();
       const newMember = toDbMemberRow({
         member_id: `MEM-${Date.now()}`,
-        email: String(body.email || 'user@naver.com').trim(),
+        email: rawIdOrEmail,
         password: String(body.password || '1234').trim(),
         signup_type: body.signup_type === 'GOOGLE_GMAIL' ? 'GOOGLE_GMAIL' : 'EMAIL',
-        name: String(body.name || '배철민').trim(),
-        nickname: String(body.email || 'user').split('@')[0],
+        name: resolvedName,
+        nickname: rawIdOrEmail.split('@')[0] || resolvedName,
         gender: body.gender || '남성',
         birth_date: body.birth_date || '1980-05-15',
         age: Number(body.age) || 46,
@@ -1732,15 +1806,34 @@ if (typeof window !== 'undefined') {
 
       const mp = (snap.mypage = snap.mypage || {});
       mp.member = newMember;
+
+      // 신규 가입 회원을 위한 기본 재배지 1곳 자동 세팅
+      const existingLands = Array.isArray(mp.farmlands) ? [...mp.farmlands] : [];
+      const hasMemberLand = existingLands.some(
+        (f: any) => String(f.email || '').toLowerCase() === newMember.email.toLowerCase()
+      );
+      if (!hasMemberLand) {
+        const defaultLand = {
+          farmland_id: `LAND-${Date.now()}`,
+          email: newMember.email,
+          farmland_title: `${resolvedName} 님의 제1농장`,
+          bjd_code: '4313010700',
+          sido: '충청북도',
+          sigungu: '충주시',
+          eupmyeondong: '단월동',
+          detail_jibun: '100-1번지',
+          area_pyeong: 300,
+          soil_ph: 6.3,
+          soil_ec: 1.1,
+          created_at: getKstNowStr(),
+        };
+        existingLands.push(defaultLand);
+        mp.farmlands = existingLands;
+        await sbUpsert('member_farmland', defaultLand, 'farmland_id');
+      }
+
       persistMyPage(mp);
-      return jsonResponse({
-        ok: true,
-        ...mp,
-        member: newMember,
-        farmlands: Array.isArray(mp.farmlands) ? mp.farmlands : [],
-        cropPlans: Array.isArray(mp.cropPlans) ? mp.cropPlans : [],
-        orders: Array.isArray(mp.orders) ? mp.orders : [],
-      });
+      return jsonResponse(buildFilteredMyPageResponse(mp, newMember.email));
     }
 
     if (p === '/api/auth/find-password' && method === 'POST') {
@@ -1772,35 +1865,7 @@ if (typeof window !== 'undefined') {
     if (p === '/api/mypage') {
       const emailParam = (u.searchParams.get('email') || 'CloudBae@naver.com').trim();
       const mp = await syncMyPageFromSupabase(emailParam);
-      const targetEmail = String(mp.member?.email || emailParam || 'CloudBae@naver.com').toLowerCase();
-      const allFarmlands = Array.isArray(mp.farmlands) ? mp.farmlands : [];
-      const allCropPlans = Array.isArray(mp.cropPlans) ? mp.cropPlans : [];
-      const memberFarmlands = allFarmlands.filter(
-        (f: any) => !f.email || String(f.email).toLowerCase() === targetEmail
-      );
-      const memberCropPlans = allCropPlans.filter(
-        (c: any) => !c.email || String(c.email).toLowerCase() === targetEmail
-      );
-      const allScheduleReqs = Array.isArray(mp.scheduleRequests)
-        ? mp.scheduleRequests
-        : Array.isArray(snap.scheduleRequests?.items)
-        ? snap.scheduleRequests.items
-        : [];
-      const memberScheduleRequests = allScheduleReqs.filter(
-        (r: any) =>
-          !r.member_id ||
-          String(r.member_id).toLowerCase().includes(targetEmail) ||
-          targetEmail === 'cloudbae@naver.com'
-      );
-      return jsonResponse({
-        ok: true,
-        ...mp,
-        member: mp.member || getDefaultCloudBaeMember(),
-        farmlands: memberFarmlands,
-        cropPlans: memberCropPlans,
-        scheduleRequests: memberScheduleRequests,
-        orders: Array.isArray(mp.orders) ? mp.orders : [],
-      });
+      return jsonResponse(buildFilteredMyPageResponse(mp, emailParam));
     }
 
     // ==================== [관리자 회원정보 관리 (회원 · 나의 작물 재배지 · 나의 재배작물 통합 CRUD) API] ====================
@@ -2077,7 +2142,7 @@ if (typeof window !== 'undefined') {
       mp.member = { ...(mp.member || getDefaultCloudBaeMember()), ...body };
       persistMyPage(mp);
       await sbUpsert('user_member', toDbMemberRow(mp.member), 'member_id');
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, body.email || mp.member?.email));
     }
 
     if (p === '/api/mypage/farmlands' && method === 'POST') {
@@ -2086,7 +2151,7 @@ if (typeof window !== 'undefined') {
       const list = Array.isArray(mp.farmlands) ? [...mp.farmlands] : [];
       const newLand = {
         farmland_id: body.farmland_id || `LAND-${Date.now()}`,
-        email: body.email || 'CloudBae@naver.com',
+        email: body.email || mp.member?.email || 'CloudBae@naver.com',
         farmland_title: body.farmland_title || '신규 재배지',
         bjd_code: body.bjd_code || '4313010700',
         sido: body.sido || '충청북도',
@@ -2104,18 +2169,18 @@ if (typeof window !== 'undefined') {
       mp.farmlands = list;
       persistMyPage(mp);
       await sbUpsert('member_farmland', newLand, 'farmland_id');
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, newLand.email));
     }
 
     if (p === '/api/mypage/farmlands/delete' && method === 'POST') {
-      const { farmland_id } = parseBody(init);
+      const { email, farmland_id } = parseBody(init);
       const mp = (snap.mypage = snap.mypage || {});
       mp.farmlands = (mp.farmlands || []).filter((f: any) => f.farmland_id !== farmland_id);
       persistMyPage(mp);
       if (farmland_id) {
         await sbDelete('member_farmland', `farmland_id=eq.${encodeURIComponent(String(farmland_id))}`);
       }
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, email || mp.member?.email));
     }
 
     if (p === '/api/mypage/crops' && method === 'POST') {
@@ -2133,7 +2198,7 @@ if (typeof window !== 'undefined') {
       const existingPlan = existingIdx >= 0 ? list[existingIdx] : null;
       const newPlan = {
         crop_plan_id: existingPlan?.crop_plan_id || inputPlanId || `CPLAN-${reqNo}`,
-        email: body.email || existingPlan?.email || 'CloudBae@naver.com',
+        email: body.email || existingPlan?.email || mp.member?.email || 'CloudBae@naver.com',
         request_no: reqNo,
         farmland_id: body.farmland_id || existingPlan?.farmland_id || 'LAND-CB-01',
         sido: body.sido || existingPlan?.sido || '충청북도',
@@ -2156,11 +2221,11 @@ if (typeof window !== 'undefined') {
       mp.cropPlans = deduplicateCropPlanList(list);
       persistMyPage(mp);
       await sbUpsert('member_crop_plan', newPlan, 'crop_plan_id');
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, newPlan.email));
     }
 
     if (p === '/api/mypage/crops/progress' && method === 'POST') {
-      const { crop_plan_id, progress_pct } = parseBody(init);
+      const { email, crop_plan_id, progress_pct } = parseBody(init);
       const mp = (snap.mypage = snap.mypage || {});
       const pct = Math.max(0, Math.min(100, Number(progress_pct) || 0));
       let updatedCropPlan: any = null;
@@ -2181,7 +2246,7 @@ if (typeof window !== 'undefined') {
         const { display_request_no, ...dbPlan } = updatedCropPlan;
         await sbUpsert('member_crop_plan', dbPlan, 'crop_plan_id');
       }
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, email || updatedCropPlan?.email || mp.member?.email));
     }
 
     async function cascadeDeleteScheduleData(params: {
@@ -2427,11 +2492,11 @@ if (typeof window !== 'undefined') {
     if (p === '/api/mypage/crops/delete' && method === 'POST') {
       const body = parseBody(init);
       const { mp, targetReqNos, targetPlanIds } = await cascadeDeleteScheduleData(body);
+      const filteredPayload = buildFilteredMyPageResponse(mp, body.email || mp.member?.email);
       return jsonResponse({
-        ok: true,
+        ...filteredPayload,
         deleted_request_nos: targetReqNos,
         deleted_crop_plan_ids: targetPlanIds,
-        ...mp,
       });
     }
 
@@ -2442,7 +2507,7 @@ if (typeof window !== 'undefined') {
       const orderItems = Array.isArray(body.orderItems) ? body.orderItems : [];
       const newOrder = {
         order_no: body.orderNo || `ORD-${Date.now()}`,
-        email: body.email || 'CloudBae@naver.com',
+        email: body.email || mp.member?.email || 'CloudBae@naver.com',
         ordered_at: body.orderedAt || getKstNowStr().slice(0, 16),
         purchase_title: body.purchaseTitle || '생육단계별 선택 농자재 일괄 구매',
         crop_title: body.cropTitle || '가을배추 (불암3호)',
@@ -2480,7 +2545,7 @@ if (typeof window !== 'undefined') {
         },
         'order_no'
       );
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, newOrder.email));
     }
 
     if (p === '/api/mypage/orders/delete' && method === 'POST') {
@@ -2489,7 +2554,9 @@ if (typeof window !== 'undefined') {
       const orderNo = String(body.order_no || '').trim();
       const mp = (snap.mypage = snap.mypage || {});
       if (body.delete_all) {
-        mp.orders = [];
+        mp.orders = (mp.orders || []).filter(
+          (o: any) => String(o.email || '').toLowerCase() !== email.toLowerCase()
+        );
         persistMyPage(mp);
         await sbDelete('member_agro_order', `email=eq.${encodeURIComponent(email)}`);
       } else if (orderNo) {
@@ -2497,7 +2564,7 @@ if (typeof window !== 'undefined') {
         persistMyPage(mp);
         await sbDelete('member_agro_order', `order_no=eq.${encodeURIComponent(orderNo)}`);
       }
-      return jsonResponse({ ok: true, ...mp });
+      return jsonResponse(buildFilteredMyPageResponse(mp, email));
     }
 
     // 4. 재배 일정 요청 및 제공 API (Supabase member_schedule_request / schedule_provision_custom_item 실시간 연동)
@@ -2518,9 +2585,20 @@ if (typeof window !== 'undefined') {
           }
         }
         if (Array.isArray(sbReqs) && sbReqs.length > 0) {
-          const filtered = sbReqs.filter((r: any) => !deletedSet.has(String(r.request_no || '')));
-          sr.items = filtered;
-          sr.total = filtered.length;
+          const prevItems = Array.isArray(sr.items) ? sr.items : [];
+          const combined = [...prevItems, ...sbReqs].filter(
+            (r: any) => !deletedSet.has(String(r.request_no || ''))
+          );
+          const seenR = new Set<string>();
+          const deduped: any[] = [];
+          for (const r of combined) {
+            const rNo = String(r?.request_no || '').trim();
+            if (!rNo || seenR.has(rNo)) continue;
+            seenR.add(rNo);
+            deduped.push(r);
+          }
+          sr.items = deduped;
+          sr.total = deduped.length;
         }
       } catch {
         // ignore network errors
@@ -2533,9 +2611,15 @@ if (typeof window !== 'undefined') {
       const sr = (snap.scheduleRequests = snap.scheduleRequests || { items: [], total: 0 });
       const list = Array.isArray(sr.items) ? [...sr.items] : [];
       const reqNo = String(body.request_no || `REQ-20261114-${Date.now().toString().slice(-3)}`).trim();
+      const ownerEmail = String(
+        body.email ||
+          (body.member_id ? String(body.member_id).split(' ')[0] : '') ||
+          snap.mypage?.member?.email ||
+          'CloudBae@naver.com'
+      ).trim();
       const rowData = {
         request_no: reqNo,
-        member_id: String(body.member_id || 'CloudBae@naver.com').trim(),
+        member_id: String(body.member_id || ownerEmail).trim(),
         member_contact: String(body.member_contact || '010-2026-0109').trim(),
         group_id: String(body.group_id || 'GRP-LEAF').trim(),
         group_name: String(body.group_name || '엽채류').trim(),
@@ -2595,7 +2679,7 @@ if (typeof window !== 'undefined') {
       const resolvedPlanId = existingPlan?.crop_plan_id || inputPlanId || defaultPlanId;
       const syncedPlan = {
         crop_plan_id: resolvedPlanId,
-        email: 'CloudBae@naver.com',
+        email: existingPlan?.email || ownerEmail,
         request_no: reqNo,
         farmland_id: existingPlan?.farmland_id || 'LAND-CB-01',
         sido: rowData.sido,
@@ -2751,28 +2835,62 @@ if (typeof window !== 'undefined') {
       const baseProv = JSON.parse(JSON.stringify(snap.scheduleProvision || {}));
       const reqNoParam = (u.searchParams.get('request_no') || '').trim();
 
-      // 1) Supabase member_schedule_request에서 최신 요청 목록 조회
+      // 1) Supabase member_schedule_request에서 최신 요청 목록 조회 및 메모리 요청과 병합
       try {
         const sbReqs = await sbSelect('member_schedule_request', 'select=*&order=requested_at.desc');
         if (Array.isArray(sbReqs) && sbReqs.length > 0) {
-          baseProv.allRequests = sbReqs;
+          const prevItems = Array.isArray(snap.scheduleRequests?.items)
+            ? snap.scheduleRequests.items
+            : Array.isArray(baseProv.allRequests)
+            ? baseProv.allRequests
+            : [];
+          const combined = [...prevItems, ...sbReqs];
+          const seenR = new Set<string>();
+          const deduped: any[] = [];
+          for (const r of combined) {
+            const rNo = String(r?.request_no || '').trim();
+            if (!rNo || seenR.has(rNo)) continue;
+            seenR.add(rNo);
+            deduped.push(r);
+          }
+          baseProv.allRequests = deduped;
           if (snap.scheduleRequests) {
-            snap.scheduleRequests.items = sbReqs;
-            snap.scheduleRequests.total = sbReqs.length;
+            snap.scheduleRequests.items = deduped;
+            snap.scheduleRequests.total = deduped.length;
           }
         }
       } catch {
         // ignore
       }
 
-      const allReqList: any[] = Array.isArray(baseProv.allRequests)
-        ? baseProv.allRequests
-        : Array.isArray(snap.scheduleRequests?.items)
-        ? snap.scheduleRequests.items
-        : [];
-      const matchedReq = reqNoParam
-        ? allReqList.find((r: any) => r.request_no === reqNoParam)
+      const allReqList: any[] = [
+        ...(Array.isArray(snap.scheduleRequests?.items) ? snap.scheduleRequests.items : []),
+        ...(Array.isArray(snap.mypage?.scheduleRequests) ? snap.mypage.scheduleRequests : []),
+        ...(Array.isArray(baseProv.allRequests) ? baseProv.allRequests : []),
+      ];
+      let matchedReq = reqNoParam
+        ? allReqList.find((r: any) => r?.request_no === reqNoParam)
         : null;
+      if (!matchedReq && reqNoParam && Array.isArray(snap.mypage?.cropPlans)) {
+        const cp = snap.mypage.cropPlans.find((c: any) => c?.request_no === reqNoParam);
+        if (cp) {
+          matchedReq = {
+            request_no: cp.request_no,
+            member_id: cp.email || 'CloudBae@naver.com',
+            group_id: cp.group_id || 'GRP-LEAF',
+            group_name: cp.group_name || '엽채류',
+            crop_name: cp.crop_name || '가을배추',
+            item_name_3rd: cp.cultivar_name || '불암3호',
+            sido: cp.sido || '충청북도',
+            sigungu: cp.sigungu || '충주시',
+            eupmyeondong: cp.eupmyeondong || '단월동',
+            area_pyeong: Number(cp.area_pyeong) || 300,
+            planting_method: cp.planting_type || '모종',
+            desired_start_date: cp.planting_date || '2026-08-25',
+            expected_harvest_date: cp.expected_harvest_date || '2026-11-15',
+          };
+        }
+      }
       if (matchedReq) {
         baseProv.activeRequest = {
           ...(baseProv.activeRequest || {}),
@@ -2933,8 +3051,22 @@ if (typeof window !== 'undefined') {
         return dt.toISOString().slice(0, 10);
       };
 
+      const calcDiffDaysFromBase = (baseYmd: string, targetYmd: string): number => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(baseYmd) || !/^\d{4}-\d{2}-\d{2}$/.test(targetYmd)) return 0;
+        const [by, bm, bd] = baseYmd.split('-').map(Number);
+        const [ty, tm, td] = targetYmd.split('-').map(Number);
+        const bMs = Date.UTC(by, bm - 1, bd);
+        const tMs = Date.UTC(ty, tm - 1, td);
+        return Math.round((tMs - bMs) / (24 * 3600 * 1000));
+      };
+
+      const desiredStartDeltaDays = calcDiffDaysFromBase(
+        '2026-08-25',
+        String(activeReq.desired_start_date || '2026-08-25')
+      );
+
       const applyModuleToScheduleItem = (it: any) => {
-        let dayOffset = 0;
+        let dayOffset = desiredStartDeltaDays;
         const stepOrder = Number(it.step_order || 1);
         const isSeedReq = String(activeReq.planting_method || '').includes('씨') || String(activeReq.planting_method || '').includes('직파');
         if (!isSeedReq && modFlags.seedling_opt_temp_filter === false) {
