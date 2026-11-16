@@ -784,6 +784,19 @@ export default function UserIntroPage() {
     });
   }, [provisionData, selectedRequestNo]);
 
+  // 특정 생육관리 항목의 저장된 기준 날짜 조회 헬퍼
+  const getSavedStageItemDate = (reqNo: string, item: any): string => {
+    const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const itemId = resolveStageItemId(item);
+    if (rNo === 'REQ-20261106-009') {
+      if (itemId === 'SCH-13' && item?.start_date === '2026-09-02') return '2026-10-28';
+      if (itemId === 'SCH-14' && item?.start_date === '2026-09-28') return '2026-11-15';
+      if (itemId === 'SCH-15' && item?.start_date === '2026-11-02') return '2026-11-18';
+      if (itemId === 'SCH-16' && item?.start_date === '2026-11-05') return '2026-11-25';
+    }
+    return String(item?.start_date || '2026-08-25');
+  };
+
   // 특정 생육관리 항목의 현재 표시/수정 날짜 조회 헬퍼
   const getEffectiveStageItemDate = (reqNo: string, item: any, explicitDate?: string): string => {
     if (explicitDate && /^\d{4}-\d{2}-\d{2}$/.test(explicitDate)) {
@@ -803,13 +816,7 @@ export default function UserIntroPage() {
     ) {
       return editDetailForm.start_date;
     }
-    if (rNo === 'REQ-20261106-009') {
-      if (itemId === 'SCH-13' && item?.start_date === '2026-09-02') return '2026-10-28';
-      if (itemId === 'SCH-14' && item?.start_date === '2026-09-28') return '2026-11-15';
-      if (itemId === 'SCH-15' && item?.start_date === '2026-11-02') return '2026-11-18';
-      if (itemId === 'SCH-16' && item?.start_date === '2026-11-05') return '2026-11-25';
-    }
-    return String(item?.start_date || '2026-08-25');
+    return getSavedStageItemDate(rNo, item);
   };
 
   // 재배일정별 "지난 생육과정 보기" 펼침/접힘 상태 (기본값 false: 현재 날짜 이전 생육과정 숨김)
@@ -954,40 +961,64 @@ export default function UserIntroPage() {
     </div>
   );
 
-  // 특정 생육관리 항목의 완료 인정 상태 조회
-  // 핵심 규칙: [완료] 버튼을 클릭해야 해당 날짜(수정 시 수정된 날짜)에 그 생육과정을 시작한 것으로 인정!
-  // 또한 오늘 이후(오늘 포함) 날짜에 해당하는 생육작업은 미완료여도 "(완료작업 처리 필요)"를 표시하지 않고,
-  // 완료 처리를 하지 않은 상태에서 해당 날짜로부터 하루(1일) 이상 지나면 그때 표시!
+  // 특정 생육관리 항목의 완료 인정 상태 조회 (날짜 비교 판정 방식 - 추가 로딩·네트워크 호출 0회)
+  // 핵심 규칙:
+  // 1) 사용자가 직접 [작업완료] 버튼을 클릭한 경우 완료 인정
+  // 2) [작업완료] 버튼 클릭이 없더라도 해당 생육관리 일자(effectiveDate)로부터 현재 날짜 기준 하루(1일) 이상 지나면(elapsedDaysFromTask >= 1) 자동으로 클릭한 것과 동일하게 완료 인정 처리!
   const getStageItemCompletionState = (reqNo: string, item: any, explicitDate?: string) => {
     const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
     const itemId = resolveStageItemId(item);
     const entry = stageItemCompletions[rNo]?.[itemId];
     const effectiveDate = getEffectiveStageItemDate(rNo, item, explicitDate);
-    const savedStartDate = String(item?.start_date || effectiveDate);
+    const savedStartDate = getSavedStageItemDate(rNo, item);
     const todayKstYmd = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
-    // 완료 버튼이 눌렸고, 인정된 날짜(confirmedDate)가 현재(또는 수정된) 날짜와 일치해야만 시작 인정!
-    const isRecognized = Boolean(
+    // 해당 작업일(effectiveDate)로부터 오늘(todayKstYmd)까지 경과 일수
+    const elapsedDaysFromTask =
+      effectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)
+        ? diffDaysBetweenYmd(effectiveDate, todayKstYmd)
+        : 0;
+
+    // 사용자가 수동으로 작업완료를 해제한 경우인지 확인
+    const isManuallyUncompletedForDate = Boolean(
+      entry &&
+        entry.completed === false &&
+        entry.confirmedDate === effectiveDate
+    );
+
+    // 직접 [작업완료] 버튼을 클릭하여 인정된 상태
+    const isExplicitlyCompleted = Boolean(
       entry?.completed &&
         (entry.isSeeded || !effectiveDate || entry.confirmedDate === effectiveDate)
     );
-    // 이전에 완료했었으나 날짜를 수정하여 다시 [완료] 버튼을 눌러야 인정되는 상태인지 여부
+
+    const isDraftModified = Boolean(effectiveDate && savedStartDate && effectiveDate !== savedStartDate);
+
+    // 작업완료 버튼 클릭이 없어도 해당 날짜에서 하루(1일) 이상 경과하면 자동으로 클릭한 것으로 인정
+    const isAutoCompletedByElapsedDay = Boolean(
+      !isManuallyUncompletedForDate &&
+        !isDraftModified &&
+        elapsedDaysFromTask >= 1
+    );
+
+    const isRecognized = Boolean(isExplicitlyCompleted || isAutoCompletedByElapsedDay);
+
+    // 이전에 완료했었으나 날짜를 오늘 이후로 수정하여 다시 [완료] 버튼을 눌러야 인정되는 상태인지 여부
     const isDateModifiedAfterConfirm = Boolean(
-      entry?.completed &&
+      !isRecognized &&
+        entry?.completed &&
         !entry.isSeeded &&
         effectiveDate &&
         entry.confirmedDate &&
         entry.confirmedDate !== effectiveDate
     );
-    const isDraftModified = Boolean(effectiveDate && savedStartDate && effectiveDate !== savedStartDate);
     const isConfirmed = Boolean(isRecognized && !isDraftModified);
-
-    // 해당 작업일(effectiveDate)로부터 오늘(todayKstYmd)까지 경과 일수: 1일 이상 지났고 미완료일 때만 "완료작업 처리 필요" 표시
-    const elapsedDaysFromTask =
-      effectiveDate && /^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)
-        ? diffDaysBetweenYmd(effectiveDate, todayKstYmd)
-        : 0;
     const shouldShowNeedCompletionText = !isConfirmed && elapsedDaysFromTask >= 1;
+    const resolvedConfirmedDate = isRecognized
+      ? entry?.completed && entry?.confirmedDate
+        ? entry.confirmedDate
+        : effectiveDate
+      : '';
 
     return {
       itemId,
@@ -995,18 +1026,19 @@ export default function UserIntroPage() {
       effectiveDate,
       savedStartDate,
       isRecognized,
+      isAutoCompletedByElapsedDay,
       isDateModifiedAfterConfirm,
       isDraftModified,
       needsConfirmClick: !isRecognized,
       shouldShowNeedCompletionText,
       elapsedDaysFromTask,
-      confirmedDate: entry?.confirmedDate || '',
-      completedAt: entry?.completedAt || '',
+      confirmedDate: resolvedConfirmedDate,
+      completedAt: entry?.completedAt || (isAutoCompletedByElapsedDay ? `${effectiveDate} (1일 경과 자동인정)` : ''),
     };
   };
 
   // 재배일정(request_no) 단위의 완료 인정 공정 수 및 진행률(%) 산출 함수
-  const getScheduleCompletionSummary = (reqNo: string, fallbackPct = 60) => {
+  const getScheduleCompletionSummary = (reqNo: string, fallbackPct = 60, plantingDateHint?: string) => {
     const rNo = reqNo || 'REQ-20261106-009';
     const isActiveProvision =
       provisionData &&
@@ -1080,16 +1112,43 @@ export default function UserIntroPage() {
       };
     }
 
-    // 비활성 재배일정 요청 카드용 (STANDARD_16_STAGE_META 기준 산출)
+    // 비활성 재배일정 요청 카드용 (STANDARD_16_STAGE_META 및 날짜 비교 판정 기준 산출)
     const totalCount = 16;
-    const recognizedMetas = STANDARD_16_STAGE_META.filter((m) => {
+    const basePlantingYmd =
+      plantingDateHint && /^\d{4}-\d{2}-\d{2}$/.test(plantingDateHint)
+        ? plantingDateHint
+        : '2026-08-25';
+    const todayKstYmd = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+
+    const resolveMetaDate = (m: (typeof STANDARD_16_STAGE_META)[number]): string => {
+      const draftKey = `${rNo}__${m.itemId}`;
+      if (inlineStageDateDrafts[draftKey] && /^\d{4}-\d{2}-\d{2}$/.test(inlineStageDateDrafts[draftKey])) {
+        return inlineStageDateDrafts[draftKey];
+      }
+      if (rNo === 'REQ-20261106-009') {
+        if (m.itemId === 'SCH-13') return '2026-10-28';
+        if (m.itemId === 'SCH-14') return '2026-11-15';
+        if (m.itemId === 'SCH-15') return '2026-11-18';
+        if (m.itemId === 'SCH-16') return '2026-11-25';
+      }
+      return addDaysToYmd(basePlantingYmd, m.offsetDays);
+    };
+
+    const isMetaRecognized = (m: (typeof STANDARD_16_STAGE_META)[number]): boolean => {
       const e = reqMap[m.itemId];
-      return Boolean(e?.completed);
-    });
+      const effDate = resolveMetaDate(m);
+      if (e && e.completed === false && e.confirmedDate === effDate) {
+        return false;
+      }
+      if (e?.completed) return true;
+      return diffDaysBetweenYmd(effDate, todayKstYmd) >= 1;
+    };
+
+    const recognizedMetas = STANDARD_16_STAGE_META.filter((m) => isMetaRecognized(m));
     const completedCount = recognizedMetas.length;
     const progressPct = Math.round((completedCount / totalCount) * 100);
     const lastMeta = recognizedMetas[recognizedMetas.length - 1] || null;
-    const nextMeta = STANDARD_16_STAGE_META.find((m) => !reqMap[m.itemId]?.completed) || null;
+    const nextMeta = STANDARD_16_STAGE_META.find((m) => !isMetaRecognized(m)) || null;
 
     let currentStageName = '01. 재배 준비 (작업완료 처리 필요)';
     let statusText = `완료 인정 0/${totalCount}건 · 작업완료 처리 필요`;
@@ -1099,10 +1158,9 @@ export default function UserIntroPage() {
       statusText = `전체 ${totalCount}/${totalCount}개 생육과정 시작·완료 인정 (100%)`;
     } else if (lastMeta) {
       const lastEntry = reqMap[lastMeta.itemId];
+      const lastDate = lastEntry?.confirmedDate || resolveMetaDate(lastMeta);
       currentStageName = `${lastMeta.stageNum}. ${lastMeta.stageGroupName} (${lastMeta.subItemName})`;
-      statusText = `완료 인정 ${completedCount}/${totalCount}건 · ${
-        lastEntry?.confirmedDate || ''
-      } 시작인정`;
+      statusText = `완료 인정 ${completedCount}/${totalCount}건 · ${lastDate} 시작인정`;
     }
 
     return {
@@ -1114,7 +1172,12 @@ export default function UserIntroPage() {
       statusText,
       lastCompleted: lastMeta,
       nextUncompleted: nextMeta,
-      nextTaskDday: completedCount >= totalCount ? '완료' : '예정 대기',
+      nextTaskDday:
+        completedCount >= totalCount
+          ? '완료'
+          : nextMeta
+          ? formatShortMdWithWeekday(resolveMetaDate(nextMeta))
+          : '예정 대기',
     };
   };
 
@@ -1209,7 +1272,11 @@ export default function UserIntroPage() {
       const isConfirmedScheduleDeleted =
         keysToCheck.some((k) => deletedConfirmedScheduleKeys.includes(String(k))) ||
         String(crop.request_status || '').includes('삭제');
-      const summary = getScheduleCompletionSummary(reqNo, Number(crop.progress_pct ?? 60));
+      const summary = getScheduleCompletionSummary(
+        reqNo,
+        Number(crop.progress_pct ?? 60),
+        crop.planting_date
+      );
       return {
         ...crop,
         isConfirmedScheduleDeleted,
@@ -5213,11 +5280,20 @@ export default function UserIntroPage() {
     const stepOrder = Number(item.step_order || meta?.stepOrder || 1);
     const stageGroupName = item.stage_group_name || meta?.stageGroupName || '생육 관리';
 
-    // 이미 동일한 날짜로 완료 인정된 상태라면 -> 완료 취소 토글
+    // 이미 동일한 날짜로 완료 인정된 상태라면 -> 완료 취소 토글 (하루 경과 자동인정 항목도 수동 취소 가능하도록 completed: false 기록)
     if (st.isRecognized && !st.isDraftModified) {
       saveStageItemCompletions((prev) => {
         const curReq = { ...(prev[rNo] || {}) };
-        delete curReq[st.itemId];
+        curReq[st.itemId] = {
+          itemId: st.itemId,
+          stepOrder,
+          stageGroupName,
+          subItemName: cleanSubName,
+          completed: false,
+          confirmedDate: targetYmd,
+          completedAt: '',
+          isSeeded: false,
+        };
         return {
           ...prev,
           [rNo]: curReq,
@@ -9218,7 +9294,7 @@ export default function UserIntroPage() {
                                         )}
                                       </div>
                                       <p className="text-[11px] font-semibold text-slate-600 leading-snug">
-                                        💡 날짜 오른쪽의 <strong>[완료 / 작업완료]</strong> 버튼을 클릭해야 해당 일자에 생육과정을 시작한 것으로 인정되어 진행률에 반영됩니다.
+                                        💡 날짜 오른쪽의 <strong>[작업완료]</strong> 버튼을 클릭하거나, 해당 생육관리 일자로부터 <strong>현재 날짜가 하루(1일) 지나면 자동으로 작업완료 처리</strong>되어 진행률에 반영됩니다.
                                       </p>
                                     </div>
                                     {cascadeDeltaDays !== 0 && (
@@ -11431,7 +11507,7 @@ export default function UserIntroPage() {
                             })}
                           </div>
                           <p className="text-[11px] font-semibold text-emerald-900/90 leading-snug">
-                            💡 날짜 오른쪽의 <strong>[완료 / 작업완료]</strong> 버튼을 클릭해야 해당 날짜에 생육과정을 시작한 것으로 인정되며 진행률({activeCropCard.progress_pct}%)에 반영됩니다.
+                            💡 날짜 오른쪽의 <strong>[작업완료]</strong> 버튼을 클릭하거나, 해당 생육관리 일자로부터 <strong>현재 날짜가 하루(1일) 지나면 자동으로 작업완료 처리</strong>되어 진행률({activeCropCard.progress_pct}%)에 반영됩니다.
                           </p>
                           {cascadeDeltaDays !== 0 && (
                             <button
