@@ -6121,7 +6121,9 @@ export default function UserIntroPage() {
 
   return (
     <div
-      className={`min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col break-keep ${
+      className={`min-h-screen ${
+        activeMenu === '홈' ? 'bg-white lg:bg-[#F8FAFC]' : 'bg-[#F8FAFC]'
+      } text-slate-900 flex flex-col break-keep ${
         isLegacyAndroidWebView ? 'pb-12' : ''
       }`}
       style={{
@@ -6132,7 +6134,9 @@ export default function UserIntroPage() {
     >
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
-        className="bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]"
+        className={`${
+          activeMenu === '홈' ? 'hidden lg:block' : 'block'
+        } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
         style={{
           paddingTop: isLegacyAndroidWebView
             ? 'max(34px, env(safe-area-inset-top, 34px))'
@@ -6361,6 +6365,67 @@ export default function UserIntroPage() {
           </button>
         </div>
 
+        {/* 드로어 상단 회원 인증 상태 및 로그인/회원가입 바로가기 */}
+        <div className="px-4 py-3 bg-white border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
+          {loggedInUser.isLoggedIn ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMenu('마이페이지');
+                  setMyPageTab('FARMLAND');
+                  setIsMobileGnbDrawerOpen(false);
+                }}
+                className="flex-1 h-9 px-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 font-black text-xs inline-flex items-center gap-2 cursor-pointer"
+              >
+                <span className="w-5 h-5 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] font-extrabold shrink-0">
+                  {loggedInUser.name.slice(0, 1)}
+                </span>
+                <span className="truncate">{loggedInUser.name} 님 (마이페이지)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleLogout();
+                  setIsMobileGnbDrawerOpen(false);
+                }}
+                className="h-9 px-3 rounded-xl border border-slate-300 bg-white text-slate-700 font-extrabold text-xs cursor-pointer shrink-0"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <div className="w-full grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileGnbDrawerOpen(false);
+                  setAuthNoticeMsg(null);
+                  setShowGmailPicker(false);
+                  setAuthModalTab('LOGIN');
+                  setIsAuthModalOpen(true);
+                }}
+                className="h-9 rounded-xl border border-emerald-600 bg-white text-emerald-700 font-black text-xs cursor-pointer"
+              >
+                로그인
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileGnbDrawerOpen(false);
+                  setAuthNoticeMsg(null);
+                  setShowRoadSearchBox(false);
+                  setAuthModalTab('SIGNUP');
+                  setIsAuthModalOpen(true);
+                }}
+                className="h-9 rounded-xl bg-emerald-600 text-white font-black text-xs cursor-pointer"
+              >
+                회원가입
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* 드로어 본문: 주요 서비스 메뉴 리스트 */}
         <div className="p-4 flex-1 overflow-y-auto space-y-2">
           <div className="px-2 pb-1 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
@@ -6487,12 +6552,419 @@ export default function UserIntroPage() {
       </aside>
 
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto px-3.5 sm:px-10 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6">
+      <main
+        className={`flex-1 max-w-[1600px] w-full mx-auto ${
+          activeMenu === '홈'
+            ? 'px-0 py-0 lg:px-10 lg:py-6 space-y-0 lg:space-y-6'
+            : 'px-3.5 sm:px-10 py-3.5 sm:py-6 space-y-3.5 sm:space-y-6'
+        }`}
+      >
         {/* ==================== [탭 1: 홈 (인트로 페이지)] ==================== */}
         {activeMenu === '홈' && (
           <>
-            {/* MODULE 2: 분리된 3D 농부 캐릭터 와이드 배너 */}
-            <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+            {/* ==================== 모바일 전용 메인 랜딩 페이지 (첨부 시안 1:1 구현 · lg:hidden) ==================== */}
+            <div
+              className="lg:hidden w-full bg-white text-[#111827] flex flex-col justify-between overflow-hidden select-none"
+              style={{
+                paddingTop: isLegacyAndroidWebView
+                  ? 'max(28px, env(safe-area-inset-top, 28px))'
+                  : 'env(safe-area-inset-top, 0px)',
+              }}
+            >
+              {/* 상단 영역: 헤더 + 히어로(배추 이미지 & 타이틀) + 3열 핵심 기능 카드 + 버튼 + 농가 규모 바 */}
+              <div className="relative w-full">
+                {/* 우측 상단 햇살 배추 히어로 배경 이미지 (좌측 화이트 자연 그라데이션 블렌딩) */}
+                <div
+                  className="pointer-events-none absolute top-[18px] right-0 w-[62%] max-w-[290px] h-[255px] min-[390px]:h-[270px] z-0 overflow-hidden"
+                  aria-hidden="true"
+                >
+                  <img
+                    src="/images/mobile-home-cabbage-hero.jpg"
+                    alt=""
+                    className="w-full h-full object-cover object-left-top block"
+                  />
+                </div>
+
+                {/* 1. 모바일 메인 상단 로고 & 우측 라운드 햄버거 메뉴 바 */}
+                <div className="relative z-20 flex items-start justify-between pl-5 pt-3.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('홈')}
+                    className="flex items-center gap-2.5 pt-1 text-left cursor-pointer"
+                  >
+                    {/* 짙은 그린 라운드 스퀘어 새싹 아이콘 */}
+                    <div className="w-[38px] h-[38px] rounded-[11px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_8px_rgba(14,113,47,0.25)] shrink-0">
+                      <svg viewBox="0 0 32 32" className="w-[25px] h-[25px]" fill="none">
+                        {/* 왼쪽 잎 */}
+                        <path
+                          d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                        {/* 오른쪽 큰 잎 */}
+                        <path
+                          d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
+                          stroke="#FFFFFF"
+                          strokeWidth="1.7"
+                          strokeLinecap="round"
+                        />
+                        {/* 하단 흙 언덕 곡선 */}
+                        <path
+                          d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
+                          stroke="#FFFFFF"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[24px] min-[390px]:text-[25px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
+                        한팜
+                      </span>
+                      <span className="text-[21px] min-[390px]:text-[22px] font-bold text-[#111111] tracking-[-0.02em] leading-none">
+                        FarmPlan
+                      </span>
+                    </div>
+                  </button>
+
+                  {/* 우측 상단 코너 라운드 햄버거 메뉴 버튼 */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileGnbDrawerOpen(true)}
+                    aria-label="전체 메뉴 열기"
+                    className="w-[66px] h-[52px] rounded-bl-[26px] bg-[#F5F7F5]/95 hover:bg-[#EAEFEA] active:scale-[0.98] border-b border-l border-slate-200/70 shadow-[0_2px_10px_rgba(0,0,0,0.04)] flex items-center justify-center cursor-pointer transition shrink-0"
+                  >
+                    <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
+                      <path
+                        d="M4 6.5H20M4 12H20M4 17.5H20"
+                        stroke="#111111"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* 2. 히어로 메인 카피 & 서브 카피 */}
+                <div className="relative z-10 px-5 pt-5 pb-5">
+                  <h1 className="text-[26px] min-[390px]:text-[28.5px] font-black text-[#111111] leading-[1.28] tracking-[-0.035em] break-keep">
+                    <span className="block">작물별 맞춤 재배관리로</span>
+                    <span className="block mt-0.5">더 쉽고, 더 정확한 농사</span>
+                  </h1>
+                  <p className="mt-3.5 text-[14px] min-[390px]:text-[15px] font-medium text-[#374151] leading-[1.48] tracking-[-0.02em] break-keep">
+                    <span className="block">파종부터 수확까지, 농작업 일정과</span>
+                    <span className="block">농자재 추천, 병해충 진단까지 한 번에!</span>
+                  </p>
+                </div>
+
+                {/* 3. 3열 핵심 기능 카드 컨테이너 + 페이지네이션 인디케이터 도트 */}
+                <div className="relative z-20 mx-2.5 rounded-[26px] bg-white pt-2.5 px-2 pb-2 shadow-[0_-6px_24px_rgba(0,0,0,0.03)]">
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* 카드 1: 맞춤 재배일정 */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveMenu('재배일정 요청')}
+                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
+                    >
+                      <div className="w-11 h-11 flex items-center justify-center">
+                        <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
+                          <rect
+                            x="6.5"
+                            y="8.5"
+                            width="27"
+                            height="25"
+                            rx="4.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.5"
+                          />
+                          <path
+                            d="M13 5.5V10.5M27 5.5V10.5M6.5 15.5H33.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                          />
+                          <circle cx="15" cy="21.5" r="1.6" fill="#0E712F" />
+                          <circle cx="25" cy="21.5" r="1.6" fill="#0E712F" />
+                          <circle cx="15" cy="27.5" r="1.6" fill="#0E712F" />
+                          <circle cx="20" cy="27.5" r="1.6" fill="#0E712F" />
+                        </svg>
+                      </div>
+                      <div className="mt-2 text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                        맞춤 재배일정
+                      </div>
+                      <div className="mt-1.5 text-[10.5px] min-[390px]:text-[11.5px] font-medium text-[#4B5563] leading-[1.36] tracking-[-0.02em] break-keep">
+                        <span className="block">작물·지역·시작일에 따라</span>
+                        <span className="block">농작업 일정 제공</span>
+                      </div>
+                    </button>
+
+                    {/* 카드 2: 병해충 진단 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileAgroCategoryTab('PESTICIDE');
+                        setActiveMenu('병해충관리제');
+                      }}
+                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
+                    >
+                      <div className="w-11 h-11 flex items-center justify-center">
+                        <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
+                          {/* 나뭇잎 + 돋보기 결합 아이콘 */}
+                          <path
+                            d="M28.5 8.5C19.5 8.2 13 13.8 13 21.5C13 25.8 16.2 29 20.5 29C28.2 29 33 22.5 31.5 11.5L28.5 8.5Z"
+                            stroke="#0E712F"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M25.5 14.5L10.5 29.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                          />
+                          <path
+                            d="M26.5 26.5L32.5 32.5"
+                            stroke="#0E712F"
+                            strokeWidth="2.8"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      </div>
+                      <div className="mt-2 text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                        병해충 진단
+                      </div>
+                      <div className="mt-1.5 text-[10.5px] min-[390px]:text-[11.5px] font-medium text-[#4B5563] leading-[1.36] tracking-[-0.02em] break-keep">
+                        <span className="block">사진으로 확인하고</span>
+                        <span className="block">관리 방법 안내</span>
+                      </div>
+                    </button>
+
+                    {/* 카드 3: 농자재 추천·구매 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileAgroCategoryTab('FERTILIZER');
+                        setActiveMenu('농작물 구매');
+                      }}
+                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
+                    >
+                      <div className="w-11 h-11 flex items-center justify-center">
+                        <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
+                          <path
+                            d="M6.5 8.5H11L14.2 24.5H29.5L32.5 13H12.2"
+                            stroke="#0E712F"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="16" cy="31" r="2.3" stroke="#0E712F" strokeWidth="2.3" />
+                          <circle cx="27.5" cy="31" r="2.3" stroke="#0E712F" strokeWidth="2.3" />
+                        </svg>
+                      </div>
+                      <div className="mt-2 text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
+                        농자재 추천·구매
+                      </div>
+                      <div className="mt-1.5 text-[10.5px] min-[390px]:text-[11.5px] font-medium text-[#4B5563] leading-[1.36] tracking-[-0.02em] break-keep">
+                        <span className="block">작업시기에 맞는</span>
+                        <span className="block">비료·농약·자재 추천</span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* 하단 캐러셀 페이지네이션 도트 (● ○ ○) */}
+                  <div className="mt-3.5 flex items-center justify-center gap-2" aria-hidden="true">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0E712F]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#CBD5E1]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#CBD5E1]" />
+                  </div>
+                </div>
+
+                {/* 4. 메인 액션 풀와이드 캡슐 버튼 2종 (지금 무료로 시작하기 > / 로그인) */}
+                <div className="px-4 mt-3 space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('재배일정 요청')}
+                    className="w-full h-[52px] min-[390px]:h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] min-[390px]:text-[18.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] transition cursor-pointer"
+                  >
+                    <span>지금 무료로 시작하기</span>
+                    <ChevronRight className="w-5 h-5 stroke-[2.5] -mr-1" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (loggedInUser.isLoggedIn) {
+                        setActiveMenu('마이페이지');
+                        setMyPageTab('FARMLAND');
+                      } else {
+                        setAuthNoticeMsg(null);
+                        setShowGmailPicker(false);
+                        setAuthModalTab('LOGIN');
+                        setIsAuthModalOpen(true);
+                      }
+                    }}
+                    className="w-full h-[50px] min-[390px]:h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#0E712F] border-[1.5px] border-[#2E7D47] font-bold text-[17px] min-[390px]:text-[18px] tracking-[-0.02em] flex items-center justify-center transition cursor-pointer"
+                  >
+                    <span>
+                      {loggedInUser.isLoggedIn ? `${loggedInUser.name} 님 · 마이페이지` : '로그인'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* 5. 영농 규모별 3분할 바 (텃밭·주말농장 | 소규모 농가 | 중·대규모 농가) */}
+                <div className="px-4 mt-3.5">
+                  <div className="rounded-[18px] bg-[#EFF5F1] py-3.5 px-1 grid grid-cols-3 items-center">
+                    {/* 텃밭·주말농장 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickAreaPyeong('50');
+                        setActiveMenu('재배일정 요청');
+                      }}
+                      className="flex flex-col items-center justify-center text-center px-1 active:scale-[0.98] transition cursor-pointer"
+                    >
+                      <svg viewBox="0 0 40 34" className="w-9 h-8" fill="none">
+                        {/* 중앙 인물 */}
+                        <circle cx="20" cy="10.5" r="4" stroke="#0E712F" strokeWidth="2" />
+                        <path
+                          d="M12.5 25C12.5 20.8 15.8 18 20 18C24.2 18 27.5 20.8 27.5 25"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        {/* 좌측 인물 */}
+                        <circle cx="11" cy="12.5" r="3" stroke="#0E712F" strokeWidth="1.8" />
+                        <path
+                          d="M5.5 23.5C5.5 20.3 7.8 18.2 11 18.2"
+                          stroke="#0E712F"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                        {/* 우측 인물 */}
+                        <circle cx="29" cy="12.5" r="3" stroke="#0E712F" strokeWidth="1.8" />
+                        <path
+                          d="M34.5 23.5C34.5 20.3 32.2 18.2 29 18.2"
+                          stroke="#0E712F"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="mt-1.5 text-[12.5px] min-[390px]:text-[13.5px] font-bold text-[#1F2937] tracking-[-0.03em] whitespace-nowrap">
+                        텃밭·주말농장
+                      </span>
+                    </button>
+
+                    {/* 소규모 농가 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickAreaPyeong('300');
+                        setActiveMenu('재배일정 요청');
+                      }}
+                      className="flex flex-col items-center justify-center text-center px-1 border-x border-[#D5E2D9] active:scale-[0.98] transition cursor-pointer"
+                    >
+                      <svg viewBox="0 0 40 34" className="w-9 h-8" fill="none">
+                        {/* 농부 밀짚모자 크라운 & 챙 */}
+                        <path
+                          d="M14.5 11C14.5 7.8 16.8 6 20 6C23.2 6 25.5 7.8 25.5 11"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M10.5 11.5H29.5"
+                          stroke="#0E712F"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                        />
+                        {/* 얼굴 & 어깨 */}
+                        <path
+                          d="M16 12V14C16 16.2 17.8 18 20 18C22.2 18 24 16.2 24 14V12"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M12 26C12 21.8 15.5 19.2 20 19.2C24.5 19.2 28 21.8 28 26"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span className="mt-1.5 text-[12.5px] min-[390px]:text-[13.5px] font-bold text-[#1F2937] tracking-[-0.03em] whitespace-nowrap">
+                        소규모 농가
+                      </span>
+                    </button>
+
+                    {/* 중·대규모 농가 */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuickAreaPyeong('1000');
+                        setActiveMenu('재배일정 요청');
+                      }}
+                      className="flex flex-col items-center justify-center text-center px-1 active:scale-[0.98] transition cursor-pointer"
+                    >
+                      <svg viewBox="0 0 40 34" className="w-9 h-8" fill="none">
+                        {/* 트랙터 운전석 & 본체 */}
+                        <path
+                          d="M11 18V8.5H21.5L24 14.5H31.5V21.5"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* 배기구 */}
+                        <path
+                          d="M27.5 14.5V10.5H29.5"
+                          stroke="#0E712F"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        {/* 뒷바퀴(대형) & 앞바퀴(소형) */}
+                        <circle cx="15" cy="22.5" r="5.2" stroke="#0E712F" strokeWidth="2.1" />
+                        <circle cx="15" cy="22.5" r="1.8" fill="#0E712F" />
+                        <circle cx="28.5" cy="23.8" r="3.8" stroke="#0E712F" strokeWidth="2.1" />
+                        <circle cx="28.5" cy="23.8" r="1.3" fill="#0E712F" />
+                        <path d="M20.2 22.5H24.7" stroke="#0E712F" strokeWidth="2" />
+                      </svg>
+                      <span className="mt-1.5 text-[12.5px] min-[390px]:text-[13.5px] font-bold text-[#1F2937] tracking-[-0.03em] whitespace-nowrap">
+                        중·대규모 농가
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. 하단 일출 산 & 푸른 농경지 풍경 이미지 */}
+              <div className="w-full mt-1 overflow-hidden">
+                <img
+                  src="/images/mobile-home-bottom-landscape.jpg"
+                  alt="아침 햇살이 비치는 푸른 농경지와 산 풍경"
+                  className="w-full h-auto object-cover block pointer-events-none"
+                />
+              </div>
+            </div>
+
+            {/* MODULE 2 (PC 전용): 분리된 3D 농부 캐릭터 와이드 배너 */}
+            <section className="hidden lg:block rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
               <div className="relative w-full">
                 <img
                   src="/images/user-intro-3d-farmers-original.jpg?v=20261113-original"
@@ -6508,8 +6980,8 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* MODULE 3-A: 다크 에메랄드 SMART FARM ENGINE 3단계 핵심 강점 도식 카드 (모바일 고령자 친화 대형 가독성 폰트 & PC 실시간 브리핑 동시 제공) */}
-            <section className="rounded-[26px] sm:rounded-3xl bg-gradient-to-b from-[#084227] via-[#063820] to-[#042816] border border-[#155E3A] px-3.5 py-5 sm:p-7 lg:p-8 shadow-[0_10px_28px_rgba(4,40,22,0.2)] relative overflow-hidden">
+            {/* MODULE 3-A (PC 전용): 다크 에메랄드 SMART FARM ENGINE 3단계 핵심 강점 도식 카드 */}
+            <section className="hidden lg:block rounded-[26px] sm:rounded-3xl bg-gradient-to-b from-[#084227] via-[#063820] to-[#042816] border border-[#155E3A] px-3.5 py-5 sm:p-7 lg:p-8 shadow-[0_10px_28px_rgba(4,40,22,0.2)] relative overflow-hidden">
               {/* 은은한 배경 빛 효과 */}
               <div
                 className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-72 lg:w-[520px] h-36 lg:h-48 rounded-full bg-emerald-400/15 blur-2xl"
@@ -6811,70 +7283,8 @@ export default function UserIntroPage() {
               </div>
             </section>
 
-            {/* 모바일 전용: 재배일정 요청 항목 위 실시간 재배일정 요청 목록 (최근 5건 · 회원명 보안 마스킹 · 지역 · 재배작물 표시) */}
-            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] overflow-hidden shadow-[0_4px_14px_rgba(15,81,50,0.12)]">
-              <div className="bg-[#E6F7EE] border-b border-[#B7E4CE] px-4 py-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-3 h-3 rounded-full bg-[#0F6E43] shrink-0" />
-                  <h2 className="text-[18.5px] min-[390px]:text-[20px] sm:text-[21px] font-black text-[#0B3D24] tracking-tight truncate">
-                    실시간 재배일정 요청 목록
-                  </h2>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-white border border-[#95D5B6] text-[#0E6B40] text-[12.5px] min-[390px]:text-[13px] font-extrabold shrink-0 shadow-2xs">
-                  최근 5건 현황
-                </span>
-              </div>
-
-              <div className="px-4 py-2.5 divide-y divide-slate-100">
-                {cloudBaeCropList.length === 0 ? (
-                  <div className="py-4 text-center text-xs font-bold text-slate-500">
-                    현재 등록된 재배일정 요청 내역이 없습니다.
-                  </div>
-                ) : (
-                  cloudBaeCropList.slice(0, 5).map((crop: any, idx: number) => {
-                  const defaultSurnames = ['최', '배', '김', '박', '이'];
-                  const rawName = String(crop.member_name || '').trim();
-                  const maskedMemberName = rawName
-                    ? `${rawName.slice(0, 1)}**`
-                    : `${defaultSurnames[idx % defaultSurnames.length]}**`;
-                  const compactRegion = String(crop.region || '충청북도 충주시 단월동')
-                    .replace('충청북도', '충북')
-                    .replace('충청남도', '충남')
-                    .replace('경상북도', '경북')
-                    .replace('경상남도', '경남')
-                    .replace('전라북도', '전북')
-                    .replace('전라남도', '전남')
-                    .replace('강원특별자치도', '강원')
-                    .replace('제주특별자치도', '제주')
-                    .replace('경기도', '경기');
-                  const cropDisplay =
-                    crop.crop_title || `${crop.crop_short || '가을배추'} (${crop.cultivar_name || '불암3호'})`;
-
-                  return (
-                    <div
-                      key={crop.request_no || idx}
-                      className="py-2 first:pt-1 last:pb-1 flex items-center justify-between gap-2 text-[14.5px] min-[390px]:text-[15.5px]"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="px-2 py-0.5 rounded-lg bg-[#DDF5E8] text-[#0E6B40] font-black text-[13.5px] min-[390px]:text-[14px] shrink-0">
-                          {maskedMemberName}
-                        </span>
-                        <span className="font-bold text-slate-700 truncate">
-                          {compactRegion}
-                        </span>
-                      </div>
-                      <span className="font-black text-slate-900 shrink-0 text-right">
-                        {cropDisplay}
-                      </span>
-                    </div>
-                  );
-                  })
-                )}
-              </div>
-            </section>
-
-            {/* MODULE 3-B: 주요 서비스 바로가기 카드 (모바일 1개당 1라인 / 데스크톱 2열 매트릭스 + PC 상세 키워드) */}
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            {/* MODULE 3-B (PC 전용): 주요 서비스 바로가기 카드 (데스크톱 2열 매트릭스 + PC 상세 키워드) */}
+            <section className="hidden lg:grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {/* 1. 재배일정 요청 */}
               <button
                 type="button"
@@ -7220,156 +7630,6 @@ export default function UserIntroPage() {
                   <ChevronRight className="w-5 h-5 stroke-[2.6]" />
                 </div>
               </button>
-            </section>
-
-            {/* ==================== 모바일 전용: "씨 · 모종 구매" 아래 농자재별 1줄 1개씩 추천 제품 소개 영역 ==================== */}
-            <section className="lg:hidden bg-white rounded-[22px] border-2 border-[#0F5132] overflow-hidden shadow-[0_4px_14px_rgba(15,81,50,0.12)]">
-              {/* 상단 타이틀 헤더 영역 (어울리는 라이트 그린 배경 적용) */}
-              <div className="bg-[#E6F7EE] border-b border-[#B7E4CE] px-3.5 py-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-[#0F6E43] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <ShoppingBag className="w-4.5 h-4.5" />
-                  </div>
-                  <h2 className="text-[19px] min-[390px]:text-[20.5px] sm:text-[21.5px] font-black text-[#0B3D24] tracking-tight leading-tight truncate">
-                    농자재 제품 추천
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMobileAgroCategoryTab('FERTILIZER');
-                    setActiveMenu('농작물 구매');
-                  }}
-                  className="px-3 py-1 rounded-full bg-white border border-[#95D5B6] text-[#0E6B40] text-[12.5px] min-[390px]:text-[13px] font-extrabold inline-flex items-center gap-0.5 shrink-0 cursor-pointer shadow-2xs"
-                >
-                  <span>전체보기</span>
-                  <ChevronRight className="w-4 h-4 -mr-0.5" />
-                </button>
-              </div>
-
-              {/* 농자재 카테고리별 1줄 1개씩 추천 제품 카드 리스트 (좌측 여백 최소화 + 설명 텍스트 확장) */}
-              <div className="p-2.5 space-y-2.5">
-                {[
-                  {
-                    catKey: 'FERTILIZER' as const,
-                    menuName: '비료',
-                    categoryLabel: '비료 추천',
-                    badgeBg: 'bg-[#6E6235] text-white',
-                    stageBadge: '정식전 · 밑거름',
-                    img: '/images/fertilizers/FERT-PRD-01-thumb.png',
-                    brand: '남해화학(주)',
-                    name: '슈퍼원예복합 밑거름 특호 20kg',
-                    spec: '완효성 N-P-K + 고토·붕소 함유로 초기 활착과 뿌리 발달을 돕는 맞춤 밑거름 비료',
-                    dosage: '300평 기준 3포 권장',
-                    price: '21,500원',
-                  },
-                  {
-                    catKey: 'NUTRIENT' as const,
-                    menuName: '영양제',
-                    categoryLabel: '영양제 추천',
-                    badgeBg: 'bg-[#2E7D78] text-white',
-                    stageBadge: '결구중기 · 엽면시비',
-                    img: '/images/fertilizers/MAT-NUTR-02-thumb.png',
-                    brand: '(주)누보',
-                    name: '엔플러스 튼튼칼슘 결구강화제',
-                    spec: '결구기 속잎 세포벽을 강화하고 꿀통배추·석회결핍(팁번)을 예방하는 고농축 액상 영양제',
-                    dosage: '500ml (1,000배 희석)',
-                    price: '16,800원',
-                  },
-                  {
-                    catKey: 'PESTICIDE' as const,
-                    menuName: '병해충관리제',
-                    categoryLabel: '병해충방지제 추천',
-                    badgeBg: 'bg-[#E57368] text-white',
-                    stageBadge: '강우전후 · 예방방제',
-                    img: '/images/fertilizers/MAT-PEST-03-thumb.png',
-                    brand: '인바이오 / 누보',
-                    name: '펀지해머 무름병·노균병 살균제',
-                    spec: '가을 강우·고온다습 예보 전후 배추 무름병과 노균병을 동시에 사전 예방·치료하는 전문 약제',
-                    dosage: '500ml (경엽살포)',
-                    price: '21,500원',
-                  },
-                  {
-                    catKey: 'SEED' as const,
-                    menuName: '씨',
-                    categoryLabel: '씨(종자) 추천',
-                    badgeBg: 'bg-[#C88A2B] text-white',
-                    stageBadge: '발아보증 · 내병성',
-                    img: '/images/fertilizers/MAT-SEED-01-thumb.jpg',
-                    brand: '농우바이오',
-                    name: '가을배추 불암3호 코팅종자',
-                    spec: 'CR 무사마귀병 내병계 품종으로 초기 발아율이 균일하고 결구력과 저장성이 뛰어난 우량 종자',
-                    dosage: '2,000립 (약 7g / 1봉)',
-                    price: '15,000원',
-                  },
-                  {
-                    catKey: 'SEEDLING' as const,
-                    menuName: '모종',
-                    categoryLabel: '모종 추천',
-                    badgeBg: 'bg-[#68B678] text-white',
-                    stageBadge: '정식적기 · 규격건묘',
-                    img: '/images/fertilizers/MAT-SDL-01-thumb.jpg',
-                    brand: '한팜스마트육묘장',
-                    name: '불암3호 128구 트레이 건묘',
-                    spec: '25일 표준 육묘와 외기순화를 거쳐 본밭 정식 직후 뿌리 활착이 빠르고 고온에 강한 규격 모종',
-                    dosage: '128구 트레이 / 1판',
-                    price: '13,500원/판',
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.catKey}
-                    type="button"
-                    onClick={() => {
-                      setMobileAgroCategoryTab(item.catKey);
-                      setActiveMenu(item.menuName);
-                    }}
-                    className="w-full text-left bg-white hover:bg-emerald-50/30 active:scale-[0.99] rounded-[18px] pl-1 pr-2.5 py-2.5 border border-slate-200/95 hover:border-emerald-400 flex items-center gap-2 transition cursor-pointer shadow-[0_3px_12px_rgba(15,23,42,0.05)]"
-                  >
-                    {/* 좌측 제품 실물 썸네일 이미지 (좌측 끝으로 밀착 배치 + 대형 스케일) */}
-                    <div className="w-[100px] h-[112px] min-[390px]:w-[108px] min-[390px]:h-[118px] sm:w-[118px] sm:h-[124px] rounded-xl bg-white shrink-0 flex items-center justify-center overflow-hidden -ml-0.5">
-                      <img
-                        src={item.img}
-                        alt={item.name}
-                        className="w-full h-full object-contain scale-[1.24]"
-                      />
-                    </div>
-
-                    {/* 우측 농자재 구분 배지 + 제품명 + 확장된 설명란(2줄 허용) + 권장량/단가 */}
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] min-[390px]:text-[12.5px] font-black tracking-tight ${item.badgeBg}`}
-                          >
-                            {item.categoryLabel}
-                          </span>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[11.5px] min-[390px]:text-[12px] font-extrabold">
-                            {item.stageBadge}
-                          </span>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-                      </div>
-
-                      <div className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-slate-950 truncate leading-snug tracking-tight">
-                        {item.name}
-                      </div>
-
-                      <div className="text-[13.5px] min-[390px]:text-[14px] font-bold text-slate-600 leading-[1.35] line-clamp-2 break-keep">
-                        {item.spec}
-                      </div>
-
-                      <div className="pt-0.5 flex items-center justify-between gap-2">
-                        <span className="text-[12px] min-[390px]:text-[12.5px] font-bold text-slate-500 truncate">
-                          {item.brand} · {item.dosage}
-                        </span>
-                        <span className="text-[15.5px] min-[390px]:text-[16.5px] font-black text-emerald-700 font-mono shrink-0">
-                          {item.price}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
             </section>
 
             {/* ==================== MODULE 4-A (PC 전용): 생육과정별 상세 재배일정 제공 & 지역별 추천 일정 현황 ==================== */}
@@ -19022,11 +19282,12 @@ export default function UserIntroPage() {
         )}
       </main>
 
-      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 농작물 구매 모바일 고정뷰에서는 숨김) */}
+      {/* 푸터 (모바일에서는 하단 고정 네비게이션 바 높이만큼 여백 확보, 모바일 메인 홈 및 농작물 구매 모바일 고정뷰에서는 숨김) */}
       <footer
         className={`bg-white border-t border-slate-200/80 py-6 mt-8 ${
           activeMenu === '홈' ? 'pb-6' : 'pb-24 lg:pb-6'
         } ${
+          activeMenu === '홈' ||
           activeMenu === '농작물 구매' ||
           activeMenu === '농자재 판매' ||
           activeMenu === '비료' ||
