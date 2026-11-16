@@ -8844,18 +8844,17 @@ export default function UserIntroPage() {
                       </div>
                     </section>
 
-                    {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 */}
+                    {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [일정확인] 버튼 터치 시 모달리스 폼 오픈) */}
                     <section
                       onClick={() => {
-                        if (activeCropItem.isRealCrop) {
-                          setSelectedRequestNo(activeCropItem.request_no);
-                          setMyPageStageDetailItem(null);
-                          setMyPageProgressDetailReqNo(activeCropItem.request_no);
-                        }
+                        const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
+                        setSelectedRequestNo(targetReqNo);
+                        setMyPageStageDetailItem(null);
+                        setMyPageProgressDetailReqNo(targetReqNo);
                       }}
-                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer"
+                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer active:scale-[0.99] transition"
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-between gap-2.5">
                         <div className="flex items-center gap-3.5 min-w-0">
                           <div className="w-[58px] h-[58px] min-[390px]:w-[62px] min-[390px]:h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 shadow-2xs">
                             <img
@@ -8865,9 +8864,14 @@ export default function UserIntroPage() {
                             />
                           </div>
                           <div className="min-w-0">
-                            <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
-                              {activeCropItem.shortName} 재배현황
-                            </h2>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
+                                {activeCropItem.shortName} 재배현황
+                              </h2>
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em] shrink-0">
+                                {activeCropItem.stageBadge}
+                              </span>
+                            </div>
                             <p className="mt-0.5 text-[14px] min-[390px]:text-[14.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
                               {activeCropItem.cultivationMethod} ·{' '}
                               {activeCropItem.areaPyeong.toLocaleString()}평
@@ -8875,12 +8879,20 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="px-3.5 py-1.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[14px] min-[390px]:text-[14.5px] font-extrabold tracking-[-0.02em]">
-                            {activeCropItem.stageBadge}
-                          </span>
-                          <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
+                            setSelectedRequestNo(targetReqNo);
+                            setMyPageStageDetailItem(null);
+                            setMyPageProgressDetailReqNo(targetReqNo);
+                          }}
+                          className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
+                        >
+                          <span>일정확인</span>
+                          <ChevronRight className="w-4 h-4 stroke-[2.5] -mr-0.5" />
+                        </button>
                       </div>
 
                       {/* 4단계 생육 진행 스텝 바 (정식 ── 생육기 ── 결구기 ── 수확기) */}
@@ -8962,16 +8974,15 @@ export default function UserIntroPage() {
                       </div>
                     </section>
 
-                    {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 */}
+                    {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 (클릭 시 모달리스 폼 오픈) */}
                     <section
                       onClick={() => {
-                        if (activeCropItem.isRealCrop) {
-                          setSelectedRequestNo(activeCropItem.request_no);
-                          setMyPageStageDetailItem(null);
-                          setMyPageProgressDetailReqNo(activeCropItem.request_no);
-                        }
+                        const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
+                        setSelectedRequestNo(targetReqNo);
+                        setMyPageStageDetailItem(null);
+                        setMyPageProgressDetailReqNo(targetReqNo);
                       }}
-                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer"
+                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer active:scale-[0.99] transition"
                     >
                       <div className="flex items-center gap-2">
                         <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0" fill="none">
@@ -21340,11 +21351,31 @@ export default function UserIntroPage() {
         (activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS'))) &&
         myPageProgressDetailReqNo &&
         (() => {
+          const fallbackModalSummary = getScheduleCompletionSummary(
+            myPageProgressDetailReqNo,
+            0,
+            provisionData?.activeRequest?.desired_start_date || '2026-08-25'
+          );
           const modalCrop =
             cloudBaeCropList.find((c: any) => c.request_no === myPageProgressDetailReqNo) ||
             activeCropCard ||
-            cloudBaeCropList[0];
-          if (!modalCrop) return null;
+            cloudBaeCropList[0] || {
+              request_no: myPageProgressDetailReqNo,
+              display_request_no: myPageProgressDetailReqNo,
+              crop_title: `${provisionData?.activeRequest?.crop_name || '가을배추'} (${
+                provisionData?.activeRequest?.item_name_3rd || '불암3호'
+              })`,
+              crop_short: provisionData?.activeRequest?.crop_name || '가을배추',
+              cultivar_name: provisionData?.activeRequest?.item_name_3rd || '불암3호',
+              region: `${provisionData?.activeRequest?.sido || '충청북도'} ${
+                provisionData?.activeRequest?.sigungu || '충주시'
+              } ${provisionData?.activeRequest?.eupmyeondong || '단월동'}`,
+              area_pyeong: Number(provisionData?.activeRequest?.area_pyeong || 500),
+              planting_date: provisionData?.activeRequest?.desired_start_date || '2026-08-25',
+              completed_stage_count: fallbackModalSummary.completedCount,
+              total_stage_count: fallbackModalSummary.totalCount,
+              progress_pct: fallbackModalSummary.progressPct,
+            };
 
           const modalReqNo = modalCrop.request_no || 'REQ-20261106-009';
           const modalDisplayReqNo = modalCrop.display_request_no || modalReqNo;
