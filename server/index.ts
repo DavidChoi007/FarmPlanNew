@@ -9442,6 +9442,7 @@ const server = http.createServer(async (req, res) => {
 
     // 3. 로그인 API (이메일 로그인 & Google Gmail 간편 로그인)
     if (pathname === '/api/auth/login' && req.method === 'POST') {
+      await syncAdminMemberTablesFromSupabase();
       const body = await readJsonBody(req);
       const loginType = String(body.login_type || 'EMAIL').toUpperCase();
       const email = String(body.email || '').trim();
@@ -9686,82 +9687,94 @@ const server = http.createServer(async (req, res) => {
             );
           }
         }
-        if (Array.isArray(sbPlans) && sbPlans.length > 0) {
-          const stmt = db.prepare(`
-            INSERT OR REPLACE INTO member_crop_plan (
-              crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
-              crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
-              expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const cp of sbPlans) {
-            if (!cp?.crop_plan_id) continue;
-            stmt.run(
-              String(cp.crop_plan_id),
-              String(cp.email || 'CloudBae@naver.com'),
-              String(cp.request_no || 'REQ-20261106-009'),
-              String(cp.farmland_id || ''),
-              String(cp.sido || '충청북도'),
-              String(cp.sigungu || '충주시'),
-              String(cp.eupmyeondong || '단월동'),
-              String(cp.crop_name || '가을배추'),
-              String(cp.cultivar_name || '불암3호'),
-              String(cp.planting_type || '모종'),
-              Number(cp.area_pyeong) || 300,
-              String(cp.planting_date || '2026-08-25'),
-              String(cp.expected_harvest_date || '2026-11-15'),
-              String(cp.current_stage_name || '04. 생육 관리'),
-              Number(cp.progress_pct ?? 25),
-              String(cp.status_text || '기후 연동 생육 관리중'),
-              String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
-            );
+        if (Array.isArray(sbPlans)) {
+          db.prepare('DELETE FROM member_crop_plan').run();
+          if (sbPlans.length > 0) {
+            const stmt = db.prepare(`
+              INSERT OR REPLACE INTO member_crop_plan (
+                crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
+                crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
+                expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            for (const cp of sbPlans) {
+              if (!cp?.crop_plan_id) continue;
+              stmt.run(
+                String(cp.crop_plan_id),
+                String(cp.email || 'CloudBae@naver.com'),
+                String(cp.request_no || 'REQ-20261106-009'),
+                String(cp.farmland_id || ''),
+                String(cp.sido || '충청북도'),
+                String(cp.sigungu || '충주시'),
+                String(cp.eupmyeondong || '단월동'),
+                String(cp.crop_name || '가을배추'),
+                String(cp.cultivar_name || '불암3호'),
+                String(cp.planting_type || '모종'),
+                Number(cp.area_pyeong) || 300,
+                String(cp.planting_date || '2026-08-25'),
+                String(cp.expected_harvest_date || '2026-11-15'),
+                String(cp.current_stage_name || '04. 생육 관리'),
+                Number(cp.progress_pct ?? 25),
+                String(cp.status_text || '기후 연동 생육 관리중'),
+                String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+              );
+            }
           }
         }
-        if (Array.isArray(sbReqs) && sbReqs.length > 0) {
-          const stmt = db.prepare(`
-            INSERT OR REPLACE INTO member_schedule_request (
-              request_no, member_id, member_contact,
-              group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
-              bjd_code, sido, sigungu, eupmyeondong, detail_address,
-              area_pyeong, cultivation_type, land_category, planting_method,
-              desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
-              is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const r of sbReqs) {
-            if (!r?.request_no) continue;
-            stmt.run(
-              String(r.request_no),
-              String(r.member_id || 'CloudBae@naver.com (배철민)'),
-              String(r.member_contact || '010-2026-0109'),
-              String(r.group_id || 'GRP-LEAF'),
-              String(r.group_name || '엽채류'),
-              String(r.crop_id || 'CRP-CABBAGE'),
-              String(r.crop_name || '가을배추'),
-              String(r.cultivar_id || 'CV-BRM3'),
-              String(r.item_name_3rd || '불암3호'),
-              String(r.system_id || 'SYS-CAB-AUTUMN'),
-              String(r.system_name || '중부 노지 가을배추 표준작형'),
-              String(r.bjd_code || '4313010700'),
-              String(r.sido || '충청북도'),
-              String(r.sigungu || '충주시'),
-              String(r.eupmyeondong || '단월동'),
-              String(r.detail_address || ''),
-              Number(r.area_pyeong) || 300,
-              String(r.cultivation_type || '노지'),
-              String(r.land_category || '전'),
-              String(r.planting_method || '모종'),
-              String(r.desired_start_date || '2026-08-25'),
-              String(r.expected_harvest_date || '2026-11-15'),
-              Number(r.mulching_yn ?? 1),
-              String(r.irrigation_type || '점적관수'),
-              Number(r.is_organic ?? 0),
-              Number(r.soil_test_linked_yn ?? 1),
-              Number(r.target_yield_kg) || 3500,
-              String(r.etc_notes || ''),
-              String(r.request_status || '일정산출완료'),
-              String(r.requested_at || '')
-            );
+        if (Array.isArray(sbReqs)) {
+          db.prepare('DELETE FROM member_schedule_request').run();
+          if (sbReqs.length > 0) {
+            const stmt = db.prepare(`
+              INSERT OR REPLACE INTO member_schedule_request (
+                request_no, member_id, member_contact,
+                group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+                bjd_code, sido, sigungu, eupmyeondong, detail_address,
+                area_pyeong, cultivation_type, land_category, planting_method,
+                desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+                is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+                soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+            for (const r of sbReqs) {
+              if (!r?.request_no) continue;
+              stmt.run(
+                String(r.request_no),
+                String(r.member_id || 'CloudBae@naver.com (배철민)'),
+                String(r.member_contact || '010-2026-0109'),
+                String(r.group_id || 'GRP-LEAF'),
+                String(r.group_name || '엽채류'),
+                String(r.crop_id || 'CRP-CABBAGE'),
+                String(r.crop_name || '가을배추'),
+                String(r.cultivar_id || 'CV-BRM3'),
+                String(r.item_name_3rd || '불암3호'),
+                String(r.system_id || 'SYS-CAB-AUTUMN'),
+                String(r.system_name || '중부 노지 가을배추 표준작형'),
+                String(r.bjd_code || '4313010700'),
+                String(r.sido || '충청북도'),
+                String(r.sigungu || '충주시'),
+                String(r.eupmyeondong || '단월동'),
+                String(r.detail_address || ''),
+                Number(r.area_pyeong) || 300,
+                String(r.cultivation_type || '노지'),
+                String(r.land_category || '전'),
+                String(r.planting_method || '모종'),
+                String(r.desired_start_date || '2026-08-25'),
+                String(r.expected_harvest_date || '2026-11-15'),
+                Number(r.mulching_yn ?? 1),
+                String(r.irrigation_type || '점적관수'),
+                Number(r.is_organic ?? 0),
+                Number(r.soil_test_linked_yn ?? 1),
+                Number(r.target_yield_kg) || 3500,
+                String(r.etc_notes || ''),
+                String(r.request_status || '일정산출완료'),
+                String(r.requested_at || ''),
+                String(r.soil_condition || '사양토'),
+                String(r.facility_env_json || '["멀칭","부직포"]'),
+                String(r.schedule_base_type || 'OPTIMAL_AUTO'),
+                String(r.schedule_base_date || r.desired_start_date || '2026-08-25'),
+                String(r.area_unit || '평')
+              );
+            }
           }
         }
         if (Array.isArray(sbOrders) && sbOrders.length > 0) {

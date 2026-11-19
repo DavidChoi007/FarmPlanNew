@@ -1356,7 +1356,6 @@ export default function UserIntroPage() {
     ...localAddedCropRequests,
     ...baseCropList,
     ...requestListFromSaved,
-    ...serverAllRequestsMapped,
   ];
   const seenScheduleReqKeys = new Set<string>();
   const currentActiveEmailLower = String(loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
@@ -1368,11 +1367,13 @@ export default function UserIntroPage() {
   // 1) [재배일정 요청] 전용 리스트: 재배일정 확인 데이터를 삭제하더라도 재배일정 요청 데이터는 삭제되지 않고 유지되어 재요청 가능!
   const scheduleRequestCropList = rawCombinedCropList
     .filter((crop: any) => {
-      if (!isCurrentCloudBae) {
-        const ownerStr = String(crop.email || crop.member_id || '').toLowerCase();
-        if (ownerStr && !ownerStr.includes(currentActiveEmailLower)) {
+      const ownerStr = String(crop.email || crop.member_id || '').toLowerCase();
+      if (isCurrentCloudBae) {
+        if (ownerStr && !ownerStr.includes('cloudbae') && !ownerStr.includes('배철민')) {
           return false;
         }
+      } else if (ownerStr && !ownerStr.includes(currentActiveEmailLower)) {
+        return false;
       }
       const keysToCheck = [
         crop.crop_plan_id,
@@ -2413,30 +2414,29 @@ export default function UserIntroPage() {
       );
     }
     if (Array.isArray(res.scheduleRequests)) {
-      const targetEmailLower = String(res.member?.email || loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
-      setMyScheduleRequests((prev) => {
-        const filteredPrev = markLoggedIn
-          ? prev.filter((r: any) =>
-              String(r?.email || r?.member_id || '').toLowerCase().includes(targetEmailLower)
-            )
-          : prev;
-        const merged = [...res.scheduleRequests, ...filteredPrev];
-        const seen = new Set<string>();
-        const deduped: any[] = [];
-        for (const r of merged) {
-          if (!r) continue;
-          const rNo = String(r.request_no || r.display_request_no || '').trim();
-          if (!rNo || seen.has(rNo)) continue;
-          seen.add(rNo);
-          deduped.push(r);
-        }
-        try {
-          localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(deduped));
-        } catch {
-          // ignore
-        }
-        return deduped;
-      });
+      const seen = new Set<string>();
+      const deduped: any[] = [];
+      for (const r of res.scheduleRequests) {
+        if (!r) continue;
+        const rNo = String(r.request_no || r.display_request_no || '').trim();
+        if (!rNo || seen.has(rNo)) continue;
+        seen.add(rNo);
+        deduped.push(r);
+      }
+      try {
+        localStorage.setItem('hanfarm_my_schedule_requests_v1', JSON.stringify(deduped));
+      } catch {
+        // ignore
+      }
+      setMyScheduleRequests(deduped);
+      setLocalAddedCropRequests((prev) =>
+        markLoggedIn
+          ? []
+          : prev.filter((loc) => {
+              const rNo = String(loc?.request_no || loc?.display_request_no || '').trim();
+              return rNo && seen.has(rNo);
+            })
+      );
     }
     if (Array.isArray(res.orders)) {
       const sanitizedOrders = res.orders.map((ord: any) => ({
@@ -2496,9 +2496,25 @@ export default function UserIntroPage() {
         }
         if (Array.isArray(states.deleted_request_keys_v2)) {
           setDeletedScheduleKeys(states.deleted_request_keys_v2);
+          try {
+            localStorage.setItem(
+              'hanfarm_deleted_request_keys_v2',
+              JSON.stringify(states.deleted_request_keys_v2)
+            );
+          } catch {
+            // ignore
+          }
         }
         if (Array.isArray(states.deleted_confirmed_schedules_v1)) {
           setDeletedConfirmedScheduleKeys(states.deleted_confirmed_schedules_v1);
+          try {
+            localStorage.setItem(
+              'hanfarm_deleted_confirmed_schedules_v1',
+              JSON.stringify(states.deleted_confirmed_schedules_v1)
+            );
+          } catch {
+            // ignore
+          }
         }
         if (
           states.schedule_generation_module_v1 &&
@@ -2655,6 +2671,7 @@ export default function UserIntroPage() {
         return;
       }
       applyMyPagePayload(res, true);
+      loadMyPageData(res?.member?.email || loginForm.email.trim(), true).catch(() => {});
       setIsAuthModalOpen(false);
       setMyPageToast(`${res?.member?.name || '배철민'} (${res?.member?.email || loginForm.email}) 님으로 로그인되었습니다.`);
       setTimeout(() => setMyPageToast(''), 3500);
@@ -2716,6 +2733,7 @@ export default function UserIntroPage() {
       }
       if (res?.ok && res?.member) {
         applyMyPagePayload(res, true);
+        loadMyPageData(res.member.email, true).catch(() => {});
         setShowGmailPicker(false);
         setIsAuthModalOpen(false);
         setMyPageToast(`Google Gmail 계정(${res.member.email})으로 로그인되었습니다.`);
@@ -4987,7 +5005,7 @@ export default function UserIntroPage() {
       })
       .catch(() => {});
 
-    loadMyPageData('CloudBae@naver.com');
+    loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
 
     fetch('/api/addresses/meta')
       .then((r) => r.json())
@@ -8750,23 +8768,8 @@ export default function UserIntroPage() {
                 };
               };
 
-              // 회원의 실제 재배작물 리스트(cloudBaeCropList)를 현재 시점 기준으로 산출 (목록이 비어있을 경우 현재 활성 요청 1건을 기준으로 동적 산출)
-              const sourceCrops =
-                cloudBaeCropList.length > 0
-                  ? cloudBaeCropList
-                  : [
-                      {
-                        request_no:
-                          provisionData?.activeRequest?.request_no ||
-                          selectedRequestNo ||
-                          'REQ-20261106-009',
-                        crop_short: provisionData?.activeRequest?.crop_name || '배추',
-                        badge: provisionData?.activeRequest?.planting_method || '노지 정식(모종)',
-                        area_pyeong: Number(provisionData?.activeRequest?.area_pyeong || 500),
-                        planting_date:
-                          provisionData?.activeRequest?.desired_start_date || '2026-08-25',
-                      },
-                    ];
+              // 회원의 실제 재배작물 리스트(cloudBaeCropList)를 PC와 100% 동일하게 연동 (데이터가 0건일 때 임의 기본작물 생성 금지)
+              const sourceCrops = cloudBaeCropList;
 
               const combinedMobileCrops = sourceCrops.map((c: any, idx: number) =>
                 buildRealTimeCropScheduleCard(c, idx)
@@ -8774,7 +8777,8 @@ export default function UserIntroPage() {
 
               const activeCropItem =
                 combinedMobileCrops.find((c) => c.request_no === selectedRequestNo) ||
-                combinedMobileCrops[0];
+                combinedMobileCrops[0] ||
+                null;
 
               const visibleCropTabs = showAllMobileScheduleCrops
                 ? combinedMobileCrops
@@ -8785,8 +8789,9 @@ export default function UserIntroPage() {
                 : '홍길동';
 
               const step0Label =
-                activeCropItem.stageBadge === '재배준비' ||
-                activeCropItem.stageBadge === '파종·육묘'
+                activeCropItem &&
+                (activeCropItem.stageBadge === '재배준비' ||
+                  activeCropItem.stageBadge === '파종·육묘')
                   ? activeCropItem.stageBadge
                   : '정식';
               const fourStepLabels = [step0Label, '생육기', '결구기', '수확기'];
@@ -8949,269 +8954,296 @@ export default function UserIntroPage() {
                         </button>
                       </div>
 
-                      {/* 재배작물 가로 선택 카드 리스트 + [••• 전체보기] */}
-                      <div className="flex items-stretch gap-2 overflow-x-auto no-scrollbar">
-                        {visibleCropTabs.map((item) => {
-                          const isSelectedCrop = item.request_no === activeCropItem.request_no;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedRequestNo(item.request_no);
-                                setMyPageStageDetailItem(null);
-                              }}
-                              className={`flex-1 min-w-[96px] rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
-                                isSelectedCrop
-                                  ? 'bg-white border-[1.8px] border-[#0E712F] shadow-[0_2px_10px_rgba(14,113,47,0.1)]'
-                                  : 'bg-white/95 border border-transparent hover:bg-white'
-                              }`}
-                            >
-                              <div className="w-[42px] h-[42px] min-[390px]:w-[46px] min-[390px]:h-[46px] rounded-[11px] overflow-hidden shrink-0 bg-slate-100">
-                                <img
-                                  src={item.thumbUrl}
-                                  alt={item.shortName}
-                                  className="w-full h-full object-cover block"
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
-                                  {item.shortName}
-                                </div>
-                                <div className="mt-0.5 text-[11.5px] min-[390px]:text-[12px] font-medium text-[#4B5563] tracking-[-0.02em] leading-tight truncate">
-                                  {item.stageBadge}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-
-                        {/* 우측 ••• 전체보기 버튼 */}
-                        <button
-                          type="button"
-                          onClick={() => setShowAllMobileScheduleCrops((prev) => !prev)}
-                          className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px] shrink-0"
-                        >
-                          <div className="flex items-center gap-1 text-[#6B7280]">
-                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
-                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
-                            <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                      {/* 재배작물 가로 선택 카드 리스트 + [••• 전체보기] (0건일 경우 빈 안내 표시) */}
+                      {combinedMobileCrops.length === 0 ? (
+                        <div className="rounded-[16px] bg-white/95 border border-dashed border-[#B7CFC0] p-4 text-center space-y-2.5">
+                          <div className="text-[14.5px] font-black text-[#111827]">
+                            등록된 재배일정 확인 데이터가 없습니다 (0건)
                           </div>
-                          <span className="text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
-                            {showAllMobileScheduleCrops ? '접기' : '전체보기'}
-                          </span>
-                        </button>
-                      </div>
+                          <p className="text-[12px] font-medium text-[#4B5563] leading-relaxed">
+                            상단 <strong>[재배일정 요청]</strong> 탭 또는 우측 상단 <strong>[작물 추가 +]</strong> 버튼을 눌러 맞춤 재배일정을 생성해 주세요.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMobileReqStep(1);
+                              setActiveMenu('재배일정 요청');
+                            }}
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13px] font-extrabold shadow-2xs cursor-pointer transition"
+                          >
+                            <Plus className="w-4 h-4 stroke-[2.5]" />
+                            <span>맞춤 재배일정 요청하기</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-stretch gap-2 overflow-x-auto no-scrollbar">
+                          {visibleCropTabs.map((item) => {
+                            const isSelectedCrop =
+                              activeCropItem && item.request_no === activeCropItem.request_no;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRequestNo(item.request_no);
+                                  setMyPageStageDetailItem(null);
+                                }}
+                                className={`flex-1 min-w-[96px] rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
+                                  isSelectedCrop
+                                    ? 'bg-white border-[1.8px] border-[#0E712F] shadow-[0_2px_10px_rgba(14,113,47,0.1)]'
+                                    : 'bg-white/95 border border-transparent hover:bg-white'
+                                }`}
+                              >
+                                <div className="w-[42px] h-[42px] min-[390px]:w-[46px] min-[390px]:h-[46px] rounded-[11px] overflow-hidden shrink-0 bg-slate-100">
+                                  <img
+                                    src={item.thumbUrl}
+                                    alt={item.shortName}
+                                    className="w-full h-full object-cover block"
+                                  />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
+                                    {item.shortName}
+                                  </div>
+                                  <div className="mt-0.5 text-[11.5px] min-[390px]:text-[12px] font-medium text-[#4B5563] tracking-[-0.02em] leading-tight truncate">
+                                    {item.stageBadge}
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+
+                          {/* 우측 ••• 전체보기 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() => setShowAllMobileScheduleCrops((prev) => !prev)}
+                            className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px] shrink-0"
+                          >
+                            <div className="flex items-center gap-1 text-[#6B7280]">
+                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                            </div>
+                            <span className="text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
+                              {showAllMobileScheduleCrops ? '접기' : '전체보기'}
+                            </span>
+                          </button>
+                        </div>
+                      )}
                     </section>
 
-                    {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [일정확인] 버튼 터치 시 모달리스 폼 오픈) */}
-                    <section
-                      onClick={() => {
-                        const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
-                        setSelectedRequestNo(targetReqNo);
-                        setMyPageStageDetailItem(null);
-                        setMyPageProgressDetailReqNo(targetReqNo);
-                      }}
-                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer active:scale-[0.99] transition"
-                    >
-                      <div className="flex items-center justify-between gap-2.5">
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="w-[58px] h-[58px] min-[390px]:w-[62px] min-[390px]:h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 shadow-2xs">
-                            <img
-                              src={activeCropItem.thumbUrl}
-                              alt={activeCropItem.shortName}
-                              className="w-full h-full object-cover block"
-                            />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
-                                {activeCropItem.shortName} 재배현황
-                              </h2>
-                              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em] shrink-0">
-                                {activeCropItem.stageBadge}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 text-[14px] min-[390px]:text-[14.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
-                              {activeCropItem.cultivationMethod} ·{' '}
-                              {activeCropItem.areaPyeong.toLocaleString()}평
-                            </p>
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
+                    {activeCropItem && (
+                      <>
+                        {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [일정확인] 버튼 터치 시 모달리스 폼 오픈) */}
+                        <section
+                          onClick={() => {
                             const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
                             setSelectedRequestNo(targetReqNo);
                             setMyPageStageDetailItem(null);
                             setMyPageProgressDetailReqNo(targetReqNo);
                           }}
-                          className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
+                          className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer active:scale-[0.99] transition"
                         >
-                          <span>일정확인</span>
-                          <ChevronRight className="w-4 h-4 stroke-[2.5] -mr-0.5" />
-                        </button>
-                      </div>
-
-                      {/* 4단계 생육 진행 스텝 바 (정식 ── 생육기 ── 결구기 ── 수확기) */}
-                      <div className="px-4 pt-0.5 pb-1">
-                        <div className="relative flex items-center justify-between">
-                          {/* 연결 라인 0 -> 1 */}
-                          <div
-                            className={`absolute left-[14px] w-[calc(33.333%-14px)] top-[13px] h-[2.5px] transition-colors ${
-                              activeCropItem.activeStepIdx >= 1 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                            }`}
-                            aria-hidden="true"
-                          />
-                          {/* 연결 라인 1 -> 2 */}
-                          <div
-                            className={`absolute left-[33.333%] w-[33.333%] top-[13px] h-[2.5px] transition-colors ${
-                              activeCropItem.activeStepIdx >= 2 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                            }`}
-                            aria-hidden="true"
-                          />
-                          {/* 연결 라인 2 -> 3 */}
-                          <div
-                            className={`absolute left-[66.666%] right-[14px] top-[13px] h-[2.5px] transition-colors ${
-                              activeCropItem.activeStepIdx >= 3 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                            }`}
-                            aria-hidden="true"
-                          />
-
-                          {fourStepLabels.map((stepLabel, sIdx) => {
-                            const isCompletedStep =
-                              activeCropItem.isAllCompleted || sIdx < activeCropItem.activeStepIdx;
-                            const isCurrentStep =
-                              !activeCropItem.isAllCompleted &&
-                              sIdx === activeCropItem.activeStepIdx;
-                            const displayLabel =
-                              sIdx === 1 && activeCropItem.shortName === '마늘'
-                                ? '활착기'
-                                : stepLabel;
-
-                            return (
-                              <div
-                                key={stepLabel}
-                                className="relative z-10 flex flex-col items-center gap-2 bg-white px-1"
-                              >
-                                {isCompletedStep ? (
-                                  <div className="w-[26px] h-[26px] rounded-full bg-[#15803D] text-white flex items-center justify-center">
-                                    <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
-                                      <path
-                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                        stroke="#FFFFFF"
-                                        strokeWidth="2.2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  </div>
-                                ) : isCurrentStep ? (
-                                  <div className="w-[28px] h-[28px] rounded-full border-[2.5px] border-[#15803D] bg-white flex items-center justify-center">
-                                    <span className="w-[16px] h-[16px] rounded-full bg-[#15803D]" />
-                                  </div>
-                                ) : (
-                                  <div className="w-[26px] h-[26px] rounded-full border-[2px] border-[#CBD5E1] bg-white" />
-                                )}
-
-                                <span
-                                  className={`text-[13.5px] tracking-[-0.02em] whitespace-nowrap ${
-                                    isCurrentStep
-                                      ? 'font-black text-[#111827]'
-                                      : isCompletedStep
-                                      ? 'font-medium text-[#374151]'
-                                      : 'font-medium text-[#4B5563]'
-                                  }`}
-                                >
-                                  {displayLabel}
-                                </span>
+                          <div className="flex items-center justify-between gap-2.5">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="w-[58px] h-[58px] min-[390px]:w-[62px] min-[390px]:h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 shadow-2xs">
+                                <img
+                                  src={activeCropItem.thumbUrl}
+                                  alt={activeCropItem.shortName}
+                                  className="w-full h-full object-cover block"
+                                />
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </section>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
+                                    {activeCropItem.shortName} 재배현황
+                                  </h2>
+                                  <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em] shrink-0">
+                                    {activeCropItem.stageBadge}
+                                  </span>
+                                </div>
+                                <p className="mt-0.5 text-[14px] min-[390px]:text-[14.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                                  {activeCropItem.cultivationMethod} ·{' '}
+                                  {activeCropItem.areaPyeong.toLocaleString()}평
+                                </p>
+                              </div>
+                            </div>
 
-                    {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 (클릭 시 모달리스 폼 오픈) */}
-                    <section
-                      onClick={() => {
-                        const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
-                        setSelectedRequestNo(targetReqNo);
-                        setMyPageStageDetailItem(null);
-                        setMyPageProgressDetailReqNo(targetReqNo);
-                      }}
-                      className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer active:scale-[0.99] transition"
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0" fill="none">
-                          <rect
-                            x="3.5"
-                            y="5"
-                            width="17"
-                            height="15.5"
-                            rx="2.8"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                          />
-                          <circle cx="9" cy="13.5" r="1" fill="#0E712F" />
-                          <circle cx="15" cy="13.5" r="1" fill="#0E712F" />
-                          <circle cx="9" cy="17" r="1" fill="#0E712F" />
-                          <circle cx="12" cy="17" r="1" fill="#0E712F" />
-                        </svg>
-                        <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
-                          다음 농작업
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 pl-7">
-                        <div className="min-w-0">
-                          <div className="text-[20px] min-[390px]:text-[21px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
-                            {activeCropItem.nextTaskTitle}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
+                                setSelectedRequestNo(targetReqNo);
+                                setMyPageStageDetailItem(null);
+                                setMyPageProgressDetailReqNo(targetReqNo);
+                              }}
+                              className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
+                            >
+                              <span>일정확인</span>
+                              <ChevronRight className="w-4 h-4 stroke-[2.5] -mr-0.5" />
+                            </button>
                           </div>
-                          <div className="mt-1 text-[13.5px] min-[390px]:text-[14px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
-                            {activeCropItem.nextTaskDesc}
-                          </div>
-                        </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <div className="px-3.5 py-2 rounded-full bg-[#F4F7F4] border border-[#E5EAE6] inline-flex items-center gap-1.5">
-                            <svg viewBox="0 0 20 20" className="w-4 h-4 shrink-0" fill="none">
+                          {/* 4단계 생육 진행 스텝 바 (정식 ── 생육기 ── 결구기 ── 수확기) */}
+                          <div className="px-4 pt-0.5 pb-1">
+                            <div className="relative flex items-center justify-between">
+                              {/* 연결 라인 0 -> 1 */}
+                              <div
+                                className={`absolute left-[14px] w-[calc(33.333%-14px)] top-[13px] h-[2.5px] transition-colors ${
+                                  activeCropItem.activeStepIdx >= 1 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                                }`}
+                                aria-hidden="true"
+                              />
+                              {/* 연결 라인 1 -> 2 */}
+                              <div
+                                className={`absolute left-[33.333%] w-[33.333%] top-[13px] h-[2.5px] transition-colors ${
+                                  activeCropItem.activeStepIdx >= 2 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                                }`}
+                                aria-hidden="true"
+                              />
+                              {/* 연결 라인 2 -> 3 */}
+                              <div
+                                className={`absolute left-[66.666%] right-[14px] top-[13px] h-[2.5px] transition-colors ${
+                                  activeCropItem.activeStepIdx >= 3 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                                }`}
+                                aria-hidden="true"
+                              />
+
+                              {fourStepLabels.map((stepLabel, sIdx) => {
+                                const isCompletedStep =
+                                  activeCropItem.isAllCompleted || sIdx < activeCropItem.activeStepIdx;
+                                const isCurrentStep =
+                                  !activeCropItem.isAllCompleted &&
+                                  sIdx === activeCropItem.activeStepIdx;
+                                const displayLabel =
+                                  sIdx === 1 && activeCropItem.shortName === '마늘'
+                                    ? '활착기'
+                                    : stepLabel;
+
+                                return (
+                                  <div
+                                    key={stepLabel}
+                                    className="relative z-10 flex flex-col items-center gap-2 bg-white px-1"
+                                  >
+                                    {isCompletedStep ? (
+                                      <div className="w-[26px] h-[26px] rounded-full bg-[#15803D] text-white flex items-center justify-center">
+                                        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                          <path
+                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                            stroke="#FFFFFF"
+                                            strokeWidth="2.2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      </div>
+                                    ) : isCurrentStep ? (
+                                      <div className="w-[28px] h-[28px] rounded-full border-[2.5px] border-[#15803D] bg-white flex items-center justify-center">
+                                        <span className="w-[16px] h-[16px] rounded-full bg-[#15803D]" />
+                                      </div>
+                                    ) : (
+                                      <div className="w-[26px] h-[26px] rounded-full border-[2px] border-[#CBD5E1] bg-white" />
+                                    )}
+
+                                    <span
+                                      className={`text-[13.5px] tracking-[-0.02em] whitespace-nowrap ${
+                                        isCurrentStep
+                                          ? 'font-black text-[#111827]'
+                                          : isCompletedStep
+                                          ? 'font-medium text-[#374151]'
+                                          : 'font-medium text-[#4B5563]'
+                                      }`}
+                                    >
+                                      {displayLabel}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </section>
+
+                        {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 (클릭 시 모달리스 폼 오픈) */}
+                        <section
+                          onClick={() => {
+                            const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
+                            setSelectedRequestNo(targetReqNo);
+                            setMyPageStageDetailItem(null);
+                            setMyPageProgressDetailReqNo(targetReqNo);
+                          }}
+                          className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer active:scale-[0.99] transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0" fill="none">
                               <rect
-                                x="2.5"
-                                y="4"
-                                width="15"
-                                height="13.5"
-                                rx="2.2"
+                                x="3.5"
+                                y="5"
+                                width="17"
+                                height="15.5"
+                                rx="2.8"
                                 stroke="#0E712F"
-                                strokeWidth="1.7"
+                                strokeWidth="2"
                               />
                               <path
-                                d="M6.5 2.5V5M13.5 2.5V5M2.5 7.8H17.5"
+                                d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
                                 stroke="#0E712F"
-                                strokeWidth="1.7"
+                                strokeWidth="2"
                                 strokeLinecap="round"
                               />
-                              <circle cx="7.5" cy="11" r="0.9" fill="#0E712F" />
-                              <circle cx="12.5" cy="11" r="0.9" fill="#0E712F" />
-                              <circle cx="7.5" cy="14" r="0.9" fill="#0E712F" />
-                              <circle cx="10" cy="14" r="0.9" fill="#0E712F" />
+                              <circle cx="9" cy="13.5" r="1" fill="#0E712F" />
+                              <circle cx="15" cy="13.5" r="1" fill="#0E712F" />
+                              <circle cx="9" cy="17" r="1" fill="#0E712F" />
+                              <circle cx="12" cy="17" r="1" fill="#0E712F" />
                             </svg>
-                            <span className="text-[14px] min-[390px]:text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] whitespace-nowrap">
-                              {activeCropItem.nextTaskDateLabel}
+                            <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                              다음 농작업
                             </span>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
-                        </div>
-                      </div>
-                    </section>
+
+                          <div className="flex items-center justify-between gap-2 pl-7">
+                            <div className="min-w-0">
+                              <div className="text-[20px] min-[390px]:text-[21px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
+                                {activeCropItem.nextTaskTitle}
+                              </div>
+                              <div className="mt-1 text-[13.5px] min-[390px]:text-[14px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
+                                {activeCropItem.nextTaskDesc}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="px-3.5 py-2 rounded-full bg-[#F4F7F4] border border-[#E5EAE6] inline-flex items-center gap-1.5">
+                                <svg viewBox="0 0 20 20" className="w-4 h-4 shrink-0" fill="none">
+                                  <rect
+                                    x="2.5"
+                                    y="4"
+                                    width="15"
+                                    height="13.5"
+                                    rx="2.2"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.7"
+                                  />
+                                  <path
+                                    d="M6.5 2.5V5M13.5 2.5V5M2.5 7.8H17.5"
+                                    stroke="#0E712F"
+                                    strokeWidth="1.7"
+                                    strokeLinecap="round"
+                                  />
+                                  <circle cx="7.5" cy="11" r="0.9" fill="#0E712F" />
+                                  <circle cx="12.5" cy="11" r="0.9" fill="#0E712F" />
+                                  <circle cx="7.5" cy="14" r="0.9" fill="#0E712F" />
+                                  <circle cx="10" cy="14" r="0.9" fill="#0E712F" />
+                                </svg>
+                                <span className="text-[14px] min-[390px]:text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] whitespace-nowrap">
+                                  {activeCropItem.nextTaskDateLabel}
+                                </span>
+                              </div>
+                              <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                            </div>
+                          </div>
+                        </section>
+                      </>
+                    )}
 
                     {/* 6. 하단 3열 카드 (농자재 구매 / 생육단계 확인 / 작업기록) — 요청에 따라 기능·링크 미연결 */}
                     <section className="grid grid-cols-3 gap-2.5 pt-0.5">
@@ -14653,6 +14685,69 @@ export default function UserIntroPage() {
 
                     {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
                     {renderMobileScheduleFolderTabs()}
+
+                    {/* 모바일 전용: PC와 동일한 '요청한 내 재배일정 (N건)' 현황 요약 카드 (0건일 때 0건 명시) */}
+                    {mobileReqStep === 1 && (
+                      <div className="px-3.5 pt-1.5 pb-1">
+                        <div className="rounded-[18px] bg-[#EFF5F1] border border-[#DCE8DF] px-3.5 py-2.5 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#0E712F] shrink-0" />
+                              <span className="text-[14px] font-black text-[#111827] tracking-[-0.03em]">
+                                요청한 내 재배일정{' '}
+                                <span className="text-[#0E712F]">
+                                  ({scheduleRequestCropList.length}건)
+                                </span>
+                              </span>
+                            </div>
+                            <span className="text-[11.5px] font-semibold text-[#4B5563]">
+                              {scheduleRequestCropList.length === 0
+                                ? '등록된 요청 내역 없음'
+                                : '요청 완료 목록'}
+                            </span>
+                          </div>
+
+                          {scheduleRequestCropList.length > 0 && (
+                            <div className="space-y-1.5 pt-0.5">
+                              {scheduleRequestCropList.map((reqCrop: any, rIdx: number) => (
+                                <div
+                                  key={reqCrop.request_no || reqCrop.crop_plan_id || rIdx}
+                                  className="rounded-xl bg-white border border-[#E5E7EB] px-3 py-2 flex items-center justify-between gap-2"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="text-[13.5px] font-black text-[#111827] truncate">
+                                      {reqCrop.crop_title || `${reqCrop.crop_short || '작물'} (${reqCrop.cultivar_name || ''})`}
+                                    </div>
+                                    <div className="text-[11.5px] font-medium text-[#4B5563] truncate">
+                                      {reqCrop.region} · {Number(reqCrop.area_pyeong || 300).toLocaleString()}평
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedRequestNo(reqCrop.request_no);
+                                        setActiveMenu('재배일정 확인');
+                                      }}
+                                      className="px-2.5 py-1 rounded-lg bg-[#0E712F] text-white text-[11.5px] font-extrabold cursor-pointer"
+                                    >
+                                      일정확인
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleDeleteScheduleAndCascade(reqCrop, e)}
+                                      className="px-2 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11.5px] font-extrabold cursor-pointer"
+                                    >
+                                      삭제
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* 2. 단계별 타이틀 & 서브타이틀 */}
                     <div className="px-4 pt-1 pb-2 text-center">
