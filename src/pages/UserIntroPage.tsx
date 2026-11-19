@@ -4943,11 +4943,18 @@ export default function UserIntroPage() {
               .sort((a: any, b: any) => Number(b?.match_score || 0) - Number(a?.match_score || 0))
               .slice(0, 1);
             topMats.forEach((mat: any) => {
-              const matKey = `${stageId}__${it.item_id || ''}__${mat.material_id || mat.product_name}`;
+              const matCode = mat.material_id || mat.product_name;
+              const matKey = `${stageId}__${matCode}`;
+              const addQty = parseRecommendedQuantity(mat, areaPyeong);
               if (!initSelection[matKey]) {
                 initSelection[matKey] = {
                   checked: true,
-                  qty: parseRecommendedQuantity(mat, areaPyeong),
+                  qty: addQty,
+                };
+              } else {
+                initSelection[matKey] = {
+                  ...initSelection[matKey],
+                  qty: initSelection[matKey].qty + addQty,
                 };
               }
             });
@@ -10663,7 +10670,7 @@ export default function UserIntroPage() {
                                   'STG-1';
                                 const dMatCode =
                                   dTopMat?.material_id || dTopMat?.product_name || 'MAT-1';
-                                const dSelKey = `${dStageId}__${detailItem.item_id || ''}__${dMatCode}`;
+                                const dSelKey = `${dStageId}__${dMatCode}`;
                                 const dAreaPyeong = Number(
                                   provisionData.activeRequest?.area_pyeong ||
                                     crop.area_pyeong ||
@@ -11423,7 +11430,7 @@ export default function UserIntroPage() {
                                       .slice(0, 1);
                                     topMats.forEach((mat: any) => {
                                       const matCode = mat.material_id || mat.product_name;
-                                      const selKey = `${stageId}__${it.item_id || ''}__${matCode}`;
+                                      const selKey = `${stageId}__${matCode}`;
                                       const calcQty = parseRecommendedQuantity(mat, areaPyeong);
                                       const unitSpecStr = String(mat.unit_spec || '1포/기본단위');
                                       const unitMatch = unitSpecStr.match(
@@ -11446,50 +11453,79 @@ export default function UserIntroPage() {
                                         areaPyeong
                                       );
 
-                                      mergedMaterialsMap.set(selKey, {
-                                        selKey,
-                                        stageId,
-                                        stageName,
-                                        stageStartDate,
-                                        item_id: it.item_id,
-                                        process_code: it.process_code,
-                                        sub_item_name: cleanSubName,
-                                        material_id: mat.material_id || matCode,
-                                        material_category: mat.material_category || '',
-                                        product_name: mat.product_name || '맞춤 처방 농자재',
-                                        sub_type: mat.sub_type || '맞춤 농자재',
-                                        manufacturer: mat.manufacturer || '한팜인증',
-                                        unit_spec: unitSpecStr,
-                                        unit_label: unitLabel,
-                                        unit_price: Number(mat.unit_price || 18000),
-                                        match_score: Number(mat.match_score || 96),
-                                        category_spec_badge: mat.category_spec_badge || '',
-                                        selection_rationale:
-                                          mat.selection_rationale || bullets.join('\n'),
-                                        rationale_bullets: bullets,
-                                        rationale_stage: mat.rationale_stage || '',
-                                        rationale_soil: mat.rationale_soil || '',
-                                        rationale_climate: mat.rationale_climate || '',
-                                        rationale_dosage: mat.rationale_dosage || '',
-                                        quantity_calc_formula:
-                                          mat.quantity_calc_formula ||
-                                          `재배지 ${areaPyeong.toLocaleString()}평 ÷ 100평(${areaRatio}배) × 100평당 기준 ${baseRate}${unitLabel} = ${rawUnits}${unitLabel} 산출 → 포장단위 올림 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요`,
-                                        recommended_for_area:
-                                          mat.recommended_for_area ||
-                                          `재배지 ${areaPyeong.toLocaleString()}평 계산: 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseRate}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${calcQty}개)`,
-                                        nutrient_ratio_summary: mat.nutrient_ratio_summary || '',
-                                        thumbnail_url: resolveAgroProductThumbUrl(mat),
-                                        defaultQty: calcQty,
-                                        subProcesses: [
+                                      const existingMat = mergedMaterialsMap.get(selKey);
+                                      if (existingMat) {
+                                        const nextDefaultQty = existingMat.defaultQty + calcQty;
+                                        const nextSubProcesses = [
+                                          ...(existingMat.subProcesses || []),
                                           {
                                             item_id: it.item_id,
                                             process_code: it.process_code,
                                             name: cleanSubName,
                                             start_date: it.start_date,
                                             end_date: it.end_date,
+                                            qty: calcQty,
                                           },
-                                        ],
-                                      });
+                                        ];
+                                        const mergedSubNames = nextSubProcesses
+                                          .map((sp: any) => sp.name)
+                                          .filter(Boolean)
+                                          .join(' · ');
+                                        mergedMaterialsMap.set(selKey, {
+                                          ...existingMat,
+                                          sub_item_name: mergedSubNames,
+                                          defaultQty: nextDefaultQty,
+                                          subProcesses: nextSubProcesses,
+                                          quantity_calc_formula: `재배지 ${areaPyeong.toLocaleString()}평 기준 [${mergedSubNames}] ${nextSubProcesses.length}개 공정 합산 → 총 ${nextDefaultQty}${unitLabel}(${unitSpecStr}) 필요`,
+                                          recommended_for_area: `재배지 ${areaPyeong.toLocaleString()}평 계산: [${mergedSubNames}] ${nextSubProcesses.length}회분 합산 총 ${nextDefaultQty}${unitLabel}(${unitSpecStr}) 필요 (권장 구매 ${nextDefaultQty}${unitLabel})`,
+                                        });
+                                      } else {
+                                        mergedMaterialsMap.set(selKey, {
+                                          selKey,
+                                          stageId,
+                                          stageName,
+                                          stageStartDate,
+                                          item_id: it.item_id,
+                                          process_code: it.process_code,
+                                          sub_item_name: cleanSubName,
+                                          material_id: mat.material_id || matCode,
+                                          material_category: mat.material_category || '',
+                                          product_name: mat.product_name || '맞춤 처방 농자재',
+                                          sub_type: mat.sub_type || '맞춤 농자재',
+                                          manufacturer: mat.manufacturer || '한팜인증',
+                                          unit_spec: unitSpecStr,
+                                          unit_label: unitLabel,
+                                          unit_price: Number(mat.unit_price || 18000),
+                                          match_score: Number(mat.match_score || 96),
+                                          category_spec_badge: mat.category_spec_badge || '',
+                                          selection_rationale:
+                                            mat.selection_rationale || bullets.join('\n'),
+                                          rationale_bullets: bullets,
+                                          rationale_stage: mat.rationale_stage || '',
+                                          rationale_soil: mat.rationale_soil || '',
+                                          rationale_climate: mat.rationale_climate || '',
+                                          rationale_dosage: mat.rationale_dosage || '',
+                                          quantity_calc_formula:
+                                            mat.quantity_calc_formula ||
+                                            `재배지 ${areaPyeong.toLocaleString()}평 ÷ 100평(${areaRatio}배) × 100평당 기준 ${baseRate}${unitLabel} = ${rawUnits}${unitLabel} 산출 → 포장단위 올림 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요`,
+                                          recommended_for_area:
+                                            mat.recommended_for_area ||
+                                            `재배지 ${areaPyeong.toLocaleString()}평 계산: 총 ${calcQty}${unitLabel}(${unitSpecStr}) 필요 (100평당 ${baseRate}${unitLabel} × ${areaRatio}배 산출 · 권장 구매 ${calcQty}개)`,
+                                          nutrient_ratio_summary: mat.nutrient_ratio_summary || '',
+                                          thumbnail_url: resolveAgroProductThumbUrl(mat),
+                                          defaultQty: calcQty,
+                                          subProcesses: [
+                                            {
+                                              item_id: it.item_id,
+                                              process_code: it.process_code,
+                                              name: cleanSubName,
+                                              start_date: it.start_date,
+                                              end_date: it.end_date,
+                                              qty: calcQty,
+                                            },
+                                          ],
+                                        });
+                                      }
                                     });
                                   });
 
@@ -11627,7 +11663,7 @@ export default function UserIntroPage() {
                                   return;
                                 }
 
-                                const orderItems = itemsToBuy.map((m: any) => {
+                                const rawOrderItems = itemsToBuy.map((m: any) => {
                                   const st = purchaseSelectionMap[m.selKey] || {
                                     checked: true,
                                     qty: m.defaultQty,
@@ -11642,6 +11678,36 @@ export default function UserIntroPage() {
                                       : '2026-08-01',
                                   };
                                 });
+
+                                // 전 생육단계 패키지 구매 시 동일 제품(material_id / product_name)이 여러 단계에 걸친 경우 수량(qty)을 합산하여 단일 항목으로 병합
+                                const mergedOrderMap = new Map<string, any>();
+                                rawOrderItems.forEach((item: any) => {
+                                  const prodKey = String(item.material_id || item.product_name || item.selKey);
+                                  const existing = mergedOrderMap.get(prodKey);
+                                  if (existing) {
+                                    const nextQty = Number(existing.qty || 1) + Number(item.qty || 1);
+                                    const nextStageName =
+                                      existing.stageName && item.stageName && !String(existing.stageName).includes(item.stageName)
+                                        ? `${existing.stageName} · ${item.stageName}`
+                                        : existing.stageName;
+                                    const nextSubName =
+                                      existing.sub_item_name &&
+                                      item.sub_item_name &&
+                                      !String(existing.sub_item_name).includes(item.sub_item_name)
+                                        ? `${existing.sub_item_name} · ${item.sub_item_name}`
+                                        : existing.sub_item_name;
+                                    mergedOrderMap.set(prodKey, {
+                                      ...existing,
+                                      qty: nextQty,
+                                      subtotal: Number(existing.unit_price || 18000) * nextQty,
+                                      stageName: nextStageName,
+                                      sub_item_name: nextSubName,
+                                    });
+                                  } else {
+                                    mergedOrderMap.set(prodKey, item);
+                                  }
+                                });
+                                const orderItems = Array.from(mergedOrderMap.values());
 
                                 const orderRawTotal = orderItems.reduce(
                                   (s: number, it: any) => s + it.subtotal,
@@ -12047,18 +12113,30 @@ export default function UserIntroPage() {
                                                       className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
                                                     />
 
-                                                    {/* 생육과정 구분 배지 */}
+                                                    {/* 생육과정 구분 배지 (동일 제품이 여러 하위 공정에 추천된 경우 통합 표시) */}
                                                     <div className="w-36 sm:w-44 shrink-0">
                                                       <span
                                                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-extrabold truncate max-w-full ${accent.tagBg}`}
+                                                        title={mat.sub_item_name || procInfo?.name || sb.stageName}
                                                       >
                                                         <span className="truncate">
-                                                          {procInfo?.name || mat.sub_item_name || sb.stageName}
+                                                          {mat.sub_item_name || procInfo?.name || sb.stageName}
                                                         </span>
                                                       </span>
-                                                      {procInfo?.start_date && (
-                                                        <div className="text-[10px] font-mono text-slate-500 font-semibold mt-0.5 pl-1">
-                                                          추천일: {procInfo.start_date.slice(5).replace('-', '/')}
+                                                      {Array.isArray(mat.subProcesses) && mat.subProcesses.length > 0 && (
+                                                        <div className="text-[10px] font-mono text-slate-500 font-semibold mt-0.5 pl-1 truncate">
+                                                          추천일:{' '}
+                                                          {Array.from(
+                                                            new Set(
+                                                              mat.subProcesses
+                                                                .map((sp: any) =>
+                                                                  sp?.start_date
+                                                                    ? String(sp.start_date).slice(5).replace('-', '/')
+                                                                    : ''
+                                                                )
+                                                                .filter(Boolean)
+                                                            )
+                                                          ).join(', ')}
                                                         </div>
                                                       )}
                                                     </div>
@@ -12090,7 +12168,12 @@ export default function UserIntroPage() {
                                                         </span>
                                                         <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-extrabold shrink-0">
                                                           권장 {mat.defaultQty}
-                                                          {mat.unit_label || '개'} ({mat.unit_spec})
+                                                          {mat.unit_label || '개'} ({mat.unit_spec}
+                                                          {Array.isArray(mat.subProcesses) &&
+                                                          mat.subProcesses.length > 1
+                                                            ? ` · ${mat.subProcesses.length}개 공정 합산`
+                                                            : ''}
+                                                          )
                                                         </span>
                                                         {purchasedInfo.isPurchased && (
                                                           <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold shrink-0 inline-flex items-center gap-1">
@@ -23594,7 +23677,7 @@ export default function UserIntroPage() {
                     liveStageItem.stage_group_name ||
                     'STG-1';
                   const matCode = topMat?.material_id || topMat?.product_name || 'MAT-1';
-                  const selKey = `${stageGroupCode}__${liveStageItem.item_id || targetStageId}__${matCode}`;
+                  const selKey = `${stageGroupCode}__${matCode}`;
                   const areaPyeong = Number(
                     provisionData?.activeRequest?.area_pyeong || modalCrop.area_pyeong || 300
                   );
