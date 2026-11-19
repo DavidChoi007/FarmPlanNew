@@ -5030,8 +5030,11 @@ export default function UserIntroPage() {
   }, []);
 
   useEffect(() => {
-    loadScheduleProvision(selectedRequestNo, { gdd_mode: patentGddMode });
-  }, [selectedRequestNo]);
+    const targetReqNo = expandedScheduleRequestNo || selectedRequestNo;
+    if (targetReqNo) {
+      loadScheduleProvision(targetReqNo, { gdd_mode: patentGddMode });
+    }
+  }, [selectedRequestNo, expandedScheduleRequestNo]);
 
   useEffect(() => {
     if (
@@ -5312,10 +5315,18 @@ export default function UserIntroPage() {
         .then((res) => setData(res))
         .catch(() => {});
       loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
-      loadScheduleProvision(selectedRequestNo, {
-        gdd_mode: patentGddMode,
-        preserveItemId: selectedStageItem?.item_id,
-      });
+      const targetReqNo =
+        expandedScheduleRequestNo ||
+        selectedRequestNo ||
+        provisionData?.activeRequest?.request_no ||
+        cloudBaeCropList[0]?.request_no ||
+        '';
+      if (targetReqNo) {
+        loadScheduleProvision(targetReqNo, {
+          gdd_mode: patentGddMode,
+          preserveItemId: selectedStageItem?.item_id,
+        });
+      }
     };
     const syncCategoriesOnStorage = (e: StorageEvent) => {
       if (e.key === 'hanfarm_static_overview_v1' && e.newValue) {
@@ -5335,7 +5346,15 @@ export default function UserIntroPage() {
       window.removeEventListener('focus', syncCategoriesOnFocus);
       window.removeEventListener('storage', syncCategoriesOnStorage);
     };
-  }, []);
+  }, [
+    loggedInUser.email,
+    expandedScheduleRequestNo,
+    selectedRequestNo,
+    provisionData?.activeRequest?.request_no,
+    cloudBaeCropList,
+    patentGddMode,
+    selectedStageItem?.item_id,
+  ]);
 
   const handleSelectStageItem = (item: any) => {
     setSelectedStageItem(item);
@@ -9429,16 +9448,22 @@ export default function UserIntroPage() {
                         setSelectedRequestNo(reqNo);
                         setMyPageStageDetailItem(null);
                         setMyPageProgressDetailReqNo((prev) => (prev === reqNo ? null : reqNo));
+                        if (!provisionData || provisionData?.activeRequest?.request_no !== reqNo) {
+                          loadScheduleProvision(reqNo, { gdd_mode: patentGddMode });
+                        }
                         return;
                       }
-                      if (expandedScheduleRequestNo === crop.request_no) {
+                      if (expandedScheduleRequestNo === crop.request_no && provisionData) {
                         setExpandedScheduleRequestNo(null);
                         setHoveredProvisionItem(null);
                         setClickedProvisionItem(null);
                       } else {
-                        setSelectedRequestNo(crop.request_no);
-                        setExpandedScheduleRequestNo(crop.request_no);
+                        setSelectedRequestNo(reqNo);
+                        setExpandedScheduleRequestNo(reqNo);
                         setMobileScheduleStep('detail');
+                        if (!provisionData || provisionData?.activeRequest?.request_no !== reqNo) {
+                          loadScheduleProvision(reqNo, { gdd_mode: patentGddMode });
+                        }
                       }
                     };
                     return (
