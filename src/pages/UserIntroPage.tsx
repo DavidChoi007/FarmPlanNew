@@ -11045,37 +11045,33 @@ export default function UserIntroPage() {
                             )}
 
                             {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
-                            <div className="rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
-                              <table className="w-full border-collapse table-fixed min-w-[1440px]">
+                            <div className="w-full rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
+                              <table className="w-full border-collapse table-fixed min-w-[1360px]">
                                 <colgroup>
-                                  <col className="w-[130px]" />
-                                  <col className="w-[290px]" />
-                                  <col className="w-[255px]" />
-                                  <col />
+                                  <col style={{ width: '124px' }} />
+                                  <col style={{ width: '276px' }} />
+                                  <col style={{ width: '248px' }} />
+                                  <col style={{ width: 'auto' }} />
                                 </colgroup>
                                 <thead>
                                   <tr className="bg-slate-50 text-slate-800 border-b border-slate-200">
-                                    <th className="py-3 px-2 text-center border-r border-slate-200 font-extrabold text-xs">
+                                    <th className="w-[124px] py-3 px-2 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
                                       단계 (관리명칭)
                                     </th>
-                                    <th className="py-3 px-3 text-center border-r border-slate-200 font-extrabold text-xs">
+                                    <th className="w-[276px] py-3 px-3 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
                                       생육 과정명
                                     </th>
-                                    <th className="py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700">
+                                    <th className="w-[248px] py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700 whitespace-nowrap">
                                       추천 진행일 (수정 가능) · 시작 완료
                                     </th>
-                                    <th className="p-0 align-top">
-                                      <div
-                                        style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
-                                        className="grid w-full bg-slate-100/80 border-b border-slate-200"
-                                      >
+                                    <th className="w-auto p-0 align-top">
+                                      <div className="grid grid-cols-12 w-full bg-slate-100/80 border-b border-slate-200">
                                         {Array.from({ length: 12 }, (_, mIdx) => {
                                           const m = mIdx + 1;
                                           return (
                                             <div
                                               key={m}
-                                              style={{ gridColumn: 'span 4 / span 4' }}
-                                              className={`py-2 px-1 text-center font-extrabold text-xs text-slate-800 ${
+                                              className={`py-2 px-0.5 text-center font-extrabold text-xs text-slate-800 whitespace-nowrap ${
                                                 m === 12 ? '' : 'border-r border-slate-300'
                                               }`}
                                             >
@@ -11145,203 +11141,224 @@ export default function UserIntroPage() {
                                           });
                                       if (groupItems.length === 0) return null;
                                       const stageColor = group.stage_color || '#16a34a';
-                                      return groupItems.map((item: any, idxInGroup: number) => {
-                                        const enrichedItem = {
-                                          ...item,
-                                          stage_group_name: group.stage_group_name,
-                                          stage_color: stageColor,
-                                        };
-                                        const isSelectedStage = selectedStageItem?.item_id === item.item_id;
-                                        const isHovered = hoveredProvisionItem?.item_id === item.item_id;
-                                        const isClickedOpen = clickedProvisionItem?.item_id === item.item_id;
-                                        const isLastInGroup = idxInGroup === groupItems.length - 1;
-                                        const showBaselineRowAfter =
-                                          isPastExpandedForTable &&
-                                          lastPastItemId &&
-                                          String(item.item_id || '') === lastPastItemId;
-                                        const leftPct =
-                                          pcTimelineMode === 'calendar'
-                                            ? Number(item.calendar_left_pct ?? 50)
-                                            : Number(item.diagram_left_pct ?? 50);
-                                        const widthPct = Math.max(
-                                          3.5,
-                                          pcTimelineMode === 'calendar'
-                                            ? Number(item.calendar_width_pct ?? 4)
-                                            : Number(item.diagram_width_pct ?? 4)
-                                        );
-                                        return (
-                                          <React.Fragment key={item.item_id}>
-                                            <tr
-                                              data-growth-trigger="true"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const barEl = e.currentTarget.querySelector(
-                                                  '[data-gantt-bar="true"]'
-                                                ) as HTMLElement | null;
-                                                const targetEl = barEl || e.currentTarget;
-                                                const rect = targetEl.getBoundingClientRect();
-                                                setHoverAnchorPos({
-                                                  top: rect.top,
-                                                  left: rect.left,
-                                                  width: rect.width,
-                                                  height: rect.height,
-                                                  showAbove: rect.top > 240,
-                                                });
-                                                setHoveredProvisionItem(enrichedItem);
-                                                handleSelectStageItem(enrichedItem);
-                                              }}
-                                              className={`cursor-pointer transition ${
-                                                isLastInGroup ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
-                                              } ${
-                                                isClickedOpen || isHovered || isSelectedStage
-                                                  ? 'bg-emerald-50/85'
-                                                  : 'bg-white hover:bg-slate-50/90'
-                                              }`}
-                                            >
-                                              {idxInGroup === 0 && (
-                                                <td
-                                                  rowSpan={groupItems.length}
-                                                  className="p-2 border-r border-slate-200 align-middle bg-slate-50/40"
-                                                >
-                                                  <div
-                                                    style={{ backgroundColor: stageColor }}
-                                                    className="w-full min-h-[68px] rounded-xl px-2.5 py-2 flex items-center justify-center text-white font-extrabold text-xs shadow-2xs"
-                                                  >
-                                                    {group.stage_group_name}
-                                                  </div>
-                                                </td>
-                                              )}
-                                              <td className="py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
-                                                <div className="flex items-center justify-between gap-1.5">
-                                                  <span
-                                                    className={`leading-snug break-keep ${
-                                                      isClickedOpen || isHovered || isSelectedStage
-                                                        ? 'text-emerald-700 font-extrabold'
-                                                        : ''
-                                                    }`}
-                                                  >
-                                                    {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
-                                                    {renderStageInlineStatusText(
-                                                      tableReqNo,
-                                                      enrichedItem,
-                                                      {
-                                                        unconfirmedClassName:
-                                                          'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                        confirmedClassName:
-                                                          'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                      }
-                                                    )}
-                                                  </span>
-                                                  <div className="inline-flex items-center gap-1 shrink-0">
-                                                    <button
-                                                      type="button"
-                                                      onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleSelectStageItem(enrichedItem);
-                                                        setDetailModalPos({ x: 0, y: 0 });
-                                                        setClickedProvisionItem(enrichedItem);
-                                                      }}
-                                                      className="px-2 py-0.5 rounded border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[10.5px] font-extrabold transition cursor-pointer shadow-2xs"
-                                                    >
-                                                      세부보기
-                                                    </button>
-                                                    <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
-                                                      요약보기 ›
-                                                    </span>
-                                                  </div>
-                                                </div>
-                                              </td>
-                                              <td
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
+
+                                      // 만약 현재 날짜 기준선(lastPastItemId)이 동일 단계 그룹의 중간에 위치한다면,
+                                      // rowSpan과 colSpan={4} 기준선이 충돌하여 5번째 가상 컬럼이 생기는 문제를 방지하기 위해
+                                      // 기준선 이전 구간과 이후 구간으로 세그먼트를 분리하여 각각 정확한 rowSpan을 부여합니다.
+                                      const splitIdx = isPastExpandedForTable && lastPastItemId
+                                        ? groupItems.findIndex(
+                                            (it: any) => String(it.item_id || '') === lastPastItemId
+                                          )
+                                        : -1;
+                                      const itemSegments: any[][] =
+                                        splitIdx >= 0 && splitIdx < groupItems.length - 1
+                                          ? [
+                                              groupItems.slice(0, splitIdx + 1),
+                                              groupItems.slice(splitIdx + 1),
+                                            ]
+                                          : [groupItems];
+
+                                      return itemSegments.map((segmentItems: any[], segIdx: number) =>
+                                        segmentItems.map((item: any, idxInSeg: number) => {
+                                          const enrichedItem = {
+                                            ...item,
+                                            stage_group_name: group.stage_group_name,
+                                            stage_color: stageColor,
+                                          };
+                                          const isSelectedStage = selectedStageItem?.item_id === item.item_id;
+                                          const isHovered = hoveredProvisionItem?.item_id === item.item_id;
+                                          const isClickedOpen = clickedProvisionItem?.item_id === item.item_id;
+                                          const isLastInGroup =
+                                            segIdx === itemSegments.length - 1 &&
+                                            idxInSeg === segmentItems.length - 1;
+                                          const showBaselineRowAfter =
+                                            isPastExpandedForTable &&
+                                            lastPastItemId &&
+                                            String(item.item_id || '') === lastPastItemId;
+                                          const leftPct =
+                                            pcTimelineMode === 'calendar'
+                                              ? Number(item.calendar_left_pct ?? 50)
+                                              : Number(item.diagram_left_pct ?? 50);
+                                          const widthPct = Math.max(
+                                            3.5,
+                                            pcTimelineMode === 'calendar'
+                                              ? Number(item.calendar_width_pct ?? 4)
+                                              : Number(item.diagram_width_pct ?? 4)
+                                          );
+                                          return (
+                                            <React.Fragment key={item.item_id}>
+                                              <tr
+                                                data-growth-trigger="true"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const barEl = e.currentTarget.querySelector(
+                                                    '[data-gantt-bar="true"]'
+                                                  ) as HTMLElement | null;
+                                                  const targetEl = barEl || e.currentTarget;
+                                                  const rect = targetEl.getBoundingClientRect();
+                                                  setHoverAnchorPos({
+                                                    top: rect.top,
+                                                    left: rect.left,
+                                                    width: rect.width,
+                                                    height: rect.height,
+                                                    showAbove: rect.top > 240,
+                                                  });
+                                                  setHoveredProvisionItem(enrichedItem);
+                                                  handleSelectStageItem(enrichedItem);
+                                                }}
+                                                className={`cursor-pointer transition ${
+                                                  isLastInGroup ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
+                                                } ${
+                                                  isClickedOpen || isHovered || isSelectedStage
+                                                    ? 'bg-emerald-50/85'
+                                                    : 'bg-white hover:bg-slate-50/90'
+                                                }`}
                                               >
-                                                {(() => {
-                                                  const effRowDate = getEffectiveStageItemDate(
-                                                    tableReqNo,
-                                                    enrichedItem
-                                                  );
-                                                  return (
-                                                    <div className="flex items-center justify-between gap-1.5 flex-nowrap">
-                                                      <div className="flex items-center gap-1 min-w-0 flex-nowrap">
-                                                        <input
-                                                          type="date"
-                                                          value={effRowDate}
-                                                          onChange={(e) =>
-                                                            handleInlineStageDateChange(
-                                                              tableReqNo,
-                                                              enrichedItem,
-                                                              e.target.value
-                                                            )
-                                                          }
-                                                          className="w-[116px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
-                                                        />
-                                                        <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
-                                                          ({getWeekdayNameFromYmd(effRowDate)})
-                                                        </span>
-                                                      </div>
-                                                      {renderStageCompletionButton(
+                                                {idxInSeg === 0 && (
+                                                  <td
+                                                    rowSpan={segmentItems.length}
+                                                    className="w-[124px] p-2 border-r border-slate-200 align-middle bg-slate-50/40"
+                                                  >
+                                                    <div
+                                                      style={{ backgroundColor: stageColor }}
+                                                      className="w-full min-h-[44px] rounded-xl px-2.5 py-2 flex items-center justify-center text-center text-white font-extrabold text-xs shadow-2xs"
+                                                    >
+                                                      {group.stage_group_name}
+                                                    </div>
+                                                  </td>
+                                                )}
+                                                <td className="w-[276px] py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
+                                                  <div className="flex items-center justify-between gap-1.5">
+                                                    <span
+                                                      className={`leading-snug break-keep ${
+                                                        isClickedOpen || isHovered || isSelectedStage
+                                                          ? 'text-emerald-700 font-extrabold'
+                                                          : ''
+                                                      }`}
+                                                    >
+                                                      {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
+                                                      {renderStageInlineStatusText(
                                                         tableReqNo,
                                                         enrichedItem,
                                                         {
-                                                          size: 'sm',
-                                                          explicitDate: effRowDate,
+                                                          unconfirmedClassName:
+                                                            'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                          confirmedClassName:
+                                                            'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
                                                         }
                                                       )}
+                                                    </span>
+                                                    <div className="inline-flex items-center gap-1 shrink-0">
+                                                      <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          handleSelectStageItem(enrichedItem);
+                                                          setDetailModalPos({ x: 0, y: 0 });
+                                                          setClickedProvisionItem(enrichedItem);
+                                                        }}
+                                                        className="px-2 py-0.5 rounded border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[10.5px] font-extrabold transition cursor-pointer shadow-2xs"
+                                                      >
+                                                        세부보기
+                                                      </button>
+                                                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
+                                                        요약보기 ›
+                                                      </span>
                                                     </div>
-                                                  );
-                                                })()}
-                                              </td>
-                                              <td className="p-0 relative h-[36px] align-middle">
-                                                <div
-                                                  style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
-                                                  className="absolute inset-0 grid w-full pointer-events-none"
+                                                  </div>
+                                                </td>
+                                                <td
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="w-[248px] py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
                                                 >
-                                                  {Array.from({ length: 48 }, (_, cIdx) => {
-                                                    const isMonthBorder = (cIdx + 1) % 4 === 0;
-                                                    const isLastCol = cIdx === 47;
-                                                    return (
-                                                      <div
-                                                        key={cIdx}
-                                                        className={`h-full ${
-                                                          isLastCol
-                                                            ? ''
-                                                            : isMonthBorder
-                                                            ? 'border-r border-slate-300'
-                                                            : 'border-r border-slate-100'
-                                                        }`}
-                                                      />
+                                                  {(() => {
+                                                    const effRowDate = getEffectiveStageItemDate(
+                                                      tableReqNo,
+                                                      enrichedItem
                                                     );
-                                                  })}
-                                                </div>
-                                                <div
-                                                  data-gantt-bar="true"
-                                                  style={{
-                                                    left: `${leftPct}%`,
-                                                    width: `${widthPct}%`,
-                                                    backgroundColor: stageColor,
-                                                    clipPath:
-                                                      'polygon(5px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 5px 100%, 0% 50%)',
-                                                  }}
-                                                  className={`relative z-10 h-[23px] my-[6px] flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
-                                                    isHovered || isClickedOpen ? 'scale-[1.03] ring-2 ring-emerald-700/40' : ''
-                                                  }`}
-                                                >
-                                                  <span className="truncate">{item.bar_label || item.sub_item_name}</span>
-                                                </div>
-                                              </td>
-                                            </tr>
-                                            {showBaselineRowAfter && (
-                                              <tr className="bg-emerald-50/75 border-b-2 border-emerald-500">
-                                                <td colSpan={4} className="px-4 py-1.5">
-                                                  {renderTodayBaselineDivider(
-                                                    formatKoreanMonthDayLabel(todayYmdForTable)
-                                                  )}
+                                                    return (
+                                                      <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                                                        <div className="flex items-center gap-1 min-w-0 flex-nowrap">
+                                                          <input
+                                                            type="date"
+                                                            value={effRowDate}
+                                                            onChange={(e) =>
+                                                              handleInlineStageDateChange(
+                                                                tableReqNo,
+                                                                enrichedItem,
+                                                                e.target.value
+                                                              )
+                                                            }
+                                                            className="w-[114px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
+                                                          />
+                                                          <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
+                                                            ({getWeekdayNameFromYmd(effRowDate)})
+                                                          </span>
+                                                        </div>
+                                                        {renderStageCompletionButton(
+                                                          tableReqNo,
+                                                          enrichedItem,
+                                                          {
+                                                            size: 'sm',
+                                                            explicitDate: effRowDate,
+                                                          }
+                                                        )}
+                                                      </div>
+                                                    );
+                                                  })()}
+                                                </td>
+                                                <td className="w-auto p-0 relative h-[36px] align-middle">
+                                                  <div
+                                                    style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
+                                                    className="absolute inset-0 grid w-full pointer-events-none"
+                                                  >
+                                                    {Array.from({ length: 48 }, (_, cIdx) => {
+                                                      const isMonthBorder = (cIdx + 1) % 4 === 0;
+                                                      const isLastCol = cIdx === 47;
+                                                      return (
+                                                        <div
+                                                          key={cIdx}
+                                                          className={`h-full ${
+                                                            isLastCol
+                                                              ? ''
+                                                              : isMonthBorder
+                                                              ? 'border-r border-slate-300'
+                                                              : 'border-r border-slate-100'
+                                                          }`}
+                                                        />
+                                                      );
+                                                    })}
+                                                  </div>
+                                                  <div
+                                                    data-gantt-bar="true"
+                                                    style={{
+                                                      left: `${leftPct}%`,
+                                                      width: `${widthPct}%`,
+                                                      backgroundColor: stageColor,
+                                                      clipPath:
+                                                        'polygon(5px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 5px 100%, 0% 50%)',
+                                                    }}
+                                                    className={`relative z-10 h-[23px] my-[6px] flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
+                                                      isHovered || isClickedOpen ? 'scale-[1.03] ring-2 ring-emerald-700/40' : ''
+                                                    }`}
+                                                  >
+                                                    <span className="truncate">{item.bar_label || item.sub_item_name}</span>
+                                                  </div>
                                                 </td>
                                               </tr>
-                                            )}
-                                          </React.Fragment>
-                                        );
-                                      });
+                                              {showBaselineRowAfter && (
+                                                <tr className="bg-emerald-50/75 border-b-2 border-emerald-500">
+                                                  <td colSpan={4} className="px-4 py-1.5">
+                                                    {renderTodayBaselineDivider(
+                                                      formatKoreanMonthDayLabel(todayYmdForTable)
+                                                    )}
+                                                  </td>
+                                                </tr>
+                                              )}
+                                            </React.Fragment>
+                                          );
+                                        })
+                                      );
                                     });
                                   })()}
                                 </tbody>
