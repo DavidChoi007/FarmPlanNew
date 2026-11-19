@@ -6204,6 +6204,64 @@ export default function UserIntroPage() {
     (/;\s*wv\)/i.test(navigator.userAgent) || /Version\/\d+\.\d+\s+Chrome/i.test(navigator.userAgent)) &&
     !/FarmPlanSafeInset/i.test(navigator.userAgent);
 
+  // 모바일 전용: 재배관리 / 재배일정 요청 / 재배일정 확인 페이지 상단 '재배일정 요청' · '재배일정 확인' 폴더 형태 탭 바
+  const renderMobileScheduleFolderTabs = () => {
+    const isCheckTab = activeMenu === '재배일정 확인';
+    const isRequestTab = activeMenu === '재배일정 요청';
+
+    return (
+      <div className="lg:hidden px-3.5 pt-2 pb-1">
+        <div className="grid grid-cols-2 items-end gap-1.5 px-1.5 border-b-[2.5px] border-[#0E712F]">
+          {[
+            {
+              key: '재배일정 요청' as const,
+              label: '재배일정 요청',
+              active: isRequestTab,
+              icon: FileEdit,
+            },
+            {
+              key: '재배일정 확인' as const,
+              label: '재배일정 확인',
+              active: isCheckTab,
+              icon: Calendar,
+            },
+          ].map((tab) => {
+            const TabIcon = tab.icon;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setActiveMenu(tab.key);
+                  if (tab.key === '재배일정 요청') {
+                    setMobileReqStep(1);
+                  } else if (tab.key === '재배일정 확인') {
+                    setMobileScheduleStep('list');
+                  }
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`relative rounded-t-[15px] rounded-b-none px-3 flex items-center justify-center gap-2 cursor-pointer transition-all select-none ${
+                  tab.active
+                    ? 'h-[44px] bg-[#0E712F] text-white border-2 border-b-0 border-[#0E712F] font-black shadow-[0_-3px_10px_rgba(14,113,47,0.2)] z-10'
+                    : 'h-[40px] bg-[#E6EFE9] hover:bg-[#DAE7DE] text-[#374151] border border-b-0 border-[#C5D6CB] font-bold'
+                }`}
+              >
+                <TabIcon
+                  className={`w-4 h-4 shrink-0 ${
+                    tab.active ? 'text-white stroke-[2.4]' : 'text-[#0E712F] stroke-[2.1]'
+                  }`}
+                />
+                <span className="text-[14.5px] min-[390px]:text-[15.5px] tracking-[-0.03em] leading-none whitespace-nowrap">
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // 재배일정 확인 / 재배일정 요청 양방향 전환용 상단 폴더형 카드 탭 (농작물 구매 페이지와 동일한 구조)
   const renderScheduleNavigationTabs = () => {
     const isCheckTab = activeMenu === '재배일정 확인';
@@ -8842,6 +8900,9 @@ export default function UserIntroPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
+                  {renderMobileScheduleFolderTabs()}
 
                   {/* 2. 회원 인사말 타이틀 */}
                   <div className="px-4 pt-2 pb-3">
@@ -14589,6 +14650,9 @@ export default function UserIntroPage() {
 
                       <div className="w-9 h-9 shrink-0" aria-hidden="true" />
                     </div>
+
+                    {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
+                    {renderMobileScheduleFolderTabs()}
 
                     {/* 2. 단계별 타이틀 & 서브타이틀 */}
                     <div className="px-4 pt-1 pb-2 text-center">
