@@ -8732,7 +8732,7 @@ export default function UserIntroPage() {
                     stageBadge = '생육기';
                     activeStepIdx = 1;
                   } else if (ord <= 14) {
-                    stageBadge = '병해충관리';
+                    stageBadge = '결구기(병해충)';
                     activeStepIdx = 2;
                   } else {
                     stageBadge = '수확기';
@@ -8820,7 +8820,7 @@ export default function UserIntroPage() {
                   activeCropItem.stageBadge === '파종·육묘')
                   ? activeCropItem.stageBadge
                   : '정식';
-              const fourStepLabels = [step0Label, '생육기', '결구기', '수확기'];
+              const fourStepLabels = [step0Label, '생육기', '결구기(병해충)', '수확기'];
 
               return (
                 <div
