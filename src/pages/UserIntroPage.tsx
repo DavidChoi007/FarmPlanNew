@@ -2452,7 +2452,7 @@ export default function UserIntroPage() {
     }
   };
 
-  const loadMyPageData = async (targetEmail?: string, markLoggedIn = false) => {
+  const loadMyPageData = async (targetEmail?: string, markLoggedIn?: boolean) => {
     const emailToFetch = targetEmail || loggedInUser.email || 'CloudBae@naver.com';
     try {
       const [r, syncResRaw] = await Promise.all([
