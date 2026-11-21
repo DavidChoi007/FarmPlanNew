@@ -6423,267 +6423,31 @@ export default function UserIntroPage() {
     (/;\s*wv\)/i.test(navigator.userAgent) || /Version\/\d+\.\d+\s+Chrome/i.test(navigator.userAgent)) &&
     !/FarmPlanSafeInset/i.test(navigator.userAgent);
 
-  // 모바일 전용: 재배관리 / 재배일정 요청 / 재배일정 확인 페이지 상단 '재배일정 요청' · '재배일정 확인' 폴더 형태 탭 바
-  const renderMobileScheduleFolderTabs = () => {
-    const isCheckTab = activeMenu === '재배일정 확인';
-    const isRequestTab = activeMenu === '재배일정 요청';
+  // 모바일 전용: 재배일정 요청 / 재배일정 확인은 각각 독립된 별개 페이지로 구성되어 상단 폴더 탭 미표시
+  const renderMobileScheduleFolderTabs = () => null;
 
-    return (
-      <div className="lg:hidden px-3.5 pt-2 pb-1">
-        <div className="grid grid-cols-2 items-end gap-1.5 px-1.5 border-b-[2.5px] border-[#0E712F]">
-          {[
-            {
-              key: '재배일정 요청' as const,
-              label: '재배일정 요청',
-              active: isRequestTab,
-              icon: FileEdit,
-            },
-            {
-              key: '재배일정 확인' as const,
-              label: '재배일정 확인',
-              active: isCheckTab,
-              icon: Calendar,
-            },
-          ].map((tab) => {
-            const TabIcon = tab.icon;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setActiveMenu(tab.key);
-                  if (tab.key === '재배일정 요청') {
-                    setMobileReqStep(1);
-                  } else if (tab.key === '재배일정 확인') {
-                    setMobileScheduleStep('list');
-                  }
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`relative rounded-t-[15px] rounded-b-none px-3 flex items-center justify-center gap-2 cursor-pointer transition-all select-none ${
-                  tab.active
-                    ? 'h-[44px] bg-[#0E712F] text-white border-2 border-b-0 border-[#0E712F] font-black shadow-[0_-3px_10px_rgba(14,113,47,0.2)] z-10'
-                    : 'h-[40px] bg-[#E6EFE9] hover:bg-[#DAE7DE] text-[#374151] border border-b-0 border-[#C5D6CB] font-bold'
-                }`}
-              >
-                <TabIcon
-                  className={`w-4 h-4 shrink-0 ${
-                    tab.active ? 'text-white stroke-[2.4]' : 'text-[#0E712F] stroke-[2.1]'
-                  }`}
-                />
-                <span className="text-[14.5px] min-[390px]:text-[15.5px] tracking-[-0.03em] leading-none whitespace-nowrap">
-                  {tab.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  // 재배일정 확인 / 재배일정 요청 양방향 전환용 상단 폴더형 카드 탭 (농작물 구매 페이지와 동일한 구조)
+  // 재배일정 확인 / 재배일정 요청 페이지 상단 3D 와이드 배너 (양방향 전환 탭 제거 · 각각 별개 페이지 구성)
   const renderScheduleNavigationTabs = () => {
-    const isCheckTab = activeMenu === '재배일정 확인';
     const isRequestTab = activeMenu === '재배일정 요청';
 
     return (
-      <>
-        {/* ==================== [공통 (모바일 & PC): 홈과 동일한 위치의 메뉴별 3D 와이드 배너] ==================== */}
-        <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
-          <div className="relative w-full">
-            <img
-              src={
-                isRequestTab
-                  ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
-                  : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
-              }
-              alt={
-                isRequestTab
-                  ? '모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너'
-                  : '생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너'
-              }
-              className="w-full h-auto min-h-[115px] sm:min-h-[140px] object-cover object-center block"
-            />
-          </div>
-        </section>
-
-        {/* ==================== [모바일 전용: 배너 아래 2분할 메뉴 버튼 바] ==================== */}
-        <div className="lg:hidden space-y-2.5">
-          {/* 일체형 화이트 플로팅 카드 (재배일정 요청 / 재배일정 확인 좌측 정렬 초슬림 탭) */}
-          <div className="bg-white rounded-2xl p-1.5 shadow-[0_4px_16px_rgba(15,23,42,0.06)] border border-slate-200/85">
-            <div className="flex items-stretch justify-start gap-1.5">
-              {[
-                {
-                  key: '재배일정 요청' as const,
-                  label: '재배일정 요청',
-                  active: isRequestTab,
-                  renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-5 h-5 shrink-0" fill="none">
-                      <rect
-                        x="7"
-                        y="6.5"
-                        width="18"
-                        height="23"
-                        rx="3.5"
-                        fill={active ? '#ffffff' : '#E2E8F0'}
-                        fillOpacity={active ? '0.2' : '0.65'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.2"
-                      />
-                      <path
-                        d="M11.5 13h9M11.5 17.5h6"
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.1"
-                        strokeLinecap="round"
-                      />
-                      <circle
-                        cx="24.5"
-                        cy="23.5"
-                        r="5.5"
-                        fill={active ? '#A7F3D0' : '#5BB89A'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M24.5 20.8v5.4M21.8 23.5h5.4"
-                        stroke={active ? '#059669' : '#ffffff'}
-                        strokeWidth="2.3"
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  ),
-                },
-                {
-                  key: '재배일정 확인' as const,
-                  label: '재배일정 확인',
-                  active: isCheckTab,
-                  renderIcon: (active: boolean) => (
-                    <svg viewBox="0 0 36 36" className="w-5 h-5 shrink-0" fill="none">
-                      <rect
-                        x="6.5"
-                        y="8.5"
-                        width="23"
-                        height="21"
-                        rx="4"
-                        fill={active ? '#ffffff' : '#E2E8F0'}
-                        fillOpacity={active ? '0.2' : '0.65'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.2"
-                      />
-                      <path
-                        d="M6.5 14.5h23M12.5 5.5v5M23.5 5.5v5"
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                      />
-                      <circle
-                        cx="18"
-                        cy="22"
-                        r="5.2"
-                        fill={active ? '#A7F3D0' : '#5BB89A'}
-                        stroke={active ? '#ffffff' : '#334155'}
-                        strokeWidth="1.9"
-                      />
-                      <path
-                        d="M15.8 22l1.6 1.6 3.2-3.2"
-                        stroke={active ? '#059669' : '#ffffff'}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ),
-                },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => {
-                    setActiveMenu(tab.key);
-                    if (tab.key === '재배일정 확인') {
-                      setMobileScheduleStep('list');
-                    }
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className={`w-[32%] max-w-[118px] relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-all duration-150 cursor-pointer shrink-0 ${
-                    tab.active
-                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                      : 'bg-white hover:bg-slate-50 text-slate-900 border border-slate-200/95'
-                  }`}
-                >
-                  <div className="h-5 flex items-center justify-center mb-0.5">
-                    {tab.renderIcon(tab.active)}
-                  </div>
-                  <span
-                    className={`flex items-center justify-center text-center tracking-tighter text-[13.5px] min-[390px]:text-[14.5px] sm:text-[15.5px] leading-tight font-black whitespace-nowrap ${
-                      tab.active ? 'text-white' : 'text-slate-900'
-                    }`}
-                  >
-                    {tab.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+      <section className="rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200/80 shadow-xs bg-sky-100">
+        <div className="relative w-full">
+          <img
+            src={
+              isRequestTab
+                ? '/images/user-schedule-request-3d-banner.jpg?v=20261109'
+                : '/images/user-schedule-check-3d-banner.jpg?v=20261109'
+            }
+            alt={
+              isRequestTab
+                ? '모종·씨앗과 토양센서로 맞춤형 재배일정을 요청하는 3D 농부 캐릭터 배너'
+                : '생육과정 타임라인과 기온을 확인하며 재배일정을 점검하는 3D 농부 캐릭터 배너'
+            }
+            className="w-full h-auto min-h-[115px] sm:min-h-[140px] object-cover object-center block"
+          />
         </div>
-
-        {/* ==================== [PC 전용 (lg 이상): 좌측 정렬 1/3 폭 초슬림 폴더형 탭] ==================== */}
-        <div className="hidden lg:block space-y-4">
-          <section className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
-            <div className="bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 flex items-stretch justify-start gap-2">
-              {[
-                {
-                  menu: '재배일정 요청' as const,
-                  label: '재배일정 요청',
-                  icon: FileEdit,
-                },
-                {
-                  menu: '재배일정 확인' as const,
-                  label: '재배일정 확인',
-                  icon: Calendar,
-                },
-              ].map((tabItem) => {
-                const TabIcon = tabItem.icon;
-                const isCurrentTab = activeMenu === tabItem.menu;
-                return (
-                  <button
-                    key={tabItem.menu}
-                    type="button"
-                    onClick={() => {
-                      setActiveMenu(tabItem.menu);
-                      if (tabItem.menu === '재배일정 확인') {
-                        setMobileScheduleStep('list');
-                      }
-                    }}
-                    className={`w-[190px] xl:w-[210px] shrink-0 group relative rounded-lg px-3.5 py-2 text-left transition-all duration-150 cursor-pointer flex items-center gap-2.5 ${
-                      isCurrentTab
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 shadow-xs shadow-emerald-600/20'
-                        : 'bg-white/85 hover:bg-white text-slate-700 border border-slate-200/70 hover:border-emerald-300 shadow-2xs'
-                    }`}
-                  >
-                    <div
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition ${
-                        isCurrentTab
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-100 text-emerald-700 group-hover:bg-emerald-50'
-                      }`}
-                    >
-                      <TabIcon className="w-4 h-4" />
-                    </div>
-                    <span
-                      className={`text-[15px] font-extrabold tracking-tight truncate ${
-                        isCurrentTab ? 'text-white' : 'text-slate-900'
-                      }`}
-                    >
-                      {tabItem.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-      </>
+      </section>
     );
   };
 
