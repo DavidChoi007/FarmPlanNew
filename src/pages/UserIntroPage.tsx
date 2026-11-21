@@ -9140,11 +9140,11 @@ export default function UserIntroPage() {
                                     className="relative z-10 flex flex-col items-center gap-2 bg-white px-1"
                                   >
                                     {isCompletedStep ? (
-                                      <div className="w-[26px] h-[26px] rounded-full bg-[#15803D] text-white flex items-center justify-center">
+                                      <div className="w-[26px] h-[26px] rounded-full bg-[#BBF7D0] border border-[#86EFAC] text-[#15803D] flex items-center justify-center">
                                         <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
                                           <path
                                             d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                            stroke="#FFFFFF"
+                                            stroke="#15803D"
                                             strokeWidth="2.2"
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
