@@ -540,12 +540,12 @@ export default function UserIntroPage() {
     stageLabel: string;
     taskTitle: string;
     memo: string;
-  }>({
-    workDate: getTodayKstYmd(),
+  }>(() => ({
+    workDate: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
     stageLabel: '결구기',
     taskTitle: '',
     memo: '',
-  });
+  }));
   const [cropWorkLogs, setCropWorkLogs] = useState<
     Record<
       string,
