@@ -8801,13 +8801,11 @@ export default function UserIntroPage() {
                 ? loggedInUser.name || '회원'
                 : '홍길동';
 
-              const step0Label =
-                activeCropItem &&
-                (activeCropItem.stageBadge === '재배준비' ||
-                  activeCropItem.stageBadge === '파종·육묘')
-                  ? activeCropItem.stageBadge
+              const fourStepLabels = ['정식', '생육기', '결구기(병해충)', '수확기'] as const;
+              const currentStepLabel =
+                activeCropItem
+                  ? fourStepLabels[activeCropItem.activeStepIdx] || '정식'
                   : '정식';
-              const fourStepLabels = [step0Label, '생육기', '결구기(병해충)', '수확기'];
 
               return (
                 <div
@@ -9098,7 +9096,7 @@ export default function UserIntroPage() {
                               }}
                               className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
                             >
-                              <span>일정확인</span>
+                              <span>{`${currentStepLabel} 확인`}</span>
                               <ChevronRight className="w-4 h-4 stroke-[2.5] -mr-0.5" />
                             </button>
                           </div>
@@ -9134,10 +9132,7 @@ export default function UserIntroPage() {
                                 const isCurrentStep =
                                   !activeCropItem.isAllCompleted &&
                                   sIdx === activeCropItem.activeStepIdx;
-                                const displayLabel =
-                                  sIdx === 1 && activeCropItem.shortName === '마늘'
-                                    ? '활착기'
-                                    : stepLabel;
+                                const displayLabel = stepLabel;
 
                                 return (
                                   <div
