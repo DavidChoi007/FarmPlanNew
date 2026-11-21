@@ -23769,46 +23769,6 @@ export default function UserIntroPage() {
                         </button>
                       </div>
                     </div>
-
-                    {/* 8. 하단 고정 액션 바: [전체 재배일정 보기] / [작업기록 작성] */}
-                    <div
-                      className="bg-white px-4 pt-3 pb-3.5 border-t border-[#E5E7EB] grid grid-cols-2 gap-2.5 shrink-0"
-                      style={{
-                        paddingBottom: isLegacyAndroidWebView
-                          ? 'max(16px, env(safe-area-inset-bottom, 16px))'
-                          : 'max(14px, env(safe-area-inset-bottom, 14px))',
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMobileStageOverviewReqNo(null);
-                          setMyPageStageDetailItem(null);
-                          setMyPageProgressDetailReqNo(ovReqNo);
-                        }}
-                        className="h-[48px] rounded-full bg-white hover:bg-slate-50 border-[1.5px] border-slate-300 text-[#111827] font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
-                      >
-                        <Calendar className="w-4 h-4 text-[#0E712F] shrink-0" />
-                        <span>전체 재배일정 보기</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWorkLogForm((prev) => ({
-                            ...prev,
-                            workDate: getTodayKstYmd(),
-                            stageLabel: curStepDef.stageTitle,
-                            taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
-                          }));
-                          setIsWorkLogFormOpen(true);
-                        }}
-                        className="h-[48px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
-                      >
-                        <FileEdit className="w-4 h-4 shrink-0" />
-                        <span>작업기록 작성</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               );
