@@ -2699,6 +2699,10 @@ export default function UserIntroPage() {
       }));
       return;
     }
+    setSignupForm((prev) => ({
+      ...prev,
+      emailCheckMsg: '사용 가능 여부를 확인하고 있습니다...',
+    }));
     try {
       const r = await fetch(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
       const res = await r.json();
@@ -6624,7 +6628,7 @@ export default function UserIntroPage() {
 
   return (
     <div
-      className={`min-h-screen ${
+      className={`min-h-screen w-full max-w-full overflow-x-hidden ${
         activeMenu === '홈'
           ? 'bg-white lg:bg-[#F8FAFC]'
           : activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청'
@@ -6657,18 +6661,18 @@ export default function UserIntroPage() {
         <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
         <div className="max-w-[1600px] w-full mx-auto px-2.5 sm:px-8 xl:px-10 h-14 sm:h-20 flex items-center justify-between gap-1.5 sm:gap-4">
           {/* 좌측: 로고(로그인 버튼과 동일한 38px 높이) + FarmPlan 브랜드명 + PC 전용 가로 메뉴 독(Dock) */}
-          <div className="flex items-center gap-1.5 sm:gap-5 xl:gap-8 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-5 xl:gap-8 min-w-0 shrink">
             <button
               type="button"
               onClick={() => setActiveMenu('홈')}
-              className="h-[38px] sm:h-10 flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0 cursor-pointer group text-left whitespace-nowrap"
+              className="h-[36px] sm:h-10 flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0 cursor-pointer group text-left whitespace-nowrap"
             >
-              <div className="w-[38px] h-[38px] sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-1 sm:ring-2 ring-emerald-100 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
-                <Sprout className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.3]" />
+              <div className="w-[32px] h-[32px] sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-xs shadow-emerald-600/25 ring-1 sm:ring-2 ring-emerald-100 group-hover:from-emerald-400 group-hover:to-emerald-600 transition shrink-0">
+                <Sprout className="w-4 h-4 sm:w-6 sm:h-6 stroke-[2.3]" />
               </div>
-              <div className="h-[38px] sm:h-10 flex flex-col justify-center">
+              <div className="h-[36px] sm:h-10 flex flex-col justify-center">
                 <div className="flex items-center gap-1">
-                  <span className="font-black text-[24px] min-[390px]:text-[26px] sm:text-[28px] tracking-tight block leading-none whitespace-nowrap">
+                  <span className="font-black text-[19px] min-[420px]:text-[22px] sm:text-[28px] tracking-tight block leading-none whitespace-nowrap">
                     <span className="text-[#063820] group-hover:text-emerald-800 transition">Farm</span>
                     <span className="text-[#059669] group-hover:text-emerald-500 transition">Plan</span>
                   </span>
@@ -6746,8 +6750,8 @@ export default function UserIntroPage() {
             </nav>
           </div>
 
-          {/* 우측: [로그인] + [회원가입] + [모바일 우측 슬라이드 메뉴 버튼] (모두 38px 균일 높이 & 고령자 친화 폰트) */}
-          <div className="flex items-center gap-1 min-[390px]:gap-1.5 sm:gap-2 shrink-0">
+          {/* 우측: [로그인] + [회원가입] + [모바일 우측 슬라이드 메뉴 버튼] (모두 균일 높이 & 모바일 겹침 방지) */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {loggedInUser.isLoggedIn ? (
               <>
                 <button
@@ -6756,19 +6760,19 @@ export default function UserIntroPage() {
                     setActiveMenu('마이페이지');
                     setMyPageTab('FARMLAND');
                   }}
-                  className="h-[38px] sm:h-10 px-2.5 sm:px-4 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 text-slate-900 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[34px] sm:h-10 px-2 sm:px-4 rounded-xl border border-emerald-300 bg-emerald-50/90 hover:bg-emerald-100 text-slate-900 font-black text-[12px] sm:text-sm leading-none inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap transition cursor-pointer shadow-2xs max-w-[116px] sm:max-w-none"
                 >
-                  <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[11px] sm:text-xs font-extrabold shrink-0">
+                  <span className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[10px] sm:text-xs font-extrabold shrink-0">
                     {loggedInUser.name.slice(0, 1)}
                   </span>
-                  <span className="font-black text-emerald-950 whitespace-nowrap">
+                  <span className="font-black text-emerald-950 truncate">
                     {loggedInUser.name} 님
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="h-[38px] sm:h-10 px-2.5 min-[390px]:px-3 sm:px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[34px] sm:h-10 px-2 sm:px-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-[12px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그아웃
                 </button>
@@ -6783,7 +6787,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('LOGIN');
                     setIsAuthModalOpen(true);
                   }}
-                  className="h-[38px] sm:h-10 px-2 min-[390px]:px-2.5 sm:px-4 rounded-xl border-2 border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
+                  className="h-[34px] sm:h-10 px-2 sm:px-4 rounded-xl border-2 border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-700 font-black text-[12px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-2xs"
                 >
                   로그인
                 </button>
@@ -6797,7 +6801,7 @@ export default function UserIntroPage() {
                     setAuthModalTab('SIGNUP');
                     setIsAuthModalOpen(true);
                   }}
-                  className="h-[38px] sm:h-10 px-2 min-[390px]:px-2.5 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[13px] min-[390px]:text-[13.5px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
+                  className="h-[34px] sm:h-10 px-2 sm:px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[12px] sm:text-sm leading-none inline-flex items-center justify-center whitespace-nowrap transition cursor-pointer shadow-xs shadow-emerald-600/20"
                 >
                   회원가입
                 </button>
@@ -6809,9 +6813,9 @@ export default function UserIntroPage() {
               type="button"
               onClick={() => setIsMobileGnbDrawerOpen(true)}
               aria-label="전체 메뉴 열기"
-              className="lg:hidden inline-flex items-center justify-center gap-1 px-2 min-[390px]:px-2.5 h-[38px] sm:h-10 rounded-xl bg-[#063820] hover:bg-emerald-900 text-white text-[13px] min-[390px]:text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
+              className="lg:hidden inline-flex items-center justify-center gap-1 px-2 h-[34px] sm:h-10 rounded-xl bg-[#063820] hover:bg-emerald-900 text-white text-[12px] sm:text-[13.5px] font-black leading-none whitespace-nowrap shadow-xs cursor-pointer transition shrink-0"
             >
-              <span className="flex flex-col gap-1 w-3.5" aria-hidden="true">
+              <span className="flex flex-col gap-0.5 w-3" aria-hidden="true">
                 <span className="block h-0.5 w-full bg-white rounded-full" />
                 <span className="block h-0.5 w-full bg-white rounded-full" />
                 <span className="block h-0.5 w-full bg-white rounded-full" />
@@ -6839,8 +6843,10 @@ export default function UserIntroPage() {
         />
       )}
       <aside
-        className={`fixed inset-y-0 right-0 z-50 w-[300px] sm:w-[320px] max-w-[86vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
-          isMobileGnbDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+        className={`fixed inset-y-0 right-0 z-50 w-[280px] sm:w-[310px] max-w-[82vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-all duration-200 ease-in-out lg:hidden ${
+          isMobileGnbDrawerOpen
+            ? 'translate-x-0 visible pointer-events-auto'
+            : 'translate-x-full invisible pointer-events-none'
         }`}
         style={{
           paddingTop: isLegacyAndroidWebView
@@ -8861,12 +8867,23 @@ export default function UserIntroPage() {
                   nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
                 }
 
+                const cultivarName = String(
+                  crop.cultivar_name || crop.item_name_3rd || ''
+                ).trim();
+                const regionText = String(
+                  crop.region ||
+                    [crop.sido, crop.sigungu, crop.eupmyeondong].filter(Boolean).join(' ') ||
+                    ''
+                ).trim();
+
                 return {
                   id: reqNo,
                   request_no: reqNo,
                   isRealCrop: true,
                   isAllCompleted,
                   shortName,
+                  cultivarName,
+                  region: regionText,
                   thumbUrl: resolveCropThumbByShortName(shortName),
                   stageBadge,
                   cultivationMethod: String(crop.badge || '').includes('시설') ? '시설' : '노지',
@@ -9165,14 +9182,19 @@ export default function UserIntroPage() {
                               </div>
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h2 className="text-[19px] min-[390px]:text-[20px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
-                                    {activeCropItem.shortName} 재배현황
+                                  <h2 className="text-[18px] min-[390px]:text-[19.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
+                                    {activeCropItem.shortName}
+                                    {activeCropItem.cultivarName
+                                      ? ` (${activeCropItem.cultivarName})`
+                                      : ''}{' '}
+                                    재배현황
                                   </h2>
-                                  <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em] shrink-0">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12px] font-extrabold tracking-[-0.02em] shrink-0">
                                     {activeCropItem.stageBadge}
                                   </span>
                                 </div>
-                                <p className="mt-0.5 text-[14px] min-[390px]:text-[14.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                                <p className="mt-0.5 text-[13px] min-[390px]:text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
+                                  {activeCropItem.region ? `${activeCropItem.region} · ` : ''}
                                   {activeCropItem.cultivationMethod} ·{' '}
                                   {activeCropItem.areaPyeong.toLocaleString()}평
                                 </p>
@@ -9355,10 +9377,18 @@ export default function UserIntroPage() {
                       </>
                     )}
 
-                    {/* 6. 하단 3열 카드 (농자재 구매 / 생육단계 확인 / 작업기록) — 요청에 따라 기능·링크 미연결 */}
+                    {/* 6. 하단 3열 퀵 액션 카드 (농자재 구매 / 생육단계 확인 / 작업기록) */}
                     <section className="grid grid-cols-3 gap-2.5 pt-0.5">
-                      {/* 카드 1: 농자재 구매 (링크 미연결) */}
-                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                      {/* 카드 1: 농자재 구매 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileAgroCategoryTab('FERTILIZER');
+                          setActiveMenu('농작물 구매');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
+                      >
                         <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
                           <path
                             d="M8.5 14.5H27.5L26 27.5H10L8.5 14.5Z"
@@ -9376,10 +9406,26 @@ export default function UserIntroPage() {
                         <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
                           농자재 구매
                         </span>
-                      </div>
+                      </button>
 
-                      {/* 카드 2: 생육단계 확인 (링크 미연결) */}
-                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                      {/* 카드 2: 생육단계 확인 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const targetReqNo =
+                            activeCropItem?.request_no ||
+                            selectedRequestNo ||
+                            cloudBaeCropList[0]?.request_no;
+                          if (targetReqNo) {
+                            setSelectedRequestNo(targetReqNo);
+                            setMyPageStageDetailItem(null);
+                            setMyPageProgressDetailReqNo(targetReqNo);
+                          } else {
+                            setActiveMenu('재배일정 요청');
+                          }
+                        }}
+                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
+                      >
                         <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
                           <path
                             d="M7.5 13C7.5 11.6 8.6 10.5 10 10.5H12.8L14.5 8H21.5L23.2 10.5H26C27.4 10.5 28.5 11.6 28.5 13V24.5C28.5 25.9 27.4 27 26 27H10C8.6 27 7.5 25.9 7.5 24.5V13Z"
@@ -9392,10 +9438,18 @@ export default function UserIntroPage() {
                         <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
                           생육단계 확인
                         </span>
-                      </div>
+                      </button>
 
-                      {/* 카드 3: 작업기록 (링크 미연결) */}
-                      <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)]">
+                      {/* 카드 3: 작업기록 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveMenu('마이페이지');
+                          setMyPageTab('PROGRESS');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
+                      >
                         <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
                           <rect
                             x="9"
@@ -9423,7 +9477,7 @@ export default function UserIntroPage() {
                         <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
                           작업기록
                         </span>
-                      </div>
+                      </button>
                     </section>
                   </div>
                 </div>
@@ -15263,16 +15317,16 @@ export default function UserIntroPage() {
                               onClick={() =>
                                 setIsMobileAddrPickerOpen((prev) => !prev)
                               }
-                              className="flex-1 h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3 flex items-center gap-2 text-left cursor-pointer"
+                              className="flex-1 min-w-0 h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3 flex items-center gap-2 text-left cursor-pointer"
                             >
-                              <svg viewBox="0 0 20 20" className="w-4.5 h-4.5 shrink-0" fill="none">
+                              <svg viewBox="0 0 20 20" className="w-[18px] h-[18px] shrink-0" fill="none">
                                 <path
                                   d="M10 17.5C10 17.5 15.5 12.6 15.5 8.2C15.5 5.1 13 2.5 10 2.5C7 2.5 4.5 5.1 4.5 8.2C4.5 12.6 10 17.5 10 17.5Z"
                                   fill="#0E712F"
                                 />
                                 <circle cx="10" cy="8" r="2" fill="#FFFFFF" />
                               </svg>
-                              <span className="text-[14.5px] font-medium text-[#111827] truncate">
+                              <span className="text-[14.5px] font-medium text-[#111827] truncate block">
                                 {shortAddressLabel}
                               </span>
                             </button>
@@ -15536,16 +15590,16 @@ export default function UserIntroPage() {
                             </span>
                           </div>
 
-                          <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3 space-y-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
+                          <div className="rounded-[20px] bg-white border border-[#E5E7EB]/90 p-3 space-y-3 shadow-[0_2px_10px_rgba(15,23,42,0.02)]">
                             {/* 토양조건 */}
-                            <div className="flex items-center gap-2">
-                              <div className="w-[88px] shrink-0 flex items-center gap-1.5">
-                                <span className="text-base">🪨</span>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">🪨</span>
                                 <span className="text-[13px] font-bold text-[#111827] tracking-[-0.03em]">
                                   토양조건
                                 </span>
                               </div>
-                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                              <div className="grid grid-cols-4 gap-1.5">
                                 {(['사양토', '양토', '점질토', '모름'] as const).map((soil) => {
                                   const isSel = reqForm.soil_condition === soil;
                                   return (
@@ -15558,7 +15612,7 @@ export default function UserIntroPage() {
                                           soil_condition: soil,
                                         }))
                                       }
-                                      className={`relative h-[36px] rounded-[10px] text-[12px] font-bold tracking-[-0.03em] cursor-pointer transition ${
+                                      className={`relative h-[38px] rounded-[10px] text-[12.5px] font-bold tracking-[-0.03em] cursor-pointer transition ${
                                         isSel
                                           ? 'border-[1.5px] border-[#0E712F] bg-[#ECFDF3] text-[#111827]'
                                           : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
@@ -15577,14 +15631,14 @@ export default function UserIntroPage() {
                             </div>
 
                             {/* 관수방식 */}
-                            <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5">
-                              <div className="w-[88px] shrink-0 flex items-center gap-1.5">
-                                <span className="text-base">💧</span>
+                            <div className="space-y-1.5 border-t border-slate-100 pt-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">💧</span>
                                 <span className="text-[13px] font-bold text-[#111827] tracking-[-0.03em]">
                                   관수방식
                                 </span>
                               </div>
-                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                              <div className="grid grid-cols-4 gap-1.5">
                                 {(
                                   ['관수 없음', '고랑관수', '점적관수', '스프링클러'] as const
                                 ).map((irr) => {
@@ -15599,7 +15653,7 @@ export default function UserIntroPage() {
                                           irrigation_type: irr,
                                         }))
                                       }
-                                      className={`relative h-[36px] rounded-[10px] text-[11.5px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
+                                      className={`relative h-[38px] rounded-[10px] text-[12px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
                                         isSel
                                           ? 'border-[1.5px] border-[#0E712F] bg-[#ECFDF3] text-[#111827]'
                                           : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
@@ -15618,14 +15672,14 @@ export default function UserIntroPage() {
                             </div>
 
                             {/* 재배시설 및 환경 */}
-                            <div className="flex items-center gap-2 border-t border-slate-100 pt-2.5">
-                              <div className="w-[88px] shrink-0 flex items-center gap-1">
+                            <div className="space-y-1.5 border-t border-slate-100 pt-2.5">
+                              <div className="flex items-center gap-1.5">
                                 <span className="text-sm">🏠</span>
-                                <span className="text-[12px] font-bold text-[#111827] tracking-[-0.04em] whitespace-nowrap">
-                                  재배시설 및 환경
+                                <span className="text-[13px] font-bold text-[#111827] tracking-[-0.03em]">
+                                  재배시설 및 환경 (중복 선택 가능)
                                 </span>
                               </div>
-                              <div className="flex-1 grid grid-cols-4 gap-1.5">
+                              <div className="grid grid-cols-4 gap-1.5">
                                 {(['멀칭', '부직포', '비닐피복', '기타'] as const).map((env) => {
                                   const isChecked = (reqForm.facility_env || []).includes(
                                     env
@@ -15635,7 +15689,7 @@ export default function UserIntroPage() {
                                       key={env}
                                       type="button"
                                       onClick={() => toggleFacilityEnvItem(env)}
-                                      className={`h-[36px] rounded-[10px] px-1 flex items-center justify-center gap-1 text-[11.5px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
+                                      className={`h-[38px] rounded-[10px] px-1 flex items-center justify-center gap-1 text-[12px] font-bold tracking-[-0.04em] whitespace-nowrap cursor-pointer transition ${
                                         isChecked
                                           ? 'border border-[#0E712F] bg-[#F4FBF6] text-[#111827]'
                                           : 'border border-[#E5E7EB] bg-[#F9FAFB] text-[#374151]'
@@ -15692,8 +15746,8 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          {/* 4열 라디오 카드 그리드 */}
-                          <div className="grid grid-cols-4 gap-1.5 items-stretch">
+                          {/* 2x2 (태블릿 이상 4열) 라디오 카드 그리드 */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-stretch">
                             {[
                               {
                                 key: 'OPTIMAL_AUTO' as const,
@@ -22194,7 +22248,7 @@ export default function UserIntroPage() {
                                 emailCheckMsg: '',
                               })
                             }
-                            placeholder="이메일을 입력해주세요"
+                            placeholder="아이디 또는 이메일을 입력해주세요"
                             className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                           />
                         </div>
@@ -22251,7 +22305,7 @@ export default function UserIntroPage() {
                           onChange={(e) =>
                             setSignupForm({ ...signupForm, password: e.target.value })
                           }
-                          placeholder="영문·숫자·특수문자 8자 이상"
+                          placeholder="비밀번호를 입력해주세요 (4자 이상)"
                           className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                         />
                         <button
