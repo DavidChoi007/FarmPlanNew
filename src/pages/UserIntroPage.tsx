@@ -17126,13 +17126,6 @@ export default function UserIntroPage() {
                               <div>
                                 <div className="flex items-center justify-between mb-1">
                                   <label className="block font-bold text-slate-700">농작물 선택 (2단계 작물)</label>
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsMoreCropModalOpen(true)}
-                                    className="px-2 py-0.5 rounded-lg bg-[#ECF6EE] hover:bg-[#D9EFE0] text-[#0E712F] font-extrabold text-[11px] inline-flex items-center gap-1 cursor-pointer transition"
-                                  >
-                                    <span>••• 이미지로 더보기 선택</span>
-                                  </button>
                                 </div>
                                 <select
                                   value={reqForm.crop_name}
