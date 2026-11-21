@@ -969,6 +969,35 @@ export default function UserIntroPage() {
   const getTodayKstYmd = (): string =>
     new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
+  const formatKoreanMonthDayWeekday = (ymd: string): string => {
+    const todayYmd = getTodayKstYmd();
+    const target = ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : todayYmd;
+    const m = Number(target.slice(5, 7));
+    const d = Number(target.slice(8, 10));
+    const wk = getWeekdayNameFromYmd(target) || '';
+    return wk ? `${m}월 ${d}일(${wk})` : `${m}월 ${d}일`;
+  };
+
+  const resolveCropThumbByShortName = (name: string): string => {
+    const n = String(name || '');
+    if (n.includes('마늘')) return '/images/crops/crop-thumb-garlic.jpg';
+    if (n.includes('오이')) return '/images/crops/crop-thumb-cucumber.jpg';
+    if (n.includes('고추')) return '/images/crops/req-crop-pepper.jpg';
+    if (n.includes('시금치')) return '/images/crops/req-crop-spinach.jpg';
+    if (n.includes('토마토')) return '/images/crops/req-crop-tomato.jpg';
+    if (n.includes('감자')) return '/images/crops/req-crop-potato.jpg';
+    if (n.includes('고구마')) return '/images/crops/req-crop-sweetpotato.jpg';
+    if (n.includes('무')) return '/images/crops/req-crop-radish.jpg';
+    if (n.includes('당근')) return '/images/crops/req-crop-carrot.jpg';
+    if (n.includes('양파')) return '/images/crops/req-crop-onion.jpg';
+    if (n.includes('대파')) return '/images/crops/req-crop-greenonion.jpg';
+    if (n.includes('상추')) return '/images/crops/req-crop-lettuce.jpg';
+    if (n.includes('콩')) return '/images/crops/req-crop-bean.jpg';
+    if (n.includes('수박')) return '/images/crops/req-crop-watermelon.jpg';
+    if (n.includes('참외')) return '/images/crops/req-crop-melon.jpg';
+    return '/images/crops/crop-thumb-cabbage.jpg';
+  };
+
   const formatKoreanMonthDayLabel = (ymd: string): string => {
     const m = Number(String(ymd || '').slice(5, 7));
     const d = Number(String(ymd || '').slice(8, 10));
@@ -8629,34 +8658,6 @@ export default function UserIntroPage() {
             {/* ==================== 모바일 전용 재배일정 확인(재배관리) 뷰 (실제 현재 시점 getTodayKstYmd() 기준 동적 산출 · lg:hidden) ==================== */}
             {(() => {
               const todayKstYmd = getTodayKstYmd();
-
-              const formatKoreanMonthDayWeekday = (ymd: string) => {
-                const target = ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : todayKstYmd;
-                const m = Number(target.slice(5, 7));
-                const d = Number(target.slice(8, 10));
-                const wk = getWeekdayNameFromYmd(target) || '';
-                return wk ? `${m}월 ${d}일(${wk})` : `${m}월 ${d}일`;
-              };
-
-              const resolveCropThumbByShortName = (name: string) => {
-                const n = String(name || '');
-                if (n.includes('마늘')) return '/images/crops/crop-thumb-garlic.jpg';
-                if (n.includes('오이')) return '/images/crops/crop-thumb-cucumber.jpg';
-                if (n.includes('고추')) return '/images/crops/req-crop-pepper.jpg';
-                if (n.includes('시금치')) return '/images/crops/req-crop-spinach.jpg';
-                if (n.includes('토마토')) return '/images/crops/req-crop-tomato.jpg';
-                if (n.includes('감자')) return '/images/crops/req-crop-potato.jpg';
-                if (n.includes('고구마')) return '/images/crops/req-crop-sweetpotato.jpg';
-                if (n.includes('무')) return '/images/crops/req-crop-radish.jpg';
-                if (n.includes('당근')) return '/images/crops/req-crop-carrot.jpg';
-                if (n.includes('양파')) return '/images/crops/req-crop-onion.jpg';
-                if (n.includes('대파')) return '/images/crops/req-crop-greenonion.jpg';
-                if (n.includes('상추')) return '/images/crops/req-crop-lettuce.jpg';
-                if (n.includes('콩')) return '/images/crops/req-crop-bean.jpg';
-                if (n.includes('수박')) return '/images/crops/req-crop-watermelon.jpg';
-                if (n.includes('참외')) return '/images/crops/req-crop-melon.jpg';
-                return '/images/crops/crop-thumb-cabbage.jpg';
-              };
 
               // 특정 작물(request_no)의 16개 생육과정을 실제 현재 날짜(todayKstYmd)와 비교하여 현재 생육단계 및 다음 농작업을 정확히 산출
               const buildRealTimeCropScheduleCard = (crop: any, idx: number) => {
