@@ -19549,7 +19549,7 @@ export default function UserIntroPage() {
                 </button>
               </div>
 
-              {/* 가로 스크롤 없는 3열 고정 그리드 내부 메뉴 (모바일 폭 맞춤 중앙 정렬 카드형) */}
+              {/* 가로 스크롤 없는 3열 고정 그리드 내부 메뉴 (모바일 폭 맞춤 중앙 정렬 카드형 · 5개 메뉴) */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   {
@@ -19558,14 +19558,9 @@ export default function UserIntroPage() {
                     line2: `(${myFarmlands.length}곳)`,
                   },
                   {
-                    code: 'CROPS',
-                    line1: '② 내 재배작물',
-                    line2: `(${cloudBaeCropList.length}건)`,
-                  },
-                  {
                     code: 'PROGRESS',
-                    line1: '③ 재배진행율',
-                    line2: `(${
+                    line1: '② 재배일정 확인',
+                    line2: `(${cloudBaeCropList.length}건 · ${
                       cloudBaeCropList.length > 0
                         ? Math.round(
                             cloudBaeCropList.reduce(
@@ -19578,17 +19573,17 @@ export default function UserIntroPage() {
                   },
                   {
                     code: 'CART',
-                    line1: '④ 장바구니',
+                    line1: '③ 장바구니',
                     line2: `(${myCartItems.length}건)`,
                   },
                   {
                     code: 'AGRO_PURCHASE',
-                    line1: '⑤ 농자재 구매',
+                    line1: '④ 농자재 구매',
                     line2: `(${stagePurchaseHistory.length}건)`,
                   },
                   {
                     code: 'PROFILE',
-                    line1: '⑥ 회원 기본정보',
+                    line1: '⑤ 회원 기본정보',
                     line2: '',
                   },
                 ].map((mTab) => {
@@ -19665,7 +19660,7 @@ export default function UserIntroPage() {
                       마이페이지 메뉴
                     </span>
                     <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      7개 항목
+                      5개 항목
                     </span>
                   </div>
 
@@ -19678,15 +19673,8 @@ export default function UserIntroPage() {
                       icon: MapPin,
                     },
                     {
-                      code: 'CROPS',
-                      title: '② 내 재배작물 등록',
-                      desc: '모종·씨 다품종 복수 작물 등록',
-                      badge: `${cloudBaeCropList.length}건`,
-                      icon: Sprout,
-                    },
-                    {
                       code: 'PROGRESS',
-                      title: '③ 작물재배현황 및 진행율',
+                      title: '② 재배일정 확인',
                       desc: '실시간 생육단계 · 적산온도(PGDD)',
                       badge: `${
                         cloudBaeCropList.length > 0
@@ -19702,31 +19690,24 @@ export default function UserIntroPage() {
                     },
                     {
                       code: 'CART',
-                      title: '④ 농자재 장바구니',
+                      title: '③ 농자재 장바구니',
                       desc: '생육과정별 담은 농자재 수량조절 · 주문',
                       badge: `${myCartItems.length}건`,
                       icon: ShoppingCart,
                     },
                     {
                       code: 'AGRO_PURCHASE',
-                      title: '⑤ 농자재 구매',
+                      title: '④ 농자재 구매',
                       desc: '생육과정 구분 정보 · 구매 상품 리스트',
                       badge: `${stagePurchaseHistory.length}건`,
                       icon: ShoppingBag,
                     },
                     {
                       code: 'PROFILE',
-                      title: '⑥ 회원 기본정보 관리',
+                      title: '⑤ 회원 기본정보 관리',
                       desc: '이메일 · 이름 · 성별 · 도로명주소',
                       badge: '내 정보',
                       icon: User,
-                    },
-                    {
-                      code: 'ALL',
-                      title: '전체 항목 한눈에 보기',
-                      desc: '마이페이지 모든 섹션 통합 조회',
-                      badge: '통합',
-                      icon: Layers,
                     },
                   ].map((item) => {
                     const IconComp = item.icon;
@@ -19874,24 +19855,6 @@ export default function UserIntroPage() {
 
                     <button
                       type="button"
-                      onClick={() => setMyPageTab('CROPS')}
-                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
-                        myPageTab === 'CROPS'
-                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
-                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
-                      }`}
-                    >
-                      <div className="text-xs font-bold text-slate-500">② 내 재배작물 등록</div>
-                      <div className="text-xl font-extrabold text-slate-900 mt-1">
-                        {cloudBaeCropList.length}건
-                      </div>
-                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                        모종·씨 복수 등록 지원
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => setMyPageTab('PROGRESS')}
                       className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
                         myPageTab === 'PROGRESS'
@@ -19899,8 +19862,9 @@ export default function UserIntroPage() {
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-slate-500">③ 평균 재배 진행율</div>
+                      <div className="text-xs font-bold text-slate-500">② 재배일정 확인</div>
                       <div className="text-xl font-extrabold text-emerald-700 mt-1">
+                        {cloudBaeCropList.length}건 ·{' '}
                         {cloudBaeCropList.length > 0
                           ? Math.round(
                               cloudBaeCropList.reduce(
@@ -19925,7 +19889,7 @@ export default function UserIntroPage() {
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-slate-500">④ 농자재 장바구니</div>
+                      <div className="text-xs font-bold text-slate-500">③ 농자재 장바구니</div>
                       <div className="text-xl font-extrabold text-slate-900 mt-1">
                         {myCartItems.length}건
                       </div>
@@ -19945,18 +19909,36 @@ export default function UserIntroPage() {
                     <button
                       type="button"
                       onClick={() => setMyPageTab('AGRO_PURCHASE')}
-                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer col-span-2 sm:col-span-1 ${
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer ${
                         myPageTab === 'AGRO_PURCHASE'
                           ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
                           : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
                       }`}
                     >
-                      <div className="text-xs font-bold text-emerald-800">⑤ 농자재 구매</div>
+                      <div className="text-xs font-bold text-emerald-800">④ 농자재 구매</div>
                       <div className="text-xl font-extrabold text-slate-900 mt-1">
                         {stagePurchaseHistory.length}건
                       </div>
                       <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
                         생육과정 구분 + 제품명 리스트
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMyPageTab('PROFILE')}
+                      className={`p-3.5 rounded-2xl border text-left transition cursor-pointer col-span-2 sm:col-span-1 ${
+                        myPageTab === 'PROFILE'
+                          ? 'border-emerald-600 bg-emerald-50/70 ring-1 ring-emerald-600'
+                          : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-slate-500">⑤ 회원 기본정보 관리</div>
+                      <div className="text-xl font-extrabold text-slate-900 mt-1 truncate">
+                        {loggedInUser.name || '내 정보'}
+                      </div>
+                      <div className="text-[11px] text-emerald-700 font-bold mt-0.5 truncate">
+                        {loggedInUser.road_address || '도로명주소 · 연락처 관리'}
                       </div>
                     </button>
                   </div>
@@ -20367,10 +20349,10 @@ export default function UserIntroPage() {
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => setMyPageTab('CROPS')}
+                        onClick={() => setMyPageTab('PROGRESS')}
                         className="hidden sm:inline-flex text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
                       >
-                        ② 내 재배작물 등록 보기 ›
+                        ② 재배일정 확인 보기 ›
                       </button>
                       <button
                         type="button"
@@ -20420,22 +20402,20 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setNewCropPlanForm((prev) => ({
+                              setReqForm((prev) => ({
                                 ...prev,
-                                farmland_id: land.farmland_id,
-                                sido: land.sido,
-                                sigungu: land.sigungu,
-                                eupmyeondong: land.eupmyeondong,
+                                sido: land.sido || prev.sido,
+                                sigungu: land.sigungu || prev.sigungu,
+                                eupmyeondong: land.eupmyeondong || prev.eupmyeondong,
+                                detail_address: land.detail_jibun || prev.detail_address,
                                 area_pyeong: Number(land.area_pyeong || 300),
                               }));
-                              setMyPageTab('CROPS');
-                              if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                                setIsCropPlanRegModalOpen(true);
-                              }
+                              setIsReqFormModalOpen(true);
+                              setActiveMenu('재배일정 요청');
                             }}
                             className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
                           >
-                            이 재배지에 작물 추가 ›
+                            이 재배지로 재배일정 요청 ›
                           </button>
                           <button
                             type="button"
@@ -20452,350 +20432,8 @@ export default function UserIntroPage() {
               </section>
             )}
 
-            {/* ② 재배작물 등록 (복수 가능) */}
-            {(myPageTab === 'ALL' || myPageTab === 'CROPS') && (
-              <section className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-6 shadow-xs space-y-4 sm:space-y-5">
-                <div className="flex items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
-                  <div className="min-w-0 flex-1">
-                    <span className="px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-800 text-xs font-extrabold">
-                      다품종 · 다필지 복수 작물 등록 지원
-                    </span>
-                    <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                      ② 내 재배작물 등록 (복수 등록 가능)
-                    </h3>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      등록된 내 재배지를 선택하고 재배할 작물·품종·작물구분(모종/씨)·정식(파종)일을 입력하여 여러 작물을 복수로 등록할 수 있습니다.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsCropPlanRegModalOpen(true)}
-                    className="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white text-xs sm:text-sm font-extrabold cursor-pointer shadow-2xs transition shrink-0 inline-flex items-center gap-1.5"
-                  >
-                    <Sprout className="w-4 h-4" />
-                    <span>재배작물 등록</span>
-                  </button>
-                </div>
-
-                {/* 재배작물 신규 등록 폼 (PC 전용 · 모바일은 우측 상단 '재배작물 등록' 버튼 모달리스 창에서 등록) */}
-                <div className="hidden lg:grid rounded-2xl bg-slate-50 border border-slate-200 p-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs items-end">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">등록 재배지 선택</label>
-                    <select
-                      value={newCropPlanForm.farmland_id}
-                      onChange={(e) => {
-                        const lid = e.target.value;
-                        const found = myFarmlands.find((f: any) => f.farmland_id === lid);
-                        if (found) {
-                          setNewCropPlanForm((prev) => ({
-                            ...prev,
-                            farmland_id: lid,
-                            sido: found.sido,
-                            sigungu: found.sigungu,
-                            eupmyeondong: found.eupmyeondong,
-                            area_pyeong: Number(found.area_pyeong || 300),
-                          }));
-                        } else {
-                          setNewCropPlanForm((prev) => ({ ...prev, farmland_id: lid }));
-                        }
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                    >
-                      {myFarmlands.map((f: any) => (
-                        <option key={f.farmland_id} value={f.farmland_id}>
-                          {f.farmland_title} ({f.sido} {f.sigungu} {f.eupmyeondong})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">재배 작물 선택</label>
-                    <select
-                      value={newCropPlanForm.crop_name}
-                      onChange={(e) => {
-                        const cname = e.target.value;
-                        const defaultCv =
-                          cname === '봄배추'
-                            ? '춘광'
-                            : cname === '월동배추'
-                            ? '해남1호'
-                            : cname === '고추'
-                            ? '칼라탄'
-                            : cname === '마늘'
-                            ? '홍산마늘'
-                            : '불암3호';
-                        setNewCropPlanForm((prev) => ({
-                          ...prev,
-                          crop_name: cname,
-                          cultivar_name: defaultCv,
-                        }));
-                      }}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                    >
-                      <option value="가을배추">가을배추</option>
-                      <option value="봄배추">봄배추</option>
-                      <option value="월동배추">월동배추</option>
-                      <option value="고추">고추</option>
-                      <option value="마늘">마늘</option>
-                      <option value="양파">양파</option>
-                      <option value="감자">감자</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">품종 선택</label>
-                    <select
-                      value={newCropPlanForm.cultivar_name}
-                      onChange={(e) =>
-                        setNewCropPlanForm((prev) => ({ ...prev, cultivar_name: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                    >
-                      <option value="불암3호">불암3호 (가을배추 표준)</option>
-                      <option value="청명가을">청명가을 (직파/씨 전용)</option>
-                      <option value="불암플러스">불암플러스</option>
-                      <option value="춘광">춘광 (봄·고랭지배추)</option>
-                      <option value="해남1호">해남1호 (월동배추)</option>
-                      <option value="칼라탄">칼라탄 (복합내병계 고추)</option>
-                      <option value="홍산마늘">홍산마늘</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">작물구분 (모종 / 씨)</label>
-                    <select
-                      value={newCropPlanForm.planting_type}
-                      onChange={(e) =>
-                        setNewCropPlanForm((prev) => ({ ...prev, planting_type: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                    >
-                      <option value="모종">모종 (정식 재배)</option>
-                      <option value="씨">씨 (직파 · 최적 발아온도)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">
-                      정식/파종일 &amp; 면적(평)
-                    </label>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="date"
-                        value={newCropPlanForm.planting_date}
-                        onChange={(e) =>
-                          setNewCropPlanForm((prev) => ({ ...prev, planting_date: e.target.value }))
-                        }
-                        className="w-3/5 px-2 py-2 rounded-xl border border-slate-300 bg-white font-bold"
-                      />
-                      <input
-                        type="number"
-                        value={newCropPlanForm.area_pyeong}
-                        onChange={(e) =>
-                          setNewCropPlanForm((prev) => ({
-                            ...prev,
-                            area_pyeong: Number(e.target.value) || 300,
-                          }))
-                        }
-                        placeholder="평"
-                        className="w-2/5 px-2 py-2 rounded-xl border border-slate-300 bg-white font-bold"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <button
-                      type="button"
-                      onClick={handleAddCropPlan}
-                      className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold cursor-pointer shadow-2xs"
-                    >
-                      + 재배작물 복수 등록
-                    </button>
-                  </div>
-                </div>
-
-                {/* 등록된 내 재배작물 카드 리스트 (모바일: 1페이지 단일항목 + 이전/다음 페이징, PC: 전체 리스트) */}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-700">
-                      등록된 내 재배작물 목록 ({cloudBaeCropList.length}건)
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setMyPageTab('PROGRESS')}
-                      className="text-xs font-extrabold text-emerald-700 hover:underline cursor-pointer"
-                    >
-                      ③ 작물재배현황 및 진행율 상세 보기 ›
-                    </button>
-                  </div>
-                  {(() => {
-                    if (cloudBaeCropList.length === 0) {
-                      return (
-                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-6 text-center space-y-2">
-                          <div className="text-sm font-extrabold text-slate-900">
-                            등록된 내 재배작물이 없습니다.
-                          </div>
-                          <p className="text-xs text-slate-600">
-                            재배작물을 등록하거나 재배일정을 요청하시면 내 재배작물 목록과 생육 진행율이 표시됩니다.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    const rawActiveRegIdx = cloudBaeCropList.findIndex(
-                      (c: any) => c.request_no === selectedRequestNo
-                    );
-                    const activeMobileRegIdx = rawActiveRegIdx >= 0 ? rawActiveRegIdx : 0;
-                    const totalRegCropCount = cloudBaeCropList.length;
-                    const activeRegCrop = cloudBaeCropList[activeMobileRegIdx];
-
-                    const handleStepMobileRegCrop = (targetIdx: number) => {
-                      if (targetIdx < 0 || targetIdx >= totalRegCropCount) return;
-                      const targetCrop = cloudBaeCropList[targetIdx];
-                      if (!targetCrop) return;
-                      setSelectedRequestNo(targetCrop.request_no);
-                    };
-
-                    return (
-                      <>
-                        {/* 모바일 전용: 선택된 1개 항목만 단독 렌더링 (하단 다른 항목 리스트 미노출) */}
-                        {activeRegCrop && (
-                          <div className="lg:hidden space-y-3">
-                            <div className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col gap-3 shadow-2xs">
-                              <div className="space-y-1.5 min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white text-xs font-mono font-black inline-flex items-center justify-center shrink-0">
-                                    {activeMobileRegIdx + 1}
-                                  </span>
-                                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white text-xs font-extrabold">
-                                    {activeRegCrop.crop_title}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
-                                    {activeRegCrop.planting_type} ·{' '}
-                                    {Number(activeRegCrop.area_pyeong).toLocaleString()}평
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-700">
-                                    📍 {activeRegCrop.region}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-600 font-semibold">
-                                  정식/파종일: {activeRegCrop.planting_label} · 수확예정일:{' '}
-                                  {activeRegCrop.expected_harvest_date || '2026-11-15'} · 현재 단계:{' '}
-                                  {activeRegCrop.current_stage_name || '04. 생육 관리'}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (activeRegCrop.request_no) {
-                                      setSelectedRequestNo(activeRegCrop.request_no);
-                                    }
-                                    setMyPageTab('PROGRESS');
-                                  }}
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
-                                >
-                                  생육 진행율 ({activeRegCrop.progress_pct}%) 확인 ›
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteConfirmedScheduleOnly(activeRegCrop, e)}
-                                  className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition inline-flex items-center gap-1"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>삭제</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-50 border border-slate-200/90 px-3.5 py-3 flex flex-col items-center gap-2.5 shadow-2xs">
-                              <div className="text-[15px] font-black text-slate-900 tracking-tight font-mono">
-                                ({activeMobileRegIdx + 1} / {totalRegCropCount})
-                              </div>
-                              <div className="w-full grid grid-cols-2 gap-2.5">
-                                <button
-                                  type="button"
-                                  disabled={activeMobileRegIdx <= 0}
-                                  onClick={() => handleStepMobileRegCrop(activeMobileRegIdx - 1)}
-                                  className="py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-400 active:scale-[0.99] text-slate-900 font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
-                                >
-                                  <ChevronLeft className="w-4 h-4 text-emerald-700" />
-                                  <span>이전</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={activeMobileRegIdx >= totalRegCropCount - 1}
-                                  onClick={() => handleStepMobileRegCrop(activeMobileRegIdx + 1)}
-                                  className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
-                                >
-                                  <span>다음</span>
-                                  <ChevronRight className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* PC 전용: 전체 재배작물 리스트 */}
-                        <div className="hidden lg:grid grid-cols-1 gap-3">
-                          {cloudBaeCropList.map((crop: any, idx: number) => (
-                            <div
-                              key={crop.crop_plan_id || `crop-reg-${idx}`}
-                              className="rounded-2xl border border-slate-200 p-4 bg-white hover:border-emerald-300 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
-                            >
-                              <div className="space-y-1.5 min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-700 text-white text-xs font-extrabold">
-                                    {crop.crop_title}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-bold">
-                                    {crop.planting_type} · {Number(crop.area_pyeong).toLocaleString()}평
-                                  </span>
-                                  <span className="text-xs font-bold text-slate-700">
-                                    📍 {crop.region}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-600 font-semibold">
-                                  정식/파종일: {crop.planting_label} · 수확예정일:{' '}
-                                  {crop.expected_harvest_date || '2026-11-15'} · 현재 단계:{' '}
-                                  {crop.current_stage_name || '04. 생육 관리'}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (crop.request_no) {
-                                      setSelectedRequestNo(crop.request_no);
-                                    }
-                                    setMyPageTab('PROGRESS');
-                                  }}
-                                  className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
-                                >
-                                  생육 진행율 ({crop.progress_pct}%) 확인 ›
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleDeleteConfirmedScheduleOnly(crop, e)}
-                                  className="px-3 py-2 rounded-xl border border-rose-200 hover:bg-rose-50 text-xs font-bold text-rose-600 cursor-pointer transition inline-flex items-center gap-1"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>삭제</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </section>
-            )}
-
-            {/* ③ 작물재배현황 및 진행율 */}
-            {(myPageTab === 'ALL' || myPageTab === 'PROGRESS') && (
+            {/* ② 재배일정 확인 (작물재배현황 및 진행율) */}
+            {(myPageTab === 'ALL' || myPageTab === 'PROGRESS' || myPageTab === 'CROPS') && (
               <section className="lg:bg-white lg:rounded-3xl lg:border lg:border-slate-200 p-0 lg:p-6 lg:shadow-xs flex flex-col gap-4">
                 <div className="hidden lg:flex lg:flex-row lg:items-center justify-between gap-2 border-b border-slate-200 pb-3.5">
                   <div>
@@ -20803,7 +20441,7 @@ export default function UserIntroPage() {
                       생육관리 항목별 일자 [완료] 시작 인정 기반 진행율 산출
                     </span>
                     <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                      ③ 내 작물재배현황 및 진행율 ({cloudBaeCropList.length}건)
+                      ② 재배일정 확인 ({cloudBaeCropList.length}건)
                     </h3>
                     <p className="text-xs text-slate-600 mt-0.5">
                       재배일정의 각 생육관리 항목(총 16개 공정) 일자 옆 <strong>[완료]</strong> 버튼을 클릭한 공정 수에 따라 진행율이 실시간 계산됩니다. (일자 수정 시 수정일 옆 [완료] 클릭 필요)
@@ -21043,7 +20681,7 @@ export default function UserIntroPage() {
               </section>
             )}
 
-            {/* ④ 농자재 장바구니 */}
+            {/* ③ 농자재 장바구니 */}
             {(myPageTab === 'ALL' || myPageTab === 'CART') && (() => {
               const checkedItems = myCartItems.filter((it: any) => it.checked);
               const totalCartQty = myCartItems.reduce(
@@ -21068,7 +20706,7 @@ export default function UserIntroPage() {
                         재배일정 · 생육과정별 맞춤 농자재 장바구니
                       </span>
                       <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                        ④ 농자재 장바구니 ({myCartItems.length}건)
+                        ③ 농자재 장바구니 ({myCartItems.length}건)
                       </h3>
                       <p className="text-xs text-slate-600 mt-0.5">
                         재배일정 생육단계별 추천 제품과 농자재를 담아 수량을 조절하고, 선택 상품을 원클릭으로 구매할 수 있습니다.
@@ -21370,7 +21008,7 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* ⑤ 마이페이지 > 농자재 구매 (회원 아이디 제외 + 생육과정 구분 정보들 + 제품명 리스트) */}
+            {/* ④ 마이페이지 > 농자재 구매 (회원 아이디 제외 + 생육과정 구분 정보들 + 제품명 리스트) */}
             {(myPageTab === 'ALL' || myPageTab === 'AGRO_PURCHASE') && (() => {
               const totalPurchasedQty = stagePurchaseHistory.reduce(
                 (sum: number, item: any) => sum + (Number(item.qty) || 1),
@@ -21391,7 +21029,7 @@ export default function UserIntroPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold">
-                          ⑤ 농자재 구매 (생육과정별 구매 상품 리스트)
+                          ④ 농자재 구매 (생육과정별 구매 상품 리스트)
                         </span>
                         <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
                           생육과정 구분 정보 · 제품명 · 규격 · 수량 · 결제금액
