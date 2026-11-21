@@ -524,6 +524,47 @@ export default function UserIntroPage() {
   const [selectedReqDetailCrop, setSelectedReqDetailCrop] = useState<any | null>(null);
   const [myPageProgressDetailReqNo, setMyPageProgressDetailReqNo] = useState<string | null>(null);
   const [myPageStageDetailItem, setMyPageStageDetailItem] = useState<any | null>(null);
+  const [mobileStageOverviewReqNo, setMobileStageOverviewReqNo] = useState<string | null>(null);
+  const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
+  const [growthConfirmDateInput, setGrowthConfirmDateInput] = useState<string>('');
+  const [stageGrowthConfirmDates, setStageGrowthConfirmDates] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hanfarm_stage_growth_confirm_dates_v1') || '{}') || {};
+    } catch {
+      return {};
+    }
+  });
+  const [isWorkLogFormOpen, setIsWorkLogFormOpen] = useState<boolean>(false);
+  const [workLogForm, setWorkLogForm] = useState<{
+    workDate: string;
+    stageLabel: string;
+    taskTitle: string;
+    memo: string;
+  }>({
+    workDate: getTodayKstYmd(),
+    stageLabel: '결구기',
+    taskTitle: '',
+    memo: '',
+  });
+  const [cropWorkLogs, setCropWorkLogs] = useState<
+    Record<
+      string,
+      Array<{
+        id: string;
+        workDate: string;
+        stageLabel: string;
+        taskTitle: string;
+        memo: string;
+        createdAt: string;
+      }>
+    >
+  >(() => {
+    try {
+      return JSON.parse(localStorage.getItem('hanfarm_crop_work_logs_v1') || '{}') || {};
+    } catch {
+      return {};
+    }
+  });
   const [reqDetailModalPos, setReqDetailModalPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDraggingReqDetailModal, setIsDraggingReqDetailModal] = useState<boolean>(false);
   const reqDetailDragStartRef = React.useRef<{
@@ -2688,6 +2729,35 @@ export default function UserIntroPage() {
           } catch {
             // ignore
           }
+        }
+        if (
+          states.stage_growth_confirm_dates_v1 &&
+          typeof states.stage_growth_confirm_dates_v1 === 'object'
+        ) {
+          setStageGrowthConfirmDates(states.stage_growth_confirm_dates_v1);
+          try {
+            localStorage.setItem(
+              'hanfarm_stage_growth_confirm_dates_v1',
+              JSON.stringify(states.stage_growth_confirm_dates_v1)
+            );
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setStageGrowthConfirmDates({});
+        }
+        if (states.crop_work_logs_v1 && typeof states.crop_work_logs_v1 === 'object') {
+          setCropWorkLogs(states.crop_work_logs_v1);
+          try {
+            localStorage.setItem(
+              'hanfarm_crop_work_logs_v1',
+              JSON.stringify(states.crop_work_logs_v1)
+            );
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setCropWorkLogs({});
         }
       }
       return { res, states: syncData?.states || {} };
@@ -9045,13 +9115,15 @@ export default function UserIntroPage() {
 
                     {activeCropItem && (
                       <>
-                        {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [일정확인] 버튼 터치 시 모달리스 폼 오픈) */}
+                        {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [{현위치} 확인] 버튼 터치 시 생육단계 상세 모달리스 폼 오픈) */}
                         <section
                           onClick={() => {
                             const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
                             setSelectedRequestNo(targetReqNo);
                             setMyPageStageDetailItem(null);
-                            setMyPageProgressDetailReqNo(targetReqNo);
+                            setIsGrowthConfirmDatePickerOpen(false);
+                            setIsWorkLogFormOpen(false);
+                            setMobileStageOverviewReqNo(targetReqNo);
                           }}
                           className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer active:scale-[0.99] transition"
                         >
@@ -9092,7 +9164,9 @@ export default function UserIntroPage() {
                                 const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
                                 setSelectedRequestNo(targetReqNo);
                                 setMyPageStageDetailItem(null);
-                                setMyPageProgressDetailReqNo(targetReqNo);
+                                setIsGrowthConfirmDatePickerOpen(false);
+                                setIsWorkLogFormOpen(false);
+                                setMobileStageOverviewReqNo(targetReqNo);
                               }}
                               className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
                             >
@@ -9300,7 +9374,9 @@ export default function UserIntroPage() {
                           if (targetReqNo) {
                             setSelectedRequestNo(targetReqNo);
                             setMyPageStageDetailItem(null);
-                            setMyPageProgressDetailReqNo(targetReqNo);
+                            setIsGrowthConfirmDatePickerOpen(false);
+                            setIsWorkLogFormOpen(false);
+                            setMobileStageOverviewReqNo(targetReqNo);
                           } else {
                             setActiveMenu('재배일정 요청');
                           }
@@ -9325,9 +9401,25 @@ export default function UserIntroPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setActiveMenu('마이페이지');
-                          setMyPageTab('PROGRESS');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                          const targetReqNo =
+                            activeCropItem?.request_no ||
+                            selectedRequestNo ||
+                            cloudBaeCropList[0]?.request_no;
+                          if (targetReqNo) {
+                            setSelectedRequestNo(targetReqNo);
+                            setMyPageStageDetailItem(null);
+                            setIsGrowthConfirmDatePickerOpen(false);
+                            setWorkLogForm((prev) => ({
+                              ...prev,
+                              workDate: getTodayKstYmd(),
+                              stageLabel: currentStepLabel,
+                              taskTitle: activeCropItem?.nextTaskTitle || '',
+                            }));
+                            setIsWorkLogFormOpen(true);
+                            setMobileStageOverviewReqNo(targetReqNo);
+                          } else {
+                            setActiveMenu('재배일정 요청');
+                          }
                         }}
                         className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
                       >
@@ -22895,6 +22987,787 @@ export default function UserIntroPage() {
           </div>
         </div>
       )}
+
+      {/* ==================== [모바일 전용: 재배일정 확인 > "{현재 시기} 확인" 클릭 시 열리는 현재 생육단계 상세 & 작업기록 모달리스 폼] ==================== */}
+      {activeMenu === '재배일정 확인' &&
+        mobileStageOverviewReqNo &&
+        (() => {
+          const ovCrop =
+            cloudBaeCropList.find((c: any) => c.request_no === mobileStageOverviewReqNo) ||
+            activeCropCard ||
+            cloudBaeCropList[0];
+          if (!ovCrop) return null;
+
+          const ovReqNo = ovCrop.request_no || mobileStageOverviewReqNo;
+          const shortName = String(ovCrop.crop_short || ovCrop.crop_name || '배추')
+            .replace(/^(가을|봄|월동|고랭지|여름)/, '')
+            .trim() || '배추';
+          const fullCropLabel = String(ovCrop.crop_short || ovCrop.crop_name || '김장배추').trim();
+          const cultivarLabel = String(ovCrop.cultivar_name || '불암3호').trim();
+          const cultMethodLabel = String(ovCrop.badge || '').includes('시설') ? '시설' : '노지';
+          const areaLabel = `${Number(ovCrop.area_pyeong || 500).toLocaleString()}평`;
+          const thumbUrl = resolveCropThumbByShortName(shortName);
+
+          const hasProvisionForOv =
+            Array.isArray(provisionData?.scheduleItems) &&
+            provisionData.scheduleItems.length > 0 &&
+            (provisionData?.activeRequest?.request_no === ovReqNo || selectedRequestNo === ovReqNo);
+
+          const rawItems = hasProvisionForOv
+            ? provisionData.scheduleItems
+            : STANDARD_16_STAGE_META.map((meta) => ({
+                item_id: meta.itemId,
+                step_order: meta.stepOrder,
+                stage_group_name: meta.stageGroupName,
+                sub_item_name: meta.subItemName,
+                start_date: addDaysToYmd(ovCrop.planting_date || '2026-08-25', meta.offsetDays),
+                work_content: `${meta.stageGroupName} 단계 ${meta.subItemName} 적기 작업 및 생육상태 확인`,
+              }));
+
+          const evaluated = rawItems.map((it: any, idx: number) => {
+            const effDate = getEffectiveStageItemDate(ovReqNo, it);
+            const comp = getStageItemCompletionState(ovReqNo, it);
+            const cleanTitle = String(it.sub_item_name || '')
+              .replace(/\s*\([^)]*\)/g, '')
+              .trim();
+            return {
+              raw: it,
+              itemId: String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`),
+              stepOrder: Number(it.step_order || idx + 1),
+              subItemName: cleanTitle || `농작업 #${idx + 1}`,
+              workContent: String(it.work_content || it.work_description || '').trim(),
+              effDate,
+              isCompleted: comp.isRecognized,
+            };
+          });
+
+          const uncompleted = evaluated.filter((e: any) => !e.isCompleted);
+          const nextStage = uncompleted[0] || evaluated[evaluated.length - 1] || null;
+          const isAllDone = uncompleted.length === 0 && evaluated.length > 0;
+
+          let activeIdx: 0 | 1 | 2 | 3 = 0;
+          if (isAllDone) {
+            activeIdx = 3;
+          } else if (nextStage) {
+            const ord = nextStage.stepOrder;
+            if (ord <= 8) activeIdx = 0;
+            else if (ord <= 11) activeIdx = 1;
+            else if (ord <= 14) activeIdx = 2;
+            else activeIdx = 3;
+          }
+
+          const toDotMd = (ymd?: string) => {
+            if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+            return `${Number(ymd.slice(5, 7))}.${Number(ymd.slice(8, 10))}`;
+          };
+          const toKoreanMd = (ymd?: string) => {
+            if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+            return `${Number(ymd.slice(5, 7))}월 ${Number(ymd.slice(8, 10))}일`;
+          };
+
+          const dateStep0 = evaluated.find((e: any) => e.stepOrder === 7)?.effDate || ovCrop.planting_date || '2026-08-25';
+          const dateStep1Start = evaluated.find((e: any) => e.stepOrder === 8)?.effDate || dateStep0;
+          const dateStep1End = evaluated.find((e: any) => e.stepOrder === 11)?.effDate || addDaysToYmd(dateStep0, 25);
+          const dateStep2Start = evaluated.find((e: any) => e.stepOrder === 12)?.effDate || addDaysToYmd(dateStep1End, 1);
+          const dateStep2End = evaluated.find((e: any) => e.stepOrder === 14)?.effDate || addDaysToYmd(dateStep2Start, 30);
+          const dateStep3 = evaluated.find((e: any) => e.stepOrder === 15)?.effDate || ovCrop.expected_harvest_date || '2026-11-15';
+
+          const stepDefinitions = [
+            {
+              idx: 0,
+              baseName: '정식',
+              dateSub: toDotMd(dateStep0) || '8.25',
+              stageTitle: '정식기',
+              stageDesc: '본밭에 모종을 심고 초기 뿌리 활착을 위해 충분한 수분을 공급해야 하는 시기입니다.',
+              confirmPrompt: '정식이 시작된 날짜를 확인해 주세요.',
+              confirmSub: '(본밭에 모종을 정식하고 활착 관수를 시작한 시점)',
+              confirmBtnLabel: '정식 시작일 기록',
+              confirmBadgePrefix: '기록된 정식 시작일',
+              defaultConfirmYmd: dateStep0,
+            },
+            {
+              idx: 1,
+              baseName: '생육초기',
+              dateSub: `${toDotMd(dateStep1Start)} ~ ${toDotMd(dateStep1End)}`,
+              stageTitle: '생육기',
+              stageDesc: '외엽이 빠르게 자라며 광합성 기반을 만드는 시기로, 웃거름(추비)과 토양 수분 관리가 중요합니다.',
+              confirmPrompt: '생육기가 시작된 날짜를 확인해 주세요.',
+              confirmSub: '(본엽이 활발히 전개되며 1차 추비를 시작하는 시점)',
+              confirmBtnLabel: '생육 시작일 기록',
+              confirmBadgePrefix: '기록된 생육 시작일',
+              defaultConfirmYmd: dateStep1Start,
+            },
+            {
+              idx: 2,
+              baseName: '결구기',
+              dateSub: `${toDotMd(dateStep2Start)} ~ ${toDotMd(dateStep2End)}`,
+              stageTitle: '결구기',
+              stageDesc: '잎이 안쪽으로 모여 결구(속이 차는)하는 시기로, 수분과 양분을 충분히 공급하고 병해충을 예방해야 합니다.',
+              confirmPrompt: '결구가 시작된 날짜를 확인해 주세요.',
+              confirmSub: '(겉잎이 안으로 모이며 결구가 형성되는 시점)',
+              confirmBtnLabel: '결구 시작일 기록',
+              confirmBadgePrefix: '기록된 결구 시작일',
+              defaultConfirmYmd: dateStep2Start,
+            },
+            {
+              idx: 3,
+              baseName: '수확',
+              dateSub: `${toDotMd(dateStep3)}(예상)`,
+              stageTitle: '수확기',
+              stageDesc: '결구 충실도를 확인하고 동해(한계온도)가 오기 전 적기에 수확 및 저장 관리를 진행하는 시기입니다.',
+              confirmPrompt: '수확이 시작된 날짜를 확인해 주세요.',
+              confirmSub: '(결구가 완료되어 본밭 수확을 시작하는 시점)',
+              confirmBtnLabel: '수확 시작일 기록',
+              confirmBadgePrefix: '기록된 수확 시작일',
+              defaultConfirmYmd: dateStep3,
+            },
+          ];
+
+          const curStepDef = stepDefinitions[activeIdx] || stepDefinitions[2];
+          const confirmKey = `${ovReqNo}__STEP_${activeIdx}`;
+          const recordedConfirmYmd = stageGrowthConfirmDates[confirmKey] || curStepDef.defaultConfirmYmd;
+
+          const handleSaveGrowthConfirmDate = (newYmd: string) => {
+            if (!newYmd) return;
+            setStageGrowthConfirmDates((prev) => {
+              const next = { ...prev, [confirmKey]: newYmd };
+              try {
+                localStorage.setItem('hanfarm_stage_growth_confirm_dates_v1', JSON.stringify(next));
+              } catch {
+                // ignore
+              }
+              fetch('/api/client-sync-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: loggedInUser.email || 'CloudBae@naver.com',
+                  state_key: 'stage_growth_confirm_dates_v1',
+                  state_value: next,
+                }),
+              }).catch(() => {});
+              return next;
+            });
+            setIsGrowthConfirmDatePickerOpen(false);
+          };
+
+          const primaryTask = nextStage || evaluated[0];
+          const primaryTaskRangeLabel = primaryTask
+            ? `권장기간 ${toDotMd(primaryTask.effDate)} ~ ${toDotMd(addDaysToYmd(primaryTask.effDate, 5))}`
+            : '권장기간 10.11 ~ 10.16';
+          const upcomingTasks = uncompleted.slice(1, 3);
+          const fallbackUpcoming =
+            upcomingTasks.length > 0
+              ? upcomingTasks
+              : evaluated.slice(Math.max(0, (primaryTask?.stepOrder || 1) - 1), (primaryTask?.stepOrder || 1) + 1);
+
+          const logsForReq = cropWorkLogs[ovReqNo] || [];
+
+          const handleSaveWorkLog = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!workLogForm.taskTitle.trim()) return;
+            const newEntry = {
+              id: `WLOG-${Date.now()}`,
+              workDate: workLogForm.workDate || getTodayKstYmd(),
+              stageLabel: workLogForm.stageLabel || curStepDef.stageTitle,
+              taskTitle: workLogForm.taskTitle.trim(),
+              memo: workLogForm.memo.trim(),
+              createdAt: new Date().toISOString(),
+            };
+            setCropWorkLogs((prev) => {
+              const prevList = Array.isArray(prev[ovReqNo]) ? prev[ovReqNo] : [];
+              const next = {
+                ...prev,
+                [ovReqNo]: [newEntry, ...prevList],
+              };
+              try {
+                localStorage.setItem('hanfarm_crop_work_logs_v1', JSON.stringify(next));
+              } catch {
+                // ignore
+              }
+              fetch('/api/client-sync-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: loggedInUser.email || 'CloudBae@naver.com',
+                  state_key: 'crop_work_logs_v1',
+                  state_value: next,
+                }),
+              }).catch(() => {});
+              return next;
+            });
+            setWorkLogForm((prev) => ({ ...prev, taskTitle: '', memo: '' }));
+            setIsWorkLogFormOpen(false);
+          };
+
+          const handleDeleteWorkLog = (logId: string) => {
+            setCropWorkLogs((prev) => {
+              const prevList = Array.isArray(prev[ovReqNo]) ? prev[ovReqNo] : [];
+              const next = {
+                ...prev,
+                [ovReqNo]: prevList.filter((item) => item.id !== logId),
+              };
+              try {
+                localStorage.setItem('hanfarm_crop_work_logs_v1', JSON.stringify(next));
+              } catch {
+                // ignore
+              }
+              fetch('/api/client-sync-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: loggedInUser.email || 'CloudBae@naver.com',
+                  state_key: 'crop_work_logs_v1',
+                  state_value: next,
+                }),
+              }).catch(() => {});
+              return next;
+            });
+          };
+
+          return (
+            <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-0 sm:p-4">
+              <div className="w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] bg-[#F7F9F7] sm:rounded-[28px] shadow-2xl flex flex-col overflow-hidden select-none">
+                {/* 1. 상단 바: [←] [한팜 FarmPlan] [⋮] */}
+                <div className="bg-white px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGrowthConfirmDatePickerOpen(false);
+                      setIsWorkLogFormOpen(false);
+                      setMobileStageOverviewReqNo(null);
+                    }}
+                    aria-label="뒤로가기"
+                    className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                  >
+                    <ArrowLeft className="w-5 h-5 stroke-[2.3]" />
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-[9px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs">
+                      <Sprout className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em]">
+                        한팜
+                      </span>
+                      <span className="text-[15px] font-extrabold text-[#111827] tracking-[-0.02em]">
+                        FarmPlan
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGrowthConfirmDatePickerOpen(false);
+                      setIsWorkLogFormOpen(false);
+                      setMobileStageOverviewReqNo(null);
+                    }}
+                    aria-label="닫기"
+                    className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#4B5563] cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* 본문 스크롤 영역 */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5">
+                  {/* 2. 상단 작물 요약 및 4단계 생육 진행 바 */}
+                  <div className="bg-white rounded-[22px] border border-[#E5E7EB] p-4 shadow-2xs space-y-4">
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-[62px] h-[62px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
+                        <img
+                          src={thumbUrl}
+                          alt={shortName}
+                          className="w-full h-full object-cover block"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-[21px] font-black text-[#111827] tracking-[-0.03em] leading-tight">
+                          {shortName} 재배관리
+                        </h3>
+                        <p className="mt-1 text-[13.5px] font-semibold text-[#4B5563] tracking-[-0.02em] truncate">
+                          {fullCropLabel} · {cultivarLabel} <span className="text-slate-300 mx-1">|</span>{' '}
+                          {cultMethodLabel} · {areaLabel}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 4단계 진행 스텝 바 (정식 ── 생육초기 ── 결구기(현재) ── 수확) */}
+                    <div className="pt-1 pb-0.5 px-1">
+                      <div className="relative flex items-start justify-between">
+                        {/* 연결선 0 -> 1 */}
+                        <div
+                          className={`absolute left-[22px] w-[calc(33.333%-18px)] top-[13px] h-[2.5px] ${
+                            activeIdx >= 1 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {/* 연결선 1 -> 2 */}
+                        <div
+                          className={`absolute left-[33.333%] w-[33.333%] top-[13px] h-[2.5px] ${
+                            activeIdx >= 2 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {/* 연결선 2 -> 3 */}
+                        <div
+                          className={`absolute left-[66.666%] right-[22px] top-[13px] h-[2.5px] ${
+                            activeIdx >= 3 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
+                          }`}
+                          aria-hidden="true"
+                        />
+
+                        {stepDefinitions.map((st) => {
+                          const isDone = isAllDone || st.idx < activeIdx;
+                          const isCur = !isAllDone && st.idx === activeIdx;
+                          return (
+                            <div
+                              key={st.baseName}
+                              className="relative z-10 flex flex-col items-center text-center min-w-[68px]"
+                            >
+                              {isDone ? (
+                                <div className="w-[26px] h-[26px] rounded-full bg-[#BBF7D0] border border-[#86EFAC] text-[#15803D] flex items-center justify-center">
+                                  <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
+                                    <path
+                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                      stroke="#15803D"
+                                      strokeWidth="2.2"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </div>
+                              ) : isCur ? (
+                                <div className="w-[28px] h-[28px] rounded-full border-[2.5px] border-[#15803D] bg-white flex items-center justify-center">
+                                  <span className="w-[16px] h-[16px] rounded-full bg-[#15803D]" />
+                                </div>
+                              ) : (
+                                <div className="w-[26px] h-[26px] rounded-full border-[2px] border-[#CBD5E1] bg-white" />
+                              )}
+
+                              <div
+                                className={`mt-2 px-2 py-1 rounded-xl ${
+                                  isCur ? 'bg-[#EAF6ED]' : ''
+                                }`}
+                              >
+                                <div
+                                  className={`text-[13px] tracking-[-0.03em] whitespace-nowrap ${
+                                    isCur
+                                      ? 'font-black text-[#0E712F]'
+                                      : 'font-bold text-[#374151]'
+                                  }`}
+                                >
+                                  {isCur ? `${st.baseName} (현재)` : st.baseName}
+                                </div>
+                                <div
+                                  className={`text-[11px] font-mono tracking-tight whitespace-nowrap mt-0.5 ${
+                                    isCur
+                                      ? 'font-extrabold text-[#0E712F]'
+                                      : 'font-medium text-[#6B7280]'
+                                  }`}
+                                >
+                                  {st.dateSub}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. 현재 생육단계 안내 카드 */}
+                  <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-4 shadow-2xs flex items-start gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-[#ECFDF3] border border-[#BBF7D0] flex items-center justify-center shrink-0 mt-0.5">
+                      <Sprout className="w-6 h-6 text-[#15803D]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[16.5px] font-black text-[#0E712F] tracking-[-0.03em]">
+                          현재 생육단계 : {curStepDef.stageTitle}
+                        </div>
+                        <span className="w-5 h-5 rounded-full border border-slate-300 text-slate-400 text-[11px] font-bold inline-flex items-center justify-center shrink-0">
+                          i
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[13px] font-medium text-[#374151] leading-relaxed break-keep">
+                        {curStepDef.stageDesc}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 4. 생육확인 (시작일 기록) 카드 */}
+                  <div className="rounded-[20px] bg-[#EFF7F1] border border-[#D5E8DA] p-4 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Sprout className="w-5 h-5 text-[#0E712F] shrink-0" />
+                        <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em] shrink-0">
+                          생육확인
+                        </span>
+                        <div className="min-w-0 ml-1">
+                          <div className="text-[13px] font-extrabold text-[#111827] tracking-[-0.02em] truncate">
+                            {curStepDef.confirmPrompt}
+                          </div>
+                          <div className="text-[11px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
+                            {curStepDef.confirmSub}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGrowthConfirmDateInput(recordedConfirmYmd);
+                          setIsGrowthConfirmDatePickerOpen((prev) => !prev);
+                        }}
+                        className="px-3 py-1.5 rounded-full bg-white hover:bg-emerald-50 border border-[#86EFAC] text-[#0E712F] text-[12px] font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer transition shadow-2xs"
+                      >
+                        <span>{curStepDef.confirmBtnLabel}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {isGrowthConfirmDatePickerOpen && (
+                      <div className="rounded-xl bg-white border border-emerald-200 p-2.5 flex items-center justify-between gap-2">
+                        <input
+                          type="date"
+                          value={growthConfirmDateInput}
+                          onChange={(e) => setGrowthConfirmDateInput(e.target.value)}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-900"
+                        />
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setIsGrowthConfirmDatePickerOpen(false)}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 cursor-pointer"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveGrowthConfirmDate(growthConfirmDateInput)}
+                            className="px-3 py-1.5 rounded-lg bg-[#0E712F] text-white text-xs font-extrabold cursor-pointer"
+                          >
+                            기록 저장
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pl-7">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>
+                          {curStepDef.confirmBadgePrefix} : {toKoreanMd(recordedConfirmYmd)}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 5. 오늘 할 일 카드 */}
+                  {primaryTask && (
+                    <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-5 h-5 text-[#0E712F]" />
+                        <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                          오늘 할 일
+                        </span>
+                        <span className="text-[14px] font-bold text-[#374151] ml-1">
+                          {formatKoreanMonthDayWeekday(primaryTask.effDate)}
+                        </span>
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2.5">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleToggleStageItemCompletion(
+                                ovReqNo,
+                                primaryTask.raw,
+                                primaryTask.effDate
+                              )
+                            }
+                            aria-label="오늘 할 일 완료 체크"
+                            className={`mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
+                              primaryTask.isCompleted
+                                ? 'bg-[#0E712F] border-[#0E712F] text-white'
+                                : 'bg-white border-slate-300 text-transparent hover:border-[#0E712F]'
+                            }`}
+                          >
+                            <Check className="w-4 h-4 stroke-[2.5]" />
+                          </button>
+                          <div
+                            onClick={() => {
+                              handleSelectStageItem(primaryTask.raw);
+                              setMyPageStageDetailItem(primaryTask.raw);
+                              setMyPageProgressDetailReqNo(ovReqNo);
+                            }}
+                            className="min-w-0 cursor-pointer"
+                          >
+                            <div className="text-[16px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                              {primaryTask.subItemName}
+                            </div>
+                            <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
+                              {primaryTask.workContent || '생육 단계별 맞춤 관리를 진행합니다.'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSelectStageItem(primaryTask.raw);
+                            setMyPageStageDetailItem(primaryTask.raw);
+                            setMyPageProgressDetailReqNo(ovReqNo);
+                          }}
+                          className="inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <span className="px-2.5 py-1 rounded-full bg-[#EAF6ED] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
+                            {primaryTaskRangeLabel}
+                          </span>
+                          <ChevronRight className="w-4 h-4 text-slate-400" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 6. 다음 할 일 카드 */}
+                  <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-[#0E712F]" />
+                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                        다음 할 일
+                      </span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {fallbackUpcoming.map((upItem: any, uIdx: number) => (
+                        <div
+                          key={upItem.itemId || uIdx}
+                          onClick={() => {
+                            handleSelectStageItem(upItem.raw);
+                            setMyPageStageDetailItem(upItem.raw);
+                            setMyPageProgressDetailReqNo(ovReqNo);
+                          }}
+                          className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-slate-50/70 rounded-xl px-1 transition"
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                uIdx === 0
+                                  ? 'bg-sky-50 text-sky-600 border border-sky-200'
+                                  : 'bg-emerald-50 text-[#0E712F] border border-emerald-200'
+                              }`}
+                            >
+                              {uIdx === 0 ? (
+                                <Droplets className="w-5 h-5" />
+                              ) : (
+                                <ShieldCheck className="w-5 h-5" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[15.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                {upItem.subItemName}
+                              </div>
+                              <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
+                                {upItem.workContent || '예정된 생육단계 농작업을 준비합니다.'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="inline-flex items-center gap-1 shrink-0">
+                            <span className="px-2.5 py-1 rounded-full bg-[#F3F6F4] text-[#374151] text-[11.5px] font-extrabold whitespace-nowrap">
+                              예정일 {formatKoreanMonthDayWeekday(upItem.effDate)}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 7. 작업기록 작성 인라인 폼 & 누적 작업기록 리스트 (DB member_ui_sync_state 연동) */}
+                  {(isWorkLogFormOpen || logsForReq.length > 0) && (
+                    <div className="rounded-[20px] bg-white border border-emerald-300 p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <FileEdit className="w-4 h-4 text-[#0E712F]" />
+                          <span className="text-[15.5px] font-black text-[#111827]">
+                            영농 작업기록 ({logsForReq.length}건)
+                          </span>
+                        </div>
+                        {isWorkLogFormOpen && (
+                          <button
+                            type="button"
+                            onClick={() => setIsWorkLogFormOpen(false)}
+                            className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+                          >
+                            닫기
+                          </button>
+                        )}
+                      </div>
+
+                      {isWorkLogFormOpen && (
+                        <form onSubmit={handleSaveWorkLog} className="space-y-2.5 pt-1">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                                작업일자
+                              </label>
+                              <input
+                                type="date"
+                                value={workLogForm.workDate}
+                                onChange={(e) =>
+                                  setWorkLogForm((prev) => ({ ...prev, workDate: e.target.value }))
+                                }
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                                생육단계
+                              </label>
+                              <select
+                                value={workLogForm.stageLabel}
+                                onChange={(e) =>
+                                  setWorkLogForm((prev) => ({
+                                    ...prev,
+                                    stageLabel: e.target.value,
+                                  }))
+                                }
+                                className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white"
+                              >
+                                <option value="정식">정식</option>
+                                <option value="생육기">생육기</option>
+                                <option value="결구기(병해충)">결구기(병해충)</option>
+                                <option value="수확기">수확기</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              작업명 *
+                            </label>
+                            <input
+                              type="text"
+                              value={workLogForm.taskTitle}
+                              onChange={(e) =>
+                                setWorkLogForm((prev) => ({ ...prev, taskTitle: e.target.value }))
+                              }
+                              placeholder="예: 추비 2차 살포, 관수 관리, 병해충 방제"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                              작업 메모 (선택)
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={workLogForm.memo}
+                              onChange={(e) =>
+                                setWorkLogForm((prev) => ({ ...prev, memo: e.target.value }))
+                              }
+                              placeholder="투입 농자재량, 작물 생육 상태, 특이사항 등을 기록하세요."
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-900"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsWorkLogFormOpen(false)}
+                              className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 cursor-pointer"
+                            >
+                              취소
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white text-xs font-extrabold cursor-pointer"
+                            >
+                              작업기록 저장
+                            </button>
+                          </div>
+                        </form>
+                      )}
+
+                      {logsForReq.length > 0 && (
+                        <div className="space-y-2 pt-1">
+                          {logsForReq.map((logItem) => (
+                            <div
+                              key={logItem.id}
+                              className="rounded-xl bg-slate-50 border border-slate-200/90 p-3 flex items-start justify-between gap-2"
+                            >
+                              <div className="min-w-0 space-y-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-[#DCFCE7] text-[#0E712F] text-[11px] font-extrabold">
+                                    {logItem.stageLabel}
+                                  </span>
+                                  <span className="text-xs font-mono font-bold text-slate-600">
+                                    {logItem.workDate}
+                                  </span>
+                                </div>
+                                <div className="text-[13.5px] font-black text-slate-900">
+                                  {logItem.taskTitle}
+                                </div>
+                                {logItem.memo && (
+                                  <div className="text-xs text-slate-600 break-keep">
+                                    {logItem.memo}
+                                  </div>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWorkLog(logItem.id)}
+                                className="text-[11px] font-bold text-rose-600 hover:underline shrink-0 cursor-pointer"
+                              >
+                                삭제
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 8. 하단 액션 바: [전체 재배일정 보기] / [작업기록 작성] */}
+                <div className="bg-white px-4 py-3.5 border-t border-[#E5E7EB] grid grid-cols-2 gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileStageOverviewReqNo(null);
+                      setMyPageStageDetailItem(null);
+                      setMyPageProgressDetailReqNo(ovReqNo);
+                    }}
+                    className="h-[48px] rounded-full bg-white hover:bg-slate-50 border-[1.5px] border-slate-300 text-[#111827] font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                  >
+                    <Calendar className="w-4 h-4 text-[#0E712F]" />
+                    <span>전체 재배일정 보기</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWorkLogForm((prev) => ({
+                        ...prev,
+                        workDate: getTodayKstYmd(),
+                        stageLabel: curStepDef.stageTitle,
+                        taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
+                      }));
+                      setIsWorkLogFormOpen(true);
+                    }}
+                    className="h-[48px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
+                  >
+                    <FileEdit className="w-4 h-4" />
+                    <span>작업기록 작성</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* ==================== [모바일 전용 공통 모달리스 창: 재배일정 확인 & 마이페이지>재배진행율 '일정 세부정보' (농작업 타임라인) 및 '작업 세부정보'] ==================== */}
       {(activeMenu === '재배일정 확인' ||
