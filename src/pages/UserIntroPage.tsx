@@ -17168,7 +17168,7 @@ export default function UserIntroPage() {
                                 >
                                   {cultivarOptions.map((cv) => (
                                     <option key={cv.value} value={cv.value}>
-                                      {cv.label}
+                                      {String(cv.label || cv.value).replace(/\s*\([^)]*\)/g, '').trim()}
                                     </option>
                                   ))}
                                 </select>
