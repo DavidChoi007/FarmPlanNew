@@ -17229,14 +17229,15 @@ export default function UserIntroPage() {
 
                               <div>
                                 <label className="block font-bold text-slate-700 mb-1">재배 면적</label>
-                                <div className="w-1/2 flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5">
                                   <input
                                     type="number"
                                     value={reqForm.area_pyeong}
                                     onChange={(e) =>
                                       setReqForm({ ...reqForm, area_pyeong: Number(e.target.value) || 300 })
                                     }
-                                    className="w-full min-w-0 flex-1 px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
+                                    style={{ width: '150px' }}
+                                    className="w-[150px] shrink-0 px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
                                   />
                                   <select
                                     value={reqForm.area_unit}
