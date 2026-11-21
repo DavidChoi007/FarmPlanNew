@@ -23231,8 +23231,8 @@ export default function UserIntroPage() {
           };
 
           return (
-            <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-0 sm:p-4">
-              <div className="w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] bg-[#F7F9F7] sm:rounded-[28px] shadow-2xl flex flex-col overflow-hidden select-none">
+            <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
+              <div className="w-full max-w-lg max-h-[88vh] bg-[#F7F9F7] rounded-[26px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden select-none">
                 {/* 1. 상단 바: [←] [한팜 FarmPlan] [⋮] */}
                 <div className="bg-white px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
                   <button
@@ -23736,44 +23736,83 @@ export default function UserIntroPage() {
                       )}
                     </div>
                   )}
-                </div>
+                      {/* 7. 본문 맨 아래 인라인 액션 버튼: [전체 재배일정 보기] / [작업기록 작성] */}
+                      <div className="pt-1 pb-2 grid grid-cols-2 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileStageOverviewReqNo(null);
+                            setMyPageStageDetailItem(null);
+                            setMyPageProgressDetailReqNo(ovReqNo);
+                          }}
+                          className="h-[50px] rounded-full bg-white hover:bg-slate-50 border-[1.5px] border-slate-300 text-[#111827] font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                        >
+                          <Calendar className="w-4 h-4 text-[#0E712F] shrink-0" />
+                          <span>전체 재배일정 보기</span>
+                        </button>
 
-                {/* 8. 하단 액션 바: [전체 재배일정 보기] / [작업기록 작성] */}
-                <div className="bg-white px-4 py-3.5 border-t border-[#E5E7EB] grid grid-cols-2 gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMobileStageOverviewReqNo(null);
-                      setMyPageStageDetailItem(null);
-                      setMyPageProgressDetailReqNo(ovReqNo);
-                    }}
-                    className="h-[48px] rounded-full bg-white hover:bg-slate-50 border-[1.5px] border-slate-300 text-[#111827] font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
-                  >
-                    <Calendar className="w-4 h-4 text-[#0E712F]" />
-                    <span>전체 재배일정 보기</span>
-                  </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWorkLogForm((prev) => ({
+                              ...prev,
+                              workDate: getTodayKstYmd(),
+                              stageLabel: curStepDef.stageTitle,
+                              taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
+                            }));
+                            setIsWorkLogFormOpen(true);
+                          }}
+                          className="h-[50px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
+                        >
+                          <FileEdit className="w-4 h-4 shrink-0" />
+                          <span>작업기록 작성</span>
+                        </button>
+                      </div>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setWorkLogForm((prev) => ({
-                        ...prev,
-                        workDate: getTodayKstYmd(),
-                        stageLabel: curStepDef.stageTitle,
-                        taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
-                      }));
-                      setIsWorkLogFormOpen(true);
-                    }}
-                    className="h-[48px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
-                  >
-                    <FileEdit className="w-4 h-4" />
-                    <span>작업기록 작성</span>
-                  </button>
+                    {/* 8. 하단 고정 액션 바: [전체 재배일정 보기] / [작업기록 작성] */}
+                    <div
+                      className="bg-white px-4 pt-3 pb-3.5 border-t border-[#E5E7EB] grid grid-cols-2 gap-2.5 shrink-0"
+                      style={{
+                        paddingBottom: isLegacyAndroidWebView
+                          ? 'max(16px, env(safe-area-inset-bottom, 16px))'
+                          : 'max(14px, env(safe-area-inset-bottom, 14px))',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileStageOverviewReqNo(null);
+                          setMyPageStageDetailItem(null);
+                          setMyPageProgressDetailReqNo(ovReqNo);
+                        }}
+                        className="h-[48px] rounded-full bg-white hover:bg-slate-50 border-[1.5px] border-slate-300 text-[#111827] font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                      >
+                        <Calendar className="w-4 h-4 text-[#0E712F] shrink-0" />
+                        <span>전체 재배일정 보기</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWorkLogForm((prev) => ({
+                            ...prev,
+                            workDate: getTodayKstYmd(),
+                            stageLabel: curStepDef.stageTitle,
+                            taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
+                          }));
+                          setIsWorkLogFormOpen(true);
+                        }}
+                        className="h-[48px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
+                      >
+                        <FileEdit className="w-4 h-4 shrink-0" />
+                        <span>작업기록 작성</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          );
-        })()}
+              );
+            })()}
 
       {/* ==================== [모바일 전용 공통 모달리스 창: 재배일정 확인 & 마이페이지>재배진행율 '일정 세부정보' (농작업 타임라인) 및 '작업 세부정보'] ==================== */}
       {(activeMenu === '재배일정 확인' ||
