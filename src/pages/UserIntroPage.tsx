@@ -1960,6 +1960,15 @@ export default function UserIntroPage() {
           reRequestTargetCrop.crop_plan_id || `CPLAN-${newReqDisplayNo}`
         ).trim();
       } else {
+        const nowReq = new Date();
+        const ymdReq = `${nowReq.getFullYear()}${String(nowReq.getMonth() + 1).padStart(2, '0')}${String(
+          nowReq.getDate()
+        ).padStart(2, '0')}`;
+        const emailPrefix = String(loggedInUser.email || 'user')
+          .split('@')[0]
+          .replace(/[^a-zA-Z0-9]/g, '')
+          .slice(-5)
+          .toUpperCase() || 'USR';
         const existingReqKeys = new Set(
           [
             ...scheduleRequestCropList.flatMap((c: any) => [
@@ -1974,13 +1983,13 @@ export default function UserIntroPage() {
             .map((k) => String(k).trim())
         );
         let nextIdx = scheduleRequestCropList.length + 1;
-        newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
+        newReqDisplayNo = `REQ-${ymdReq}-${emailPrefix}-${String(nextIdx).padStart(2, '0')}`;
         while (
           existingReqKeys.has(newReqDisplayNo) ||
           existingReqKeys.has(`CPLAN-${newReqDisplayNo}`)
         ) {
           nextIdx += 1;
-          newReqDisplayNo = `REQ-20261111-${String(nextIdx).padStart(3, '0')}`;
+          newReqDisplayNo = `REQ-${ymdReq}-${emailPrefix}-${String(nextIdx).padStart(2, '0')}`;
         }
         newPlanId = `CPLAN-${newReqDisplayNo}`;
       }
@@ -4308,24 +4317,35 @@ export default function UserIntroPage() {
     const { cropObj, stageItem, mat, qty } = params;
     if (!mat) return;
 
-    const targetCrop = cropObj || activeCropCard || cloudBaeCropList[0] || {};
+    const cardRef = activeCropCard?.request_no ? activeCropCard : cloudBaeCropList[0] || {};
+    const targetCrop =
+      cropObj && (cropObj.crop_title || cropObj.region)
+        ? cropObj
+        : { ... (provisionData?.activeRequest || {}), ... (cropObj || {}), ...cardRef };
     const activeReq = provisionData?.activeRequest || {};
     const reqNo =
-      targetCrop.request_no || activeReq.request_no || selectedRequestNo || 'REQ-20261106-009';
+      cardRef.request_no || targetCrop.request_no || activeReq.request_no || selectedRequestNo || 'REQ-20261106-009';
     const cropName =
+      cardRef.crop_short ||
+      cardRef.crop_name ||
       targetCrop.crop_name ||
       (activeReq.crop_name === '배추' ? '가을배추' : activeReq.crop_name) ||
       '가을배추';
-    const cultivarName = targetCrop.cultivar_name || activeReq.item_name_3rd || '불암3호';
-    const cropTitle = targetCrop.crop_title || `${cropName} (${cultivarName})`;
+    const cultivarName =
+      cardRef.cultivar_name || targetCrop.cultivar_name || targetCrop.item_name_3rd || activeReq.item_name_3rd || '불암3호';
+    const cropTitle = cardRef.crop_title || targetCrop.crop_title || `${cropName} (${cultivarName})`;
     const plantingType =
+      cardRef.planting_type ||
       targetCrop.planting_type ||
       (String(activeReq.planting_method || '').includes('씨') ? '씨' : '모종');
     const region =
+      cardRef.region ||
       targetCrop.region ||
-      [activeReq.sido, activeReq.sigungu, activeReq.eupmyeondong].filter(Boolean).join(' ') ||
+      [targetCrop.sido || activeReq.sido, targetCrop.sigungu || activeReq.sigungu, targetCrop.eupmyeondong || activeReq.eupmyeondong]
+        .filter(Boolean)
+        .join(' ') ||
       '충청북도 충주시 단월동';
-    const areaPyeong = Number(activeReq.area_pyeong || targetCrop.area_pyeong || 300);
+    const areaPyeong = Number(cardRef.area_pyeong || targetCrop.area_pyeong || activeReq.area_pyeong || 300);
     const plantingDate =
       targetCrop.planting_label || activeReq.desired_start_date || '2026-08-25';
     const expectedHarvestDate =
@@ -4426,27 +4446,37 @@ export default function UserIntroPage() {
     const { cropObj, stageItem, mat, qty } = params;
     if (!mat) return;
 
-    const targetCrop = cropObj || activeCropCard || cloudBaeCropList[0] || {};
+    const cardRef = activeCropCard?.request_no ? activeCropCard : cloudBaeCropList[0] || {};
+    const targetCrop =
+      cropObj && (cropObj.crop_title || cropObj.region)
+        ? cropObj
+        : { ...(provisionData?.activeRequest || {}), ...(cropObj || {}), ...cardRef };
     const activeReq = provisionData?.activeRequest || {};
     const reqNo =
-      targetCrop.request_no || activeReq.request_no || selectedRequestNo || 'REQ-20261106-009';
-    const displayReqNo = targetCrop.display_request_no || reqNo;
+      cardRef.request_no || targetCrop.request_no || activeReq.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const displayReqNo = cardRef.display_request_no || targetCrop.display_request_no || reqNo;
     const cropName =
+      cardRef.crop_short ||
+      cardRef.crop_name ||
       targetCrop.crop_name ||
       (activeReq.crop_name === '배추' ? '가을배추' : activeReq.crop_name) ||
       '가을배추';
     const cultivarName =
-      targetCrop.cultivar_name || activeReq.item_name_3rd || '불암3호';
+      cardRef.cultivar_name || targetCrop.cultivar_name || targetCrop.item_name_3rd || activeReq.item_name_3rd || '불암3호';
     const cropTitle =
-      targetCrop.crop_title || `${cropName} (${cultivarName})`;
+      cardRef.crop_title || targetCrop.crop_title || `${cropName} (${cultivarName})`;
     const plantingType =
+      cardRef.planting_type ||
       targetCrop.planting_type ||
       (String(activeReq.planting_method || '').includes('씨') ? '씨' : '모종');
     const region =
+      cardRef.region ||
       targetCrop.region ||
-      [activeReq.sido, activeReq.sigungu, activeReq.eupmyeondong].filter(Boolean).join(' ') ||
+      [targetCrop.sido || activeReq.sido, targetCrop.sigungu || activeReq.sigungu, targetCrop.eupmyeondong || activeReq.eupmyeondong]
+        .filter(Boolean)
+        .join(' ') ||
       '충청북도 충주시 단월동';
-    const areaPyeong = Number(activeReq.area_pyeong || targetCrop.area_pyeong || 300);
+    const areaPyeong = Number(cardRef.area_pyeong || targetCrop.area_pyeong || activeReq.area_pyeong || 300);
     const plantingDate =
       targetCrop.planting_label || activeReq.desired_start_date || '2026-08-25';
     const expectedHarvestDate =
