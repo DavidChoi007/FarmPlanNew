@@ -16185,13 +16185,6 @@ export default function UserIntroPage() {
                 <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto">
                   <button
                     type="button"
-                    onClick={() => setActiveMenu('홈')}
-                    className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-[15px] sm:text-base font-extrabold text-slate-800 cursor-pointer whitespace-nowrap"
-                  >
-                    홈으로 돌아가기
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => {
                       setReRequestTargetCrop(null);
                       setReqFormSubmitted(false);
