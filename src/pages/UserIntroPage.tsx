@@ -15205,7 +15205,7 @@ export default function UserIntroPage() {
                           <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
                             품종 (선택)
                           </label>
-                          <div className="relative">
+                          <div>
                             <select
                               value={reqForm.cultivar_name}
                               onChange={(e) => {
@@ -15219,7 +15219,7 @@ export default function UserIntroPage() {
                                   planting_type: matched?.plantingType || prev.planting_type,
                                 }));
                               }}
-                              className="w-full h-[46px] px-3.5 pr-9 rounded-[12px] border border-[#D1D5DB] bg-white text-[14.5px] font-medium text-[#111827] appearance-none focus:outline-none focus:border-[#0E712F]"
+                              className="w-full h-[46px] px-3.5 rounded-[12px] border border-[#D1D5DB] bg-white text-[14.5px] font-medium text-[#111827] focus:outline-none focus:border-[#0E712F] cursor-pointer"
                             >
                               {selectedCropSpec.cultivars.map((cv) => (
                                 <option key={cv.value} value={cv.value}>
@@ -15227,7 +15227,6 @@ export default function UserIntroPage() {
                                 </option>
                               ))}
                             </select>
-                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4B5563]" />
                           </div>
                         </div>
 
