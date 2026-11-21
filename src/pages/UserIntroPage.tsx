@@ -15317,16 +15317,9 @@ export default function UserIntroPage() {
                               onClick={() =>
                                 setIsMobileAddrPickerOpen((prev) => !prev)
                               }
-                              className="flex-1 min-w-0 h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3 flex items-center gap-2 text-left cursor-pointer"
+                              className="flex-1 min-w-0 h-[46px] rounded-[12px] border border-[#D1D5DB] bg-white px-3.5 flex items-center justify-between gap-2 text-left cursor-pointer"
                             >
-                              <svg viewBox="0 0 20 20" className="w-[18px] h-[18px] shrink-0" fill="none">
-                                <path
-                                  d="M10 17.5C10 17.5 15.5 12.6 15.5 8.2C15.5 5.1 13 2.5 10 2.5C7 2.5 4.5 5.1 4.5 8.2C4.5 12.6 10 17.5 10 17.5Z"
-                                  fill="#0E712F"
-                                />
-                                <circle cx="10" cy="8" r="2" fill="#FFFFFF" />
-                              </svg>
-                              <span className="text-[14.5px] font-medium text-[#111827] truncate block">
+                              <span className="text-[14.5px] font-bold text-[#111827] truncate block">
                                 {shortAddressLabel}
                               </span>
                             </button>
@@ -16073,7 +16066,7 @@ export default function UserIntroPage() {
                         <div className="bg-[#ECF6EE] border-b border-[#CFE3D5] px-4 py-3.5 flex items-center justify-between gap-2 shrink-0">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-xl bg-[#0E712F] text-white flex items-center justify-center shrink-0">
-                              <Sprout className="w-4.5 h-4.5" />
+                              <Sprout className="w-4 h-4" />
                             </div>
                             <div>
                               <h3 className="text-[17px] font-black text-[#111827] leading-tight">
@@ -16173,12 +16166,12 @@ export default function UserIntroPage() {
 
               {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
               <section className="bg-white rounded-3xl border border-slate-200/90 p-3.5 sm:p-7 shadow-2xs space-y-5">
-              <div className="hidden lg:flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-                <div className="flex items-start sm:items-center gap-3">
+              <div className="hidden lg:flex items-center justify-between gap-6 border-b border-slate-200 pb-4">
+                <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
                     <FileEdit className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[13px] sm:text-sm font-extrabold">
                         ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
@@ -16196,7 +16189,14 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMenu('홈')}
+                    className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-[15px] sm:text-base font-extrabold text-slate-800 cursor-pointer whitespace-nowrap"
+                  >
+                    홈으로 돌아가기
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -16205,17 +16205,10 @@ export default function UserIntroPage() {
                       setScheduleReqModalPos({ x: 0, y: 0 });
                       setIsScheduleReqModelessOpen(true);
                     }}
-                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base shadow-sm transition cursor-pointer inline-flex items-center gap-2"
+                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base shadow-sm transition cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
                   >
                     <FileEdit className="w-4 h-4" />
-                    <span>재배일정 요청</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveMenu('홈')}
-                    className="px-4 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-[15px] sm:text-base font-extrabold text-slate-800 cursor-pointer"
-                  >
-                    홈으로 돌아가기
+                    <span>신규요청 등록</span>
                   </button>
                 </div>
               </div>
@@ -16233,7 +16226,7 @@ export default function UserIntroPage() {
                           현재 요청된 재배일정이 없습니다.
                         </div>
                         <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                          상단 우측의 <strong>[재배 일정 요청]</strong> 버튼을 클릭하여 내 재배지와 희망 작물의 맞춤 재배일정을 요청해 보세요.
+                          상단 우측의 <strong>[신규요청 등록]</strong> 버튼을 클릭하여 내 재배지와 희망 작물의 맞춤 재배일정을 요청해 보세요.
                         </p>
                         <div className="pt-2">
                           <button
@@ -16246,7 +16239,7 @@ export default function UserIntroPage() {
                             }}
                             className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-xs transition cursor-pointer"
                           >
-                            + 재배 일정 요청하기
+                            + 신규요청 등록
                           </button>
                         </div>
                       </div>
