@@ -353,21 +353,39 @@ function resolveCultivationAddressFromInput(input: {
   let sigungu = String(input.sigungu || '').trim();
   let eupmyeondong = String(input.eupmyeondong || '').trim();
 
-  // road_address 문자열(예: "서울시 강동구 둔촌동", "서울특별시 강동구 양재대로 1340 (둔촌동)")에서 시도/시군구/읍면동 추출
+  // road_address 문자열(예: "서울시 강동구 둔촌동", "경기도 고양시 일산로 488", "경기도 고양시 일산서구 일산로 488 (일산동)")에서 시도/시군구/읍면동 추출
   const roadText = String(input.road_address || '').trim();
   if (roadText && (!sido || !sigungu || !eupmyeondong)) {
     const parenMatch = roadText.match(/\(([^(),\s]+(?:동|읍|면|가|리))\)/);
     const cleaned = roadText.replace(/[(),]/g, ' ');
     const tokens = cleaned.split(/\s+/).filter(Boolean);
     if (!sido && tokens[0]) sido = tokens[0];
-    if (!sigungu && tokens[1]) sigungu = tokens[1];
+    let dongSearchStartIdx = 2;
+    if (!sigungu && tokens[1]) {
+      if (tokens[1].endsWith('시') && tokens[2] && tokens[2].endsWith('구')) {
+        sigungu = `${tokens[1]} ${tokens[2]}`;
+        dongSearchStartIdx = 3;
+      } else {
+        sigungu = tokens[1];
+      }
+    }
     if (!eupmyeondong) {
       if (parenMatch?.[1]) {
         eupmyeondong = parenMatch[1];
       } else {
-        const dongTok = tokens.slice(2).find((t) => /(?:동|읍|면|가|리)$/.test(t));
-        if (dongTok) eupmyeondong = dongTok;
-        else if (tokens[2]) eupmyeondong = tokens[2];
+        const restTokens = tokens.slice(dongSearchStartIdx);
+        const dongTok = restTokens.find((t) => /(?:동|읍|면|가|리)$/.test(t));
+        if (dongTok) {
+          eupmyeondong = dongTok;
+        } else {
+          const roadTok = restTokens.find((t) => /(?:대로|로|길)$/.test(t));
+          if (roadTok) {
+            const stem = roadTok.replace(/(?:중앙로|순환로|번영로|문화로|평화로|농공로|들녘길|청사로|역전로|대로|로|길)$/, '');
+            eupmyeondong = stem ? `${stem}동` : roadTok;
+          } else if (restTokens[0]) {
+            eupmyeondong = restTokens[0];
+          }
+        }
       }
     }
   }
@@ -10898,17 +10916,34 @@ const server = http.createServer(async (req, res) => {
       const sigungu = resolvedAddr.sigungu;
       const eupmyeondong = resolvedAddr.eupmyeondong;
       let farmlandId = String(body.farmland_id || '').trim();
-      const matchedLand =
-        (db
-          .prepare(
-            'SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) AND sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
-          )
-          .get(email, sido, sigungu, eupmyeondong) as { farmland_id?: string } | undefined) ||
-        (db
-          .prepare('SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
-          .get(email) as { farmland_id?: string } | undefined);
-      if (!farmlandId || (farmlandId === 'LAND-CB-01' && email.toLowerCase() !== 'cloudbae@naver.com')) {
-        farmlandId = matchedLand?.farmland_id || '';
+      const matchedRegionLand = db
+        .prepare(
+          'SELECT farmland_id, sido, sigungu, eupmyeondong FROM member_farmland WHERE LOWER(email) = LOWER(?) AND sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
+        )
+        .get(email, sido, sigungu, eupmyeondong) as
+        | { farmland_id?: string; sido?: string; sigungu?: string; eupmyeondong?: string }
+        | undefined;
+      const passedLand = farmlandId
+        ? (db
+            .prepare(
+              'SELECT farmland_id, email, sido, sigungu, eupmyeondong FROM member_farmland WHERE farmland_id = ? LIMIT 1'
+            )
+            .get(farmlandId) as
+            | { farmland_id?: string; email?: string; sido?: string; sigungu?: string; eupmyeondong?: string }
+            | undefined)
+        : undefined;
+      const isPassedLandValidForRegion =
+        passedLand &&
+        String(passedLand.email || '').toLowerCase() === email.toLowerCase() &&
+        passedLand.sido === sido &&
+        passedLand.sigungu === sigungu &&
+        passedLand.eupmyeondong === eupmyeondong;
+      if (isPassedLandValidForRegion && passedLand?.farmland_id) {
+        farmlandId = passedLand.farmland_id;
+      } else if (matchedRegionLand?.farmland_id) {
+        farmlandId = matchedRegionLand.farmland_id;
+      } else {
+        farmlandId = '';
       }
       if (!farmlandId) {
         const autoLandId = `LAND-${Date.now()}`;
@@ -10916,7 +10951,7 @@ const server = http.createServer(async (req, res) => {
           INSERT OR REPLACE INTO member_farmland (
             farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
             detail_jibun, area_pyeong, soil_ph, soil_ec
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, 6.3, 1.1)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 6.3, 1.1)
         `).run(
           autoLandId,
           email,
@@ -10925,6 +10960,7 @@ const server = http.createServer(async (req, res) => {
           sido,
           sigungu,
           eupmyeondong,
+          String(body.detail_address || '').trim(),
           Math.max(10, Number(body.area_pyeong) || 300)
         );
         const savedAutoLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as Record<string, any> | undefined;

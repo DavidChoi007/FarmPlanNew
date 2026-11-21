@@ -2095,17 +2095,20 @@ export default function UserIntroPage() {
       setReRequestTargetCrop(null);
       setReqFormSubmitted(true);
 
-      const matchedUserLand =
-        myFarmlands.find(
-          (f: any) =>
-            f.sido === reqForm.sido &&
-            f.sigungu === reqForm.sigungu &&
-            f.eupmyeondong === reqForm.eupmyeondong
-        ) || myFarmlands[0];
+      const matchedUserLand = myFarmlands.find(
+        (f: any) =>
+          f.sido === reqForm.sido &&
+          f.sigungu === reqForm.sigungu &&
+          f.eupmyeondong === reqForm.eupmyeondong
+      );
       const resolvedFarmlandId =
-        reqForm.farmland_id ||
         matchedUserLand?.farmland_id ||
-        (ownerEmail.toLowerCase() === 'cloudbae@naver.com' ? 'LAND-CB-01' : '');
+        (ownerEmail.toLowerCase() === 'cloudbae@naver.com' &&
+        reqForm.sido === '충청북도' &&
+        reqForm.sigungu === '충주시' &&
+        reqForm.eupmyeondong === '단월동'
+          ? 'LAND-CB-01'
+          : '');
 
       try {
         await fetch('/api/member-schedule-requests/save', {

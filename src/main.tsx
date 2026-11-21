@@ -1835,12 +1835,40 @@ if (typeof window !== 'undefined') {
       const roadStr = String(body.road_address || '').trim();
       const addrTokens = roadStr.replace(/[(),]/g, ' ').split(/\s+/).filter(Boolean);
       const resolvedSido = sidoAliasMap[String(body.sido || addrTokens[0] || '').trim()] || String(body.sido || '충청북도').trim();
-      const resolvedSigungu = String(body.sigungu || addrTokens[1] || '충주시').trim();
-      const resolvedDong =
-        String(body.eupmyeondong || addrTokens.slice(2).find((t) => /(?:동|읍|면|가|리)$/.test(t)) || addrTokens[2] || '단월동').trim();
-      const matchedAddr = getKoreaAddressesCache().find(
-        (a) => a.sido === resolvedSido && a.sigungu === resolvedSigungu && a.eupmyeondong === resolvedDong
-      );
+      let rawSg = String(body.sigungu || '').trim();
+      let dongIdx = 2;
+      if (!rawSg && addrTokens[1]) {
+        if (addrTokens[1].endsWith('시') && addrTokens[2] && addrTokens[2].endsWith('구')) {
+          rawSg = `${addrTokens[1]} ${addrTokens[2]}`;
+          dongIdx = 3;
+        } else {
+          rawSg = addrTokens[1];
+        }
+      }
+      const restTokens = addrTokens.slice(dongIdx);
+      const roadTok = restTokens.find((t) => /(?:대로|로|길)$/.test(t));
+      const roadStem = roadTok ? roadTok.replace(/(?:중앙로|순환로|번영로|문화로|평화로|농공로|들녘길|청사로|역전로|대로|로|길)$/, '') : '';
+      const rawDong =
+        String(
+          body.eupmyeondong ||
+            restTokens.find((t) => /(?:동|읍|면|가|리)$/.test(t)) ||
+            (roadStem ? `${roadStem}동` : restTokens[0] || '단월동')
+        ).trim();
+      const matchedAddr =
+        getKoreaAddressesCache().find(
+          (a) => a.sido === resolvedSido && a.sigungu === rawSg && a.eupmyeondong === rawDong
+        ) ||
+        getKoreaAddressesCache().find(
+          (a) =>
+            a.sido === resolvedSido &&
+            a.sigungu.includes(rawSg || '충주시') &&
+            a.eupmyeondong.includes(rawDong.replace(/동$/, ''))
+        ) ||
+        getKoreaAddressesCache().find(
+          (a) => a.sido === resolvedSido && a.sigungu.includes(rawSg || '충주시')
+        );
+      const resolvedSigungu = matchedAddr?.sigungu || rawSg || '충주시';
+      const resolvedDong = matchedAddr?.eupmyeondong || rawDong || '단월동';
       const { roadList, jibunList } = getRoadAndJibunCache();
       const matchedRoadItem = matchedAddr
         ? roadList.find((r) => r.bjd_code === matchedAddr.bjd_code)
@@ -2278,18 +2306,56 @@ if (typeof window !== 'undefined') {
           (reqNo && c.request_no === reqNo)
       );
       const existingPlan = existingIdx >= 0 ? list[existingIdx] : null;
+      const targetEmail = String(body.email || existingPlan?.email || mp.member?.email || 'CloudBae@naver.com').trim();
+      const targetSido = String(body.sido || existingPlan?.sido || '충청북도').trim();
+      const targetSigungu = String(body.sigungu || existingPlan?.sigungu || '충주시').trim();
+      const targetDong = String(body.eupmyeondong || existingPlan?.eupmyeondong || '단월동').trim();
+      const targetArea = Math.max(10, Number(body.area_pyeong) || Number(existingPlan?.area_pyeong) || 300);
+
+      const farmlandsList = Array.isArray(mp.farmlands) ? [...mp.farmlands] : [];
+      let matchedRegionLand = farmlandsList.find(
+        (f: any) =>
+          String(f.email || '').toLowerCase() === targetEmail.toLowerCase() &&
+          f.sido === targetSido &&
+          f.sigungu === targetSigungu &&
+          f.eupmyeondong === targetDong
+      );
+      if (!matchedRegionLand) {
+        const matchedAddr = getKoreaAddressesCache().find(
+          (a) => a.sido === targetSido && a.sigungu === targetSigungu && a.eupmyeondong === targetDong
+        );
+        const autoLand = {
+          farmland_id: `LAND-${Date.now()}`,
+          email: targetEmail,
+          farmland_title: `${targetSigungu} ${targetDong} 농장`,
+          bjd_code: String(body.bjd_code || matchedAddr?.bjd_code || '4313010700').trim(),
+          sido: targetSido,
+          sigungu: targetSigungu,
+          eupmyeondong: targetDong,
+          detail_jibun: String(body.detail_address || '').trim(),
+          area_pyeong: targetArea,
+          soil_ph: 6.3,
+          soil_ec: 1.1,
+          created_at: getKstNowStr(),
+        };
+        farmlandsList.push(autoLand);
+        mp.farmlands = farmlandsList;
+        await sbUpsert('member_farmland', autoLand, 'farmland_id');
+        matchedRegionLand = autoLand;
+      }
+
       const newPlan = {
         crop_plan_id: existingPlan?.crop_plan_id || inputPlanId || `CPLAN-${reqNo}`,
-        email: body.email || existingPlan?.email || mp.member?.email || 'CloudBae@naver.com',
+        email: targetEmail,
         request_no: reqNo,
-        farmland_id: body.farmland_id || existingPlan?.farmland_id || 'LAND-CB-01',
-        sido: body.sido || existingPlan?.sido || '충청북도',
-        sigungu: body.sigungu || existingPlan?.sigungu || '충주시',
-        eupmyeondong: body.eupmyeondong || existingPlan?.eupmyeondong || '단월동',
+        farmland_id: matchedRegionLand.farmland_id,
+        sido: targetSido,
+        sigungu: targetSigungu,
+        eupmyeondong: targetDong,
         crop_name: body.crop_name || existingPlan?.crop_name || '가을배추',
         cultivar_name: body.cultivar_name || existingPlan?.cultivar_name || '불암3호',
         planting_type: body.planting_type || existingPlan?.planting_type || '모종',
-        area_pyeong: Number(body.area_pyeong) || existingPlan?.area_pyeong || 300,
+        area_pyeong: targetArea,
         planting_date: body.planting_date || existingPlan?.planting_date || '2026-08-25',
         expected_harvest_date:
           body.expected_harvest_date || existingPlan?.expected_harvest_date || '2026-11-15',
@@ -3453,34 +3519,49 @@ if (typeof window !== 'undefined') {
       }
       if (items.length === 0) {
         const roadMatch = rawQ.match(/([가-힣0-9]+(?:대로|로|길))\s*(\d+)(?:-(\d+))?/);
-        const regionTokens = tokens.filter((tk) => !/^\d+(?:-\d+)?$/.test(tk) && !/(?:대로|로|길)$/.test(tk));
-        for (const r of roadList) {
-          const j = jibunByBjd.get(r.bjd_code);
+        const roadStem = roadMatch?.[1]
+          ? roadMatch[1].replace(/(?:중앙로|순환로|번영로|문화로|평화로|농공로|들녘길|청사로|역전로|대로|로|길)$/, '').toLowerCase()
+          : '';
+        const regionTokens = [
+          ...tokens.filter((tk) => !/^\d+(?:-\d+)?$/.test(tk) && !/(?:대로|로|길)$/.test(tk)),
+          ...(roadStem ? [roadStem] : []),
+        ];
+        const candidateRows = roadList.filter((r) => {
           const hay = `${r.sido} ${r.sigungu} ${r.eupmyeondong}`.toLowerCase();
-          if (regionTokens.length > 0 && regionTokens.every((tk) => hay.includes(tk))) {
-            const baseItem = {
-              ...r,
-              ri_name: j?.ri_name || '',
-              jibun_main_no: j?.jibun_main_no || 100,
-              jibun_sub_no: j?.jibun_sub_no || 0,
-              full_jibun_address: j?.full_jibun_address || `${r.sido} ${r.sigungu} ${r.eupmyeondong} 100`,
-            };
-            if (roadMatch && items.length === 0) {
-              const customRoadName = roadMatch[1];
-              const customMainNo = Number(roadMatch[2]) || 100;
-              const customSubNo = Number(roadMatch[3]) || 0;
-              const noStr = customSubNo > 0 ? `${customMainNo}-${customSubNo}` : `${customMainNo}`;
-              items.push({
-                ...baseItem,
-                road_name: customRoadName,
-                building_main_no: customMainNo,
-                building_sub_no: customSubNo,
-                full_road_address: `${r.sido} ${r.sigungu} ${customRoadName} ${noStr} (${r.eupmyeondong})`,
+          return regionTokens.length > 0 && regionTokens.every((tk) => hay.includes(tk));
+        });
+        const fallbackRows =
+          candidateRows.length > 0
+            ? candidateRows
+            : roadList.filter((r) => {
+                const baseTokens = tokens.filter((tk) => !/^\d+(?:-\d+)?$/.test(tk) && !/(?:대로|로|길)$/.test(tk));
+                const hay = `${r.sido} ${r.sigungu} ${r.eupmyeondong}`.toLowerCase();
+                return baseTokens.length > 0 && baseTokens.every((tk) => hay.includes(tk));
               });
-            }
-            items.push(baseItem);
-            if (items.length >= limit) break;
+        for (const r of fallbackRows) {
+          const j = jibunByBjd.get(r.bjd_code);
+          const baseItem = {
+            ...r,
+            ri_name: j?.ri_name || '',
+            jibun_main_no: j?.jibun_main_no || 100,
+            jibun_sub_no: j?.jibun_sub_no || 0,
+            full_jibun_address: j?.full_jibun_address || `${r.sido} ${r.sigungu} ${r.eupmyeondong} 100`,
+          };
+          if (roadMatch && items.length === 0) {
+            const customRoadName = roadMatch[1];
+            const customMainNo = Number(roadMatch[2]) || 100;
+            const customSubNo = Number(roadMatch[3]) || 0;
+            const noStr = customSubNo > 0 ? `${customMainNo}-${customSubNo}` : `${customMainNo}`;
+            items.push({
+              ...baseItem,
+              road_name: customRoadName,
+              building_main_no: customMainNo,
+              building_sub_no: customSubNo,
+              full_road_address: `${r.sido} ${r.sigungu} ${customRoadName} ${noStr} (${r.eupmyeondong})`,
+            });
           }
+          items.push(baseItem);
+          if (items.length >= limit) break;
         }
       }
       return jsonResponse({ items, total: items.length });
