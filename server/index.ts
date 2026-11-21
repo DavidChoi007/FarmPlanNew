@@ -50,6 +50,12 @@ function initMemberAndMyPageTables() {
       road_address TEXT NOT NULL DEFAULT '',
       road_address_detail TEXT DEFAULT '',
       postal_code TEXT DEFAULT '27481',
+      road_code TEXT DEFAULT '',
+      bjd_code TEXT DEFAULT '',
+      sido TEXT DEFAULT '',
+      sigungu TEXT DEFAULT '',
+      eupmyeondong TEXT DEFAULT '',
+      jibun_address TEXT DEFAULT '',
       phone TEXT DEFAULT '010-2026-0109',
       phone_verified INTEGER NOT NULL DEFAULT 1,
       interest_types TEXT NOT NULL DEFAULT '["농업인(직업 재배)"]',
@@ -67,6 +73,12 @@ function initMemberAndMyPageTables() {
     `ALTER TABLE user_member ADD COLUMN agree_terms INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE user_member ADD COLUMN agree_privacy INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE user_member ADD COLUMN agree_marketing INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE user_member ADD COLUMN road_code TEXT DEFAULT ''`,
+    `ALTER TABLE user_member ADD COLUMN bjd_code TEXT DEFAULT ''`,
+    `ALTER TABLE user_member ADD COLUMN sido TEXT DEFAULT ''`,
+    `ALTER TABLE user_member ADD COLUMN sigungu TEXT DEFAULT ''`,
+    `ALTER TABLE user_member ADD COLUMN eupmyeondong TEXT DEFAULT ''`,
+    `ALTER TABLE user_member ADD COLUMN jibun_address TEXT DEFAULT ''`,
     `ALTER TABLE member_schedule_request ADD COLUMN soil_condition TEXT NOT NULL DEFAULT '사양토'`,
     `ALTER TABLE member_schedule_request ADD COLUMN facility_env_json TEXT NOT NULL DEFAULT '["멀칭","부직포"]'`,
     `ALTER TABLE member_schedule_request ADD COLUMN schedule_base_type TEXT NOT NULL DEFAULT 'OPTIMAL_AUTO'`,
@@ -500,9 +512,10 @@ async function syncAdminMemberTablesFromSupabase() {
       const stmt = db.prepare(`
         INSERT OR REPLACE INTO user_member (
           member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
-          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gender, birth_date, age, road_address, road_address_detail, postal_code,
+          road_code, bjd_code, sido, sigungu, eupmyeondong, jibun_address,
+          phone, phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const m of sbMembers) {
         if (!m?.member_id) continue;
@@ -519,6 +532,12 @@ async function syncAdminMemberTablesFromSupabase() {
           String(m.road_address || ''),
           String(m.road_address_detail || ''),
           String(m.postal_code || '27481'),
+          String(m.road_code || ''),
+          String(m.bjd_code || ''),
+          String(m.sido || ''),
+          String(m.sigungu || ''),
+          String(m.eupmyeondong || ''),
+          String(m.jibun_address || ''),
           String(m.phone || '010-0000-0000'),
           m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
           String(m.interest_types || '["농업인(직업 재배)"]'),
@@ -890,6 +909,12 @@ async function syncAgroMaterialSchemaToSupabase() {
         ADD COLUMN IF NOT EXISTS sigungu TEXT DEFAULT '충주시',
         ADD COLUMN IF NOT EXISTS eupmyeondong TEXT DEFAULT '단월동';
       ALTER TABLE public.user_member
+        ADD COLUMN IF NOT EXISTS road_code TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bjd_code TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS sido TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS sigungu TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS eupmyeondong TEXT DEFAULT '',
+        ADD COLUMN IF NOT EXISTS jibun_address TEXT DEFAULT '',
         ADD COLUMN IF NOT EXISTS phone_verified INTEGER DEFAULT 1,
         ADD COLUMN IF NOT EXISTS interest_types TEXT DEFAULT '["농업인(직업 재배)"]',
         ADD COLUMN IF NOT EXISTS agree_terms INTEGER DEFAULT 1,
@@ -4471,7 +4496,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // 회원가입 시 회원 주소검색용 통합 API (도로명 주소 + 지번 주소 매핑 반환)
+    // 회원가입 시 회원 주소검색용 통합 API (도로명 주소 + 지번 주소 매핑 반환 · 다중 키워드 및 시도 약칭 지원)
     if (pathname === '/api/member-address/search' && req.method === 'GET') {
       const q = (parsedUrl.searchParams.get('q') || '').trim();
       const limit = Math.max(1, Math.min(100, Number(parsedUrl.searchParams.get('limit')) || 30));
@@ -4479,8 +4504,24 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, { items: [], total: 0 });
         return;
       }
-      const pat = `%${q}%`;
-      const items = db
+      const rawTokens = q
+        .replace(/[(),]/g, ' ')
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const tokens = rawTokens.map((t) => SIDO_ALIAS_MAP[t] || t);
+
+      const whereClauses: string[] = [];
+      const sqlParams: any[] = [];
+      for (const tk of tokens) {
+        const p = `%${tk}%`;
+        whereClauses.push(
+          `(r.full_road_address LIKE ? OR j.full_jibun_address LIKE ? OR r.road_name LIKE ? OR r.building_name LIKE ? OR r.eupmyeondong LIKE ? OR r.sigungu LIKE ? OR r.sido LIKE ? OR r.postal_code LIKE ?)`
+        );
+        sqlParams.push(p, p, p, p, p, p, p, p);
+      }
+
+      let items = db
         .prepare(
           `SELECT r.road_code, r.postal_code, r.sido, r.sigungu, r.eupmyeondong,
                   r.road_name, r.building_main_no, r.building_sub_no, r.building_name,
@@ -4488,16 +4529,52 @@ const server = http.createServer(async (req, res) => {
                   j.ri_name, j.jibun_main_no, j.jibun_sub_no, j.full_jibun_address
            FROM road_address r
            LEFT JOIN jibun_address j ON r.bjd_code = j.bjd_code
-           WHERE r.full_road_address LIKE ?
-              OR j.full_jibun_address LIKE ?
-              OR r.road_name LIKE ?
-              OR r.eupmyeondong LIKE ?
-              OR r.sigungu LIKE ?
-              OR r.postal_code LIKE ?
+           WHERE ${whereClauses.join(' AND ')}
            ORDER BY r.road_addr_id ASC
            LIMIT ?`
         )
-        .all(pat, pat, pat, pat, pat, pat, limit);
+        .all(...sqlParams, limit) as any[];
+
+      // 사용자가 특정 도로명+건물번호(예: "서울시 강동구 양재대로 1340", "둔촌대로 100")를 입력해 정확히 일치하는 행이 없을 때 지역 매칭 기반 도로명 결과 보강
+      if (items.length === 0) {
+        const resolved = resolveCultivationAddressFromInput({ road_address: q });
+        const regionRows = db
+          .prepare(
+            `SELECT r.road_code, r.postal_code, r.sido, r.sigungu, r.eupmyeondong,
+                    r.road_name, r.building_main_no, r.building_sub_no, r.building_name,
+                    r.bjd_code, r.full_road_address,
+                    j.ri_name, j.jibun_main_no, j.jibun_sub_no, j.full_jibun_address
+             FROM road_address r
+             LEFT JOIN jibun_address j ON r.bjd_code = j.bjd_code
+             WHERE r.sido = ? AND r.sigungu LIKE ? AND r.eupmyeondong LIKE ?
+             ORDER BY r.road_addr_id ASC
+             LIMIT ?`
+          )
+          .all(resolved.sido, `%${resolved.sigungu}%`, `%${resolved.eupmyeondong}%`, limit) as any[];
+
+        const roadMatch = q.match(/([가-힣0-9]+(?:대로|로|길))\s*(\d+)(?:-(\d+))?/);
+        if (roadMatch && regionRows[0]) {
+          const baseRow = regionRows[0];
+          const customRoadName = roadMatch[1];
+          const customMainNo = Number(roadMatch[2]) || 100;
+          const customSubNo = Number(roadMatch[3]) || 0;
+          const noStr = customSubNo > 0 ? `${customMainNo}-${customSubNo}` : `${customMainNo}`;
+          const customFullRoad = `${baseRow.sido} ${baseRow.sigungu} ${customRoadName} ${noStr} (${baseRow.eupmyeondong})`;
+          items = [
+            {
+              ...baseRow,
+              road_name: customRoadName,
+              building_main_no: customMainNo,
+              building_sub_no: customSubNo,
+              full_road_address: customFullRoad,
+            },
+            ...regionRows,
+          ].slice(0, limit);
+        } else {
+          items = regionRows;
+        }
+      }
+
       sendJson(res, { items, total: items.length });
       return;
     }
@@ -9985,11 +10062,34 @@ const server = http.createServer(async (req, res) => {
         road_address: rawRoadAddressInput,
         bjd_code: body.bjd_code,
       });
+      const matchedRoadRow = db
+        .prepare(
+          `SELECT r.road_code, r.postal_code, r.full_road_address, j.full_jibun_address
+           FROM road_address r
+           LEFT JOIN jibun_address j ON r.bjd_code = j.bjd_code
+           WHERE r.bjd_code = ?
+           ORDER BY r.road_addr_id ASC
+           LIMIT 1`
+        )
+        .get(resolvedSignupAddr.bjd_code) as
+        | { road_code?: string; postal_code?: string; full_road_address?: string; full_jibun_address?: string }
+        | undefined;
       const roadAddress =
         rawRoadAddressInput ||
+        matchedRoadRow?.full_road_address ||
         `${resolvedSignupAddr.sido} ${resolvedSignupAddr.sigungu} ${resolvedSignupAddr.eupmyeondong}`;
       const roadAddressDetail = String(body.road_address_detail || '').trim();
-      const postalCode = String(body.postal_code || '27481').trim();
+      const postalCode = String(body.postal_code || matchedRoadRow?.postal_code || '27481').trim();
+      const roadCode = String(body.road_code || matchedRoadRow?.road_code || '').trim();
+      const bjdCode = String(body.bjd_code || resolvedSignupAddr.bjd_code || '4313010700').trim();
+      const sido = resolvedSignupAddr.sido;
+      const sigungu = resolvedSignupAddr.sigungu;
+      const eupmyeondong = resolvedSignupAddr.eupmyeondong;
+      const jibunAddress = String(
+        body.jibun_address ||
+          matchedRoadRow?.full_jibun_address ||
+          `${sido} ${sigungu} ${eupmyeondong}`
+      ).trim();
       const phone = String(body.phone || '010-0000-0000').trim();
       const phoneVerified = body.phone_verified !== undefined ? (body.phone_verified ? 1 : 0) : 1;
       const interestTypes = Array.isArray(body.interest_types)
@@ -10026,9 +10126,10 @@ const server = http.createServer(async (req, res) => {
       db.prepare(`
         INSERT INTO user_member (
           member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
-          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gender, birth_date, age, road_address, road_address_detail, postal_code,
+          road_code, bjd_code, sido, sigungu, eupmyeondong, jibun_address,
+          phone, phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         memberId,
         email,
@@ -10042,6 +10143,12 @@ const server = http.createServer(async (req, res) => {
         roadAddress,
         roadAddressDetail,
         postalCode,
+        roadCode,
+        bjdCode,
+        sido,
+        sigungu,
+        eupmyeondong,
+        jibunAddress,
         phone,
         phoneVerified,
         interestTypes,
@@ -10320,15 +10427,47 @@ const server = http.createServer(async (req, res) => {
       const age = Number(body.age) || Number(existingById?.age) || 46;
       const roadAddress = String(body.road_address || existingById?.road_address || '충청북도 충주시 충원대로 268 (단월동)').trim();
       const roadAddressDetail = String(body.road_address_detail ?? existingById?.road_address_detail ?? '').trim();
-      const postalCode = String(body.postal_code || existingById?.postal_code || '27481').trim();
+      const resolvedAdminAddr = resolveCultivationAddressFromInput({
+        sido: body.sido || existingById?.sido,
+        sigungu: body.sigungu || existingById?.sigungu,
+        eupmyeondong: body.eupmyeondong || existingById?.eupmyeondong,
+        road_address: roadAddress,
+        bjd_code: body.bjd_code || existingById?.bjd_code,
+      });
+      const matchedRoadRow = db
+        .prepare(
+          `SELECT r.road_code, r.postal_code, r.full_road_address, j.full_jibun_address
+           FROM road_address r
+           LEFT JOIN jibun_address j ON r.bjd_code = j.bjd_code
+           WHERE r.bjd_code = ?
+           ORDER BY r.road_addr_id ASC
+           LIMIT 1`
+        )
+        .get(resolvedAdminAddr.bjd_code) as
+        | { road_code?: string; postal_code?: string; full_road_address?: string; full_jibun_address?: string }
+        | undefined;
+      const postalCode = String(body.postal_code || existingById?.postal_code || matchedRoadRow?.postal_code || '27481').trim();
+      const roadCode = String(body.road_code || existingById?.road_code || matchedRoadRow?.road_code || '').trim();
+      const bjdCode = String(body.bjd_code || existingById?.bjd_code || resolvedAdminAddr.bjd_code || '4313010700').trim();
+      const sido = resolvedAdminAddr.sido;
+      const sigungu = resolvedAdminAddr.sigungu;
+      const eupmyeondong = resolvedAdminAddr.eupmyeondong;
+      const jibunAddress = String(
+        body.jibun_address ||
+          existingById?.jibun_address ||
+          matchedRoadRow?.full_jibun_address ||
+          `${sido} ${sigungu} ${eupmyeondong}`
+      ).trim();
       const phone = String(body.phone || existingById?.phone || '010-0000-0000').trim();
       const createdAt = String(body.created_at || existingById?.created_at || nowStr).trim();
 
       db.prepare(`
         INSERT OR REPLACE INTO user_member (
           member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          gender, birth_date, age, road_address, road_address_detail, postal_code,
+          road_code, bjd_code, sido, sigungu, eupmyeondong, jibun_address,
+          phone, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         memberId,
         email,
@@ -10342,6 +10481,12 @@ const server = http.createServer(async (req, res) => {
         roadAddress,
         roadAddressDetail,
         postalCode,
+        roadCode,
+        bjdCode,
+        sido,
+        sigungu,
+        eupmyeondong,
+        jibunAddress,
         phone,
         createdAt
       );
@@ -10613,15 +10758,62 @@ const server = http.createServer(async (req, res) => {
       const age = Number(body.age) || 48;
       const roadAddress = String(body.road_address || '').trim();
       const roadAddressDetail = String(body.road_address_detail || '').trim();
-      const postalCode = String(body.postal_code || '27481').trim();
+      const resolvedProfileAddr = resolveCultivationAddressFromInput({
+        sido: body.sido,
+        sigungu: body.sigungu,
+        eupmyeondong: body.eupmyeondong,
+        road_address: roadAddress,
+        bjd_code: body.bjd_code,
+      });
+      const matchedRoadRow = db
+        .prepare(
+          `SELECT r.road_code, r.postal_code, r.full_road_address, j.full_jibun_address
+           FROM road_address r
+           LEFT JOIN jibun_address j ON r.bjd_code = j.bjd_code
+           WHERE r.bjd_code = ?
+           ORDER BY r.road_addr_id ASC
+           LIMIT 1`
+        )
+        .get(resolvedProfileAddr.bjd_code) as
+        | { road_code?: string; postal_code?: string; full_road_address?: string; full_jibun_address?: string }
+        | undefined;
+      const postalCode = String(body.postal_code || matchedRoadRow?.postal_code || '27481').trim();
+      const roadCode = String(body.road_code || matchedRoadRow?.road_code || '').trim();
+      const bjdCode = String(body.bjd_code || resolvedProfileAddr.bjd_code || '4313010700').trim();
+      const sido = resolvedProfileAddr.sido;
+      const sigungu = resolvedProfileAddr.sigungu;
+      const eupmyeondong = resolvedProfileAddr.eupmyeondong;
+      const jibunAddress = String(
+        body.jibun_address ||
+          matchedRoadRow?.full_jibun_address ||
+          `${sido} ${sigungu} ${eupmyeondong}`
+      ).trim();
       const phone = String(body.phone || '010-2026-0109').trim();
 
       db.prepare(`
         UPDATE user_member
         SET name = ?, gender = ?, birth_date = ?, age = ?,
-            road_address = ?, road_address_detail = ?, postal_code = ?, phone = ?
+            road_address = ?, road_address_detail = ?, postal_code = ?,
+            road_code = ?, bjd_code = ?, sido = ?, sigungu = ?, eupmyeondong = ?, jibun_address = ?,
+            phone = ?
         WHERE LOWER(email) = LOWER(?)
-      `).run(name, gender, birthDate, age, roadAddress, roadAddressDetail, postalCode, phone, email);
+      `).run(
+        name,
+        gender,
+        birthDate,
+        age,
+        roadAddress,
+        roadAddressDetail,
+        postalCode,
+        roadCode,
+        bjdCode,
+        sido,
+        sigungu,
+        eupmyeondong,
+        jibunAddress,
+        phone,
+        email
+      );
       const updatedMem = db.prepare('SELECT * FROM user_member WHERE LOWER(email) = LOWER(?)').get(email) as Record<string, any> | undefined;
       if (updatedMem) {
         await supabaseRestUpsert('user_member', updatedMem, 'member_id');

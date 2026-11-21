@@ -131,6 +131,12 @@ export default function UserIntroPage() {
     road_address: string;
     road_address_detail: string;
     postal_code: string;
+    road_code?: string;
+    bjd_code?: string;
+    sido?: string;
+    sigungu?: string;
+    eupmyeondong?: string;
+    jibun_address?: string;
     phone: string;
     signup_type: 'EMAIL' | 'GOOGLE_GMAIL';
     farmTitle: string;
@@ -147,6 +153,12 @@ export default function UserIntroPage() {
       road_address: '충청북도 충주시 충원대로 268 (단월동)',
       road_address_detail: '한팜스마트농원 101호',
       postal_code: '27481',
+      road_code: '431303100001',
+      bjd_code: '4305003000',
+      sido: '충청북도',
+      sigungu: '충주시',
+      eupmyeondong: '단월동',
+      jibun_address: '충청북도 충주시 단월동 382-4',
       phone: '010-2026-0109',
       signup_type: 'EMAIL' as const,
       farmTitle: '배철민 님의 농장',
@@ -185,7 +197,7 @@ export default function UserIntroPage() {
   const [showSignupPwConfirm, setShowSignupPwConfirm] = useState<boolean>(false);
   const [showAllMobileScheduleCrops, setShowAllMobileScheduleCrops] = useState<boolean>(false);
 
-  // 회원가입 폼 (1단계: 이메일/아이디·중복확인·비밀번호 / 2단계: 이름(닉네임)·휴대폰인증·관심유형·약관동의 / 3단계: 가입완료)
+  // 회원가입 폼 (1단계: 이메일/아이디·중복확인·비밀번호 / 2단계: 이름(닉네임)·휴대폰인증·도로명주소검색·관심유형·약관동의 / 3단계: 가입완료)
   const [signupForm, setSignupForm] = useState<{
     signup_type: 'EMAIL' | 'NAVER' | 'GOOGLE_GMAIL' | 'APPLE';
     email: string;
@@ -200,6 +212,12 @@ export default function UserIntroPage() {
     road_address: string;
     road_address_detail: string;
     postal_code: string;
+    road_code: string;
+    bjd_code: string;
+    sido: string;
+    sigungu: string;
+    eupmyeondong: string;
+    jibun_address: string;
     phone: string;
     phoneAuthSent: boolean;
     phoneAuthCode: string;
@@ -222,7 +240,13 @@ export default function UserIntroPage() {
     age: 46,
     road_address: '',
     road_address_detail: '',
-    postal_code: '27481',
+    postal_code: '',
+    road_code: '',
+    bjd_code: '',
+    sido: '',
+    sigungu: '',
+    eupmyeondong: '',
+    jibun_address: '',
     phone: '',
     phoneAuthSent: false,
     phoneAuthCode: '',
@@ -235,10 +259,11 @@ export default function UserIntroPage() {
   });
 
   // 도로명 주소 검색 상태 (회원가입 & 프로필 수정용)
-  const [roadSearchKeyword, setRoadSearchKeyword] = useState<string>('충원대로');
+  const [roadSearchKeyword, setRoadSearchKeyword] = useState<string>('');
   const [roadSearchResults, setRoadSearchResults] = useState<any[]>([]);
   const [isRoadSearching, setIsRoadSearching] = useState<boolean>(false);
   const [showRoadSearchBox, setShowRoadSearchBox] = useState<boolean>(false);
+  const [showProfileRoadSearchBox, setShowProfileRoadSearchBox] = useState<boolean>(false);
 
   // 비밀번호 찾기 상태
   const [findPwForm, setFindPwForm] = useState({
@@ -2374,8 +2399,14 @@ export default function UserIntroPage() {
           birth_date: res.member.birth_date || '1978-05-15',
           age: Number(res.member.age || 48),
           road_address: res.member.road_address || '충청북도 충주시 충원대로 268 (단월동)',
-          road_address_detail: res.member.road_address_detail || '한팜스마트농원 101호',
+          road_address_detail: res.member.road_address_detail ?? '',
           postal_code: res.member.postal_code || '27481',
+          road_code: res.member.road_code || '',
+          bjd_code: res.member.bjd_code || '',
+          sido: res.member.sido || '',
+          sigungu: res.member.sigungu || '',
+          eupmyeondong: res.member.eupmyeondong || '',
+          jibun_address: res.member.jibun_address || '',
           phone: res.member.phone || '010-2026-0109',
           signup_type: (res.member.signup_type === 'GOOGLE_GMAIL' ? 'GOOGLE_GMAIL' : 'EMAIL') as
             | 'EMAIL'
@@ -2666,14 +2697,13 @@ export default function UserIntroPage() {
 
   // 회원가입/프로필 도로명 주소 DB 검색
   const handleSearchRoadAddress = async (keywordInput?: string) => {
-    const kw = (keywordInput !== undefined ? keywordInput : roadSearchKeyword).trim();
-    if (!kw) return;
+    const rawKw = keywordInput !== undefined ? keywordInput : roadSearchKeyword;
+    const kw = rawKw.trim() || '둔촌동';
     setIsRoadSearching(true);
     try {
-      const r = await fetch(`/api/member-address/search?q=${encodeURIComponent(kw)}&limit=25`);
+      const r = await fetch(`/api/member-address/search?q=${encodeURIComponent(kw)}&limit=30`);
       const res = await r.json();
       setRoadSearchResults(res?.items || []);
-      setShowRoadSearchBox(true);
     } catch {
       // ignore
     } finally {
@@ -3270,6 +3300,12 @@ export default function UserIntroPage() {
           road_address: loggedInUser.road_address,
           road_address_detail: loggedInUser.road_address_detail,
           postal_code: loggedInUser.postal_code,
+          road_code: loggedInUser.road_code || '',
+          bjd_code: loggedInUser.bjd_code || '',
+          sido: loggedInUser.sido || '',
+          sigungu: loggedInUser.sigungu || '',
+          eupmyeondong: loggedInUser.eupmyeondong || '',
+          jibun_address: loggedInUser.jibun_address || '',
           phone: loggedInUser.phone,
         }),
       });
@@ -19982,16 +20018,120 @@ export default function UserIntroPage() {
                       className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
                     />
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
-                    <label className="font-bold text-slate-700 sm:w-40 shrink-0">주소 (도로명)</label>
-                    <input
-                      type="text"
-                      value={loggedInUser.road_address}
-                      onChange={(e) =>
-                        setLoggedInUser({ ...loggedInUser, road_address: e.target.value })
-                      }
-                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
-                    />
+                  <div className="flex flex-col gap-2.5 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <label className="font-bold text-slate-700 sm:w-40 shrink-0">주소 (도로명)</label>
+                      <div className="flex-1 flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-[115px] px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 font-mono font-extrabold text-xs flex items-center justify-between shrink-0">
+                            <span className="text-[11px] text-slate-500">우편</span>
+                            <span>{loggedInUser.postal_code || '27481'}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextOpen = !showProfileRoadSearchBox;
+                              setShowProfileRoadSearchBox(nextOpen);
+                              if (nextOpen && roadSearchResults.length === 0) {
+                                void handleSearchRoadAddress(roadSearchKeyword || '둔촌동');
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs inline-flex items-center gap-1.5 cursor-pointer transition shrink-0"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>{showProfileRoadSearchBox ? '검색창 닫기' : '도로명주소 검색'}</span>
+                          </button>
+                        </div>
+
+                        {showProfileRoadSearchBox && (
+                          <div className="rounded-xl border-2 border-emerald-600 bg-emerald-50/50 p-3 space-y-2">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={roadSearchKeyword}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setRoadSearchKeyword(val);
+                                  if (val.trim().length >= 2) {
+                                    void handleSearchRoadAddress(val);
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    void handleSearchRoadAddress(roadSearchKeyword);
+                                  }
+                                }}
+                                placeholder="도로명, 건물명, 동/읍/면 입력 (예: 둔촌동, 충원대로)"
+                                className="flex-1 px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 font-semibold text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void handleSearchRoadAddress(roadSearchKeyword)}
+                                className="px-3.5 py-2 rounded-lg bg-emerald-700 text-white font-extrabold text-xs cursor-pointer shrink-0"
+                              >
+                                {isRoadSearching ? '검색중...' : '검색'}
+                              </button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 bg-white divide-y divide-slate-100">
+                              {roadSearchResults.map((item, idx) => (
+                                <button
+                                  key={`prof-road-${item.road_code || item.bjd_code}-${idx}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setLoggedInUser((prev) => ({
+                                      ...prev,
+                                      postal_code: String(item.postal_code || '27481'),
+                                      road_address: String(item.full_road_address || ''),
+                                      jibun_address: String(
+                                        item.full_jibun_address ||
+                                          `${item.sido} ${item.sigungu} ${item.eupmyeondong}`
+                                      ),
+                                      road_code: String(item.road_code || ''),
+                                      bjd_code: String(item.bjd_code || ''),
+                                      sido: String(item.sido || ''),
+                                      sigungu: String(item.sigungu || ''),
+                                      eupmyeondong: String(item.eupmyeondong || ''),
+                                    }));
+                                    setShowProfileRoadSearchBox(false);
+                                  }}
+                                  className="w-full p-2.5 text-left hover:bg-emerald-50/70 transition flex flex-col gap-0.5 cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="font-mono font-extrabold text-emerald-800">
+                                      [{item.postal_code}] {item.sido} {item.sigungu} {item.eupmyeondong}
+                                    </span>
+                                    <span className="font-extrabold text-emerald-700">선택 ›</span>
+                                  </div>
+                                  <div className="text-xs font-extrabold text-slate-900">
+                                    [도로명] {item.full_road_address}
+                                  </div>
+                                  {item.full_jibun_address && (
+                                    <div className="text-[11px] text-slate-500 font-medium">
+                                      [지번] {item.full_jibun_address}
+                                    </div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <input
+                          type="text"
+                          value={loggedInUser.road_address}
+                          onChange={(e) =>
+                            setLoggedInUser({ ...loggedInUser, road_address: e.target.value })
+                          }
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-bold"
+                        />
+                        {loggedInUser.jibun_address && (
+                          <div className="text-[11.5px] font-semibold text-emerald-800">
+                            [매핑 지번] {loggedInUser.jibun_address}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-2xl bg-slate-50/70 border border-slate-200/80">
                     <label className="font-bold text-slate-700 sm:w-40 shrink-0">상세 주소</label>
@@ -22514,24 +22654,240 @@ export default function UserIntroPage() {
                         </div>
                       </div>
 
-                      {/* 회원 주소 / 기본 재배지 주소 * */}
-                      <div>
-                        <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
-                          주소 (회원 주소 · 기본 재배지) <span className="text-[#DC2626]">*</span>
-                        </label>
+                      {/* 회원 주소 / 기본 재배지 도로명주소 검색 모듈 * (모바일 & PC 반응형 공통) */}
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="block text-[14.5px] font-bold text-[#111827]">
+                            주소 (도로명주소 · 기본 재배지) <span className="text-[#DC2626]">*</span>
+                          </label>
+                          {signupForm.bjd_code && (
+                            <span className="px-2 py-0.5 rounded-full bg-[#ECF6EE] border border-[#CFE3D5] text-[#0E712F] text-[11px] font-extrabold">
+                              법정동 {signupForm.bjd_code}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* 1행: 우편번호 + [도로명주소 검색] 버튼 */}
+                        <div className="flex items-center gap-2">
+                          <div
+                            onClick={() => {
+                              const nextOpen = !showRoadSearchBox;
+                              setShowRoadSearchBox(nextOpen);
+                              if (nextOpen && roadSearchResults.length === 0) {
+                                void handleSearchRoadAddress(roadSearchKeyword || '둔촌동');
+                              }
+                            }}
+                            className="w-[125px] sm:w-[140px] h-[46px] rounded-[12px] border border-[#D1D5DB] bg-[#F9FAFB] px-3 flex items-center justify-between cursor-pointer shrink-0"
+                          >
+                            <span className="text-[11.5px] font-bold text-[#6B7280]">우편번호</span>
+                            <span className="text-[13.5px] font-mono font-extrabold text-[#111827]">
+                              {signupForm.postal_code || '-----'}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const nextOpen = !showRoadSearchBox;
+                              setShowRoadSearchBox(nextOpen);
+                              if (nextOpen && roadSearchResults.length === 0) {
+                                void handleSearchRoadAddress(roadSearchKeyword || '둔촌동');
+                              }
+                            }}
+                            className="flex-1 h-[46px] px-3.5 rounded-[12px] bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[13.5px] sm:text-[14px] flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer transition"
+                          >
+                            <Search className="w-4 h-4 shrink-0" />
+                            <span>{showRoadSearchBox ? '도로명주소 검색창 닫기' : '도로명주소 검색'}</span>
+                          </button>
+                        </div>
+
+                        {/* 도로명주소 검색 모듈 패널 (모바일 & PC 모두 지원) */}
+                        {showRoadSearchBox && (
+                          <div className="rounded-[16px] border-2 border-[#0E712F] bg-[#F4F9F5] p-3 sm:p-3.5 space-y-2.5 shadow-sm">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[12.5px] font-extrabold text-[#0E712F] flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4 shrink-0" />
+                                <span>도로명 · 건물명 · 지번(동/읍/면) 통합 검색</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowRoadSearchBox(false)}
+                                className="text-[11.5px] font-bold text-slate-500 hover:text-slate-800 px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                닫기 ✕
+                              </button>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-[42px] rounded-[10px] border border-[#CFE3D5] focus-within:border-[#0E712F] bg-white px-3 flex items-center gap-2">
+                                <Search className="w-4 h-4 text-[#6B7280] shrink-0" />
+                                <input
+                                  type="text"
+                                  value={roadSearchKeyword}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setRoadSearchKeyword(val);
+                                    if (val.trim().length >= 2) {
+                                      void handleSearchRoadAddress(val);
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      void handleSearchRoadAddress(roadSearchKeyword);
+                                    }
+                                  }}
+                                  placeholder="예: 둔촌로, 강동구 둔촌동, 충원대로, 단월동"
+                                  className="w-full bg-transparent text-[13.5px] font-semibold text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => void handleSearchRoadAddress(roadSearchKeyword)}
+                                className="h-[42px] px-3.5 rounded-[10px] bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13px] font-extrabold whitespace-nowrap cursor-pointer shrink-0"
+                              >
+                                {isRoadSearching ? '검색중...' : '검색'}
+                              </button>
+                            </div>
+
+                            {/* 빠른 검색어 예시 버튼 */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[11px] font-bold text-[#4B5563]">빠른검색:</span>
+                              {['서울 강동구 둔촌동', '충북 충주시 충원대로', '경기 수원시 장안구', '강원 춘천시 신북읍'].map(
+                                (kw) => (
+                                  <button
+                                    key={kw}
+                                    type="button"
+                                    onClick={() => {
+                                      setRoadSearchKeyword(kw);
+                                      void handleSearchRoadAddress(kw);
+                                    }}
+                                    className="px-2 py-0.5 rounded-full bg-white hover:bg-[#ECF6EE] border border-[#CFE3D5] text-[11px] font-bold text-[#0E712F] cursor-pointer transition"
+                                  >
+                                    {kw}
+                                  </button>
+                                )
+                              )}
+                            </div>
+
+                            {/* 도로명주소 검색 결과 리스트 */}
+                            <div className="max-h-[210px] overflow-y-auto rounded-[12px] border border-[#D1D5DB] bg-white divide-y divide-slate-100">
+                              {roadSearchResults.length === 0 ? (
+                                <div className="p-4 text-center text-[12.5px] font-semibold text-slate-500">
+                                  검색어를 입력하고 [검색] 버튼을 눌러 도로명주소를 선택해 주세요.
+                                </div>
+                              ) : (
+                                roadSearchResults.map((item, idx) => (
+                                  <button
+                                    key={`${item.road_code || item.bjd_code}-${idx}`}
+                                    type="button"
+                                    onClick={() => {
+                                      setSignupForm((prev) => ({
+                                        ...prev,
+                                        postal_code: String(item.postal_code || '27481'),
+                                        road_address: String(item.full_road_address || ''),
+                                        jibun_address: String(
+                                          item.full_jibun_address ||
+                                            `${item.sido} ${item.sigungu} ${item.eupmyeondong}`
+                                        ),
+                                        road_code: String(item.road_code || ''),
+                                        bjd_code: String(item.bjd_code || ''),
+                                        sido: String(item.sido || ''),
+                                        sigungu: String(item.sigungu || ''),
+                                        eupmyeondong: String(item.eupmyeondong || ''),
+                                      }));
+                                      setShowRoadSearchBox(false);
+                                    }}
+                                    className="w-full p-2.5 sm:p-3 text-left hover:bg-[#F0FDF4] transition flex flex-col gap-1 cursor-pointer"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="px-1.5 py-0.5 rounded bg-emerald-700 text-white font-mono font-extrabold text-[11px]">
+                                          {item.postal_code}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 font-extrabold text-[10.5px]">
+                                          {item.sido} {item.sigungu} {item.eupmyeondong}
+                                        </span>
+                                      </div>
+                                      <span className="text-[11px] font-extrabold text-[#0E712F] shrink-0">
+                                        선택 ›
+                                      </span>
+                                    </div>
+                                    <div className="text-[13px] font-extrabold text-[#111827] leading-snug">
+                                      <span className="inline-block px-1.5 py-0.2 mr-1.5 rounded bg-blue-50 border border-blue-200 text-blue-700 text-[10.5px] font-extrabold">
+                                        도로명
+                                      </span>
+                                      {item.full_road_address}
+                                    </div>
+                                    {item.full_jibun_address && (
+                                      <div className="text-[11.5px] font-medium text-[#6B7280] leading-snug">
+                                        <span className="inline-block px-1.5 py-0.2 mr-1.5 rounded bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold">
+                                          지번
+                                        </span>
+                                        {item.full_jibun_address}
+                                      </div>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2행: 선택된 도로명 기본주소 표시/입력창 */}
                         <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
                           <MapPin className="w-5 h-5 text-[#0E712F] shrink-0" />
                           <input
                             type="text"
                             value={signupForm.road_address}
+                            onClick={() => {
+                              if (!signupForm.road_address && !showRoadSearchBox) {
+                                setShowRoadSearchBox(true);
+                                if (roadSearchResults.length === 0) {
+                                  void handleSearchRoadAddress(roadSearchKeyword || '둔촌동');
+                                }
+                              }
+                            }}
                             onChange={(e) =>
                               setSignupForm({
                                 ...signupForm,
                                 road_address: e.target.value,
                               })
                             }
-                            placeholder="예: 서울시 강동구 둔촌동 (시/도 시/군/구 읍/면/동)"
-                            className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                            placeholder="도로명주소 검색 버튼을 눌러 주소를 선택하세요"
+                            className="w-full bg-transparent text-[14px] font-semibold text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                          />
+                        </div>
+
+                        {/* 매핑된 지번주소 및 행정구역 요약 표시 */}
+                        {(signupForm.jibun_address || signupForm.sido) && (
+                          <div className="px-3 py-1.5 rounded-[10px] bg-[#F4F8F5] border border-[#CFE3D5] text-[11.5px] font-semibold text-[#374151] flex flex-wrap items-center justify-between gap-1">
+                            <span>
+                              <strong className="text-[#0E712F]">[매핑 지번]</strong>{' '}
+                              {signupForm.jibun_address ||
+                                `${signupForm.sido} ${signupForm.sigungu} ${signupForm.eupmyeondong}`}
+                            </span>
+                            {signupForm.sido && (
+                              <span className="text-[11px] font-bold text-[#0E712F]">
+                                기본 재배지: {signupForm.sido} {signupForm.sigungu} {signupForm.eupmyeondong}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 3행: 상세주소 입력창 */}
+                        <div className="h-[46px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                          <input
+                            type="text"
+                            value={signupForm.road_address_detail}
+                            onChange={(e) =>
+                              setSignupForm({
+                                ...signupForm,
+                                road_address_detail: e.target.value,
+                              })
+                            }
+                            placeholder="상세주소 입력 (동/호수, 건물명, 영농포전 위치 등 — 선택)"
+                            className="w-full bg-transparent text-[13.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                           />
                         </div>
                       </div>

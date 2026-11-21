@@ -1329,6 +1329,12 @@ if (typeof window !== 'undefined') {
       road_address: String(m.road_address || '충청북도 충주시 충원대로 268 (단월동)').trim(),
       road_address_detail: String(m.road_address_detail || '').trim(),
       postal_code: String(m.postal_code || '27481').trim(),
+      road_code: String(m.road_code || '').trim(),
+      bjd_code: String(m.bjd_code || '').trim(),
+      sido: String(m.sido || '').trim(),
+      sigungu: String(m.sigungu || '').trim(),
+      eupmyeondong: String(m.eupmyeondong || '').trim(),
+      jibun_address: String(m.jibun_address || '').trim(),
       phone: String(m.phone || '010-2026-0109').trim(),
       created_at: String(m.created_at || getKstNowStr()).trim(),
     });
@@ -1835,7 +1841,23 @@ if (typeof window !== 'undefined') {
       const matchedAddr = getKoreaAddressesCache().find(
         (a) => a.sido === resolvedSido && a.sigungu === resolvedSigungu && a.eupmyeondong === resolvedDong
       );
-      const resolvedRoadAddr = roadStr || `${resolvedSido} ${resolvedSigungu} ${resolvedDong}`;
+      const { roadList, jibunList } = getRoadAndJibunCache();
+      const matchedRoadItem = matchedAddr
+        ? roadList.find((r) => r.bjd_code === matchedAddr.bjd_code)
+        : undefined;
+      const matchedJibunItem = matchedAddr
+        ? jibunList.find((j) => j.bjd_code === matchedAddr.bjd_code)
+        : undefined;
+      const resolvedRoadAddr =
+        roadStr || matchedRoadItem?.full_road_address || `${resolvedSido} ${resolvedSigungu} ${resolvedDong}`;
+      const resolvedBjdCode = String(body.bjd_code || matchedAddr?.bjd_code || '4313010700').trim();
+      const resolvedPostalCode = String(body.postal_code || matchedRoadItem?.postal_code || '27481').trim();
+      const resolvedRoadCode = String(body.road_code || matchedRoadItem?.road_code || '').trim();
+      const resolvedJibunAddr = String(
+        body.jibun_address ||
+          matchedJibunItem?.full_jibun_address ||
+          `${resolvedSido} ${resolvedSigungu} ${resolvedDong}`
+      ).trim();
       const newMember = toDbMemberRow({
         member_id: `MEM-${Date.now()}`,
         email: rawIdOrEmail,
@@ -1848,7 +1870,13 @@ if (typeof window !== 'undefined') {
         age: Number(body.age) || 46,
         road_address: resolvedRoadAddr,
         road_address_detail: body.road_address_detail || '',
-        postal_code: body.postal_code || '27481',
+        postal_code: resolvedPostalCode,
+        road_code: resolvedRoadCode,
+        bjd_code: resolvedBjdCode,
+        sido: resolvedSido,
+        sigungu: resolvedSigungu,
+        eupmyeondong: resolvedDong,
+        jibun_address: resolvedJibunAddr,
         phone: body.phone || '010-2026-0109',
       });
       const filtered = members.filter(
@@ -3379,16 +3407,40 @@ if (typeof window !== 'undefined') {
     }
 
     if (p === '/api/member-address/search') {
-      const q = (u.searchParams.get('q') || '').trim().toLowerCase();
+      const rawQ = (u.searchParams.get('q') || '').trim();
       const limit = Math.max(1, Math.min(100, Number(u.searchParams.get('limit')) || 25));
-      if (!q) return jsonResponse({ items: [], total: 0 });
+      if (!rawQ) return jsonResponse({ items: [], total: 0 });
+      const sidoAliasMap: Record<string, string> = {
+        서울: '서울특별시', 서울시: '서울특별시', 서울특별시: '서울특별시',
+        부산: '부산광역시', 부산시: '부산광역시', 부산광역시: '부산광역시',
+        대구: '대구광역시', 대구시: '대구광역시', 대구광역시: '대구광역시',
+        인천: '인천광역시', 인천시: '인천광역시', 인천광역시: '인천광역시',
+        광주: '광주광역시', 광주시: '광주광역시', 광주광역시: '광주광역시',
+        대전: '대전광역시', 대전시: '대전광역시', 대전광역시: '대전광역시',
+        울산: '울산광역시', 울산시: '울산광역시', 울산광역시: '울산광역시',
+        세종: '세종특별자치시', 세종시: '세종특별자치시', 세종특별자치시: '세종특별자치시',
+        경기: '경기도', 경기도: '경기도',
+        강원: '강원특별자치도', 강원도: '강원특별자치도', 강원특별자치도: '강원특별자치도',
+        충북: '충청북도', 충청북도: '충청북도',
+        충남: '충청남도', 충청남도: '충청남도',
+        전북: '전북특별자치도', 전라북도: '전북특별자치도', 전북특별자치도: '전북특별자치도',
+        전남: '전라남도', 전라남도: '전라남도',
+        경북: '경상북도', 경상북도: '경상북도',
+        경남: '경상남도', 경상남도: '경상남도',
+        제주: '제주특별자치도', 제주도: '제주특별자치도', 제주특별자치도: '제주특별자치도',
+      };
+      const tokens = rawQ
+        .replace(/[(),]/g, ' ')
+        .split(/\s+/)
+        .map((t) => (sidoAliasMap[t.trim()] || t.trim()).toLowerCase())
+        .filter(Boolean);
       const { roadList, jibunList } = getRoadAndJibunCache();
       const jibunByBjd = new Map(jibunList.map((j) => [j.bjd_code, j]));
       const items: any[] = [];
       for (const r of roadList) {
         const j = jibunByBjd.get(r.bjd_code);
-        const hay = `${r.full_road_address} ${j?.full_jibun_address || ''} ${r.road_name} ${r.eupmyeondong} ${r.sigungu} ${r.postal_code}`.toLowerCase();
-        if (hay.includes(q)) {
+        const hay = `${r.full_road_address} ${j?.full_jibun_address || ''} ${r.road_name} ${r.building_name} ${r.eupmyeondong} ${r.sigungu} ${r.sido} ${r.postal_code}`.toLowerCase();
+        if (tokens.every((tk) => hay.includes(tk))) {
           items.push({
             ...r,
             ri_name: j?.ri_name || '',
@@ -3397,6 +3449,38 @@ if (typeof window !== 'undefined') {
             full_jibun_address: j?.full_jibun_address || `${r.sido} ${r.sigungu} ${r.eupmyeondong} 100`,
           });
           if (items.length >= limit) break;
+        }
+      }
+      if (items.length === 0) {
+        const roadMatch = rawQ.match(/([가-힣0-9]+(?:대로|로|길))\s*(\d+)(?:-(\d+))?/);
+        const regionTokens = tokens.filter((tk) => !/^\d+(?:-\d+)?$/.test(tk) && !/(?:대로|로|길)$/.test(tk));
+        for (const r of roadList) {
+          const j = jibunByBjd.get(r.bjd_code);
+          const hay = `${r.sido} ${r.sigungu} ${r.eupmyeondong}`.toLowerCase();
+          if (regionTokens.length > 0 && regionTokens.every((tk) => hay.includes(tk))) {
+            const baseItem = {
+              ...r,
+              ri_name: j?.ri_name || '',
+              jibun_main_no: j?.jibun_main_no || 100,
+              jibun_sub_no: j?.jibun_sub_no || 0,
+              full_jibun_address: j?.full_jibun_address || `${r.sido} ${r.sigungu} ${r.eupmyeondong} 100`,
+            };
+            if (roadMatch && items.length === 0) {
+              const customRoadName = roadMatch[1];
+              const customMainNo = Number(roadMatch[2]) || 100;
+              const customSubNo = Number(roadMatch[3]) || 0;
+              const noStr = customSubNo > 0 ? `${customMainNo}-${customSubNo}` : `${customMainNo}`;
+              items.push({
+                ...baseItem,
+                road_name: customRoadName,
+                building_main_no: customMainNo,
+                building_sub_no: customSubNo,
+                full_road_address: `${r.sido} ${r.sigungu} ${customRoadName} ${noStr} (${r.eupmyeondong})`,
+              });
+            }
+            items.push(baseItem);
+            if (items.length >= limit) break;
+          }
         }
       }
       return jsonResponse({ items, total: items.length });
