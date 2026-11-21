@@ -17,6 +17,8 @@ import {
   ChevronLeft,
   ChevronUp,
   ChevronDown,
+  ArrowLeft,
+  ShieldCheck,
   MapPin,
   Thermometer,
   CloudSun,
@@ -9257,7 +9259,9 @@ export default function UserIntroPage() {
                             const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
                             setSelectedRequestNo(targetReqNo);
                             setMyPageStageDetailItem(null);
-                            setMyPageProgressDetailReqNo(targetReqNo);
+                            setIsGrowthConfirmDatePickerOpen(false);
+                            setIsWorkLogFormOpen(false);
+                            setMobileStageOverviewReqNo(targetReqNo);
                           }}
                           className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer active:scale-[0.99] transition"
                         >
@@ -22989,7 +22993,8 @@ export default function UserIntroPage() {
       )}
 
       {/* ==================== [모바일 전용: 재배일정 확인 > "{현재 시기} 확인" 클릭 시 열리는 현재 생육단계 상세 & 작업기록 모달리스 폼] ==================== */}
-      {activeMenu === '재배일정 확인' &&
+      {(activeMenu === '재배일정 확인' ||
+        (activeMenu === '마이페이지' && (myPageTab === 'ALL' || myPageTab === 'PROGRESS'))) &&
         mobileStageOverviewReqNo &&
         (() => {
           const ovCrop =
