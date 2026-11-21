@@ -6880,13 +6880,16 @@ export default function UserIntroPage() {
               <span>메뉴</span>
             </button>
 
-            <Link
-              to="/admin"
-              className="hidden sm:inline-flex items-center justify-center gap-1 h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
-            >
-              <span>관리자</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            {loggedInUser.isLoggedIn &&
+              String(loggedInUser.email || '').trim().toLowerCase() === 'cloudbae@naver.com' && (
+                <Link
+                  to="/admin"
+                  className="hidden sm:inline-flex items-center justify-center gap-1 h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-xs whitespace-nowrap transition"
+                >
+                  <span>관리자</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              )}
           </div>
         </div>
       </header>
@@ -7114,17 +7117,20 @@ export default function UserIntroPage() {
           })}
         </div>
 
-        {/* 드로어 하단: 관리자 콘솔 바로가기 */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
-          <Link
-            to="/admin"
-            onClick={() => setIsMobileGnbDrawerOpen(false)}
-            className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center justify-between transition"
-          >
-            <span>관리자 콘솔 (/admin) 바로가기</span>
-            <ArrowUpRight className="w-4 h-4" />
-          </Link>
-        </div>
+        {/* 드로어 하단: 관리자 콘솔 바로가기 (cloudbae@naver.com 전용) */}
+        {loggedInUser.isLoggedIn &&
+          String(loggedInUser.email || '').trim().toLowerCase() === 'cloudbae@naver.com' && (
+            <div className="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
+              <Link
+                to="/admin"
+                onClick={() => setIsMobileGnbDrawerOpen(false)}
+                className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold flex items-center justify-between transition"
+              >
+                <span>관리자 콘솔 (/admin) 바로가기</span>
+                <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )}
       </aside>
 
       {/* ==================== 메인 컨테이너 (1600px 와이드 반응형) ==================== */}
@@ -23599,9 +23605,12 @@ export default function UserIntroPage() {
           </div>
           <div className="flex items-center gap-4">
             <span>기후(PGDD·한계온도 회피) · 토양검정 · 농자재 통합 처방</span>
-            <Link to="/admin" className="text-emerald-700 font-bold hover:underline">
-              관리자 콘솔 (/admin)
-            </Link>
+            {loggedInUser.isLoggedIn &&
+              String(loggedInUser.email || '').trim().toLowerCase() === 'cloudbae@naver.com' && (
+                <Link to="/admin" className="text-emerald-700 font-bold hover:underline">
+                  관리자 콘솔 (/admin)
+                </Link>
+              )}
           </div>
         </div>
       </footer>
