@@ -2720,17 +2720,82 @@ function ensureGrowthProcessCodes() {
 }
 
 function ensureAdditionalLeafCrops() {
+  const insertGroupIgnore = db.prepare(
+    'INSERT OR IGNORE INTO crop_group (group_id, group_name, description, icon_name, sort_order) VALUES (?, ?, ?, ?, ?)'
+  );
+  insertGroupIgnore.run('GRP-FOOD', '식량작물 (서류·곡류)', '감자, 고구마, 메밀, 벼 등 적산온도 기반 주곡 및 구황작물', 'Wheat', 1);
+  insertGroupIgnore.run('GRP-LEAF', '엽채류 (잎채소)', '배추, 상추, 시금치, 양배추 등 정식·활착·결구 단계 관리 중심 작물', 'Leaf', 2);
+  insertGroupIgnore.run('GRP-SPICE', '조미채소류 (양념류)', '마늘, 양파, 고추, 대파 등 노지 월동 및 장기 생육 관리 작물', 'Flame', 3);
+  insertGroupIgnore.run('GRP-ROOT', '근채류 (뿌리채소)', '무, 당근, 우엉 등 토심·최저한계온도 및 비대기 수분 관리 작물', 'Carrot', 4);
+  insertGroupIgnore.run('GRP-FRUIT', '과채류 (열매채소)', '토마토, 수박, 참외, 오이 등 개화·착과 적산온도 관리 작물', 'Apple', 5);
+
   const insertCropIgnore = db.prepare(
     'INSERT OR IGNORE INTO crop (crop_id, group_id, crop_name, scientific_name, description) VALUES (?, ?, ?, ?, ?)'
   );
+  insertCropIgnore.run('CRP-POTATO', 'GRP-FOOD', '감자', 'Solanum tuberosum', '특허 대표 예시 작물 (필요유효적산온도 1,000℃, 생육적온 14~23℃)');
+  insertCropIgnore.run('CRP-CABBAGE', 'GRP-LEAF', '배추', 'Brassica rapa subsp. pekinensis', '첨부 설계도(도1~도4) 대표 작물 (정식→활착→결구→수확 단계별 PGDD 관리)');
+  insertCropIgnore.run('CRP-GARLIC', 'GRP-SPICE', '마늘', 'Allium sativum', '특허 [0100] 대표 월동작물 (가을 파종 후 겨울 월동, 봄 수확)');
+  insertCropIgnore.run('CRP-ONION', 'GRP-SPICE', '양파', 'Allium cepa', '특허 [0100] 노지 월동작물 (저온장해 예외/조절 파라미터 적용)');
+  insertCropIgnore.run('CRP-RADISH', 'GRP-ROOT', '무', 'Raphanus sativus', '특허 [0046] 최저한계온도 8℃ 적용 대표 근채류');
+  insertCropIgnore.run('CRP-PEPPER', 'GRP-SPICE', '고추', 'Capsicum annuum', '노지 조숙/보통재배 및 병해충(탄저병·역병) 기후예측 방제 핵심 작물');
   insertCropIgnore.run('CRP-LETTUCE', 'GRP-LEAF', '상추', 'Lactuca sativa', '엽채류 대표 단기 수확 작물 (생육적온 15~20℃, 고온기 추대 주의)');
   insertCropIgnore.run('CRP-SPINACH', 'GRP-LEAF', '시금치', 'Spinacia oleracea', '저온성 엽채류 대표 작물 (생육적온 15~20℃, 내한성 강함)');
+  insertCropIgnore.run('CRP-SPR-CABBAGE', 'GRP-LEAF', '봄배추', 'Brassica rapa subsp. pekinensis', '봄 노지 및 터널재배용 내추대성 배추 (생육적온 15~20℃)');
+  insertCropIgnore.run('CRP-WIN-CABBAGE', 'GRP-LEAF', '월동배추', 'Brassica rapa subsp. pekinensis', '난지형 노지 월동배추 (내한성·구비대 우수)');
+  insertCropIgnore.run('CRP-SWEETPOTATO', 'GRP-FOOD', '고구마', 'Ipomoea batatas', '고온성 구황·식량작물 (생육적온 20~28℃, 배수 양호 토양 적합)');
+  insertCropIgnore.run('CRP-BEAN', 'GRP-FOOD', '콩', 'Glycine max', '두류 대표 식량작물 (생육적온 20~25℃, 적정발아 20~25℃)');
+  insertCropIgnore.run('CRP-GREENONION', 'GRP-SPICE', '대파', 'Allium fistulosum', '연중 수요가 높은 양념채소 (생육적온 15~22℃, 북주기 및 배수 관리 핵심)');
+  insertCropIgnore.run('CRP-CARROT', 'GRP-ROOT', '당근', 'Daucus carota', '심경 및 균일 수분 관리가 중요한 근채류 (생육적온 18~21℃)');
+  insertCropIgnore.run('CRP-CUCUMBER', 'GRP-FRUIT', '오이', 'Cucumis sativus', '덩굴성 과채류 대표 작물 (생육적온 20~26℃, 연속 착과·추비 관리)');
+  insertCropIgnore.run('CRP-TOMATO', 'GRP-FRUIT', '토마토', 'Solanum lycopersicum', '광합성 및 칼슘·붕소 관리가 중요한 과채류 (생육적온 20~27℃)');
+  insertCropIgnore.run('CRP-WATERMELON', 'GRP-FRUIT', '수박', 'Citrullus lanatus', '고온·강광성 과채류 (생육적온 23~28℃, 당도·착과 관리 핵심)');
+  insertCropIgnore.run('CRP-MELON', 'GRP-FRUIT', '참외', 'Cucumis melo var. makuwa', '고당도 포복성 과채류 (생육적온 22~28℃, 환기·흰가루병 관리)');
 
   const insertCultivarIgnore = db.prepare(
     'INSERT OR IGNORE INTO cultivar (cultivar_id, crop_id, cultivar_name, maturity_type, avg_growth_days, characteristics) VALUES (?, ?, ?, ?, ?, ?)'
   );
+  // 배추·봄배추·월동배추 품종
+  insertCultivarIgnore.run('CV-BRM3', 'CRP-CABBAGE', '불암3호', '중생종', 77, '결구력이 우수하고 재배 안정성이 뛰어난 가을배추 표준 품종');
+  insertCultivarIgnore.run('CV-BRMP', 'CRP-CABBAGE', '불암플러스', '중만생종', 80, '구형과 결구 충실도가 강화된 가을 김장배추 품종');
+  insertCultivarIgnore.run('CV-HPRG', 'CRP-CABBAGE', '휘파람골드', '중생종', 78, '뿌리혹병 내병성 및 고소한 맛이 우수한 가을배추 품종');
+  insertCultivarIgnore.run('CV-CMGA', 'CRP-CABBAGE', '청명가을', '중생종', 76, '가을 직파 및 정식 겸용 내병성 배추 품종');
+  insertCultivarIgnore.run('CV-CHUNGWANG', 'CRP-CABBAGE', '춘광', '조생종', 65, '봄재배 및 터널재배용 내추대성 배추 품종');
+  insertCultivarIgnore.run('CV-SPR-CG', 'CRP-SPR-CABBAGE', '춘광', '조생종', 65, '저온기 추대에 강하고 결구가 빠른 봄배추 대표 품종');
+  insertCultivarIgnore.run('CV-HAENAM1', 'CRP-WIN-CABBAGE', '해남1호', '만생종', 110, '내한성과 월동 저장성이 뛰어난 월동배추 대표 품종');
+  insertCultivarIgnore.run('CV-DONGPUNG', 'CRP-WIN-CABBAGE', '동풍', '만생종', 115, '저온 구비대력과 내한성이 우수한 월동배추 품종');
+  // 상추·시금치 품종
   insertCultivarIgnore.run('CV-CHEONGCHIMA', 'CRP-LETTUCE', '청치마상추', '조생종', 45, '잎이 부드럽고 수확 기간이 긴 대표 잎상추 품종');
+  insertCultivarIgnore.run('CV-JEOKCHIMA', 'CRP-LETTUCE', '적치마상추', '조생종', 45, '안토시아닌 색소 발현과 감칠맛이 뛰어난 적상추 품종');
   insertCultivarIgnore.run('CV-POHANGCHO', 'CRP-SPINACH', '포항초 (재래종)', '중생종', 60, '노지 월동 및 가을재배용 내한성·당도 우수 품종');
+  insertCultivarIgnore.run('CV-ALLSEASON-SP', 'CRP-SPINACH', '사계절시금치', '조생종', 48, '봄·가을 내추대성이 우수하고 생육이 빠른 시금치 품종');
+  // 마늘·고추·양파·대파 품종
+  insertCultivarIgnore.run('CV-NAMDO', 'CRP-GARLIC', '남도마늘', '조생종', 210, '난지형 월동 대표 품종, 구비대 빠름');
+  insertCultivarIgnore.run('CV-DAESEO', 'CRP-GARLIC', '대서마늘', '중만생종', 225, '다수확 대과종 난지형 마늘');
+  insertCultivarIgnore.run('CV-HONGSAN', 'CRP-GARLIC', '홍산마늘', '중생종', 215, '전국(한지·난지 겸용) 재배 가능한 농촌진흥청 육성 기능성 마늘 품종');
+  insertCultivarIgnore.run('CV-PRK', 'CRP-PEPPER', 'PR탄탄대군', '중생종', 140, '복합 내병성 노지 고추 품종');
+  insertCultivarIgnore.run('CV-KALATAN', 'CRP-PEPPER', '칼라탄', '중생종', 135, '칼라병(TSWV)·탄저병 복합내병성 다수확 고추 품종');
+  insertCultivarIgnore.run('CV-K1-ONION', 'CRP-ONION', '케이원', '중만생종', 220, '구형이 균일하고 장기 저장성이 우수한 중만생 양파 품종');
+  insertCultivarIgnore.run('CV-SINGIRU', 'CRP-ONION', '신기루', '조생종', 195, '비대 속도가 빠르고 추대에 안정적인 조생종 양파 품종');
+  insertCultivarIgnore.run('CV-KKAMANBOSEOK', 'CRP-GREENONION', '까만보석', '중생종', 120, '연백부가 길고 내서·내한성이 우수한 외대파 대표 품종');
+  // 감자·고구마·콩 품종
+  insertCultivarIgnore.run('CV-SUMI', 'CRP-POTATO', '수미 (Superior)', '중생종', 100, '특허 도 7 대표 품종, 생육일수 95~110일, 고온·집중호우 민감');
+  insertCultivarIgnore.run('CV-DUBAEK', 'CRP-POTATO', '두백', '만생종', 115, '전분 함량 우수, 생육일수 110일 이상 만생종');
+  insertCultivarIgnore.run('CV-SEOLBONG', 'CRP-POTATO', '설봉', '조생종', 88, '조기 수확 가능 조생종 (80~95일), 고온 적응성 개선');
+  insertCultivarIgnore.run('CV-BENIHARUKA', 'CRP-SWEETPOTATO', '베니하루카 (꿀고구마)', '중생종', 125, '저장 후 당도가 매우 높고 상품성이 뛰어난 꿀고구마 품종');
+  insertCultivarIgnore.run('CV-HOPUNGMI', 'CRP-SWEETPOTATO', '호풍미', '중생종', 120, '덩굴쪼김병 저항성과 다수확성을 갖춘 국산 호박고구마 품종');
+  insertCultivarIgnore.run('CV-DAEWON', 'CRP-BEAN', '대원콩', '중만생종', 115, '알이 굵고 기계수확에 적합한 장류·두부용 대표 콩 품종');
+  insertCultivarIgnore.run('CV-SEONYU', 'CRP-BEAN', '선유콩', '중생종', 105, '내도복성과 수량성이 우수한 다수확 콩 품종');
+  // 무·당근 품종
+  insertCultivarIgnore.run('CV-CHEONGA', 'CRP-RADISH', '청아무', '중생종', 70, '가을 김장용 대표 무 품종, 기준온도 8℃ 적용');
+  insertCultivarIgnore.run('CV-GWANDONG', 'CRP-RADISH', '관동여름무', '조생종', 62, '고온기 내서성과 근형 균일도가 뛰어난 여름·초가을 무 품종');
+  insertCultivarIgnore.run('CV-SINHEUKJEON', 'CRP-CARROT', '신흑전5촌', '중생종', 95, '근색이 선명하고 열근이 적은 봄·가을 당근 대표 품종');
+  // 오이·토마토·수박·참외 품종
+  insertCultivarIgnore.run('CV-BAEKDADAGI', 'CRP-CUCUMBER', '백다다기오이', '조생종', 75, '마디성 착과력이 뛰어나고 수량성이 높은 대표 백다다기 오이 품종');
+  insertCultivarIgnore.run('CV-CHWICHEONG', 'CRP-CUCUMBER', '취청오이', '중생종', 80, '과육이 아삭하고 향이 진한 청오이 품종');
+  insertCultivarIgnore.run('CV-DOTAERANG', 'CRP-TOMATO', '도태랑토마토', '중생종', 95, '과육이 단단하고 당산비가 조화로운 완숙토마토 대표 품종');
+  insertCultivarIgnore.run('CV-DAECHU-TOM', 'CRP-TOMATO', '대추방울토마토', '조생종', 85, '고당도·내열과성이 우수한 다수확 대추형 방울토마토 품종');
+  insertCultivarIgnore.run('CV-SPEED-WM', 'CRP-WATERMELON', '스피드꿀수박', '중생종', 95, '착과력이 안정적이고 당도가 높은 고품질 수박 품종');
+  insertCultivarIgnore.run('CV-OBOK-MELON', 'CRP-MELON', '오복꿀참외', '중생종', 90, '과피색이 선명하고 아삭한 식감과 당도가 우수한 참외 품종');
 
   const insertSystemIgnore = db.prepare(`
     INSERT OR IGNORE INTO cropping_system (
@@ -2739,8 +2804,27 @@ function ensureAdditionalLeafCrops() {
       opt_temp_min, opt_temp_max, limit_temp_min, limit_temp_max, damage_temp_low, damage_temp_high
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  insertSystemIgnore.run('SYS-POT-SPR', 'CRP-POTATO', '노지 봄재배', 'OPEN_FIELD', '3월 중순', '6월 하순~7월 중순', 0, 5.0, 1000, 1300, 14, 23, 5, 25, 5, 30);
+  insertSystemIgnore.run('SYS-POT-AUT', 'CRP-POTATO', '노지 가을재배', 'OPEN_FIELD', '8월 중순', '11월 초순', 0, 5.0, 950, 1250, 14, 23, 5, 25, 3, 30);
+  insertSystemIgnore.run('SYS-CAB-AUT', 'CRP-CABBAGE', '노지 가을재배', 'OPEN_FIELD', '8월 하순', '11월 중순', 0, 5.0, 785, 1170, 15, 20, 5, 25, 2, 28);
+  insertSystemIgnore.run('SYS-CAB-SPR', 'CRP-CABBAGE', '노지 봄재배', 'OPEN_FIELD', '4월 초순', '6월 중순', 0, 5.0, 750, 1100, 15, 20, 5, 25, 4, 28);
+  insertSystemIgnore.run('SYS-CAB-GH', 'CRP-CABBAGE', '시설하우스(무가온)', 'GREENHOUSE_UNHEATED', '2월 중순', '5월 초순', 0, 5.0, 760, 1120, 15, 22, 5, 27, 0, 30);
+  insertSystemIgnore.run('SYS-GAR-WIN', 'CRP-GARLIC', '난지형 노지 월동재배', 'OPEN_FIELD', '9월 하순~10월 초순', '익년 5월 중순', 1, 5.0, 1450, 2100, 15, 20, 4, 25, -5, 28);
+  insertSystemIgnore.run('SYS-ONI-WIN', 'CRP-ONION', '노지 월동재배', 'OPEN_FIELD', '10월 중순~11월 초순', '익년 5월 하순~6월 초순', 1, 5.0, 1500, 2200, 15, 20, 4, 25, -6, 28);
+  insertSystemIgnore.run('SYS-RAD-AUT', 'CRP-RADISH', '노지 가을재배', 'OPEN_FIELD', '8월 하순~9월 초순', '11월 초중순', 0, 8.0, 680, 1150, 17, 20, 8, 25, 3, 28);
+  insertSystemIgnore.run('SYS-PEP-OPEN', 'CRP-PEPPER', '노지 조숙재배(멀칭)', 'OPEN_FIELD', '5월 초순', '8월~10월 수시', 0, 10.0, 1650, 2800, 20, 28, 10, 32, 8, 33);
   insertSystemIgnore.run('SYS-LET-SPR', 'CRP-LETTUCE', '노지 봄·가을재배', 'OPEN_FIELD', '4월 초순 / 9월 초순', '5월 중순 / 10월 하순', 0, 4.0, 520, 780, 15, 20, 4, 25, 2, 28);
   insertSystemIgnore.run('SYS-SPI-AUT', 'CRP-SPINACH', '노지 가을·월동재배', 'OPEN_FIELD', '9월 중순~10월 중순', '11월 하순~익년 2월', 1, 4.0, 610, 920, 15, 20, 4, 24, -5, 26);
+  insertSystemIgnore.run('SYS-SPR-CAB', 'CRP-SPR-CABBAGE', '노지 봄배추 표준작형', 'OPEN_FIELD', '4월 초순~중순', '6월 중순~하순', 0, 5.0, 750, 1100, 15, 20, 4, 25, 2, 28);
+  insertSystemIgnore.run('SYS-WIN-CAB', 'CRP-WIN-CABBAGE', '난지형 노지 월동배추 작형', 'OPEN_FIELD', '9월 초순~중순', '12월 하순~익년 2월', 1, 5.0, 860, 1280, 15, 20, 4, 25, -4, 28);
+  insertSystemIgnore.run('SYS-SWP-STD', 'CRP-SWEETPOTATO', '노지 고구마 표준작형', 'OPEN_FIELD', '5월 초순~중순', '9월 하순~10월 중순', 0, 10.0, 1450, 2450, 20, 28, 12, 33, 8, 35);
+  insertSystemIgnore.run('SYS-BEAN-STD', 'CRP-BEAN', '노지 콩 표준작형', 'OPEN_FIELD', '6월 초순~중순', '10월 초순~하순', 0, 10.0, 1350, 2250, 20, 25, 10, 32, 7, 34);
+  insertSystemIgnore.run('SYS-GRO-STD', 'CRP-GREENONION', '노지 대파 표준작형', 'OPEN_FIELD', '4월 중순 / 8월 하순', '8월 하순 / 11월 하순', 0, 5.0, 1150, 1750, 15, 22, 5, 27, 0, 30);
+  insertSystemIgnore.run('SYS-CAR-STD', 'CRP-CARROT', '노지 봄·가을 당근 작형', 'OPEN_FIELD', '4월 초순 / 8월 초순', '7월 초순 / 11월 중순', 0, 5.0, 980, 1480, 18, 21, 5, 26, 2, 29);
+  insertSystemIgnore.run('SYS-CUC-STD', 'CRP-CUCUMBER', '노지·시설 오이 표준작형', 'OPEN_FIELD', '4월 하순~5월 초순', '6월 하순~8월 하순', 0, 10.0, 920, 1650, 20, 26, 10, 31, 8, 33);
+  insertSystemIgnore.run('SYS-TOM-STD', 'CRP-TOMATO', '노지·시설 토마토 표준작형', 'OPEN_FIELD', '4월 하순~5월 초순', '7월 초순~9월 중순', 0, 10.0, 1180, 2050, 20, 27, 10, 32, 8, 34);
+  insertSystemIgnore.run('SYS-WM-STD', 'CRP-WATERMELON', '노지·시설 수박 표준작형', 'OPEN_FIELD', '4월 하순~5월 초순', '7월 중순~8월 중순', 0, 10.0, 1250, 2150, 23, 28, 12, 33, 9, 35);
+  insertSystemIgnore.run('SYS-MEL-STD', 'CRP-MELON', '노지·시설 참외 표준작형', 'OPEN_FIELD', '4월 하순~5월 초순', '7월 중순~8월 하순', 0, 10.0, 1150, 1980, 22, 28, 12, 33, 9, 35);
 }
 
 function ensureCropAndCultivarExtraColumns() {
@@ -2769,13 +2853,23 @@ function ensureCropAndCultivarExtraColumns() {
   // 작물별 기본 온도 및 작물구분(씨/모종), 적정발아온도 초기값 세팅 (비어있는 경우에만 보정)
   const cropDefaults: Array<[string, string, string, string, '씨' | '모종', string]> = [
     ['CRP-CABBAGE', '5', '25', '18~20', '모종', ''],
+    ['CRP-SPR-CABBAGE', '4', '25', '15~20', '모종', ''],
+    ['CRP-WIN-CABBAGE', '4', '25', '15~20', '모종', ''],
     ['CRP-POTATO', '5', '28', '14~23', '씨', '15~20'],
+    ['CRP-SWEETPOTATO', '12', '33', '20~28', '모종', ''],
+    ['CRP-BEAN', '10', '32', '20~25', '씨', '20~25'],
     ['CRP-GARLIC', '4', '25', '18~20', '씨', '15~20'],
     ['CRP-ONION', '4', '25', '15~20', '모종', ''],
+    ['CRP-GREENONION', '5', '27', '15~22', '모종', ''],
     ['CRP-RADISH', '8', '25', '17~20', '씨', '20~25'],
+    ['CRP-CARROT', '5', '26', '18~21', '씨', '15~20'],
     ['CRP-PEPPER', '10', '30', '23~28', '모종', ''],
     ['CRP-LETTUCE', '4', '25', '15~20', '모종', ''],
     ['CRP-SPINACH', '4', '24', '15~20', '씨', '15~20'],
+    ['CRP-CUCUMBER', '10', '31', '20~26', '모종', ''],
+    ['CRP-TOMATO', '10', '32', '20~27', '모종', ''],
+    ['CRP-WATERMELON', '12', '33', '23~28', '모종', ''],
+    ['CRP-MELON', '12', '33', '22~28', '모종', ''],
   ];
 
   const updCrop = db.prepare(`
@@ -2783,7 +2877,7 @@ function ensureCropAndCultivarExtraColumns() {
     SET min_temp = CASE WHEN min_temp IS NULL OR min_temp = '' THEN ? ELSE min_temp END,
         max_temp = CASE WHEN max_temp IS NULL OR max_temp = '' THEN ? ELSE max_temp END,
         opt_temp = CASE WHEN opt_temp IS NULL OR opt_temp = '' THEN ? ELSE opt_temp END,
-        planting_type = CASE WHEN planting_type IS NULL OR planting_type = '' OR (planting_type = '모종' AND (germination_temp IS NULL OR germination_temp = '') AND crop_id IN ('CRP-POTATO', 'CRP-GARLIC', 'CRP-RADISH', 'CRP-SPINACH')) THEN ? ELSE planting_type END,
+        planting_type = CASE WHEN planting_type IS NULL OR planting_type = '' OR (planting_type = '모종' AND (germination_temp IS NULL OR germination_temp = '') AND crop_id IN ('CRP-POTATO', 'CRP-GARLIC', 'CRP-RADISH', 'CRP-SPINACH', 'CRP-CARROT', 'CRP-BEAN')) THEN ? ELSE planting_type END,
         germination_temp = CASE WHEN (germination_temp IS NULL OR germination_temp = '') AND ? = '씨' THEN ? ELSE germination_temp END
     WHERE crop_id = ?
   `);
@@ -2793,7 +2887,7 @@ function ensureCropAndCultivarExtraColumns() {
     SET min_temp = CASE WHEN min_temp IS NULL OR min_temp = '' THEN ? ELSE min_temp END,
         max_temp = CASE WHEN max_temp IS NULL OR max_temp = '' THEN ? ELSE max_temp END,
         opt_temp = CASE WHEN opt_temp IS NULL OR opt_temp = '' THEN ? ELSE opt_temp END,
-        planting_type = CASE WHEN planting_type IS NULL OR planting_type = '' OR (planting_type = '모종' AND (germination_temp IS NULL OR germination_temp = '') AND crop_id IN ('CRP-POTATO', 'CRP-GARLIC', 'CRP-RADISH', 'CRP-SPINACH')) THEN ? ELSE planting_type END,
+        planting_type = CASE WHEN planting_type IS NULL OR planting_type = '' OR (planting_type = '모종' AND (germination_temp IS NULL OR germination_temp = '') AND crop_id IN ('CRP-POTATO', 'CRP-GARLIC', 'CRP-RADISH', 'CRP-SPINACH', 'CRP-CARROT', 'CRP-BEAN')) THEN ? ELSE planting_type END,
         germination_temp = CASE WHEN (germination_temp IS NULL OR germination_temp = '') AND ? = '씨' THEN ? ELSE germination_temp END
     WHERE crop_id = ?
   `);

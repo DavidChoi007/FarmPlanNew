@@ -157,12 +157,7 @@ function initMemberAndMyPageTables() {
     );
   `);
 
-  // 기본 회원 CloudBae (CloudBae@naver.com / 1234, 이름: 배철민, 충청북도 충주시 단월동) 1명만 유지하고 나머지 회원·비단월동 데이터 삭제
-  db.prepare(`
-    DELETE FROM user_member
-    WHERE member_id != 'MEM-CLOUDBAE' AND LOWER(email) != 'cloudbae@naver.com'
-  `).run();
-
+  // 기본 회원 CloudBae (CloudBae@naver.com / 1234, 이름: 배철민, 충청북도 충주시 단월동) 보장 (타 신규 가입 회원 데이터는 절대 삭제하지 않음)
   db.prepare(`
     INSERT OR IGNORE INTO user_member (
       member_id, email, password, signup_type, name, nickname, gender, birth_date, age,
@@ -267,6 +262,484 @@ function initMemberAndMyPageTables() {
 }
 initMemberAndMyPageTables();
 
+const SIDO_ALIAS_MAP: Record<string, string> = {
+  서울: '서울특별시',
+  서울시: '서울특별시',
+  서울특별시: '서울특별시',
+  부산: '부산광역시',
+  부산시: '부산광역시',
+  부산광역시: '부산광역시',
+  대구: '대구광역시',
+  대구시: '대구광역시',
+  대구광역시: '대구광역시',
+  인천: '인천광역시',
+  인천시: '인천광역시',
+  인천광역시: '인천광역시',
+  광주: '광주광역시',
+  광주시: '광주광역시',
+  광주광역시: '광주광역시',
+  대전: '대전광역시',
+  대전시: '대전광역시',
+  대전광역시: '대전광역시',
+  울산: '울산광역시',
+  울산시: '울산광역시',
+  울산광역시: '울산광역시',
+  세종: '세종특별자치시',
+  세종시: '세종특별자치시',
+  세종특별자치시: '세종특별자치시',
+  경기: '경기도',
+  경기도: '경기도',
+  강원: '강원특별자치도',
+  강원도: '강원특별자치도',
+  강원특별자치도: '강원특별자치도',
+  충북: '충청북도',
+  충청북도: '충청북도',
+  충남: '충청남도',
+  충청남도: '충청남도',
+  전북: '전북특별자치도',
+  전라북도: '전북특별자치도',
+  전북특별자치도: '전북특별자치도',
+  전남: '전라남도',
+  전라남도: '전라남도',
+  경북: '경상북도',
+  경상북도: '경상북도',
+  경남: '경상남도',
+  경상남도: '경상남도',
+  제주: '제주특별자치도',
+  제주도: '제주특별자치도',
+  제주특별자치도: '제주특별자치도',
+};
+
+function normalizeSidoName(rawSido?: string | null): string {
+  const s = String(rawSido || '').trim();
+  if (!s) return '충청북도';
+  return SIDO_ALIAS_MAP[s] || s;
+}
+
+function resolveCultivationAddressFromInput(input: {
+  bjd_code?: string | null;
+  sido?: string | null;
+  sigungu?: string | null;
+  eupmyeondong?: string | null;
+  road_address?: string | null;
+}): {
+  bjd_code: string;
+  sido: string;
+  sigungu: string;
+  eupmyeondong: string;
+  full_address: string;
+} {
+  const bjdTrimmed = String(input.bjd_code || '').trim();
+  if (bjdTrimmed) {
+    const byBjd = db
+      .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE bjd_code = ? LIMIT 1')
+      .get(bjdTrimmed) as any;
+    if (byBjd) return byBjd;
+  }
+
+  let sido = String(input.sido || '').trim();
+  let sigungu = String(input.sigungu || '').trim();
+  let eupmyeondong = String(input.eupmyeondong || '').trim();
+
+  // road_address 문자열(예: "서울시 강동구 둔촌동", "서울특별시 강동구 양재대로 1340 (둔촌동)")에서 시도/시군구/읍면동 추출
+  const roadText = String(input.road_address || '').trim();
+  if (roadText && (!sido || !sigungu || !eupmyeondong)) {
+    const parenMatch = roadText.match(/\(([^(),\s]+(?:동|읍|면|가|리))\)/);
+    const cleaned = roadText.replace(/[(),]/g, ' ');
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    if (!sido && tokens[0]) sido = tokens[0];
+    if (!sigungu && tokens[1]) sigungu = tokens[1];
+    if (!eupmyeondong) {
+      if (parenMatch?.[1]) {
+        eupmyeondong = parenMatch[1];
+      } else {
+        const dongTok = tokens.slice(2).find((t) => /(?:동|읍|면|가|리)$/.test(t));
+        if (dongTok) eupmyeondong = dongTok;
+        else if (tokens[2]) eupmyeondong = tokens[2];
+      }
+    }
+  }
+
+  const normSido = normalizeSidoName(sido || '충청북도');
+  const normSigungu = sigungu || '충주시';
+  const normDong = eupmyeondong || '단월동';
+
+  const exact = db
+    .prepare(
+      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
+    )
+    .get(normSido, normSigungu, normDong) as any;
+  if (exact) return exact;
+
+  const fuzzyDong = db
+    .prepare(
+      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? AND sigungu LIKE ? AND eupmyeondong LIKE ? LIMIT 1'
+    )
+    .get(normSido, `%${normSigungu}%`, `%${normDong}%`) as any;
+  if (fuzzyDong) return fuzzyDong;
+
+  const bySigungu = db
+    .prepare(
+      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? AND sigungu LIKE ? ORDER BY address_id ASC LIMIT 1'
+    )
+    .get(normSido, `%${normSigungu}%`) as any;
+  if (bySigungu) return bySigungu;
+
+  const bySido = db
+    .prepare(
+      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? ORDER BY address_id ASC LIMIT 1'
+    )
+    .get(normSido) as any;
+  if (bySido) return bySido;
+
+  return {
+    bjd_code: bjdTrimmed || '4313010700',
+    sido: normSido,
+    sigungu: normSigungu,
+    eupmyeondong: normDong,
+    full_address: `${normSido} ${normSigungu} ${normDong}`,
+  };
+}
+
+function resolveCropTaxonomyFromInput(input: {
+  group_id?: string | null;
+  group_name?: string | null;
+  crop_id?: string | null;
+  crop_name?: string | null;
+  cultivar_id?: string | null;
+  item_name_3rd?: string | null;
+  system_id?: string | null;
+  system_name?: string | null;
+}): {
+  group_id: string;
+  group_name: string;
+  crop_id: string;
+  crop_name: string;
+  cultivar_id: string;
+  item_name_3rd: string;
+  system_id: string;
+  system_name: string;
+} {
+  const rawCropName = String(input.crop_name || '').trim();
+  const displayCropName = rawCropName === '배추' || !rawCropName ? '가을배추' : rawCropName;
+  const lookupCropName = displayCropName === '가을배추' ? '배추' : displayCropName;
+  const rawCvName = String(input.item_name_3rd || '').trim();
+
+  // 1) crop 조회 (이름 우선 매칭 -> ID 매칭)
+  let cropRow =
+    (db
+      .prepare('SELECT * FROM crop WHERE crop_name = ? OR crop_name = ? LIMIT 1')
+      .get(displayCropName, lookupCropName) as any) ||
+    (input.crop_id && input.crop_id !== 'CRP-CABBAGE'
+      ? (db.prepare('SELECT * FROM crop WHERE crop_id = ? LIMIT 1').get(String(input.crop_id).trim()) as any)
+      : null) ||
+    (db.prepare("SELECT * FROM crop WHERE crop_id = 'CRP-CABBAGE' LIMIT 1").get() as any);
+
+  const resolvedCropId = String(cropRow?.crop_id || input.crop_id || 'CRP-CABBAGE').trim();
+  const resolvedGroupId = String(cropRow?.group_id || input.group_id || 'GRP-LEAF').trim();
+  const groupRow = db
+    .prepare('SELECT group_name FROM crop_group WHERE group_id = ? LIMIT 1')
+    .get(resolvedGroupId) as { group_name?: string } | undefined;
+  const resolvedGroupName = String(groupRow?.group_name || input.group_name || '엽채류 (잎채소)').trim();
+
+  // 2) cultivar 조회 (품종명 + crop_id 우선 매칭 -> 품종명 매칭 -> 해당 crop_id의 기본 품종)
+  let cvRow =
+    (rawCvName
+      ? (db
+          .prepare('SELECT * FROM cultivar WHERE crop_id = ? AND (cultivar_name = ? OR cultivar_name LIKE ?) LIMIT 1')
+          .get(resolvedCropId, rawCvName, `${rawCvName}%`) as any) ||
+        (db
+          .prepare('SELECT * FROM cultivar WHERE cultivar_name = ? OR cultivar_name LIKE ? LIMIT 1')
+          .get(rawCvName, `${rawCvName}%`) as any)
+      : null) ||
+    (input.cultivar_id && input.cultivar_id !== 'CV-BRM3'
+      ? (db.prepare('SELECT * FROM cultivar WHERE cultivar_id = ? LIMIT 1').get(String(input.cultivar_id).trim()) as any)
+      : null) ||
+    (db.prepare('SELECT * FROM cultivar WHERE crop_id = ? ORDER BY cultivar_id ASC LIMIT 1').get(resolvedCropId) as any);
+
+  const resolvedCvId = String(cvRow?.cultivar_id || input.cultivar_id || 'CV-BRM3').trim();
+  const resolvedCvName = String(rawCvName || cvRow?.cultivar_name || '불암3호').trim();
+
+  // 3) cropping_system 조회 (해당 crop_id의 작형 우선 매칭)
+  const sysRow =
+    (input.system_id && input.system_id !== 'SYS-CAB-AUTUMN' && input.system_id !== 'SYS-CAB-AUT'
+      ? (db
+          .prepare('SELECT * FROM cropping_system WHERE system_id = ? AND crop_id = ? LIMIT 1')
+          .get(String(input.system_id).trim(), resolvedCropId) as any)
+      : null) ||
+    (db
+      .prepare('SELECT * FROM cropping_system WHERE crop_id = ? ORDER BY system_id ASC LIMIT 1')
+      .get(resolvedCropId) as any);
+
+  const resolvedSysId = String(sysRow?.system_id || input.system_id || 'SYS-CAB-AUT').trim();
+  const resolvedSysName = String(sysRow?.system_name || input.system_name || `${displayCropName} 표준 노지재배`).trim();
+
+  return {
+    group_id: resolvedGroupId,
+    group_name: resolvedGroupName,
+    crop_id: resolvedCropId,
+    crop_name: displayCropName,
+    cultivar_id: resolvedCvId,
+    item_name_3rd: resolvedCvName,
+    system_id: resolvedSysId,
+    system_name: resolvedSysName,
+  };
+}
+
+async function syncAdminMemberTablesFromSupabase() {
+  try {
+    const [sbMembers, sbLands, sbPlans, sbReqs, sbOrders, sbCustomItems] = await Promise.all([
+      supabaseRestSelect('user_member'),
+      supabaseRestSelect('member_farmland'),
+      supabaseRestSelect('member_crop_plan'),
+      supabaseRestSelect('member_schedule_request'),
+      supabaseRestSelect('member_agro_order'),
+      supabaseRestSelect('schedule_provision_custom_item'),
+    ]);
+    if (Array.isArray(sbMembers) && sbMembers.length > 0) {
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO user_member (
+          member_id, email, password, signup_type, name, nickname,
+          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
+          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const m of sbMembers) {
+        if (!m?.member_id) continue;
+        stmt.run(
+          String(m.member_id),
+          String(m.email || ''),
+          String(m.password || '1234'),
+          String(m.signup_type || 'EMAIL'),
+          String(m.name || ''),
+          String(m.nickname || ''),
+          String(m.gender || '남성'),
+          String(m.birth_date || '1980-01-01'),
+          Number(m.age) || 46,
+          String(m.road_address || ''),
+          String(m.road_address_detail || ''),
+          String(m.postal_code || '27481'),
+          String(m.phone || '010-0000-0000'),
+          m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
+          String(m.interest_types || '["농업인(직업 재배)"]'),
+          m.agree_terms !== undefined ? Number(m.agree_terms) : 1,
+          m.agree_privacy !== undefined ? Number(m.agree_privacy) : 1,
+          m.agree_marketing !== undefined ? Number(m.agree_marketing) : 0,
+          String(m.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+        );
+      }
+    }
+    if (Array.isArray(sbLands) && sbLands.length > 0) {
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO member_farmland (
+          farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+          detail_jibun, area_pyeong, soil_ph, soil_ec, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const f of sbLands) {
+        if (!f?.farmland_id) continue;
+        stmt.run(
+          String(f.farmland_id),
+          String(f.email || 'CloudBae@naver.com'),
+          String(f.farmland_title || '신규 재배지'),
+          String(f.bjd_code || '4313010700'),
+          String(f.sido || '충청북도'),
+          String(f.sigungu || '충주시'),
+          String(f.eupmyeondong || '단월동'),
+          String(f.detail_jibun || ''),
+          Number(f.area_pyeong) || 300,
+          Number(f.soil_ph) || 6.2,
+          Number(f.soil_ec) || 1.1,
+          String(f.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+        );
+      }
+    }
+    if (Array.isArray(sbPlans)) {
+      db.prepare('DELETE FROM member_crop_plan').run();
+      if (sbPlans.length > 0) {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO member_crop_plan (
+            crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
+            crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
+            expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const cp of sbPlans) {
+          if (!cp?.crop_plan_id) continue;
+          stmt.run(
+            String(cp.crop_plan_id),
+            String(cp.email || 'CloudBae@naver.com'),
+            String(cp.request_no || 'REQ-20261106-009'),
+            String(cp.farmland_id || ''),
+            String(cp.sido || '충청북도'),
+            String(cp.sigungu || '충주시'),
+            String(cp.eupmyeondong || '단월동'),
+            String(cp.crop_name || '가을배추'),
+            String(cp.cultivar_name || '불암3호'),
+            String(cp.planting_type || '모종'),
+            Number(cp.area_pyeong) || 300,
+            String(cp.planting_date || '2026-08-25'),
+            String(cp.expected_harvest_date || '2026-11-15'),
+            String(cp.current_stage_name || '04. 생육 관리'),
+            Number(cp.progress_pct ?? 25),
+            String(cp.status_text || '기후 연동 생육 관리중'),
+            String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
+          );
+        }
+      }
+    }
+    if (Array.isArray(sbReqs)) {
+      db.prepare('DELETE FROM member_schedule_request').run();
+      if (sbReqs.length > 0) {
+        const stmt = db.prepare(`
+          INSERT OR REPLACE INTO member_schedule_request (
+            request_no, member_id, member_contact,
+            group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+            bjd_code, sido, sigungu, eupmyeondong, detail_address,
+            area_pyeong, cultivation_type, land_category, planting_method,
+            desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+            is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+            soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const r of sbReqs) {
+          if (!r?.request_no) continue;
+          const resolvedTax = resolveCropTaxonomyFromInput({
+            group_id: r.group_id,
+            group_name: r.group_name,
+            crop_id: r.crop_id,
+            crop_name: r.crop_name,
+            cultivar_id: r.cultivar_id,
+            item_name_3rd: r.item_name_3rd,
+            system_id: r.system_id,
+            system_name: r.system_name,
+          });
+          stmt.run(
+            String(r.request_no),
+            String(r.member_id || 'CloudBae@naver.com (배철민)'),
+            String(r.member_contact || '010-2026-0109'),
+            resolvedTax.group_id,
+            resolvedTax.group_name,
+            resolvedTax.crop_id,
+            resolvedTax.crop_name,
+            resolvedTax.cultivar_id,
+            resolvedTax.item_name_3rd,
+            resolvedTax.system_id,
+            resolvedTax.system_name,
+            String(r.bjd_code || '4313010700'),
+            String(r.sido || '충청북도'),
+            String(r.sigungu || '충주시'),
+            String(r.eupmyeondong || '단월동'),
+            String(r.detail_address || ''),
+            Number(r.area_pyeong) || 300,
+            String(r.cultivation_type || '노지'),
+            String(r.land_category || '전'),
+            String(r.planting_method || '모종'),
+            String(r.desired_start_date || '2026-08-25'),
+            String(r.expected_harvest_date || '2026-11-15'),
+            Number(r.mulching_yn ?? 1),
+            String(r.irrigation_type || '점적관수'),
+            Number(r.is_organic ?? 0),
+            Number(r.soil_test_linked_yn ?? 1),
+            Number(r.target_yield_kg) || 3500,
+            String(r.etc_notes || ''),
+            String(r.request_status || '일정산출완료'),
+            String(r.requested_at || ''),
+            String(r.soil_condition || '사양토'),
+            String(r.facility_env_json || '["멀칭","부직포"]'),
+            String(r.schedule_base_type || 'OPTIMAL_AUTO'),
+            String(r.schedule_base_date || r.desired_start_date || '2026-08-25'),
+            String(r.area_unit || '평')
+          );
+        }
+      }
+    }
+    if (Array.isArray(sbOrders) && sbOrders.length > 0) {
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO member_agro_order (
+          order_no, email, ordered_at, purchase_title, crop_title, region_address,
+          delivery_option, payment_method, delivery_status, raw_total, discount_amount,
+          final_total, reward_points, items_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const o of sbOrders) {
+        if (!o?.order_no) continue;
+        stmt.run(
+          String(o.order_no),
+          String(o.email || 'CloudBae@naver.com'),
+          String(o.ordered_at || ''),
+          String(o.purchase_title || ''),
+          String(o.crop_title || ''),
+          String(o.region_address || ''),
+          String(o.delivery_option || 'STAGE_SCHEDULED'),
+          String(o.payment_method || 'BANK_TRANSFER'),
+          String(o.delivery_status || ''),
+          Number(o.raw_total) || 0,
+          Number(o.discount_amount) || 0,
+          Number(o.final_total) || 0,
+          Number(o.reward_points) || 0,
+          String(o.items_json || '[]')
+        );
+      }
+    }
+    if (Array.isArray(sbCustomItems) && sbCustomItems.length > 0) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS schedule_provision_custom_item (
+          request_no TEXT NOT NULL,
+          item_id TEXT NOT NULL,
+          stage_group_id TEXT,
+          stage_group_name TEXT,
+          sub_item_name TEXT,
+          bar_label TEXT,
+          process_code TEXT,
+          process_name TEXT,
+          target_pgdd REAL,
+          start_date TEXT,
+          end_date TEXT,
+          work_content TEXT,
+          climate_rule TEXT,
+          usage_tip TEXT,
+          ai_analysis_reason TEXT,
+          materials_json TEXT,
+          updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+          PRIMARY KEY (request_no, item_id)
+        );
+      `);
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO schedule_provision_custom_item (
+          request_no, item_id, stage_group_id, stage_group_name, sub_item_name, bar_label,
+          process_code, process_name, target_pgdd, start_date, end_date,
+          work_content, climate_rule, usage_tip, ai_analysis_reason, materials_json, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const ci of sbCustomItems) {
+        if (!ci?.request_no || !ci?.item_id) continue;
+        stmt.run(
+          String(ci.request_no),
+          String(ci.item_id),
+          String(ci.stage_group_id || ''),
+          String(ci.stage_group_name || ''),
+          String(ci.sub_item_name || ''),
+          String(ci.bar_label || ''),
+          String(ci.process_code || ''),
+          String(ci.process_name || ''),
+          Number(ci.target_pgdd ?? 0),
+          String(ci.start_date || ''),
+          String(ci.end_date || ''),
+          String(ci.work_content || ''),
+          String(ci.climate_rule || ''),
+          String(ci.usage_tip || ''),
+          String(ci.ai_analysis_reason || ''),
+          String(ci.materials_json || '[]'),
+          String(ci.updated_at || '')
+        );
+      }
+    }
+  } catch {
+    // ignore network errors
+  }
+}
+
 async function syncAgroMaterialSchemaToSupabase() {
   try {
     await runPostgresQuery(`
@@ -345,6 +818,57 @@ async function syncAgroMaterialSchemaToSupabase() {
         usage_tip VARCHAR(1000) NOT NULL DEFAULT '',
         updated_at TEXT DEFAULT ''
       );
+      CREATE TABLE IF NOT EXISTS public.schedule_provision_custom_item (
+        request_no TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        stage_group_id TEXT DEFAULT '',
+        stage_group_name TEXT DEFAULT '',
+        sub_item_name TEXT DEFAULT '',
+        bar_label TEXT DEFAULT '',
+        process_code TEXT DEFAULT '',
+        process_name TEXT DEFAULT '',
+        target_pgdd REAL DEFAULT 0,
+        start_date TEXT DEFAULT '',
+        end_date TEXT DEFAULT '',
+        work_content TEXT DEFAULT '',
+        climate_rule TEXT DEFAULT '',
+        usage_tip TEXT DEFAULT '',
+        ai_analysis_reason TEXT DEFAULT '',
+        materials_json TEXT DEFAULT '[]',
+        updated_at TEXT DEFAULT '',
+        PRIMARY KEY (request_no, item_id)
+      );
+      CREATE TABLE IF NOT EXISTS public.schedule_stage_recommendation_log (
+        request_no TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        process_code TEXT DEFAULT '',
+        stage_group_name TEXT DEFAULT '',
+        sub_item_name TEXT DEFAULT '',
+        area_pyeong REAL DEFAULT 300,
+        material_id TEXT DEFAULT '',
+        product_name TEXT DEFAULT '',
+        material_category TEXT DEFAULT '',
+        sub_type TEXT DEFAULT '',
+        manufacturer TEXT DEFAULT '',
+        match_score INTEGER DEFAULT 95,
+        recommended_qty INTEGER DEFAULT 1,
+        unit_spec TEXT DEFAULT '',
+        unit_price INTEGER DEFAULT 15000,
+        total_cost INTEGER DEFAULT 15000,
+        quantity_calc_formula TEXT DEFAULT '',
+        recommended_for_area TEXT DEFAULT '',
+        rationale_bullets_json TEXT DEFAULT '[]',
+        selection_rationale TEXT DEFAULT '',
+        materials_json TEXT DEFAULT '[]',
+        updated_at TEXT DEFAULT '',
+        PRIMARY KEY (request_no, item_id)
+      );
+      CREATE TABLE IF NOT EXISTS public.member_ui_sync_state (
+        state_key TEXT PRIMARY KEY,
+        member_email TEXT DEFAULT 'CloudBae@naver.com',
+        state_json TEXT NOT NULL DEFAULT '{}',
+        updated_at TEXT DEFAULT ''
+      );
       ALTER TABLE public.growth_type_code
         ADD COLUMN IF NOT EXISTS stage_color TEXT DEFAULT '#22a559',
         ADD COLUMN IF NOT EXISTS icon_type TEXT DEFAULT 'leaf';
@@ -399,40 +923,8 @@ async function syncAgroMaterialSchemaToSupabase() {
       NOTIFY pgrst, 'reload schema';
     `);
 
-    // 원격 Supabase DB에서 회원/마이페이지/설문/세부일정 최신 데이터를 가져와 양방향 동기화
-    const remoteMembers = await supabaseRestSelect('user_member');
-    if (remoteMembers.length > 0) {
-      const insMem = db.prepare(`
-        INSERT OR REPLACE INTO user_member (
-          member_id, email, password, signup_type, name, nickname,
-          gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
-          phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      for (const m of remoteMembers) {
-        insMem.run(
-          m.member_id,
-          m.email,
-          m.password,
-          m.signup_type || 'EMAIL',
-          m.name,
-          m.nickname || '',
-          m.gender || '남성',
-          m.birth_date || '1978-05-15',
-          Number(m.age || 48),
-          m.road_address || '',
-          m.road_address_detail || '',
-          m.postal_code || '27481',
-          m.phone || '010-2026-0109',
-          m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
-          String(m.interest_types || '["농업인(직업 재배)"]'),
-          m.agree_terms !== undefined ? Number(m.agree_terms) : 1,
-          m.agree_privacy !== undefined ? Number(m.agree_privacy) : 1,
-          m.agree_marketing !== undefined ? Number(m.agree_marketing) : 0,
-          m.created_at || ''
-        );
-      }
-    }
+    // 원격 Supabase DB에서 회원/재배지/재배플랜/일정요청/농자재주문/커스텀일정 최신 데이터를 먼저 동기화하여 절대 덮어쓰지 않도록 보장
+    await syncAdminMemberTablesFromSupabase();
 
     const syncTableToSupabase = async (tableName: string, pk: string) => {
       try {
@@ -445,16 +937,21 @@ async function syncAgroMaterialSchemaToSupabase() {
       }
     };
 
+    await syncTableToSupabase('crop_group', 'group_id');
+    await syncTableToSupabase('crop', 'crop_id');
+    await syncTableToSupabase('cultivar', 'cultivar_id');
+    await syncTableToSupabase('cropping_system', 'system_id');
     await syncTableToSupabase('growth_type_code', 'type_code');
     await syncTableToSupabase('growth_process_code', 'process_code');
     await syncTableToSupabase('fertilizer_category_code', 'category_code');
     await syncTableToSupabase('nutrient_category_code', 'category_code');
     await syncTableToSupabase('pesticide_category_code', 'category_code');
+    await syncTableToSupabase('seed_category_code', 'category_code');
+    await syncTableToSupabase('seedling_category_code', 'category_code');
     await syncTableToSupabase('agro_material', 'material_id');
     await syncTableToSupabase('payment_bank_account', 'account_id');
     await supabaseRestDelete('crop_growth_process_plan', 'cultivar_id=eq.CV-BULAM3');
     await syncTableToSupabase('crop_growth_process_plan', 'plan_id');
-    await syncTableToSupabase('cropping_system', 'system_id');
     await supabaseRestDelete('standard_template', 'template_id=like.TPL-POT-*');
     await supabaseRestDelete('standard_template', 'template_id=like.TPL-CAB-*');
     await syncTableToSupabase('standard_template', 'template_id');
@@ -1888,7 +2385,10 @@ const server = http.createServer(async (req, res) => {
         body.auto_apply_to_schedule ? 1 : 0,
         updatedAt
       );
-      const saved = db.prepare("SELECT * FROM agro_recommendation_policy WHERE policy_id = 'DEFAULT_POLICY'").get();
+      const saved = db.prepare("SELECT * FROM agro_recommendation_policy WHERE policy_id = 'DEFAULT_POLICY'").get() as Record<string, any> | undefined;
+      if (saved) {
+        await supabaseRestUpsert('agro_recommendation_policy', saved, 'policy_id');
+      }
       sendJson(res, { ok: true, policy: saved });
       return;
     }
@@ -1924,6 +2424,10 @@ const server = http.createServer(async (req, res) => {
         Number(body.ec_min ?? 0.5),
         Number(body.ec_max ?? 1.8)
       );
+      const savedStd = db.prepare('SELECT * FROM soil_standard WHERE standard_id = ?').get(standard_id) as Record<string, any> | undefined;
+      if (savedStd) {
+        await supabaseRestUpsert('soil_standard', savedStd, 'standard_id');
+      }
       sendJson(res, { ok: true });
       return;
     }
@@ -1956,13 +2460,21 @@ const server = http.createServer(async (req, res) => {
         Number(body.sort_order ?? 1),
         updatedAt
       );
+      const savedRule = db.prepare('SELECT * FROM agro_stage_mapping_rule WHERE rule_id = ?').get(rule_id) as Record<string, any> | undefined;
+      if (savedRule) {
+        await supabaseRestUpsert('agro_stage_mapping_rule', savedRule, 'rule_id');
+      }
       sendJson(res, { ok: true, rule_id });
       return;
     }
 
     if (pathname === '/api/agro-recommendation-module/stage-rule/delete' && req.method === 'POST') {
       const { rule_id } = await readJsonBody(req);
-      db.prepare('DELETE FROM agro_stage_mapping_rule WHERE rule_id = ?').run(String(rule_id || ''));
+      const cleanId = String(rule_id || '').trim();
+      db.prepare('DELETE FROM agro_stage_mapping_rule WHERE rule_id = ?').run(cleanId);
+      if (cleanId) {
+        await supabaseRestDelete('agro_stage_mapping_rule', `rule_id=eq.${encodeURIComponent(cleanId)}`);
+      }
       sendJson(res, { ok: true });
       return;
     }
@@ -2565,6 +3077,10 @@ const server = http.createServer(async (req, res) => {
           String(body.source_context || 'ADMIN_SIMULATOR'),
           createdAt
         );
+        const savedRecRow = db.prepare('SELECT * FROM agro_recommendation_history WHERE rec_id = ?').get(savedRecId) as Record<string, any> | undefined;
+        if (savedRecRow) {
+          await supabaseRestUpsert('agro_recommendation_history', savedRecRow, 'rec_id');
+        }
       }
 
       sendJson(res, {
@@ -2596,19 +3112,28 @@ const server = http.createServer(async (req, res) => {
     // 4-1-G. 농자재 추천 이력 관리자 보정 메모 수정 및 삭제 API
     if (pathname === '/api/agro-recommendation-module/history/override' && req.method === 'POST') {
       const { rec_id, admin_override_note, ai_rationale_text } = await readJsonBody(req);
+      const cleanId = String(rec_id || '').trim();
       db.prepare(`
         UPDATE agro_recommendation_history
         SET admin_override_note = ?,
             ai_rationale_text = COALESCE(NULLIF(?, ''), ai_rationale_text)
         WHERE rec_id = ?
-      `).run(String(admin_override_note || ''), String(ai_rationale_text || ''), String(rec_id || ''));
+      `).run(String(admin_override_note || ''), String(ai_rationale_text || ''), cleanId);
+      const updatedRecRow = db.prepare('SELECT * FROM agro_recommendation_history WHERE rec_id = ?').get(cleanId) as Record<string, any> | undefined;
+      if (updatedRecRow) {
+        await supabaseRestUpsert('agro_recommendation_history', updatedRecRow, 'rec_id');
+      }
       sendJson(res, { ok: true });
       return;
     }
 
     if (pathname === '/api/agro-recommendation-module/history/delete' && req.method === 'POST') {
       const { rec_id } = await readJsonBody(req);
-      db.prepare('DELETE FROM agro_recommendation_history WHERE rec_id = ?').run(String(rec_id || ''));
+      const cleanId = String(rec_id || '').trim();
+      db.prepare('DELETE FROM agro_recommendation_history WHERE rec_id = ?').run(cleanId);
+      if (cleanId) {
+        await supabaseRestDelete('agro_recommendation_history', `rec_id=eq.${encodeURIComponent(cleanId)}`);
+      }
       sendJson(res, { ok: true });
       return;
     }
@@ -5109,6 +5634,7 @@ const server = http.createServer(async (req, res) => {
 
     // 2. 재배 일정 요청 관리 API (농작물 재배일정 요청 테이블: member_schedule_request — Supabase PostgreSQL 17 연동)
     if (pathname === '/api/member-schedule-requests' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
       const groupId = (parsedUrl.searchParams.get('group_id') || '').trim();
       const cropId = (parsedUrl.searchParams.get('crop_id') || '').trim();
       const sido = (parsedUrl.searchParams.get('sido') || '').trim();
@@ -5131,7 +5657,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (sido && sido !== 'ALL') {
         conditions.push('r.sido = ?');
-        params.push(sido);
+        params.push(normalizeSidoName(sido));
       }
       if (sigungu && sigungu !== 'ALL') {
         conditions.push('r.sigungu = ?');
@@ -5165,9 +5691,9 @@ const server = http.createServer(async (req, res) => {
       const items = db
         .prepare(
           `SELECT r.*,
-                  COALESCE(g.group_name, r.group_name) as group_name,
-                  COALESCE(c.crop_name, r.crop_name) as crop_name,
-                  COALESCE(cv.cultivar_name, r.item_name_3rd) as item_name_3rd,
+                  COALESCE(NULLIF(r.group_name, ''), g.group_name) as group_name,
+                  COALESCE(NULLIF(r.crop_name, ''), c.crop_name) as crop_name,
+                  COALESCE(NULLIF(r.item_name_3rd, ''), cv.cultivar_name) as item_name_3rd,
                   s.soil_texture, s.drainage_class, s.soil_ph, s.soil_ec,
                   s.organic_matter_g_kg, s.avail_p2o5_mg_kg, s.exch_k_cmol, s.exch_ca_cmol, s.exch_mg_cmol,
                   s.lime_req_kg_10a, s.fertility_grade
@@ -5204,6 +5730,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/api/member-schedule-requests/save' && req.method === 'POST') {
+      await syncAdminMemberTablesFromSupabase();
       const body = await readJsonBody(req);
       const kstDate = new Date(Date.now() + 9 * 60 * 60 * 1000);
       const now = kstDate.toISOString().replace('T', ' ').slice(0, 19);
@@ -5211,35 +5738,38 @@ const server = http.createServer(async (req, res) => {
       const request_no = (body.request_no || `REQ-${now.slice(0, 10).replace(/-/g, '')}-${String(Date.now()).slice(-3)}`).trim();
       const member_id = String(body.member_id || body.email || 'CloudBae@naver.com (배철민)').trim();
       const member_contact = (body.member_contact || '010-2026-0109').trim();
-      const group_id = body.group_id || 'GRP-LEAF';
-      const group_name = body.group_name || '엽채류 (잎채소)';
-      const crop_id = body.crop_id || 'CRP-CABBAGE';
-      const crop_name = body.crop_name === '배추' || !body.crop_name ? '가을배추' : body.crop_name;
-      const cultivar_id = body.cultivar_id || 'CV-BRM3';
-      const item_name_3rd = body.item_name_3rd || '불암3호';
-      const system_id = body.system_id || 'SYS-CAB-AUTUMN';
-      const system_name = body.system_name || '중부 노지 가을배추 표준작형';
 
-      let bjd_code = (body.bjd_code || '').trim();
-      let sido = (body.sido || '충청북도').trim();
-      let sigungu = (body.sigungu || '충주시').trim();
-      let eupmyeondong = (body.eupmyeondong || '산척면').trim();
+      const resolvedTax = resolveCropTaxonomyFromInput({
+        group_id: body.group_id,
+        group_name: body.group_name,
+        crop_id: body.crop_id,
+        crop_name: body.crop_name,
+        cultivar_id: body.cultivar_id,
+        item_name_3rd: body.item_name_3rd || body.cultivar_name,
+        system_id: body.system_id,
+        system_name: body.system_name,
+      });
+      const {
+        group_id,
+        group_name,
+        crop_id,
+        crop_name,
+        cultivar_id,
+        item_name_3rd,
+        system_id,
+        system_name,
+      } = resolvedTax;
 
-      if (!bjd_code) {
-        const matchedAddr = db
-          .prepare(
-            'SELECT bjd_code, sido, sigungu, eupmyeondong FROM cultivation_address WHERE sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
-          )
-          .get(sido, sigungu, eupmyeondong) as any;
-        if (matchedAddr) {
-          bjd_code = matchedAddr.bjd_code;
-        } else {
-          const fallbackAddr = db
-            .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong FROM cultivation_address WHERE sido = ? LIMIT 1')
-            .get(sido) as any;
-          bjd_code = fallbackAddr?.bjd_code || '1101000100';
-        }
-      }
+      const resolvedAddr = resolveCultivationAddressFromInput({
+        bjd_code: body.bjd_code,
+        sido: body.sido,
+        sigungu: body.sigungu,
+        eupmyeondong: body.eupmyeondong,
+      });
+      const bjd_code = resolvedAddr.bjd_code;
+      const sido = resolvedAddr.sido;
+      const sigungu = resolvedAddr.sigungu;
+      const eupmyeondong = resolvedAddr.eupmyeondong;
 
       const facilityEnvArr: string[] = Array.isArray(body.facility_env)
         ? body.facility_env
@@ -5326,12 +5856,55 @@ const server = http.createServer(async (req, res) => {
         rowData.soil_condition, rowData.facility_env_json, rowData.schedule_base_type, rowData.schedule_base_date, rowData.area_unit
       );
 
-      // 요청 회원의 member_crop_plan과 실시간 매칭 동기화
+      // 요청 회원의 실제 member_farmland 조회 또는 생성 연동 (하드코딩된 'LAND-CB-01' 사용 방지)
       const ownerEmail = String(
         body.email ||
           (body.member_id ? String(body.member_id).split(' ')[0] : '') ||
           'CloudBae@naver.com'
       ).trim();
+
+      const explicitFarmlandId = String(body.farmland_id || '').trim();
+      let resolvedFarmland =
+        (explicitFarmlandId && explicitFarmlandId !== 'LAND-CB-01'
+          ? (db
+              .prepare('SELECT * FROM member_farmland WHERE farmland_id = ? AND LOWER(email) = LOWER(?) LIMIT 1')
+              .get(explicitFarmlandId, ownerEmail) as any)
+          : null) ||
+        (db
+          .prepare(
+            'SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?) AND (bjd_code = ? OR (sido = ? AND sigungu = ? AND eupmyeondong = ?)) ORDER BY created_at ASC LIMIT 1'
+          )
+          .get(ownerEmail, rowData.bjd_code, rowData.sido, rowData.sigungu, rowData.eupmyeondong) as any) ||
+        (db
+          .prepare('SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
+          .get(ownerEmail) as any);
+
+      if (!resolvedFarmland) {
+        const autoLandId = `LAND-${Date.now()}`;
+        const autoLandTitle = `${rowData.sigungu} ${rowData.eupmyeondong} 농장`;
+        db.prepare(`
+          INSERT INTO member_farmland (
+            farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+            detail_jibun, area_pyeong, soil_ph, soil_ec
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 6.3, 1.1)
+        `).run(
+          autoLandId,
+          ownerEmail,
+          autoLandTitle,
+          rowData.bjd_code,
+          rowData.sido,
+          rowData.sigungu,
+          rowData.eupmyeondong,
+          rowData.detail_address || '',
+          rowData.area_pyeong
+        );
+        resolvedFarmland = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as any;
+        if (resolvedFarmland) {
+          await supabaseRestUpsert('member_farmland', resolvedFarmland, 'farmland_id');
+        }
+      }
+
+      const resolvedFarmlandId = String(resolvedFarmland?.farmland_id || 'LAND-CB-01');
       const isSeedMethod =
         String(rowData.planting_method || '').includes('직파') ||
         String(rowData.planting_method || '').includes('점파') ||
@@ -5347,11 +5920,12 @@ const server = http.createServer(async (req, res) => {
           crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
           crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
           expected_harvest_date, current_stage_name, progress_pct, status_text
-        ) VALUES (?, ?, ?, 'LAND-CB-01', ?, ?, ?, ?, ?, ?, ?, ?, ?, '04. 생육 관리', 60, '생육 확인 필요 · 일정 연동됨')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '04. 생육 관리', 60, '생육 확인 필요 · 일정 연동됨')
       `).run(
         targetPlanId,
         ownerEmail,
         rowData.request_no,
+        resolvedFarmlandId,
         rowData.sido,
         rowData.sigungu,
         rowData.eupmyeondong,
@@ -5544,6 +6118,7 @@ const server = http.createServer(async (req, res) => {
 
     // 2-2. 재배 일정 제공 관리 API (재배 일정 요청 기본 데이터 + 재배지 365일 기후 데이터[온도·습도·강우량] 연동 생육과정 일정 산출)
     if (pathname === '/api/schedule-provision' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
       const requestedNo = (parsedUrl.searchParams.get('request_no') || '').trim();
       let genModuleConfig = createDefaultScheduleGenerationModuleConfig();
       try {
@@ -5558,13 +6133,13 @@ const server = http.createServer(async (req, res) => {
       }
       const modFlags = getEnabledModuleFlags(genModuleConfig);
 
-      // 전체 재배 일정 요청 목록 조회 (가을배추 불암3호 우선 정렬)
+      // 전체 재배 일정 요청 목록 조회 (요청에 저장된 crop_name / item_name_3rd 최우선 보존)
       const allRequests = db
         .prepare(
           `SELECT r.*,
-                  COALESCE(g.group_name, r.group_name) as group_name,
-                  COALESCE(c.crop_name, r.crop_name) as crop_name,
-                  COALESCE(cv.cultivar_name, r.item_name_3rd) as item_name_3rd,
+                  COALESCE(NULLIF(r.group_name, ''), g.group_name) as group_name,
+                  COALESCE(NULLIF(r.crop_name, ''), c.crop_name) as crop_name,
+                  COALESCE(NULLIF(r.item_name_3rd, ''), cv.cultivar_name) as item_name_3rd,
                   s.soil_texture, s.drainage_class, s.soil_ph, s.soil_ec,
                   s.organic_matter_g_kg, s.avail_p2o5_mg_kg, s.exch_k_cmol, s.exch_ca_cmol, s.exch_mg_cmol,
                   s.lime_req_kg_10a, s.fertility_grade
@@ -5591,26 +6166,17 @@ const server = http.createServer(async (req, res) => {
       }
 
       // 재배지 읍면동 법정동 코드 확인 및 365일 기후 데이터(2025년 실측 + 2026년 예보/기후) 조회
-      let targetBjd = activeRequest.bjd_code;
-      const addrCheck = db
-        .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE bjd_code = ? LIMIT 1')
-        .get(targetBjd) as any;
-
-      if (!addrCheck) {
-        const matchedAddr = db
-          .prepare(
-            'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido LIKE ? AND sigungu LIKE ? AND eupmyeondong LIKE ? LIMIT 1'
-          )
-          .get(`%${activeRequest.sido || '충청북도'}%`, `%${activeRequest.sigungu || '충주'}%`, `%${activeRequest.eupmyeondong || ''}%`) as any;
-        if (matchedAddr) {
-          targetBjd = matchedAddr.bjd_code;
-        } else {
-          const fallbackAddr = db
-            .prepare('SELECT bjd_code FROM cultivation_address WHERE sido LIKE ? LIMIT 1')
-            .get(`%${activeRequest.sido || '충청북도'}%`) as any;
-          targetBjd = fallbackAddr?.bjd_code || '4313010100';
-        }
-      }
+      const resolvedProvAddr = resolveCultivationAddressFromInput({
+        bjd_code: activeRequest.bjd_code,
+        sido: activeRequest.sido,
+        sigungu: activeRequest.sigungu,
+        eupmyeondong: activeRequest.eupmyeondong,
+      });
+      const targetBjd = resolvedProvAddr.bjd_code;
+      activeRequest.bjd_code = targetBjd;
+      activeRequest.sido = resolvedProvAddr.sido;
+      activeRequest.sigungu = resolvedProvAddr.sigungu;
+      activeRequest.eupmyeondong = resolvedProvAddr.eupmyeondong;
 
       // 올해 예측 기후(climate_future_daily, 올해 1/1 ~ 현재 기준 최대 +6개월) + 작년 지난 기후(climate_address_daily, 365일) 조회
       const dailyClimate2026 = db
@@ -5757,12 +6323,31 @@ const server = http.createServer(async (req, res) => {
         }
       }
 
-      // 작형 기준온도 및 품종별 목표 적산온도(PGDD) · 환경 보정치 정밀 조회
-      const reqSysId = activeRequest.system_id || 'SYS-CAB-AUT';
-      const reqCropId = activeRequest.crop_id || 'CRP-CABBAGE';
-      const reqCvId = activeRequest.cultivar_id || 'CV-BRM3';
-      const cropDisplayName = activeRequest.crop_name === '배추' ? '가을배추' : activeRequest.crop_name || '가을배추';
-      const cvDisplayName = activeRequest.item_name_3rd || '불암3호';
+      // 작형 기준온도 및 품종별 목표 적산온도(PGDD) · 환경 보정치 정밀 조회 (요청된 작물명·품종명 우선 매칭)
+      const resolvedActiveTax = resolveCropTaxonomyFromInput({
+        group_id: activeRequest.group_id,
+        group_name: activeRequest.group_name,
+        crop_id: activeRequest.crop_id,
+        crop_name: activeRequest.crop_name,
+        cultivar_id: activeRequest.cultivar_id,
+        item_name_3rd: activeRequest.item_name_3rd,
+        system_id: activeRequest.system_id,
+        system_name: activeRequest.system_name,
+      });
+      activeRequest.group_id = resolvedActiveTax.group_id;
+      activeRequest.group_name = resolvedActiveTax.group_name;
+      activeRequest.crop_id = resolvedActiveTax.crop_id;
+      activeRequest.crop_name = resolvedActiveTax.crop_name;
+      activeRequest.cultivar_id = resolvedActiveTax.cultivar_id;
+      activeRequest.item_name_3rd = resolvedActiveTax.item_name_3rd;
+      activeRequest.system_id = resolvedActiveTax.system_id;
+      activeRequest.system_name = resolvedActiveTax.system_name;
+
+      const reqSysId = resolvedActiveTax.system_id;
+      const reqCropId = resolvedActiveTax.crop_id;
+      const reqCvId = resolvedActiveTax.cultivar_id;
+      const cropDisplayName = resolvedActiveTax.crop_name;
+      const cvDisplayName = resolvedActiveTax.item_name_3rd;
 
       const sysInfo = db
         .prepare(
@@ -6995,12 +7580,18 @@ const server = http.createServer(async (req, res) => {
           bar_label: '생육 점검(생육량·생육상태)',
           process_code: 'PRC-19',
           process_name:
-            reqCropId === 'CRP-POTATO'
-              ? '괴경비대 시작 확인 및 수분·비대 점검'
+            reqCropId === 'CRP-POTATO' || reqCropId === 'CRP-SWEETPOTATO' || reqCropId === 'CRP-RADISH' || reqCropId === 'CRP-CARROT'
+              ? '지하부 근경·괴경 비대 시작 확인 및 수분·비대 점검'
               : reqCropId === 'CRP-LETTUCE'
               ? '규격 성엽 도달 및 초세·생리장해 점검'
               : reqCropId === 'CRP-SPINACH'
               ? '포기 비대 및 저온기 당도·생육상태 점검'
+              : reqCropId === 'CRP-GARLIC' || reqCropId === 'CRP-ONION' || reqCropId === 'CRP-GREENONION'
+              ? '인경(구)·연백부 비대기 생육량 및 칼슘·수분 점검'
+              : reqCropId === 'CRP-PEPPER' || reqCropId === 'CRP-CUCUMBER' || reqCropId === 'CRP-TOMATO' || reqCropId === 'CRP-WATERMELON' || reqCropId === 'CRP-CHAMOE'
+              ? '개화·착과 및 과실 비대기 초세·칼슘결핍 점검'
+              : reqCropId === 'CRP-SOYBEAN'
+              ? '개화·착협기(꼬투리 형성) 및 종실 비대 점검'
               : planByCode.get('PRC-19')?.process_name || '결구 시작 확인 및 생육상태 점검',
           process_type: 'STAGE',
           step_order: 11,
@@ -7011,12 +7602,18 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 19,
           visual_end_col: 37,
           work_content:
-            reqCropId === 'CRP-POTATO'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 지하부 복지 끝이 부풀어 감자 괴경(덩이줄기)이 본격적으로 비대하고 전분이 축적되는 핵심 시기입니다. 가뭄 시 적습 관수와 칼륨·칼슘 엽면시비를 집중 실시합니다.`
+            reqCropId === 'CRP-POTATO' || reqCropId === 'CRP-SWEETPOTATO' || reqCropId === 'CRP-RADISH' || reqCropId === 'CRP-CARROT'
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 지하부 뿌리·괴경이 본격적으로 비대하고 전분·당분이 축적되는 핵심 시기입니다. 열근(갈라짐)·공동과 예방을 위해 적습 관수와 칼륨·칼슘·붕소 엽면시비를 집중 실시합니다.`
               : reqCropId === 'CRP-LETTUCE'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 청치마상추 본엽이 규격 크기(15~20cm)에 도달하여 연속 수확이 진행되는 시기입니다. 팁번(잎끝마름) 및 추대 여부를 정밀 점검하고 칼슘제를 보충합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 본엽이 규격 크기(15~20cm)에 도달하여 본 수확 및 연속 수확이 진행되는 시기입니다. 팁번(잎끝마름) 및 추대 여부를 정밀 점검하고 칼슘제를 보충합니다.`
               : reqCropId === 'CRP-SPINACH'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 포항초 시금치의 포기 볼륨과 뿌리 목(근관부)이 굵어지며 당도가 축적되는 시기입니다. 생육 균일도와 습해 여부를 점검합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 포기 볼륨과 뿌리 목(근관부)이 굵어지며 당도가 축적되는 시기입니다. 생육 균일도와 습해 여부를 점검합니다.`
+              : reqCropId === 'CRP-GARLIC' || reqCropId === 'CRP-ONION' || reqCropId === 'CRP-GREENONION'
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 인경(구) 또는 연백부가 본격적으로 비대하는 핵심 시기입니다. 구 비대기 수분 부족을 방지하고 칼슘·유황·가리 성분을 적기 보충합니다.`
+              : reqCropId === 'CRP-PEPPER' || reqCropId === 'CRP-CUCUMBER' || reqCropId === 'CRP-TOMATO' || reqCropId === 'CRP-WATERMELON' || reqCropId === 'CRP-CHAMOE'
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 개화·착과 이후 과실이 본격 비대하는 시기입니다. 배꼽썩음병·석회결핍과 및 낙과 예방을 위해 킬레이트 칼슘·붕소 엽면시비와 균일 관수를 실시합니다.`
+              : reqCropId === 'CRP-SOYBEAN'
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 개화 후 꼬투리(착협)가 형성되고 알곡(종실)이 차오르는 시기입니다. 한발 시 꼬투리 탈락 방지를 위해 수분 관리와 노린재 예찰을 병행합니다.`
               : `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 외엽 확보 후 속잎이 안쪽으로 말리며 결구가 시작되는 핵심 시기입니다. 꿀통배추(칼슘결핍) 예방을 위해 킬레이트 칼슘·붕소 엽면시비와 적습 관수를 집중 실시합니다.`,
           materials: planByCode.get('PRC-19')?.required_materials_json
             ? enrichMaterials(JSON.parse(planByCode.get('PRC-19').required_materials_json))
@@ -7120,12 +7717,18 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 39,
           visual_end_col: 46,
           work_content:
-            reqCropId === 'CRP-POTATO'
-              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 지상부 경엽이 황화되고 감자 괴경 표피가 단단하게 코르크화되었는지 숙기를 판정합니다. 장마·강우 예보를 피해 무강우 건조한 날을 본 수확일로 확정합니다.`
+            reqCropId === 'CRP-POTATO' || reqCropId === 'CRP-SWEETPOTATO' || reqCropId === 'CRP-RADISH' || reqCropId === 'CRP-CARROT'
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 지상부 경엽 상태와 지하부 근경·괴경의 크기·표피 숙기를 판정합니다. 강우 예보를 피해 무강우 건조한 날을 본 수확일로 확정합니다.`
               : reqCropId === 'CRP-LETTUCE'
-              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 잎의 광택·두께·크기가 최상급 출하 규격에 도달했는지 확인하고 기온 상승에 따른 추대 전에 수확 일정을 확정합니다.`
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 잎의 광택·두께·크기가 최상급 출하 규격에 도달했는지 확인하고 기온 상승에 따른 추대 전에 수확 일정을 확정합니다.`
               : reqCropId === 'CRP-SPINACH'
-              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 초장 20~25cm 내외로 포기 밑둥이 붉고 단단하게 충실해지며 당도가 최고조에 달했는지 숙기를 판정합니다.`
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 초장 20~25cm 내외로 포기 밑둥이 붉고 단단하게 충실해지며 당도가 최고조에 달했는지 숙기를 판정합니다.`
+              : reqCropId === 'CRP-GARLIC' || reqCropId === 'CRP-ONION' || reqCropId === 'CRP-GREENONION'
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 지상부 엽초의 도복·황화 비율 및 인경·연백부 비대 규격을 확인하고 맑고 건조한 날을 수확 적기로 확정합니다.`
+              : reqCropId === 'CRP-PEPPER' || reqCropId === 'CRP-CUCUMBER' || reqCropId === 'CRP-TOMATO' || reqCropId === 'CRP-WATERMELON' || reqCropId === 'CRP-CHAMOE'
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 과실의 착색도·당도·과중 및 숙기를 판정하여 출하 규격에 도달한 과실부터 적기 수확 일정을 확정합니다.`
+              : reqCropId === 'CRP-SOYBEAN'
+              ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 잎이 낙엽되고 꼬투리의 80~90%가 갈색으로 성숙했는지 확인하여 탈립 전 적기 수확일을 확정합니다.`
               : `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 배추 통 상부를 손으로 눌렀을 때 결구율이 85~90% 이상 단단하게 차올랐는지 숙기를 판정하고, 한파·강수 예보를 대조하여 최적 수확일을 확정합니다.`,
           materials: planByCode.get('PRC-28')?.required_materials_json
             ? enrichMaterials(JSON.parse(planByCode.get('PRC-28').required_materials_json))
@@ -7153,12 +7756,18 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 40,
           visual_end_col: 47,
           work_content:
-            reqCropId === 'CRP-POTATO'
-              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 맑고 건조한 날 수확하여 직사광선(녹화)을 피해 통풍이 잘 되는 그늘에서 7~10일간 예건·큐어링(온도 12~15℃, 습도 80~85%) 후 크기별로 선별하여 2~4℃ 저온저장고에 입고합니다.`
+            reqCropId === 'CRP-POTATO' || reqCropId === 'CRP-SWEETPOTATO' || reqCropId === 'CRP-RADISH' || reqCropId === 'CRP-CARROT'
+              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 맑고 건조한 날 ${cropDisplayName}(${cvDisplayName})을 상처 없이 수확하여 통풍이 잘 되는 그늘에서 예건·큐어링 후 크기·등급별로 선별하여 저온저장고에 입고합니다.`
               : reqCropId === 'CRP-LETTUCE'
-              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이른 아침 이슬이 마른 직후 서늘할 때 수확하여 호흡열을 빠르게 식히는 예냉(4~5℃) 처리 후 규격 박스 포장 출하합니다.`
+              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이른 아침 이슬이 마른 직후 서늘할 때 ${cropDisplayName}(${cvDisplayName})을 수확하여 호흡열을 빠르게 식히는 예냉(4~5℃) 처리 후 규격 박스 포장 출하합니다.`
               : reqCropId === 'CRP-SPINACH'
               ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 붉은 뿌리 목(근관부)을 2~3cm 붙여 수확한 뒤 흙과 황화 하엽을 정리하고 단 묶음 또는 통기성 필름 포장 후 저온 예냉 출하합니다.`
+              : reqCropId === 'CRP-GARLIC' || reqCropId === 'CRP-ONION' || reqCropId === 'CRP-GREENONION'
+              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 맑은 날 ${cropDisplayName}(${cvDisplayName})을 수확하여 현장 예건 및 줄기·뿌리 정리를 마친 뒤 규격망/박스로 등급별 선별 포장 및 저온 저장합니다.`
+              : reqCropId === 'CRP-PEPPER' || reqCropId === 'CRP-CUCUMBER' || reqCropId === 'CRP-TOMATO' || reqCropId === 'CRP-WATERMELON' || reqCropId === 'CRP-CHAMOE'
+              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 아침 서늘한 시간대에 ${cropDisplayName}(${cvDisplayName})을 수확하여 예냉·건조 처리 후 크기·품질 등급별로 선별 포장하여 출하합니다.`
+              : reqCropId === 'CRP-SOYBEAN'
+              ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이슬이 마른 맑은 날 ${cropDisplayName}(${cvDisplayName})을 수확·탈곡한 뒤 수분함량 13~14% 이하로 건조하고 이물질 및 피해립을 선별하여 저장·출하합니다.`
               : `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이슬이 완전히 마른 맑은 날 본 수확을 실시합니다. 보호 겉잎 2~3매를 남긴 뒤 크기·무게별로 선별하여 3포기 통풍망 포장 출하 또는 0~2℃ 저온저장고 예냉 입고를 완료합니다.`,
           materials: planByCode.get('PRC-29')?.required_materials_json
             ? enrichMaterials(JSON.parse(planByCode.get('PRC-29').required_materials_json))
@@ -7474,6 +8083,16 @@ const server = http.createServer(async (req, res) => {
             JSON.stringify([topMat])
           );
         }
+      }
+      try {
+        const savedRecLogs = db
+          .prepare('SELECT * FROM schedule_stage_recommendation_log WHERE request_no = ?')
+          .all(String(activeRequest.request_no)) as Record<string, unknown>[];
+        if (savedRecLogs.length > 0) {
+          await supabaseRestUpsert('schedule_stage_recommendation_log', savedRecLogs, 'request_no,item_id');
+        }
+      } catch {
+        // ignore network errors
       }
 
       // ============================================================================================================
@@ -8628,6 +9247,7 @@ const server = http.createServer(async (req, res) => {
 
       if (resetRequest) {
         db.prepare('DELETE FROM schedule_provision_custom_item WHERE request_no = ?').run(requestNo);
+        await supabaseRestDelete('schedule_provision_custom_item', `request_no=eq.${encodeURIComponent(requestNo)}`);
         sendJson(res, {
           ok: true,
           reset: true,
@@ -8742,6 +9362,12 @@ const server = http.createServer(async (req, res) => {
             updatedCount += Number(info.changes || 0);
           }
         }
+        const updatedPlans = db
+          .prepare('SELECT * FROM crop_growth_process_plan WHERE cultivar_id = ?')
+          .all(targetCv) as Record<string, unknown>[];
+        if (updatedPlans.length > 0) {
+          await supabaseRestUpsert('crop_growth_process_plan', updatedPlans, 'plan_id');
+        }
       }
 
       sendJson(res, {
@@ -8811,8 +9437,11 @@ const server = http.createServer(async (req, res) => {
         systemId
       );
       const afterRow = db
-        .prepare('SELECT system_id, crop_id, system_name, required_gdd, required_raw_gdd FROM cropping_system WHERE system_id = ? LIMIT 1')
+        .prepare('SELECT * FROM cropping_system WHERE system_id = ? LIMIT 1')
         .get(systemId) as any;
+      if (afterRow) {
+        await supabaseRestUpsert('cropping_system', afterRow, 'system_id');
+      }
 
       sendJson(res, {
         ok: true,
@@ -9293,6 +9922,7 @@ const server = http.createServer(async (req, res) => {
 
     // 1. 이메일/아이디 중복검사 API
     if (pathname === '/api/auth/check-email' && req.method === 'GET') {
+      await syncAdminMemberTablesFromSupabase();
       const email = String(parsedUrl.searchParams.get('email') || '').trim();
       if (!email) {
         sendJson(
@@ -9323,6 +9953,7 @@ const server = http.createServer(async (req, res) => {
 
     // 2. 회원가입 API (3단계 회원가입: 계정정보 ➔ 기본정보·약관동의 ➔ 가입완료)
     if (pathname === '/api/auth/signup' && req.method === 'POST') {
+      await syncAdminMemberTablesFromSupabase();
       const body = await readJsonBody(req);
       const email = String(body.email || '').trim();
       const password = String(body.password || '1234').trim();
@@ -9334,9 +9965,17 @@ const server = http.createServer(async (req, res) => {
       const gender = String(body.gender || '남성').trim();
       const birthDate = String(body.birth_date || '1980-01-01').trim();
       const age = Number(body.age) || 46;
-      const roadAddress = String(
-        body.road_address || '충청북도 충주시 충원대로 268 (단월동)'
-      ).trim();
+      const rawRoadAddressInput = String(body.road_address || '').trim();
+      const resolvedSignupAddr = resolveCultivationAddressFromInput({
+        sido: body.sido,
+        sigungu: body.sigungu,
+        eupmyeondong: body.eupmyeondong,
+        road_address: rawRoadAddressInput,
+        bjd_code: body.bjd_code,
+      });
+      const roadAddress =
+        rawRoadAddressInput ||
+        `${resolvedSignupAddr.sido} ${resolvedSignupAddr.sigungu} ${resolvedSignupAddr.eupmyeondong}`;
       const roadAddressDetail = String(body.road_address_detail || '').trim();
       const postalCode = String(body.postal_code || '27481').trim();
       const phone = String(body.phone || '010-0000-0000').trim();
@@ -9395,40 +10034,27 @@ const server = http.createServer(async (req, res) => {
         agreeMarketing
       );
 
-      // 신규 가입 회원을 위한 기본 예시 재배지 1곳 자동 세팅 (도로명 주소에서 시도/시군구 추출 가능 시 연동)
-      const tokens = roadAddress.split(/\s+/);
-      const sidoCand = tokens[0] || '충청북도';
-      const sigunguCand = tokens[1] || '충주시';
-      const matchedAddr =
-        (db
-          .prepare(
-            'SELECT * FROM cultivation_address WHERE sido LIKE ? AND sigungu LIKE ? LIMIT 1'
-          )
-          .get(`%${sidoCand}%`, `%${sigunguCand}%`) as any) ||
-        (db
-          .prepare("SELECT * FROM cultivation_address WHERE bjd_code = '4313010700' LIMIT 1")
-          .get() as any);
-
-      if (matchedAddr) {
-        const landId = `LAND-${Date.now()}`;
-        db.prepare(`
-          INSERT INTO member_farmland (
-            farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
-            detail_jibun, area_pyeong, soil_ph, soil_ec
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, '100-1번지', 300, 6.3, 1.1)
-        `).run(
-          landId,
-          email,
-          `${name} 님의 제1농장`,
-          matchedAddr.bjd_code,
-          matchedAddr.sido,
-          matchedAddr.sigungu,
-          matchedAddr.eupmyeondong
-        );
-        const savedLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(landId) as Record<string, any> | undefined;
-        if (savedLand) {
-          await supabaseRestUpsert('member_farmland', savedLand, 'farmland_id');
-        }
+      // 신규 가입 회원을 위한 기본 재배지 1곳 자동 세팅 (입력한 회원 주소/시도·시군구·읍면동 정확 매칭)
+      const landId = `LAND-${Date.now()}`;
+      const landDetailJibun = roadAddressDetail || '';
+      db.prepare(`
+        INSERT INTO member_farmland (
+          farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+          detail_jibun, area_pyeong, soil_ph, soil_ec
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 300, 6.3, 1.1)
+      `).run(
+        landId,
+        email,
+        `${name} 님의 제1농장 (${resolvedSignupAddr.sigungu} ${resolvedSignupAddr.eupmyeondong})`,
+        resolvedSignupAddr.bjd_code,
+        resolvedSignupAddr.sido,
+        resolvedSignupAddr.sigungu,
+        resolvedSignupAddr.eupmyeondong,
+        landDetailJibun
+      );
+      const savedLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(landId) as Record<string, any> | undefined;
+      if (savedLand) {
+        await supabaseRestUpsert('member_farmland', savedLand, 'farmland_id');
       }
       const savedMember = db.prepare('SELECT * FROM user_member WHERE member_id = ?').get(memberId) as Record<string, any> | undefined;
       if (savedMember) {
@@ -9541,6 +10167,7 @@ const server = http.createServer(async (req, res) => {
 
     // 4. 비밀번호 찾기 및 재설정 API
     if (pathname === '/api/auth/find-password' && req.method === 'POST') {
+      await syncAdminMemberTablesFromSupabase();
       const body = await readJsonBody(req);
       const step = String(body.step || 'VERIFY').toUpperCase();
       const emailInput = String(body.email || '').trim();
@@ -9620,196 +10247,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    async function syncAdminMemberTablesFromSupabase() {
-      try {
-        const [sbMembers, sbLands, sbPlans, sbReqs, sbOrders] = await Promise.all([
-          supabaseRestSelect('user_member'),
-          supabaseRestSelect('member_farmland'),
-          supabaseRestSelect('member_crop_plan'),
-          supabaseRestSelect('member_schedule_request'),
-          supabaseRestSelect('member_agro_order'),
-        ]);
-        if (Array.isArray(sbMembers) && sbMembers.length > 0) {
-          const stmt = db.prepare(`
-            INSERT OR REPLACE INTO user_member (
-              member_id, email, password, signup_type, name, nickname,
-              gender, birth_date, age, road_address, road_address_detail, postal_code, phone,
-              phone_verified, interest_types, agree_terms, agree_privacy, agree_marketing, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const m of sbMembers) {
-            if (!m?.member_id) continue;
-            stmt.run(
-              String(m.member_id),
-              String(m.email || ''),
-              String(m.password || '1234'),
-              String(m.signup_type || 'EMAIL'),
-              String(m.name || ''),
-              String(m.nickname || ''),
-              String(m.gender || '남성'),
-              String(m.birth_date || '1980-01-01'),
-              Number(m.age) || 46,
-              String(m.road_address || ''),
-              String(m.road_address_detail || ''),
-              String(m.postal_code || '27481'),
-              String(m.phone || '010-0000-0000'),
-              m.phone_verified !== undefined ? Number(m.phone_verified) : 1,
-              String(m.interest_types || '["농업인(직업 재배)"]'),
-              m.agree_terms !== undefined ? Number(m.agree_terms) : 1,
-              m.agree_privacy !== undefined ? Number(m.agree_privacy) : 1,
-              m.agree_marketing !== undefined ? Number(m.agree_marketing) : 0,
-              String(m.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
-            );
-          }
-        }
-        if (Array.isArray(sbLands) && sbLands.length > 0) {
-          const stmt = db.prepare(`
-            INSERT OR REPLACE INTO member_farmland (
-              farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
-              detail_jibun, area_pyeong, soil_ph, soil_ec, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const f of sbLands) {
-            if (!f?.farmland_id) continue;
-            stmt.run(
-              String(f.farmland_id),
-              String(f.email || 'CloudBae@naver.com'),
-              String(f.farmland_title || '신규 재배지'),
-              String(f.bjd_code || '4313010700'),
-              String(f.sido || '충청북도'),
-              String(f.sigungu || '충주시'),
-              String(f.eupmyeondong || '단월동'),
-              String(f.detail_jibun || ''),
-              Number(f.area_pyeong) || 300,
-              Number(f.soil_ph) || 6.2,
-              Number(f.soil_ec) || 1.1,
-              String(f.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
-            );
-          }
-        }
-        if (Array.isArray(sbPlans)) {
-          db.prepare('DELETE FROM member_crop_plan').run();
-          if (sbPlans.length > 0) {
-            const stmt = db.prepare(`
-              INSERT OR REPLACE INTO member_crop_plan (
-                crop_plan_id, email, request_no, farmland_id, sido, sigungu, eupmyeondong,
-                crop_name, cultivar_name, planting_type, area_pyeong, planting_date,
-                expected_harvest_date, current_stage_name, progress_pct, status_text, created_at
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            for (const cp of sbPlans) {
-              if (!cp?.crop_plan_id) continue;
-              stmt.run(
-                String(cp.crop_plan_id),
-                String(cp.email || 'CloudBae@naver.com'),
-                String(cp.request_no || 'REQ-20261106-009'),
-                String(cp.farmland_id || ''),
-                String(cp.sido || '충청북도'),
-                String(cp.sigungu || '충주시'),
-                String(cp.eupmyeondong || '단월동'),
-                String(cp.crop_name || '가을배추'),
-                String(cp.cultivar_name || '불암3호'),
-                String(cp.planting_type || '모종'),
-                Number(cp.area_pyeong) || 300,
-                String(cp.planting_date || '2026-08-25'),
-                String(cp.expected_harvest_date || '2026-11-15'),
-                String(cp.current_stage_name || '04. 생육 관리'),
-                Number(cp.progress_pct ?? 25),
-                String(cp.status_text || '기후 연동 생육 관리중'),
-                String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '))
-              );
-            }
-          }
-        }
-        if (Array.isArray(sbReqs)) {
-          db.prepare('DELETE FROM member_schedule_request').run();
-          if (sbReqs.length > 0) {
-            const stmt = db.prepare(`
-              INSERT OR REPLACE INTO member_schedule_request (
-                request_no, member_id, member_contact,
-                group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
-                bjd_code, sido, sigungu, eupmyeondong, detail_address,
-                area_pyeong, cultivation_type, land_category, planting_method,
-                desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
-                is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
-                soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
-            for (const r of sbReqs) {
-              if (!r?.request_no) continue;
-              stmt.run(
-                String(r.request_no),
-                String(r.member_id || 'CloudBae@naver.com (배철민)'),
-                String(r.member_contact || '010-2026-0109'),
-                String(r.group_id || 'GRP-LEAF'),
-                String(r.group_name || '엽채류'),
-                String(r.crop_id || 'CRP-CABBAGE'),
-                String(r.crop_name || '가을배추'),
-                String(r.cultivar_id || 'CV-BRM3'),
-                String(r.item_name_3rd || '불암3호'),
-                String(r.system_id || 'SYS-CAB-AUTUMN'),
-                String(r.system_name || '중부 노지 가을배추 표준작형'),
-                String(r.bjd_code || '4313010700'),
-                String(r.sido || '충청북도'),
-                String(r.sigungu || '충주시'),
-                String(r.eupmyeondong || '단월동'),
-                String(r.detail_address || ''),
-                Number(r.area_pyeong) || 300,
-                String(r.cultivation_type || '노지'),
-                String(r.land_category || '전'),
-                String(r.planting_method || '모종'),
-                String(r.desired_start_date || '2026-08-25'),
-                String(r.expected_harvest_date || '2026-11-15'),
-                Number(r.mulching_yn ?? 1),
-                String(r.irrigation_type || '점적관수'),
-                Number(r.is_organic ?? 0),
-                Number(r.soil_test_linked_yn ?? 1),
-                Number(r.target_yield_kg) || 3500,
-                String(r.etc_notes || ''),
-                String(r.request_status || '일정산출완료'),
-                String(r.requested_at || ''),
-                String(r.soil_condition || '사양토'),
-                String(r.facility_env_json || '["멀칭","부직포"]'),
-                String(r.schedule_base_type || 'OPTIMAL_AUTO'),
-                String(r.schedule_base_date || r.desired_start_date || '2026-08-25'),
-                String(r.area_unit || '평')
-              );
-            }
-          }
-        }
-        if (Array.isArray(sbOrders) && sbOrders.length > 0) {
-          const stmt = db.prepare(`
-            INSERT OR REPLACE INTO member_agro_order (
-              order_no, email, ordered_at, purchase_title, crop_title, region_address,
-              delivery_option, payment_method, delivery_status, raw_total, discount_amount,
-              final_total, reward_points, items_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `);
-          for (const o of sbOrders) {
-            if (!o?.order_no) continue;
-            stmt.run(
-              String(o.order_no),
-              String(o.email || 'CloudBae@naver.com'),
-              String(o.ordered_at || ''),
-              String(o.purchase_title || ''),
-              String(o.crop_title || ''),
-              String(o.region_address || ''),
-              String(o.delivery_option || 'STAGE_SCHEDULED'),
-              String(o.payment_method || 'BANK_TRANSFER'),
-              String(o.delivery_status || ''),
-              Number(o.raw_total) || 0,
-              Number(o.discount_amount) || 0,
-              Number(o.final_total) || 0,
-              Number(o.reward_points) || 0,
-              String(o.items_json || '[]')
-            );
-          }
-        }
-      } catch {
-        // ignore network errors
-      }
-    }
-
     // 5. 마이페이지 통합 조회 API
     if (pathname === '/api/mypage' && req.method === 'GET') {
       await syncAdminMemberTablesFromSupabase();
@@ -9850,8 +10287,8 @@ const server = http.createServer(async (req, res) => {
       const memberId = String(body.member_id || `MEM-${Date.now()}`).trim();
       const prevEmail = String(body.prev_email || '').trim();
       const email = String(body.email || '').trim();
-      if (!email || !email.includes('@')) {
-        sendJson(res, { ok: false, message: '올바른 이메일 주소를 입력해 주세요.' }, 400);
+      if (!email) {
+        sendJson(res, { ok: false, message: '올바른 아이디 또는 이메일 주소를 입력해 주세요.' }, 400);
         return;
       }
       const existingById = db.prepare('SELECT * FROM user_member WHERE member_id = ?').get(memberId) as Record<string, any> | undefined;
@@ -9948,18 +10385,21 @@ const server = http.createServer(async (req, res) => {
       const farmlandId = String(body.farmland_id || `LAND-${Date.now()}`).trim();
       const existing = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(farmlandId) as Record<string, any> | undefined;
       const email = String(body.email || existing?.email || 'CloudBae@naver.com').trim();
-      const sido = String(body.sido || existing?.sido || '충청북도').trim();
-      const sigungu = String(body.sigungu || existing?.sigungu || '충주시').trim();
-      const eupmyeondong = String(body.eupmyeondong || existing?.eupmyeondong || '단월동').trim();
+      const resolvedAddr = resolveCultivationAddressFromInput({
+        sido: body.sido || existing?.sido,
+        sigungu: body.sigungu || existing?.sigungu,
+        eupmyeondong: body.eupmyeondong || existing?.eupmyeondong,
+        bjd_code: body.bjd_code || existing?.bjd_code,
+      });
+      const sido = resolvedAddr.sido;
+      const sigungu = resolvedAddr.sigungu;
+      const eupmyeondong = resolvedAddr.eupmyeondong;
       const farmlandTitle = String(body.farmland_title || existing?.farmland_title || `${sigungu} ${eupmyeondong} 농장`).trim();
-      const detailJibun = String(body.detail_jibun ?? existing?.detail_jibun ?? '100-1번지 일원').trim();
+      const detailJibun = String(body.detail_jibun ?? existing?.detail_jibun ?? '').trim();
       const areaPyeong = Math.max(10, Number(body.area_pyeong) || Number(existing?.area_pyeong) || 300);
       const soilPh = Number(body.soil_ph) || Number(existing?.soil_ph) || 6.2;
       const soilEc = Number(body.soil_ec) || Number(existing?.soil_ec) || 1.1;
-      const addrRow = db
-        .prepare('SELECT bjd_code FROM cultivation_address WHERE sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1')
-        .get(sido, sigungu, eupmyeondong) as { bjd_code: string } | undefined;
-      const bjdCode = String(body.bjd_code || addrRow?.bjd_code || existing?.bjd_code || '4313010700').trim();
+      const bjdCode = resolvedAddr.bjd_code;
       const createdAt = String(body.created_at || existing?.created_at || nowStr).trim();
 
       db.prepare(`
@@ -10006,10 +10446,24 @@ const server = http.createServer(async (req, res) => {
       const cropPlanId = String(body.crop_plan_id || `CPLAN-${Date.now()}`).trim();
       const existing = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(cropPlanId) as Record<string, any> | undefined;
       const email = String(body.email || existing?.email || 'CloudBae@naver.com').trim();
-      const farmlandId = String(body.farmland_id ?? existing?.farmland_id ?? 'LAND-CB-01').trim();
-      const sido = String(body.sido || existing?.sido || '충청북도').trim();
-      const sigungu = String(body.sigungu || existing?.sigungu || '충주시').trim();
-      const eupmyeondong = String(body.eupmyeondong || existing?.eupmyeondong || '단월동').trim();
+      const resolvedAddr = resolveCultivationAddressFromInput({
+        sido: body.sido || existing?.sido,
+        sigungu: body.sigungu || existing?.sigungu,
+        eupmyeondong: body.eupmyeondong || existing?.eupmyeondong,
+      });
+      const sido = resolvedAddr.sido;
+      const sigungu = resolvedAddr.sigungu;
+      const eupmyeondong = resolvedAddr.eupmyeondong;
+      const matchedFarmland =
+        (db
+          .prepare(
+            'SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) AND sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
+          )
+          .get(email, sido, sigungu, eupmyeondong) as { farmland_id?: string } | undefined) ||
+        (db
+          .prepare('SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
+          .get(email) as { farmland_id?: string } | undefined);
+      const farmlandId = String(body.farmland_id || existing?.farmland_id || matchedFarmland?.farmland_id || 'LAND-CB-01').trim();
       const cropName = String(body.crop_name || existing?.crop_name || '가을배추').trim();
       const cultivarName = String(body.cultivar_name || existing?.cultivar_name || '불암3호').trim();
       const plantingType = String(body.planting_type || existing?.planting_type || '모종').trim();
@@ -10166,22 +10620,23 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/mypage/farmlands' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const email = String(body.email || 'CloudBae@naver.com').trim();
-      const sido = String(body.sido || '충청북도').trim();
-      const sigungu = String(body.sigungu || '충주시').trim();
-      const eupmyeondong = String(body.eupmyeondong || '단월동').trim();
+      const resolvedAddr = resolveCultivationAddressFromInput({
+        sido: body.sido,
+        sigungu: body.sigungu,
+        eupmyeondong: body.eupmyeondong,
+        bjd_code: body.bjd_code,
+      });
+      const sido = resolvedAddr.sido;
+      const sigungu = resolvedAddr.sigungu;
+      const eupmyeondong = resolvedAddr.eupmyeondong;
       const farmlandTitle =
         String(body.farmland_title || '').trim() || `${sigungu} ${eupmyeondong} 농장`;
-      const detailJibun = String(body.detail_jibun || '100-1번지 일원').trim();
+      const detailJibun = String(body.detail_jibun ?? '').trim();
       const areaPyeong = Math.max(10, Number(body.area_pyeong) || 300);
       const soilPh = Number(body.soil_ph) || 6.2;
       const soilEc = Number(body.soil_ec) || 1.1;
 
-      const addrRow = db
-        .prepare(
-          'SELECT bjd_code FROM cultivation_address WHERE sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
-        )
-        .get(sido, sigungu, eupmyeondong) as { bjd_code: string } | undefined;
-      const bjdCode = String(body.bjd_code || addrRow?.bjd_code || '4313010700').trim();
+      const bjdCode = resolvedAddr.bjd_code;
       const farmlandId = String(body.farmland_id || `LAND-${Date.now()}`).trim();
 
       db.prepare(`
@@ -10225,10 +10680,51 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/mypage/crops' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const email = String(body.email || 'CloudBae@naver.com').trim();
-      const farmlandId = String(body.farmland_id || '').trim();
-      const sido = String(body.sido || '충청북도').trim();
-      const sigungu = String(body.sigungu || '충주시').trim();
-      const eupmyeondong = String(body.eupmyeondong || '단월동').trim();
+      const resolvedAddr = resolveCultivationAddressFromInput({
+        sido: body.sido,
+        sigungu: body.sigungu,
+        eupmyeondong: body.eupmyeondong,
+        bjd_code: body.bjd_code,
+      });
+      const sido = resolvedAddr.sido;
+      const sigungu = resolvedAddr.sigungu;
+      const eupmyeondong = resolvedAddr.eupmyeondong;
+      let farmlandId = String(body.farmland_id || '').trim();
+      const matchedLand =
+        (db
+          .prepare(
+            'SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) AND sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
+          )
+          .get(email, sido, sigungu, eupmyeondong) as { farmland_id?: string } | undefined) ||
+        (db
+          .prepare('SELECT farmland_id FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
+          .get(email) as { farmland_id?: string } | undefined);
+      if (!farmlandId || (farmlandId === 'LAND-CB-01' && email.toLowerCase() !== 'cloudbae@naver.com')) {
+        farmlandId = matchedLand?.farmland_id || '';
+      }
+      if (!farmlandId) {
+        const autoLandId = `LAND-${Date.now()}`;
+        db.prepare(`
+          INSERT OR REPLACE INTO member_farmland (
+            farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
+            detail_jibun, area_pyeong, soil_ph, soil_ec
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, 6.3, 1.1)
+        `).run(
+          autoLandId,
+          email,
+          `${sigungu} ${eupmyeondong} 농장`,
+          resolvedAddr.bjd_code,
+          sido,
+          sigungu,
+          eupmyeondong,
+          Math.max(10, Number(body.area_pyeong) || 300)
+        );
+        const savedAutoLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as Record<string, any> | undefined;
+        if (savedAutoLand) {
+          await supabaseRestUpsert('member_farmland', savedAutoLand, 'farmland_id');
+        }
+        farmlandId = autoLandId;
+      }
       const cropName = String(body.crop_name || '가을배추').trim();
       const cultivarName = String(body.cultivar_name || '불암3호').trim();
       const plantingType = String(body.planting_type || '모종').trim();
@@ -10451,9 +10947,19 @@ const server = http.createServer(async (req, res) => {
         body.purchaseTitle || '생육단계별 선택 농자재 일괄 구매'
       ).trim();
       const cropTitle = String(body.cropTitle || '가을배추 (불암3호)').trim();
-      const regionAddress = String(
-        body.regionAddress || '충청북도 충주시 단월동 412-5번지 일원'
-      ).trim();
+      const memberFarmland = db
+        .prepare('SELECT sido, sigungu, eupmyeondong, detail_jibun FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
+        .get(email) as { sido?: string; sigungu?: string; eupmyeondong?: string; detail_jibun?: string } | undefined;
+      const memberProfile = db
+        .prepare('SELECT road_address, road_address_detail FROM user_member WHERE LOWER(email) = LOWER(?) LIMIT 1')
+        .get(email) as { road_address?: string; road_address_detail?: string } | undefined;
+      const fallbackMemberAddr = memberFarmland
+        ? [memberFarmland.sido, memberFarmland.sigungu, memberFarmland.eupmyeondong, memberFarmland.detail_jibun].filter(Boolean).join(' ')
+        : [memberProfile?.road_address, memberProfile?.road_address_detail].filter(Boolean).join(' ') || '충청북도 충주시 단월동';
+      let regionAddress = String(body.regionAddress || fallbackMemberAddr).trim();
+      if (!regionAddress.includes('단월동')) {
+        regionAddress = regionAddress.replace(/\s*412-5번지\s*일원/g, '').replace(/\s*412-5/g, '').trim();
+      }
       const deliveryOption = String(body.deliveryOption || 'STAGE_SCHEDULED').trim();
       const paymentMethod = String(body.paymentMethod || 'NONGHYUP_CARD').trim();
       const deliveryStatus =
@@ -10695,10 +11201,11 @@ const server = http.createServer(async (req, res) => {
     // 11. 디바이스/브라우저 간 실시간 동기화 상태(생육과정 완료 인정, 삭제 키, 장바구니, 구매이력) 조회·저장 API (Supabase DB Single Source of Truth)
     if (pathname === '/api/client-sync-state' && req.method === 'GET') {
       const email = (parsedUrl.searchParams.get('email') || 'CloudBae@naver.com').trim();
+      const emailLower = email.toLowerCase();
       try {
         const remoteRows = await supabaseRestSelect(
           'member_ui_sync_state',
-          `member_email=eq.${encodeURIComponent(email)}`
+          `member_email=ilike.${encodeURIComponent(email)}`
         );
         if (Array.isArray(remoteRows) && remoteRows.length > 0) {
           const upStmt = db.prepare(`
@@ -10707,8 +11214,12 @@ const server = http.createServer(async (req, res) => {
           `);
           for (const r of remoteRows) {
             if (r?.state_key) {
+              const rawK = String(r.state_key).includes('::')
+                ? String(r.state_key).split('::').slice(1).join('::')
+                : String(r.state_key);
+              const scopedKey = `${emailLower}::${rawK}`;
               upStmt.run(
-                String(r.state_key),
+                scopedKey,
                 String(r.member_email || email),
                 String(r.state_json || '{}'),
                 String(r.updated_at || '')
@@ -10720,14 +11231,17 @@ const server = http.createServer(async (req, res) => {
         // ignore network errors
       }
       const rows = db
-        .prepare('SELECT state_key, member_email, state_json, updated_at FROM member_ui_sync_state WHERE member_email = ?')
+        .prepare('SELECT state_key, member_email, state_json, updated_at FROM member_ui_sync_state WHERE LOWER(member_email) = LOWER(?)')
         .all(email) as Array<{ state_key: string; member_email: string; state_json: string; updated_at: string }>;
       const states: Record<string, any> = {};
       for (const r of rows) {
+        const cleanKey = String(r.state_key).includes('::')
+          ? String(r.state_key).split('::').slice(1).join('::')
+          : String(r.state_key);
         try {
-          states[r.state_key] = JSON.parse(r.state_json || '{}');
+          states[cleanKey] = JSON.parse(r.state_json || '{}');
         } catch {
-          states[r.state_key] = null;
+          states[cleanKey] = null;
         }
       }
       sendJson(res, { ok: true, email, states });
@@ -10737,20 +11251,22 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/client-sync-state' && req.method === 'POST') {
       const body = await readJsonBody(req);
       const email = String(body.email || 'CloudBae@naver.com').trim();
-      const stateKey = String(body.state_key || '').trim();
+      const rawStateKey = String(body.state_key || '').trim();
       const stateValue = body.state_value !== undefined ? body.state_value : {};
       const nowStr = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
-      if (stateKey) {
+      if (rawStateKey) {
+        const cleanKey = rawStateKey.includes('::') ? rawStateKey.split('::').slice(1).join('::') : rawStateKey;
+        const scopedStateKey = `${email.toLowerCase()}::${cleanKey}`;
         const jsonStr = typeof stateValue === 'string' ? stateValue : JSON.stringify(stateValue);
         db.prepare(`
           INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at)
           VALUES (?, ?, ?, ?)
-        `).run(stateKey, email, jsonStr, nowStr);
+        `).run(scopedStateKey, email, jsonStr, nowStr);
         await supabaseRestUpsert(
           'member_ui_sync_state',
           [
             {
-              state_key: stateKey,
+              state_key: scopedStateKey,
               member_email: email,
               state_json: jsonStr,
               updated_at: nowStr,
@@ -10759,7 +11275,7 @@ const server = http.createServer(async (req, res) => {
           'state_key'
         ).catch(() => {});
       }
-      sendJson(res, { ok: true, state_key: stateKey, updated_at: nowStr });
+      sendJson(res, { ok: true, state_key: rawStateKey, updated_at: nowStr });
       return;
     }
 

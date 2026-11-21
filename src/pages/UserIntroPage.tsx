@@ -2077,6 +2077,18 @@ export default function UserIntroPage() {
       setReRequestTargetCrop(null);
       setReqFormSubmitted(true);
 
+      const matchedUserLand =
+        myFarmlands.find(
+          (f: any) =>
+            f.sido === reqForm.sido &&
+            f.sigungu === reqForm.sigungu &&
+            f.eupmyeondong === reqForm.eupmyeondong
+        ) || myFarmlands[0];
+      const resolvedFarmlandId =
+        reqForm.farmland_id ||
+        matchedUserLand?.farmland_id ||
+        (ownerEmail.toLowerCase() === 'cloudbae@naver.com' ? 'LAND-CB-01' : '');
+
       try {
         await fetch('/api/member-schedule-requests/save', {
           method: 'POST',
@@ -2087,6 +2099,7 @@ export default function UserIntroPage() {
             email: ownerEmail,
             member_id: ownerEmail,
             member_contact: loggedInUser.phone || '010-2026-0109',
+            farmland_id: resolvedFarmlandId,
             group_id: reqForm.group_id || 'GRP-LEAF',
             group_name: reqForm.group_name || '엽채류 (잎채소)',
             sido: reqForm.sido,
@@ -2121,7 +2134,7 @@ export default function UserIntroPage() {
             email: ownerEmail,
             crop_plan_id: newPlanId,
             request_no: newReqDisplayNo,
-            farmland_id: reqForm.farmland_id || 'LAND-CB-01',
+            farmland_id: resolvedFarmlandId,
             group_id: reqForm.group_id || 'GRP-LEAF',
             group_name: reqForm.group_name || '엽채류 (잎채소)',
             sido: reqForm.sido,
@@ -2387,7 +2400,31 @@ export default function UserIntroPage() {
         return nextUser;
       });
     }
-    if (Array.isArray(res.farmlands)) setMyFarmlands(res.farmlands);
+    if (Array.isArray(res.farmlands)) {
+      setMyFarmlands(res.farmlands);
+      if (res.farmlands.length > 0) {
+        const primaryLand = res.farmlands[0];
+        setReqForm((prev) => ({
+          ...prev,
+          farmland_id: primaryLand.farmland_id || prev.farmland_id,
+          sido: primaryLand.sido || prev.sido,
+          sigungu: primaryLand.sigungu || prev.sigungu,
+          eupmyeondong: primaryLand.eupmyeondong || prev.eupmyeondong,
+          detail_address:
+            primaryLand.detail_jibun !== undefined && primaryLand.detail_jibun !== '100-1번지'
+              ? primaryLand.detail_jibun
+              : prev.detail_address,
+        }));
+        setNewCropPlanForm((prev) => ({
+          ...prev,
+          farmland_id: primaryLand.farmland_id || prev.farmland_id,
+          sido: primaryLand.sido || prev.sido,
+          sigungu: primaryLand.sigungu || prev.sigungu,
+          eupmyeondong: primaryLand.eupmyeondong || prev.eupmyeondong,
+          area_pyeong: Number(primaryLand.area_pyeong || prev.area_pyeong || 300),
+        }));
+      }
+    }
     if (Array.isArray(res.cropPlans)) {
       const seenReqNos = new Set<string>();
       const seenPlanIds = new Set<string>();
@@ -2466,12 +2503,24 @@ export default function UserIntroPage() {
       if (syncResRaw && syncResRaw.ok) {
         const syncData = await syncResRaw.json().catch(() => null);
         const states = syncData?.states || {};
+        const isCloudBaeTarget =
+          emailToFetch.toLowerCase() === 'cloudbae@naver.com' ||
+          emailToFetch.toLowerCase() === 'cloudbae';
         if (
           states.stage_item_completions_v2 &&
-          typeof states.stage_item_completions_v2 === 'object' &&
-          Object.keys(states.stage_item_completions_v2).length > 0
+          typeof states.stage_item_completions_v2 === 'object'
         ) {
           setStageItemCompletions(states.stage_item_completions_v2);
+          try {
+            localStorage.setItem(
+              STAGE_COMPLETION_STORAGE_KEY,
+              JSON.stringify(states.stage_item_completions_v2)
+            );
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setStageItemCompletions({});
         } else {
           // 만약 Supabase DB에 아직 저장된 완료상태가 없고 현재 브라우저에 완료 데이터가 있다면 최초 1회 클라우드로 업로드
           try {
@@ -2504,6 +2553,8 @@ export default function UserIntroPage() {
           } catch {
             // ignore
           }
+        } else if (!isCloudBaeTarget) {
+          setDeletedScheduleKeys([]);
         }
         if (Array.isArray(states.deleted_confirmed_schedules_v1)) {
           setDeletedConfirmedScheduleKeys(states.deleted_confirmed_schedules_v1);
@@ -2515,6 +2566,8 @@ export default function UserIntroPage() {
           } catch {
             // ignore
           }
+        } else if (!isCloudBaeTarget) {
+          setDeletedConfirmedScheduleKeys([]);
         }
         if (
           states.schedule_generation_module_v1 &&
@@ -2522,36 +2575,53 @@ export default function UserIntroPage() {
         ) {
           saveScheduleGenerationModuleToStorage(states.schedule_generation_module_v1);
         }
-        if (Array.isArray(states.mypage_cart_items_v1) && states.mypage_cart_items_v1.length > 0) {
-          setMyCartItems(
-            states.mypage_cart_items_v1.map((item: any) => {
-              const safeThumb = resolveAgroProductThumbUrl(item);
-              return {
-                ...item,
-                thumbnailUrl: safeThumb,
-                thumbnail_url: safeThumb,
-              };
-            })
-          );
+        if (Array.isArray(states.mypage_cart_items_v1)) {
+          const nextCart = states.mypage_cart_items_v1.map((item: any) => {
+            const safeThumb = resolveAgroProductThumbUrl(item);
+            return {
+              ...item,
+              thumbnailUrl: safeThumb,
+              thumbnail_url: safeThumb,
+            };
+          });
+          setMyCartItems(nextCart);
+          try {
+            localStorage.setItem(MYPAGE_CART_STORAGE_KEY, JSON.stringify(nextCart));
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setMyCartItems([]);
         }
         if (Array.isArray(states.stage_purchase_history_v1)) {
-          setStagePurchaseHistory(
-            states.stage_purchase_history_v1.map((item: any, idx: number) => {
-              const safeThumb = resolveAgroProductThumbUrl(item);
-              const safeId =
-                item?.id ||
-                item?.purchase_id ||
-                item?.orderNo ||
-                item?.order_no ||
-                `PUR-SYNC-${idx}`;
-              return {
-                ...item,
-                id: safeId,
-                thumbnailUrl: safeThumb,
-                thumbnail_url: safeThumb,
-              };
-            })
-          );
+          const nextPurchases = states.stage_purchase_history_v1.map((item: any, idx: number) => {
+            const safeThumb = resolveAgroProductThumbUrl(item);
+            const safeId =
+              item?.id ||
+              item?.purchase_id ||
+              item?.orderNo ||
+              item?.order_no ||
+              `PUR-SYNC-${idx}`;
+            return {
+              ...item,
+              id: safeId,
+              thumbnailUrl: safeThumb,
+              thumbnail_url: safeThumb,
+            };
+          });
+          setStagePurchaseHistory(nextPurchases);
+          try {
+            localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(nextPurchases));
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setStagePurchaseHistory([]);
+          try {
+            localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify([]));
+          } catch {
+            // ignore
+          }
         }
       }
     } catch {
@@ -2932,7 +3002,7 @@ export default function UserIntroPage() {
     const effectiveName = signupForm.name.trim() || trimmedEmail.split('@')[0] || '신규회원';
     const effectivePhone = signupForm.phone.trim() || '010-1234-5678';
     const effectiveRoadAddress =
-      signupForm.road_address.trim() || '충청북도 충주시 충원대로 268 (단월동)';
+      signupForm.road_address.trim() || '서울특별시 강동구 둔촌동';
 
     try {
       const r = await fetch('/api/auth/signup', {
@@ -2963,6 +3033,20 @@ export default function UserIntroPage() {
           text: res?.message || '회원가입 처리 중 오류가 발생했습니다.',
         });
         return;
+      }
+      setStagePurchaseHistory([]);
+      setMyCartItems([]);
+      setStageItemCompletions({});
+      setDeletedScheduleKeys([]);
+      setDeletedConfirmedScheduleKeys([]);
+      try {
+        localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify([]));
+        localStorage.setItem(MYPAGE_CART_STORAGE_KEY, JSON.stringify([]));
+        localStorage.setItem(STAGE_COMPLETION_STORAGE_KEY, JSON.stringify({}));
+        localStorage.setItem('hanfarm_deleted_request_keys_v2', JSON.stringify([]));
+        localStorage.setItem('hanfarm_deleted_confirmed_schedules_v1', JSON.stringify([]));
+      } catch {
+        // ignore
       }
       applyMyPagePayload(res, true);
       setSignupStep(3);
@@ -3556,7 +3640,7 @@ export default function UserIntroPage() {
         plantingType: it.plantingType || '모종',
         planting_type: it.plantingType || '모종',
         region: it.region || '충청북도 충주시 단월동',
-        region_address: `${it.region || '충청북도 충주시 단월동'} 412-5번지 일원 (${
+        region_address: `${it.region || '충청북도 충주시 단월동'} (${
           loggedInUser.name || '배철민'
         } 농장)`,
         areaPyeong: Number(it.areaPyeong || 300),
@@ -4371,7 +4455,7 @@ export default function UserIntroPage() {
       plantingType,
       planting_type: plantingType,
       region,
-      region_address: `${region} 412-5번지 일원 (${loggedInUser.name || '배철민'} 농장)`,
+      region_address: `${region}${activeReq.detail_address ? ` ${activeReq.detail_address}` : ''} (${loggedInUser.name || '배철민'} 농장)`,
       areaPyeong,
       area_pyeong: areaPyeong,
       plantingDate,
@@ -4766,7 +4850,7 @@ export default function UserIntroPage() {
       plantingType: activeCropCard?.planting_type || '모종',
       planting_type: activeCropCard?.planting_type || '모종',
       region: activeCropCard?.region || '충청북도 충주시 단월동',
-      region_address: `${activeCropCard?.region || '충청북도 충주시 단월동'} 412-5번지 일원 (${
+      region_address: `${activeCropCard?.region || '충청북도 충주시 단월동'}${activeCropCard?.detail_address ? ` ${activeCropCard.detail_address}` : ''} (${
         loggedInUser.name || '배철민'
       } 농장)`,
       areaPyeong: Number(activeCropCard?.area_pyeong || 300),
@@ -11778,7 +11862,7 @@ export default function UserIntroPage() {
                                     plantingType: activeCropCard.planting_type || '모종',
                                     planting_type: activeCropCard.planting_type || '모종',
                                     region: activeCropCard.region || '충청북도 충주시 단월동',
-                                    region_address: `${activeCropCard.region || '충청북도 충주시 단월동'} 412-5번지 일원 (${loggedInUser.name || '배철민'} 농장)`,
+                                    region_address: `${activeCropCard.region || '충청북도 충주시 단월동'}${activeCropCard.detail_address ? ` ${activeCropCard.detail_address}` : ''} (${loggedInUser.name || '배철민'} 농장)`,
                                     areaPyeong,
                                     area_pyeong: areaPyeong,
                                     plantingDate: activeCropCard.planting_label || '2026-08-25',
@@ -12314,7 +12398,7 @@ export default function UserIntroPage() {
                                       </div>
 
                                       <div className="text-xs font-bold text-emerald-800 bg-white px-3 py-1.5 rounded-xl border border-emerald-200 self-start sm:self-center">
-                                        수령지: {activeCropCard.region} {activeCropCard.lot_addr || '412-5'} {loggedInUser.isLoggedIn ? `(${loggedInUser.name} 농장)` : ''}
+                                        수령지: {activeCropCard.region}{activeCropCard.detail_address ? ` ${activeCropCard.detail_address}` : activeCropCard.lot_addr ? ` ${activeCropCard.lot_addr}` : ''} {loggedInUser.isLoggedIn ? `(${loggedInUser.name} 농장)` : ''}
                                       </div>
                                     </div>
 
@@ -15196,11 +15280,50 @@ export default function UserIntroPage() {
                             <button
                               type="button"
                               onClick={() => {
+                                const primaryLand = myFarmlands[0];
+                                if (primaryLand && primaryLand.sido && primaryLand.sigungu) {
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    farmland_id: primaryLand.farmland_id || prev.farmland_id,
+                                    sido: primaryLand.sido,
+                                    sigungu: primaryLand.sigungu,
+                                    eupmyeondong: primaryLand.eupmyeondong || (KOREA_ADMIN_TREE[primaryLand.sido]?.[primaryLand.sigungu] || [])[0] || '',
+                                    detail_address: primaryLand.detail_jibun && primaryLand.detail_jibun !== '100-1번지' ? primaryLand.detail_jibun : '',
+                                  }));
+                                  setIsMobileAddrPickerOpen(false);
+                                  return;
+                                }
+                                const addrTokens = String(loggedInUser.road_address || '').trim().split(/\s+/).filter(Boolean);
+                                const sidoMap: Record<string, string> = {
+                                  서울: '서울특별시', 서울시: '서울특별시', 서울특별시: '서울특별시',
+                                  부산: '부산광역시', 부산시: '부산광역시', 부산광역시: '부산광역시',
+                                  대구: '대구광역시', 대구시: '대구광역시', 대구광역시: '대구광역시',
+                                  인천: '인천광역시', 인천시: '인천광역시', 인천광역시: '인천광역시',
+                                  광주: '광주광역시', 광주시: '광주광역시', 광주광역시: '광주광역시',
+                                  대전: '대전광역시', 대전시: '대전광역시', 대전광역시: '대전광역시',
+                                  울산: '울산광역시', 울산시: '울산광역시', 울산광역시: '울산광역시',
+                                  세종: '세종특별자치시', 세종시: '세종특별자치시', 세종특별자치시: '세종특별자치시',
+                                  경기: '경기도', 경기도: '경기도',
+                                  강원: '강원특별자치도', 강원도: '강원특별자치도', 강원특별자치도: '강원특별자치도',
+                                  충북: '충청북도', 충청북도: '충청북도',
+                                  충남: '충청남도', 충청남도: '충청남도',
+                                  전북: '전북특별자치도', 전라북도: '전북특별자치도', 전북특별자치도: '전북특별자치도',
+                                  전남: '전라남도', 전라남도: '전라남도',
+                                  경북: '경상북도', 경상북도: '경상북도',
+                                  경남: '경상남도', 경상남도: '경상남도',
+                                  제주: '제주특별자치도', 제주도: '제주특별자치도', 제주특별자치도: '제주특별자치도',
+                                };
+                                const nextSido = (addrTokens[0] && sidoMap[addrTokens[0]]) || '충청북도';
+                                const nextSigungu =
+                                  (addrTokens[1] && KOREA_ADMIN_TREE[nextSido]?.[addrTokens[1]] ? addrTokens[1] : Object.keys(KOREA_ADMIN_TREE[nextSido] || {})[0]) ||
+                                  '충주시';
+                                const dongs = KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [];
+                                const matchedDong = addrTokens.slice(2).find((tk) => dongs.includes(tk.replace(/[()]/g, '')))?.replace(/[()]/g, '') || dongs[0] || '단월동';
                                 setReqForm((prev) => ({
                                   ...prev,
-                                  sido: '충청북도',
-                                  sigungu: '충주시',
-                                  eupmyeondong: '봉방동',
+                                  sido: nextSido,
+                                  sigungu: nextSigungu,
+                                  eupmyeondong: matchedDong,
                                   detail_address: '',
                                 }));
                                 setIsMobileAddrPickerOpen(false);
@@ -15234,7 +15357,7 @@ export default function UserIntroPage() {
                                       '충주시';
                                     const nextDong =
                                       (KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [])[0] ||
-                                      '봉방동';
+                                      '단월동';
                                     setReqForm((prev) => ({
                                       ...prev,
                                       sido: nextSido,
@@ -15256,7 +15379,7 @@ export default function UserIntroPage() {
                                     const nextSg = e.target.value;
                                     const nextDong =
                                       (KOREA_ADMIN_TREE[reqForm.sido]?.[nextSg] || [])[0] ||
-                                      '봉방동';
+                                      '단월동';
                                     setReqForm((prev) => ({
                                       ...prev,
                                       sigungu: nextSg,
@@ -15286,7 +15409,6 @@ export default function UserIntroPage() {
                                 >
                                   {Array.from(
                                     new Set([
-                                      '봉방동',
                                       ...(KOREA_ADMIN_TREE[reqForm.sido]?.[
                                         reqForm.sigungu
                                       ] || []),
@@ -22336,6 +22458,28 @@ export default function UserIntroPage() {
                               })
                             }
                             placeholder="010-1234-5678"
+                            className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 회원 주소 / 기본 재배지 주소 * */}
+                      <div>
+                        <label className="block text-[14.5px] font-bold text-[#111827] mb-2">
+                          주소 (회원 주소 · 기본 재배지) <span className="text-[#DC2626]">*</span>
+                        </label>
+                        <div className="h-[48px] rounded-[12px] border border-[#D1D5DB] focus-within:border-[#0E712F] bg-white px-3.5 flex items-center gap-2.5 transition">
+                          <MapPin className="w-5 h-5 text-[#0E712F] shrink-0" />
+                          <input
+                            type="text"
+                            value={signupForm.road_address}
+                            onChange={(e) =>
+                              setSignupForm({
+                                ...signupForm,
+                                road_address: e.target.value,
+                              })
+                            }
+                            placeholder="예: 서울시 강동구 둔촌동 (시/도 시/군/구 읍/면/동)"
                             className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                           />
                         </div>
