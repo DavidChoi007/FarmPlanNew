@@ -7027,12 +7027,8 @@ export default function UserIntroPage() {
                 {/* 3. 3열 핵심 기능 카드 컨테이너 + 페이지네이션 인디케이터 도트 */}
                 <div className="relative z-20 mx-2.5 rounded-[26px] bg-white pt-2.5 px-2 pb-2 shadow-[0_-6px_24px_rgba(0,0,0,0.03)]">
                   <div className="grid grid-cols-3 gap-2">
-                    {/* 카드 1: 맞춤 재배일정 */}
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('재배일정 요청')}
-                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
-                    >
+                    {/* 카드 1: 맞춤 재배일정 (링크 제거) */}
+                    <div className="rounded-[18px] bg-[#EFF5F1] px-1.5 py-4 flex flex-col items-center text-center">
                       <div className="w-11 h-11 flex items-center justify-center">
                         <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
                           <rect
@@ -7063,17 +7059,10 @@ export default function UserIntroPage() {
                         <span className="block">작물·지역·시작일에 따라</span>
                         <span className="block">농작업 일정 제공</span>
                       </div>
-                    </button>
+                    </div>
 
-                    {/* 카드 2: 병해충 진단 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileAgroCategoryTab('PESTICIDE');
-                        setActiveMenu('병해충관리제');
-                      }}
-                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
-                    >
+                    {/* 카드 2: 병해충 진단 (링크 제거) */}
+                    <div className="rounded-[18px] bg-[#EFF5F1] px-1.5 py-4 flex flex-col items-center text-center">
                       <div className="w-11 h-11 flex items-center justify-center">
                         <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
                           {/* 나뭇잎 + 돋보기 결합 아이콘 */}
@@ -7105,17 +7094,10 @@ export default function UserIntroPage() {
                         <span className="block">사진으로 확인하고</span>
                         <span className="block">관리 방법 안내</span>
                       </div>
-                    </button>
+                    </div>
 
-                    {/* 카드 3: 농자재 추천·구매 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileAgroCategoryTab('FERTILIZER');
-                        setActiveMenu('농작물 구매');
-                      }}
-                      className="rounded-[18px] bg-[#EFF5F1] hover:bg-[#E4EFE8] active:scale-[0.98] px-1.5 py-4 flex flex-col items-center text-center transition cursor-pointer"
-                    >
+                    {/* 카드 3: 농자재 추천·구매 (링크 제거) */}
+                    <div className="rounded-[18px] bg-[#EFF5F1] px-1.5 py-4 flex flex-col items-center text-center">
                       <div className="w-11 h-11 flex items-center justify-center">
                         <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
                           <path
@@ -7136,7 +7118,7 @@ export default function UserIntroPage() {
                         <span className="block">작업시기에 맞는</span>
                         <span className="block">비료·농약·자재 추천</span>
                       </div>
-                    </button>
+                    </div>
                   </div>
 
                   {/* 하단 캐러셀 페이지네이션 도트 (● ○ ○) */}
