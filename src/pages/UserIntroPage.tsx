@@ -6625,32 +6625,6 @@ export default function UserIntroPage() {
               ))}
             </div>
           </div>
-
-          {/* 모바일 재배일정 요청 페이지 전용: 메뉴버튼 아래 오른쪽에 "재배 일정 요청" 기능 버튼 배치 */}
-          {isRequestTab && (
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
-                <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-slate-900 truncate">
-                  요청한 내 재배일정 ({scheduleRequestCropList.length}건)
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setReRequestTargetCrop(null);
-                  setReqFormSubmitted(false);
-                  setReqForm((prev) => ({ ...prev, farmland_id: '' }));
-                  setScheduleReqModalPos({ x: 0, y: 0 });
-                  setIsScheduleReqModelessOpen(true);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-black text-[14.5px] min-[390px]:text-[15.5px] shadow-xs shadow-emerald-600/20 transition cursor-pointer inline-flex items-center gap-1.5 shrink-0"
-              >
-                <FileEdit className="w-4 h-4" />
-                <span>재배 일정 요청</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* ==================== [PC 전용 (lg 이상): 좌측 정렬 1/3 폭 초슬림 폴더형 탭] ==================== */}
@@ -15042,69 +15016,6 @@ export default function UserIntroPage() {
                     {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
                     {renderMobileScheduleFolderTabs()}
 
-                    {/* 모바일 전용: PC와 동일한 '요청한 내 재배일정 (N건)' 현황 요약 카드 (0건일 때 0건 명시) */}
-                    {mobileReqStep === 1 && (
-                      <div className="px-3.5 pt-1.5 pb-1">
-                        <div className="rounded-[18px] bg-[#EFF5F1] border border-[#DCE8DF] px-3.5 py-2.5 space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#0E712F] shrink-0" />
-                              <span className="text-[14px] font-black text-[#111827] tracking-[-0.03em]">
-                                요청한 내 재배일정{' '}
-                                <span className="text-[#0E712F]">
-                                  ({scheduleRequestCropList.length}건)
-                                </span>
-                              </span>
-                            </div>
-                            <span className="text-[11.5px] font-semibold text-[#4B5563]">
-                              {scheduleRequestCropList.length === 0
-                                ? '등록된 요청 내역 없음'
-                                : '요청 완료 목록'}
-                            </span>
-                          </div>
-
-                          {scheduleRequestCropList.length > 0 && (
-                            <div className="space-y-1.5 pt-0.5">
-                              {scheduleRequestCropList.map((reqCrop: any, rIdx: number) => (
-                                <div
-                                  key={reqCrop.request_no || reqCrop.crop_plan_id || rIdx}
-                                  className="rounded-xl bg-white border border-[#E5E7EB] px-3 py-2 flex items-center justify-between gap-2"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="text-[13.5px] font-black text-[#111827] truncate">
-                                      {reqCrop.crop_title || `${reqCrop.crop_short || '작물'} (${reqCrop.cultivar_name || ''})`}
-                                    </div>
-                                    <div className="text-[11.5px] font-medium text-[#4B5563] truncate">
-                                      {reqCrop.region} · {Number(reqCrop.area_pyeong || 300).toLocaleString()}평
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setSelectedRequestNo(reqCrop.request_no);
-                                        setActiveMenu('재배일정 확인');
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg bg-[#0E712F] text-white text-[11.5px] font-extrabold cursor-pointer"
-                                    >
-                                      일정확인
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => handleDeleteScheduleAndCascade(reqCrop, e)}
-                                      className="px-2 py-1 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-[11.5px] font-extrabold cursor-pointer"
-                                    >
-                                      삭제
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
                     {/* 2. 단계별 타이틀 & 서브타이틀 */}
                     <div className="px-4 pt-1 pb-2 text-center">
                       <h1 className="text-[22px] min-[390px]:text-[24px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
@@ -16252,537 +16163,39 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* ==================== 데스크톱(PC) 전용 재배일정 요청 뷰 (hidden lg:block) ==================== */}
+            {/* ==================== 데스크톱(PC) 전용 재배일정 요청 뷰: 항상 재배일정 요청 정보 등록 폼만 표시 ==================== */}
             <div className="hidden lg:block space-y-4 sm:space-y-6">
               {renderScheduleNavigationTabs()}
 
-              {/* 해당 아이디(회원)로 지금까지 재배일정 요청했던 리스트 영역 */}
-              <section className="bg-white rounded-3xl border border-slate-200/90 p-3.5 sm:p-7 shadow-2xs space-y-5">
-              <div className="hidden lg:flex items-center justify-between gap-6 border-b border-slate-200 pb-4">
-                <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
-                    <FileEdit className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[13px] sm:text-sm font-extrabold">
-                        ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
-                      </span>
-                      <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[13px] sm:text-sm font-extrabold">
-                        총 {scheduleRequestCropList.length}건 요청 완료
-                      </span>
+              <section className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-7 shadow-2xs space-y-5">
+                <div className="flex items-center justify-between gap-6 border-b border-slate-200 pb-4">
+                  <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold shrink-0">
+                      <FileEdit className="w-5 h-5" />
                     </div>
-                    <h2 className="text-[19px] sm:text-2xl font-black text-slate-900 mt-1.5 whitespace-nowrap truncate">
-                      요청한 내 재배일정 리스트 ({scheduleRequestCropList.length}건)
-                    </h2>
-                    <p className="text-[14.5px] sm:text-base font-semibold text-slate-600 mt-1 leading-relaxed">
-                      해당 아이디로 요청한 맞춤형 재배일정 내역입니다. 생성된 재배일정을 삭제하더라도 요청 데이터는 이곳에 그대로 보존되며 언제든 <strong>[재배일정 재요청]</strong>을 진행할 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2.5 shrink-0 ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReRequestTargetCrop(null);
-                      setReqFormSubmitted(false);
-                      setScheduleReqModalPos({ x: 0, y: 0 });
-                      setIsScheduleReqModelessOpen(true);
-                    }}
-                    className="px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[15px] sm:text-base shadow-sm transition cursor-pointer inline-flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <FileEdit className="w-4 h-4" />
-                    <span>신규요청 등록</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 해당 아이디의 재배일정 요청 이력 카드 리스트 (모바일: 1개씩 표시 + (현재 번호 / 전체 갯수) 및 이전/다음 버튼으로 로딩, PC: 전체 표시) */}
-              <div className="space-y-3.5">
-                {(() => {
-                  if (scheduleRequestCropList.length === 0) {
-                    return (
-                      <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 sm:p-12 text-center space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center font-black text-xl">
-                          📋
-                        </div>
-                        <div className="text-base sm:text-lg font-extrabold text-slate-900">
-                          현재 요청된 재배일정이 없습니다.
-                        </div>
-                        <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-                          상단 우측의 <strong>[신규요청 등록]</strong> 버튼을 클릭하여 내 재배지와 희망 작물의 맞춤 재배일정을 요청해 보세요.
-                        </p>
-                        <div className="pt-2">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReRequestTargetCrop(null);
-                              setReqFormSubmitted(false);
-                              setScheduleReqModalPos({ x: 0, y: 0 });
-                              setIsScheduleReqModelessOpen(true);
-                            }}
-                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-extrabold shadow-xs transition cursor-pointer"
-                          >
-                            + 신규요청 등록
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  const rawActiveReqCropIdx = scheduleRequestCropList.findIndex(
-                    (c: any) => c.request_no === selectedRequestNo
-                  );
-                  const activeMobileReqCropIdx =
-                    rawActiveReqCropIdx >= 0 ? rawActiveReqCropIdx : 0;
-                  const totalReqCropCount = scheduleRequestCropList.length;
-
-                  const handleStepMobileReqCrop = (targetIdx: number) => {
-                    if (targetIdx < 0 || targetIdx >= totalReqCropCount) return;
-                    const targetCrop = scheduleRequestCropList[targetIdx];
-                    if (!targetCrop) return;
-                    setSelectedRequestNo(targetCrop.request_no);
-                    if (selectedReqDetailCrop) {
-                      const nextDisplayReqNo =
-                        targetCrop.display_request_no || targetCrop.request_no;
-                      setSelectedReqDetailCrop({
-                        ...targetCrop,
-                        displayReqNo: nextDisplayReqNo,
-                        orderIndex: targetIdx + 1,
-                      });
-                    }
-                  };
-
-                  return scheduleRequestCropList.map((crop: any, idx: number) => {
-                    const displayReqNo = crop.display_request_no || crop.request_no;
-                    const isDetailSelected =
-                      selectedReqDetailCrop &&
-                      (selectedReqDetailCrop.crop_plan_id || selectedReqDetailCrop.request_no) ===
-                        (crop.crop_plan_id || crop.request_no);
-                    const isMobileVisible = idx === activeMobileReqCropIdx;
-                    return (
-                      <div
-                        key={crop.crop_plan_id || `${displayReqNo}-${idx}`}
-                        className={`${isMobileVisible ? 'block' : 'hidden lg:block'} space-y-2.5`}
-                      >
-                        <div
-                          className={`w-full rounded-2xl px-4 sm:px-6 py-4 border transition flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-2xs ${
-                            isDetailSelected
-                              ? 'border-emerald-600 bg-emerald-50/30'
-                              : 'border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/20'
-                          }`}
-                        >
-                          {/* 좌측: 순번 + 썸네일 + 요청번호·작물명·품종 */}
-                          <div className="flex items-center gap-3.5 min-w-0 lg:w-[33%] shrink-0">
-                            <span className="w-8 h-8 rounded-xl bg-emerald-600 text-white text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0">
-                              {idx + 1}
-                            </span>
-
-                            <div
-                              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
-                            >
-                              <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
-                              <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono font-extrabold text-[13px] sm:text-sm text-slate-800">
-                                  {displayReqNo}
-                                </span>
-                                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[13px] sm:text-sm">
-                                  {crop.badge}
-                                </span>
-                                {crop.isConfirmedScheduleDeleted ? (
-                                  <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-extrabold text-[12.5px] sm:text-[13px]">
-                                    일정 미생성 (재요청 가능)
-                                  </span>
-                                ) : (
-                                  <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-extrabold text-[12.5px] sm:text-[13px]">
-                                    산출완료
-                                  </span>
-                                )}
-                              </div>
-                              <div className="font-black text-[19px] sm:text-[22px] text-slate-950 mt-1 truncate leading-snug">
-                                {crop.crop_title}
-                              </div>
-                              <div className="text-[14.5px] sm:text-[15.5px] text-slate-600 font-bold truncate mt-0.5">
-                                요청 ID: {loggedInUser.email || 'CloudBae@naver.com'} · 적정온도 {crop.opt_temp}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 중앙: 현재 생육단계 */}
-                          <div className="grid grid-cols-1 gap-3 flex-1 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                            <div className="bg-slate-50/90 rounded-xl px-4 py-3 border border-slate-200/70">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[13px] sm:text-sm text-slate-500 font-extrabold">현재 진행 단계</span>
-                                <span className="font-mono font-black text-emerald-700 text-[15px] sm:text-base">
-                                  진행률 {crop.progress_pct}%
-                                </span>
-                              </div>
-                              <div className="text-[16px] sm:text-[18px] font-black text-emerald-900 mt-1 truncate">
-                                {crop.current_stage_name}
-                              </div>
-                              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden mt-1.5">
-                                <div
-                                  className="h-full rounded-full bg-emerald-500"
-                                  style={{ width: `${crop.progress_pct}%` }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 우측: 세부보기 버튼 + 일정확인/재요청 버튼 + 요청삭제 버튼 */}
-                          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 border-t lg:border-t-0 pt-2.5 lg:pt-0 border-slate-100">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (isDetailSelected) {
-                                  setSelectedReqDetailCrop(null);
-                                } else {
-                                  setReqDetailModalPos({ x: 0, y: 0 });
-                                  setSelectedReqDetailCrop({
-                                    ...crop,
-                                    displayReqNo,
-                                    orderIndex: idx + 1,
-                                  });
-                                }
-                              }}
-                              className={`px-3.5 py-3 rounded-xl border font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
-                                isDetailSelected
-                                  ? 'bg-slate-900 text-white border-slate-900'
-                                  : 'bg-white hover:bg-emerald-50 text-slate-900 border-slate-300 hover:border-emerald-400'
-                              }`}
-                            >
-                              <span>세부보기</span>
-                            </button>
-
-                            {!crop.isConfirmedScheduleDeleted && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedRequestNo(crop.request_no);
-                                  setExpandedScheduleRequestNo(crop.request_no);
-                                  setActiveMenu('재배일정 확인');
-                                  setMobileScheduleStep('detail');
-                                }}
-                                className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
-                              >
-                                <span>일정확인</span>
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={(e) => handleReRequestSchedule(crop, e)}
-                              title="해당 재배일정 요청 정보로 재배일정을 다시 생성(재요청)합니다"
-                              className={`px-4 py-3 rounded-xl font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs ${
-                                crop.isConfirmedScheduleDeleted
-                                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                  : 'border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800'
-                              }`}
-                            >
-                              <FileEdit className="w-4 h-4" />
-                              <span>재배일정 재요청</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteScheduleAndCascade(crop, e)}
-                              title="해당 재배일정 요청 데이터를 삭제합니다"
-                              className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[14.5px] sm:text-[15px] transition cursor-pointer inline-flex items-center gap-1 shadow-2xs"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span>삭제</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 모바일 전용: (현재 번호 / 전체 갯수) 표시 및 이전 / 다음 항목 로딩 버튼 */}
-                        <div className="lg:hidden rounded-2xl bg-slate-50 border border-slate-200/90 px-3.5 py-3 flex flex-col items-center gap-2.5 shadow-2xs">
-                          <div className="text-[15px] font-black text-slate-900 tracking-tight font-mono">
-                            ({idx + 1} / {totalReqCropCount})
-                          </div>
-                          <div className="w-full grid grid-cols-2 gap-2.5">
-                            <button
-                              type="button"
-                              disabled={idx <= 0}
-                              onClick={() => handleStepMobileReqCrop(idx - 1)}
-                              className="py-2.5 px-4 rounded-xl border border-slate-300 bg-white hover:bg-emerald-50 hover:border-emerald-400 active:scale-[0.99] text-slate-900 font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
-                            >
-                              <ChevronLeft className="w-4 h-4 text-emerald-700" />
-                              <span>이전</span>
-                            </button>
-                            <button
-                              type="button"
-                              disabled={idx >= totalReqCropCount - 1}
-                              onClick={() => handleStepMobileReqCrop(idx + 1)}
-                              className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-[15px] inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-2xs"
-                            >
-                              <span>다음</span>
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 인라인 세부보기 요약 패널 (세부보기 클릭 시 해당 항목 바로 아래에도 상세 정보 표시) */}
-                        {isDetailSelected && (
-                          <div className="ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-4 border-emerald-500 rounded-2xl bg-emerald-50/40 border border-emerald-200 p-4 sm:p-5 space-y-3 text-sm">
-                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-2.5">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="px-3 py-1 rounded-md bg-emerald-600 text-white font-extrabold text-[13.5px]">
-                                  요청 세부정보 #{idx + 1}
-                                </span>
-                                <span className="font-mono font-black text-emerald-900 text-[15px]">
-                                  {displayReqNo}
-                                </span>
-                                <span className="font-black text-slate-900 text-[17px]">
-                                  {crop.crop_title} ({crop.region})
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedReqDetailCrop(null)}
-                                className="px-3 py-1.5 rounded-lg bg-white hover:bg-rose-50 text-slate-800 hover:text-rose-700 border border-slate-300 font-extrabold text-[14px] cursor-pointer"
-                              >
-                                세부정보 닫기 ✕
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                              <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
-                                <div className="text-[13px] text-slate-500 font-extrabold">요청자 계정 · 성명</div>
-                                <div className="text-[16px] font-black text-slate-900 mt-1">
-                                  {loggedInUser.name || '배철민'} ({loggedInUser.email || 'CloudBae@naver.com'})
-                                </div>
-                                <div className="text-[13.5px] font-semibold text-slate-600 mt-0.5">
-                                  연락처: {loggedInUser.phone || '010-2026-0109'}
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
-                                <div className="text-[13px] text-slate-500 font-extrabold">요청 재배지 주소 · 면적</div>
-                                <div className="text-[16px] font-black text-slate-900 mt-1">{crop.region}</div>
-                                <div className="text-[13.5px] text-emerald-700 font-extrabold mt-0.5">
-                                  재배면적 {Number(crop.area_pyeong).toLocaleString()}평 · 토양 pH {crop.soil_ph || 6.2} / EC {crop.soil_ec || 1.1}
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
-                                <div className="text-[13px] text-slate-500 font-extrabold">작물 · 품종 · 재배구분</div>
-                                <div className="text-[16px] font-black text-slate-900 mt-1">{crop.crop_title}</div>
-                                <div className="text-[13.5px] text-emerald-700 font-extrabold mt-0.5">
-                                  {crop.badge} ({crop.planting_type}) · {crop.opt_temp}
-                                </div>
-                              </div>
-                              <div className="bg-white rounded-xl p-3.5 border border-emerald-100">
-                                <div className="text-[13px] text-slate-500 font-extrabold">추천 시작일 · 수확예정 · 상태</div>
-                                <div className="text-[16px] font-black text-slate-900 mt-1">{crop.planting_label}</div>
-                                <div className="text-[13.5px] text-slate-700 font-extrabold mt-0.5">
-                                  수확예정 {crop.expected_harvest_date} · {crop.status_text}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </section>
-
-            {/* ==================== [모달리스(Modeless) 재배일정 요청 세부보기 창] ==================== */}
-            {selectedReqDetailCrop && (
-              <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
-                <div
-                  style={{
-                    transform: `translate(${reqDetailModalPos.x}px, ${reqDetailModalPos.y}px)`,
-                  }}
-                  className="pointer-events-auto w-full max-w-2xl max-h-[86vh] flex flex-col rounded-2xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden"
-                >
-                  {/* 상단 드래그 헤더 바 */}
-                  <div
-                    onMouseDown={handleStartReqDetailModalDrag}
-                    className={`relative bg-emerald-50/95 border-b border-emerald-200 px-5 py-3.5 pr-24 flex flex-wrap items-center justify-between gap-2 select-none ${
-                      isDraggingReqDetailModal ? 'cursor-grabbing' : 'cursor-move'
-                    }`}
-                    title="마우스로 상단 바를 드래그하여 창 위치를 이동할 수 있습니다"
-                  >
-                    <div className="space-y-0.5">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white font-extrabold text-xs">
-                          재배일정 요청 세부보기
+                        <span className="px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-[13px] sm:text-sm font-extrabold">
+                          ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
                         </span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
-                          {selectedReqDetailCrop.displayReqNo}
+                        <span className="px-3 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[13px] sm:text-sm font-extrabold">
+                          기후 · 토양 · 적산온도(PGDD) 자동 연동
                         </span>
-                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                          {selectedReqDetailCrop.crop_title}
-                        </h3>
                       </div>
-                      <p className="text-[11px] text-slate-500 font-semibold">
-                        요청 ID: {loggedInUser.email || 'CloudBae@naver.com'} ({loggedInUser.name || '배철민'} 회원)
+                      <h2 className="text-[19px] sm:text-2xl font-black text-slate-900 mt-1.5 whitespace-nowrap truncate">
+                        {reRequestTargetCrop
+                          ? `재배일정 재요청 (${reRequestTargetCrop.display_request_no || reRequestTargetCrop.request_no})`
+                          : '맞춤형 재배일정 요청 등록'}
+                      </h2>
+                      <p className="text-[14.5px] sm:text-base font-semibold text-slate-600 mt-1 leading-relaxed">
+                        재배지 주소와 희망 작물·품종·재배면적을 입력하여 지역 기후와 토양에 맞춘 16단계 재배일정을 산출합니다.
                       </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedReqDetailCrop(null)}
-                      className="absolute top-3 right-3.5 z-20 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>닫기</span>
-                    </button>
-                  </div>
-
-                  {/* 세부보기 본문 */}
-                  <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 bg-white text-xs sm:text-sm">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">요청 번호 / 산출 상태</div>
-                        <div className="font-mono font-extrabold text-slate-900 text-sm">
-                          {selectedReqDetailCrop.displayReqNo} · 맞춤 일정 산출완료
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">요청자 계정 (ID)</div>
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {loggedInUser.name || '배철민'} ({loggedInUser.email || 'CloudBae@naver.com'})
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">요청 재배지 주소 (시도·시군구·읍면동)</div>
-                        <div className="font-extrabold text-emerald-800 text-sm">
-                          📍 {selectedReqDetailCrop.region}
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">요청 재배 면적 · 토양 정보</div>
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {Number(selectedReqDetailCrop.area_pyeong).toLocaleString()}평 (토양 pH {selectedReqDetailCrop.soil_ph || 6.2} · EC {selectedReqDetailCrop.soil_ec || 1.1} dS/m)
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">요청 작물 · 품종</div>
-                        <div className="font-extrabold text-slate-900 text-sm">
-                          {selectedReqDetailCrop.crop_title} ({selectedReqDetailCrop.badge})
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-slate-500">작물구분 (씨/모종) · 적정온도</div>
-                        <div className="font-extrabold text-emerald-800 text-sm">
-                          {selectedReqDetailCrop.planting_type} · {selectedReqDetailCrop.opt_temp}
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-emerald-700">기후 연동 추천 시작일 (정식/파종)</div>
-                        <div className="font-extrabold text-emerald-950 text-sm">
-                          📅 {selectedReqDetailCrop.planting_label}
-                        </div>
-                      </div>
-                      <div className="rounded-xl bg-emerald-50/70 border border-emerald-200 p-3.5 space-y-1">
-                        <div className="text-[11px] font-bold text-emerald-700">예상 수확일 · 현재 진행 단계</div>
-                        <div className="font-extrabold text-emerald-950 text-sm">
-                          🌾 {selectedReqDetailCrop.expected_harvest_date} ({selectedReqDetailCrop.current_stage_name})
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 text-xs text-slate-700 space-y-1.5">
-                      <div className="font-extrabold text-slate-900">
-                        🤖 기후 데이터 및 적산온도(GDD/PGDD) 일정 산출 요약
-                      </div>
-                      <p className="leading-relaxed">
-                        • 재배지(<strong>{selectedReqDetailCrop.region}</strong>)의 작년 기후와 올해 예측 기후(현재+6개월) 평균을 대입하여 최저·최고 한계온도 기간을 회피하고 <strong>{selectedReqDetailCrop.opt_temp}</strong> 조건에 부합하는 최적 추천 진행일을 산출했습니다.
-                      </p>
-                      <p className="leading-relaxed">
-                        • 현재 생육 진행률은 <strong>{selectedReqDetailCrop.progress_pct}%</strong> ({selectedReqDetailCrop.status_text})이며, 평균기온 {selectedReqDetailCrop.temp_avg} · 강수량 {selectedReqDetailCrop.rain_mm} 예보가 반영되어 있습니다.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedReqDetailCrop(null)}
-                        className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm cursor-pointer"
-                      >
-                        닫기
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetReqNo = selectedReqDetailCrop.request_no;
-                          setSelectedReqDetailCrop(null);
-                          setSelectedRequestNo(targetReqNo);
-                          setExpandedScheduleRequestNo(targetReqNo);
-                          setActiveMenu('재배일정 확인');
-                          setMobileScheduleStep('detail');
-                        }}
-                        className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm cursor-pointer inline-flex items-center gap-1 shadow-xs"
-                      >
-                        <span>일정확인 페이지로 이동</span>
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* ==================== [모달리스(Modeless) 재배일정 요청 폼] ==================== */}
-            {isScheduleReqModelessOpen && (
-              <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-3 sm:p-6">
-                <div
-                  style={{
-                    transform: `translate(${scheduleReqModalPos.x}px, ${scheduleReqModalPos.y}px)`,
-                  }}
-                  className="pointer-events-auto w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl border-2 border-emerald-600 bg-white shadow-[0_25px_70px_rgba(15,23,42,0.38)] overflow-hidden"
-                >
-                  {/* 모달리스 상단 드래그 헤더 바 */}
-                  <div
-                    onMouseDown={handleStartScheduleReqModalDrag}
-                    className={`relative bg-emerald-50/95 border-b border-emerald-200 px-5 py-3.5 pr-24 flex flex-wrap items-center justify-between gap-2 select-none ${
-                      isDraggingScheduleReqModal ? 'cursor-grabbing' : 'cursor-move'
-                    }`}
-                    title="마우스로 상단 바를 드래그하여 모달리스 폼 위치를 이동할 수 있습니다"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white font-extrabold text-xs shadow-2xs">
-                          모달리스 폼
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
-                          {loggedInUser.email || 'CloudBae@naver.com'}
-                        </span>
-                        <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-                          {reRequestTargetCrop
-                            ? `재배일정 재요청 (${reRequestTargetCrop.display_request_no || reRequestTargetCrop.request_no})`
-                            : '맞춤형 재배일정 요청 (기후·토양 연동)'}
-                        </h3>
-                      </div>
-                      <p className="text-[11px] text-slate-500 font-semibold">
-                        상단 바를 드래그하여 창을 이동하면서 뒤쪽의 기존 재배일정 요청 리스트를 함께 참조할 수 있습니다.
-                      </p>
-                    </div>
-
-                    {/* 우측 상단 닫기 버튼 */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setReRequestTargetCrop(null);
-                        setIsScheduleReqModelessOpen(false);
-                      }}
-                      className="absolute top-3 right-3.5 z-20 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>닫기</span>
-                    </button>
-                  </div>
-
-                  {/* 모달리스 폼 본문 */}
-                  <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 bg-white">
+                {/* 재배일정 요청 등록 폼 본문 */}
+                <div className="space-y-5 bg-white">
                     {reRequestTargetCrop && !reqFormSubmitted && (
                       <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2">
                         <div>
@@ -16842,13 +16255,6 @@ export default function UserIntroPage() {
                             className="px-4 py-2.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 font-extrabold text-xs sm:text-sm cursor-pointer hover:bg-emerald-100/50"
                           >
                             + 추가 재배일정 요청하기
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setIsScheduleReqModelessOpen(false)}
-                            className="px-4 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-700 font-bold text-xs sm:text-sm cursor-pointer hover:bg-slate-50 ml-auto"
-                          >
-                            모달리스 창 닫기
                           </button>
                         </div>
                       </div>
@@ -17454,16 +16860,17 @@ export default function UserIntroPage() {
                         })()}
 
                         <div className="flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setReRequestTargetCrop(null);
-                              setIsScheduleReqModelessOpen(false);
-                            }}
-                            className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm cursor-pointer"
-                          >
-                            취소
-                          </button>
+                          {reRequestTargetCrop && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReRequestTargetCrop(null);
+                              }}
+                              className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs sm:text-sm cursor-pointer"
+                            >
+                              신규 요청으로 전환
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={handleSubmitScheduleReqForm}
@@ -17479,11 +16886,9 @@ export default function UserIntroPage() {
                         </div>
                       </div>
                     )}
-                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              </section>
+            </div>
           </>
         )}
 
