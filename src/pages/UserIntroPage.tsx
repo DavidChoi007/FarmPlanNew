@@ -2536,8 +2536,9 @@ export default function UserIntroPage() {
       if (res?.ok) {
         applyMyPagePayload(res, markLoggedIn);
       }
+      let syncData: any = null;
       if (syncResRaw && syncResRaw.ok) {
-        const syncData = await syncResRaw.json().catch(() => null);
+        syncData = await syncResRaw.json().catch(() => null);
         const states = syncData?.states || {};
         const isCloudBaeTarget =
           emailToFetch.toLowerCase() === 'cloudbae@naver.com' ||
@@ -2660,8 +2661,51 @@ export default function UserIntroPage() {
           }
         }
       }
+      return { res, states: syncData?.states || {} };
     } catch {
-      // ignore
+      return { res: null, states: {} };
+    }
+  };
+
+  // 로그인 완료 직후: 재배일정 확인 데이터가 있으면 '재배일정 확인'으로, 없으면 '재배일정 요청'으로 자동 이동
+  const routeAfterLoginByScheduleData = (payloadRes: any, syncStates?: any) => {
+    const delReqKeys: string[] = Array.isArray(syncStates?.deleted_request_keys_v2)
+      ? syncStates.deleted_request_keys_v2.map(String)
+      : deletedScheduleKeys.map(String);
+    const delConfKeys: string[] = Array.isArray(syncStates?.deleted_confirmed_schedules_v1)
+      ? syncStates.deleted_confirmed_schedules_v1.map(String)
+      : deletedConfirmedScheduleKeys.map(String);
+
+    const cropPlans: any[] = Array.isArray(payloadRes?.cropPlans) ? payloadRes.cropPlans : [];
+    const scheduleReqs: any[] = Array.isArray(payloadRes?.scheduleRequests)
+      ? payloadRes.scheduleRequests
+      : [];
+    const combinedItems = [...cropPlans, ...scheduleReqs];
+
+    const activeConfirmedItems = combinedItems.filter((item: any) => {
+      if (!item) return false;
+      const keys = [item.crop_plan_id, item.request_no, item.display_request_no]
+        .filter(Boolean)
+        .map(String);
+      if (keys.length === 0) return false;
+      if (keys.some((k) => delReqKeys.includes(k) || delConfKeys.includes(k))) return false;
+      if (String(item.request_status || '').includes('삭제')) return false;
+      return true;
+    });
+
+    if (activeConfirmedItems.length > 0) {
+      const firstReqNo = String(
+        activeConfirmedItems[0].request_no || activeConfirmedItems[0].display_request_no || ''
+      ).trim();
+      if (firstReqNo) {
+        setSelectedRequestNo(firstReqNo);
+        setExpandedScheduleRequestNo(firstReqNo);
+      }
+      setActiveMenu('재배일정 확인');
+      setMobileScheduleStep('list');
+    } else {
+      setActiveMenu('재배일정 요청');
+      setMobileReqStep(1);
     }
   };
 
@@ -2790,7 +2834,10 @@ export default function UserIntroPage() {
         return;
       }
       applyMyPagePayload(res, true);
-      loadMyPageData(res?.member?.email || loginForm.email.trim(), true).catch(() => {});
+      const loaded = await loadMyPageData(res?.member?.email || loginForm.email.trim(), true).catch(
+        () => ({ res, states: {} })
+      );
+      routeAfterLoginByScheduleData(loaded?.res || res, loaded?.states);
       setIsAuthModalOpen(false);
       setMyPageToast(`${res?.member?.name || '배철민'} (${res?.member?.email || loginForm.email}) 님으로 로그인되었습니다.`);
       setTimeout(() => setMyPageToast(''), 3500);
@@ -2852,7 +2899,11 @@ export default function UserIntroPage() {
       }
       if (res?.ok && res?.member) {
         applyMyPagePayload(res, true);
-        loadMyPageData(res.member.email, true).catch(() => {});
+        const loaded = await loadMyPageData(res.member.email, true).catch(() => ({
+          res,
+          states: {},
+        }));
+        routeAfterLoginByScheduleData(loaded?.res || res, loaded?.states);
         setShowGmailPicker(false);
         setIsAuthModalOpen(false);
         setMyPageToast(`Google Gmail 계정(${res.member.email})으로 로그인되었습니다.`);
