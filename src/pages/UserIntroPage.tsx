@@ -479,14 +479,7 @@ export default function UserIntroPage() {
     startY: number;
   } | null>(null);
   const [localAddedCropRequests, setLocalAddedCropRequests] = useState<any[]>([]);
-  const [myScheduleRequests, setMyScheduleRequests] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('hanfarm_my_schedule_requests_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [myScheduleRequests, setMyScheduleRequests] = useState<any[]>([]);
   const [reRequestTargetCrop, setReRequestTargetCrop] = useState<any | null>(null);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
   const [mobileReqStep, setMobileReqStep] = useState<1 | 2 | 3>(1);
