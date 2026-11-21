@@ -7147,7 +7147,7 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* 4. 메인 액션 풀와이드 캡슐 버튼 2종 (지금 무료로 시작하기 > / 로그인) */}
+                {/* 4. 메인 액션 풀와이드 캡슐 버튼 (지금 무료로 시작하기 > / 비로그인 시에만 로그인 표시) */}
                 <div className="px-4 mt-3 space-y-2.5">
                   <button
                     type="button"
@@ -7158,25 +7158,20 @@ export default function UserIntroPage() {
                     <ChevronRight className="w-5 h-5 stroke-[2.5] -mr-1" />
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (loggedInUser.isLoggedIn) {
-                        setActiveMenu('마이페이지');
-                        setMyPageTab('FARMLAND');
-                      } else {
+                  {!loggedInUser.isLoggedIn && (
+                    <button
+                      type="button"
+                      onClick={() => {
                         setAuthNoticeMsg(null);
                         setShowGmailPicker(false);
                         setAuthModalTab('LOGIN');
                         setIsAuthModalOpen(true);
-                      }
-                    }}
-                    className="w-full h-[50px] min-[390px]:h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#0E712F] border-[1.5px] border-[#2E7D47] font-bold text-[17px] min-[390px]:text-[18px] tracking-[-0.02em] flex items-center justify-center transition cursor-pointer"
-                  >
-                    <span>
-                      {loggedInUser.isLoggedIn ? `${loggedInUser.name} 님 · 마이페이지` : '로그인'}
-                    </span>
-                  </button>
+                      }}
+                      className="w-full h-[50px] min-[390px]:h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#0E712F] border-[1.5px] border-[#2E7D47] font-bold text-[17px] min-[390px]:text-[18px] tracking-[-0.02em] flex items-center justify-center transition cursor-pointer"
+                    >
+                      <span>로그인</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* 5. 영농 규모별 3분할 바 (텃밭·주말농장 | 소규모 농가 | 중·대규모 농가) */}
