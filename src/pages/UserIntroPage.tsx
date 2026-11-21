@@ -119,7 +119,7 @@ function diffDaysBetweenYmd(startYmd: string, endYmd: string): number {
 
 export default function UserIntroPage() {
   const [data, setData] = useState<OverviewData | null>(null);
-  const [activeMenu, setActiveMenu] = useState<string>('홈');
+  const [activeMenu, setActiveMenuState] = useState<string>('홈');
   const [loggedInUser, setLoggedInUser] = useState<{
     id: string;
     email: string;
@@ -182,6 +182,35 @@ export default function UserIntroPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'LOGIN' | 'SIGNUP' | 'FIND_PASSWORD'>('LOGIN');
   const [authNoticeMsg, setAuthNoticeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // 모든 메뉴 페이지(홈 제외)는 회원 전용: 비로그인 상태에서 메뉴 이동 시 로그인 폼을 즉시 표시
+  const setActiveMenu = (nextMenu: string) => {
+    if (nextMenu !== '홈' && !loggedInUser.isLoggedIn) {
+      setIsMobileGnbDrawerOpen(false);
+      setShowGmailPicker(false);
+      setAuthModalTab('LOGIN');
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '회원 전용 메뉴입니다. 로그인 또는 회원가입 후 이용해 주세요.',
+      });
+      setIsAuthModalOpen(true);
+      setActiveMenuState('홈');
+      return;
+    }
+    setActiveMenuState(nextMenu);
+  };
+
+  useEffect(() => {
+    if (activeMenu !== '홈' && !loggedInUser.isLoggedIn) {
+      setActiveMenuState('홈');
+      setAuthModalTab('LOGIN');
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '회원 전용 서비스입니다. 로그인 후 이용해 주세요.',
+      });
+      setIsAuthModalOpen(true);
+    }
+  }, [activeMenu, loggedInUser.isLoggedIn]);
 
   // 로그인 폼 (기본값 CloudBae@naver.com / 1234)
   const [loginForm, setLoginForm] = useState({
@@ -2701,10 +2730,10 @@ export default function UserIntroPage() {
         setSelectedRequestNo(firstReqNo);
         setExpandedScheduleRequestNo(firstReqNo);
       }
-      setActiveMenu('재배일정 확인');
+      setActiveMenuState('재배일정 확인');
       setMobileScheduleStep('list');
     } else {
-      setActiveMenu('재배일정 요청');
+      setActiveMenuState('재배일정 요청');
       setMobileReqStep(1);
     }
   };
@@ -2856,9 +2885,7 @@ export default function UserIntroPage() {
       ...prev,
       isLoggedIn: false,
     }));
-    if (activeMenu === '마이페이지') {
-      setActiveMenu('홈');
-    }
+    setActiveMenuState('홈');
   };
 
   // 3. Google Gmail 간편 로그인 / 가입 연동 핸들러
