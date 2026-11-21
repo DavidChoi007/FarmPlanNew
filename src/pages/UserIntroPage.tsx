@@ -2681,14 +2681,24 @@ export default function UserIntroPage() {
     }
   };
 
-  // 1. 아이디/이메일 중복검사 핸들러 (일반 아이디 test001 및 이메일 모두 지원)
+  // 1. 이메일 중복검사 핸들러 (이메일 주소 형식 필수 검증)
+  const isValidEmailFormat = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+
   const handleCheckEmailDuplicate = async () => {
     const email = signupForm.email.trim();
     if (!email) {
       setSignupForm((prev) => ({
         ...prev,
         emailChecked: false,
-        emailCheckMsg: '아이디 또는 이메일 주소를 입력해 주세요.',
+        emailCheckMsg: '이메일 주소를 입력해 주세요.',
+      }));
+      return;
+    }
+    if (!isValidEmailFormat(email)) {
+      setSignupForm((prev) => ({
+        ...prev,
+        emailChecked: false,
+        emailCheckMsg: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
       }));
       return;
     }
@@ -2704,7 +2714,7 @@ export default function UserIntroPage() {
         emailChecked: Boolean(res?.available),
         emailCheckMsg:
           res?.message ||
-          (res?.available ? '사용 가능한 아이디(이메일)입니다.' : '이미 사용 중인 아이디(이메일)입니다.'),
+          (res?.available ? '사용 가능한 이메일입니다.' : '이미 사용 중인 이메일입니다.'),
       }));
     } catch {
       setSignupForm((prev) => ({
@@ -2817,7 +2827,19 @@ export default function UserIntroPage() {
     setAuthNoticeMsg(null);
     const trimmedEmail = signupForm.email.trim();
     if (!trimmedEmail) {
-      setAuthNoticeMsg({ type: 'error', text: '이메일(아이디)을 입력해 주세요.' });
+      setAuthNoticeMsg({ type: 'error', text: '이메일 주소를 입력해 주세요.' });
+      return;
+    }
+    if (!isValidEmailFormat(trimmedEmail)) {
+      setSignupForm((prev) => ({
+        ...prev,
+        emailChecked: false,
+        emailCheckMsg: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
+      }));
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
+      });
       return;
     }
     if (!signupForm.password || signupForm.password.length < 4) {
@@ -2840,18 +2862,18 @@ export default function UserIntroPage() {
           setSignupForm((prev) => ({
             ...prev,
             emailChecked: false,
-            emailCheckMsg: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+            emailCheckMsg: chkRes?.message || '이미 사용 중인 이메일입니다.',
           }));
           setAuthNoticeMsg({
             type: 'error',
-            text: chkRes?.message || '이미 사용 중인 아이디(이메일)입니다.',
+            text: chkRes?.message || '이미 사용 중인 이메일입니다.',
           });
           return;
         }
         setSignupForm((prev) => ({
           ...prev,
           emailChecked: true,
-          emailCheckMsg: '사용 가능한 아이디(이메일)입니다.',
+          emailCheckMsg: '사용 가능한 이메일입니다.',
         }));
       } catch {
         // ignore network check error and proceed
@@ -2943,8 +2965,11 @@ export default function UserIntroPage() {
     if (e) e.preventDefault();
     setAuthNoticeMsg(null);
     const trimmedEmail = signupForm.email.trim();
-    if (!trimmedEmail) {
-      setAuthNoticeMsg({ type: 'error', text: '이메일(아이디)을 입력해 주세요.' });
+    if (!trimmedEmail || !isValidEmailFormat(trimmedEmail)) {
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
+      });
       setSignupStep(1);
       return;
     }
@@ -22210,7 +22235,7 @@ export default function UserIntroPage() {
                             />
                           </svg>
                           <input
-                            type="text"
+                            type="email"
                             value={signupForm.email}
                             onChange={(e) =>
                               setSignupForm({
@@ -22220,7 +22245,7 @@ export default function UserIntroPage() {
                                 emailCheckMsg: '',
                               })
                             }
-                            placeholder="아이디 또는 이메일을 입력해주세요"
+                            placeholder="이메일 주소를 입력해주세요 (예: user@example.com)"
                             className="w-full bg-transparent text-[14.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none"
                           />
                         </div>

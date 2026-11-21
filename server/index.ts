@@ -9920,14 +9920,26 @@ const server = http.createServer(async (req, res) => {
       };
     };
 
-    // 1. 이메일/아이디 중복검사 API
+    // 1. 이메일 중복검사 API (이메일 주소 형식 필수)
     if (pathname === '/api/auth/check-email' && req.method === 'GET') {
       await syncAdminMemberTablesFromSupabase();
       const email = String(parsedUrl.searchParams.get('email') || '').trim();
       if (!email) {
         sendJson(
           res,
-          { ok: false, available: false, message: '아이디 또는 이메일을 입력해 주세요.' },
+          { ok: false, available: false, message: '이메일 주소를 입력해 주세요.' },
+          400
+        );
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        sendJson(
+          res,
+          {
+            ok: false,
+            available: false,
+            message: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
+          },
           400
         );
         return;
@@ -9939,13 +9951,13 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, {
           ok: true,
           available: false,
-          message: `이미 가입된 계정(${existing.email})입니다.`,
+          message: `이미 가입된 이메일(${existing.email})입니다.`,
         });
       } else {
         sendJson(res, {
           ok: true,
           available: true,
-          message: '사용 가능한 아이디(이메일)입니다.',
+          message: '사용 가능한 이메일입니다.',
         });
       }
       return;
@@ -9987,8 +9999,12 @@ const server = http.createServer(async (req, res) => {
       const agreePrivacy = body.agree_privacy !== undefined ? (body.agree_privacy ? 1 : 0) : 1;
       const agreeMarketing = body.agree_marketing ? 1 : 0;
 
-      if (!email) {
-        sendJson(res, { ok: false, message: '아이디 또는 이메일 주소를 입력해 주세요.' }, 400);
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        sendJson(
+          res,
+          { ok: false, message: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)' },
+          400
+        );
         return;
       }
 
@@ -9998,7 +10014,7 @@ const server = http.createServer(async (req, res) => {
       if (dup) {
         sendJson(
           res,
-          { ok: false, message: `이미 가입된 아이디/이메일(${email})입니다.` },
+          { ok: false, message: `이미 가입된 이메일(${email})입니다.` },
           409
         );
         return;

@@ -1710,7 +1710,17 @@ if (typeof window !== 'undefined') {
     if (p === '/api/auth/check-email') {
       const email = (u.searchParams.get('email') || '').trim().toLowerCase();
       if (!email) {
-        return jsonResponse({ ok: false, available: false, message: '아이디 또는 이메일을 입력해 주세요.' }, 400);
+        return jsonResponse({ ok: false, available: false, message: '이메일 주소를 입력해 주세요.' }, 400);
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return jsonResponse(
+          {
+            ok: false,
+            available: false,
+            message: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)',
+          },
+          400
+        );
       }
       const sbMembers = await sbSelect('user_member', 'select=email');
       const localMembers = getStoredMembers();
@@ -1721,7 +1731,7 @@ if (typeof window !== 'undefined') {
       return jsonResponse({
         ok: true,
         available: !exists,
-        message: exists ? '이미 가입된 아이디(이메일)입니다.' : '사용 가능한 아이디(이메일)입니다.',
+        message: exists ? '이미 가입된 이메일입니다.' : '사용 가능한 이메일입니다.',
       });
     }
 
@@ -1789,7 +1799,13 @@ if (typeof window !== 'undefined') {
     if (p === '/api/auth/signup' && method === 'POST') {
       const body = parseBody(init);
       const members = getStoredMembers();
-      const rawIdOrEmail = String(body.email || 'user@naver.com').trim();
+      const rawIdOrEmail = String(body.email || '').trim();
+      if (!rawIdOrEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawIdOrEmail)) {
+        return jsonResponse(
+          { ok: false, message: '올바른 이메일 주소 형식으로 입력해 주세요. (예: user@example.com)' },
+          400
+        );
+      }
       const resolvedName = String(body.name || rawIdOrEmail.split('@')[0] || '신규회원').trim();
       const sidoAliasMap: Record<string, string> = {
         서울: '서울특별시', 서울시: '서울특별시', 서울특별시: '서울특별시',
