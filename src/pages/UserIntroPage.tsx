@@ -9713,7 +9713,7 @@ export default function UserIntroPage() {
                       >
                         <div
                           onClick={toggleCropAccordion}
-                          className={`w-full rounded-2xl px-4 sm:px-6 py-4 border-2 transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
+                          className={`w-full rounded-2xl px-4 sm:px-5 py-4 border-2 transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 overflow-hidden ${
                             isExpanded
                               ? 'border-emerald-600 bg-[#F2FBF7] shadow-xs'
                               : isSelected
@@ -9722,7 +9722,7 @@ export default function UserIntroPage() {
                           }`}
                         >
                           {/* 좌측: 순번 + 썸네일 + 작물명·품종 + 재배구분 배지 */}
-                          <div className="flex items-center gap-3.5 min-w-0 lg:w-[31%] shrink-0">
+                          <div className="flex items-center gap-3 min-w-0 lg:flex-[1.05]">
                             <span
                               className={`w-8 h-8 rounded-xl text-sm sm:text-base font-mono font-black inline-flex items-center justify-center shrink-0 ${
                                 isExpanded || isSelected
@@ -9734,57 +9734,57 @@ export default function UserIntroPage() {
                             </span>
 
                             <div
-                              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
+                              className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${crop.thumb_gradient} text-white flex flex-col items-center justify-center shrink-0 shadow-xs border border-white/20`}
                             >
-                              <Sprout className="w-6 h-6 sm:w-7 sm:h-7" />
-                              <span className="text-[11px] sm:text-xs font-black mt-0.5">{crop.crop_short}</span>
+                              <Sprout className="w-6 h-6" />
+                              <span className="text-[11px] font-black mt-0.5">{crop.crop_short}</span>
                             </div>
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[13px] sm:text-sm">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 font-extrabold text-[12px] sm:text-[13px] whitespace-nowrap">
                                   {crop.badge}
                                 </span>
                                 {isExpanded && (
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[12.5px] sm:text-[13px]">
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white font-extrabold text-[12px] whitespace-nowrap">
                                     상세 타임라인 열림
                                   </span>
                                 )}
                                 {!isExpanded && isSelected && (
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[12.5px] sm:text-[13px]">
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 font-extrabold text-[12px] whitespace-nowrap">
                                     현재 선택됨
                                   </span>
                                 )}
                               </div>
-                              <h3 className="text-[19px] sm:text-[22px] font-black text-slate-950 mt-1 truncate leading-snug">
+                              <h3 className="text-[18px] sm:text-[20px] font-black text-slate-950 mt-1 truncate leading-snug">
                                 {crop.crop_title}
                               </h3>
                             </div>
                           </div>
 
                           {/* 중앙 1: 재배 지역 · 평수 · 정식(파종)일 */}
-                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 lg:w-[32%] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
-                            <div className="min-w-0">
-                              <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">재배지 · 면적</div>
-                              <div className="text-[16px] sm:text-[18px] font-black text-slate-900 truncate mt-0.5">
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-3.5 sm:gap-5 min-w-0 lg:flex-[1.1] border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-200/70">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[12.5px] sm:text-[13px] font-extrabold text-slate-500">재배지 · 면적</div>
+                              <div className="text-[15.5px] sm:text-[17px] font-black text-slate-900 truncate mt-0.5">
                                 {crop.region} · <span className="text-emerald-700">{crop.area_pyeong}평</span>
                               </div>
                             </div>
                             <div className="shrink-0">
-                              <div className="text-[13px] sm:text-sm font-extrabold text-slate-500">기준 정식일</div>
-                              <div className="text-[16px] sm:text-[18px] font-mono font-black text-emerald-700 mt-0.5">
+                              <div className="text-[12.5px] sm:text-[13px] font-extrabold text-slate-500">기준 정식일</div>
+                              <div className="text-[15px] sm:text-[16.5px] font-mono font-black text-emerald-700 mt-0.5 whitespace-nowrap">
                                 {crop.planting_label}
                               </div>
                             </div>
                           </div>
 
                           {/* 중앙 2: 기상 요약 및 재배 진행상태 프로그레스 바 */}
-                          <div className="lg:w-[23%] space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[14px] sm:text-[15px] font-extrabold text-slate-800">
+                          <div className="min-w-0 lg:flex-[0.95] space-y-1.5">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[13.5px] sm:text-[14.5px] font-extrabold text-slate-800 whitespace-nowrap">
                                 완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정
                               </span>
-                              <span className="text-[16px] sm:text-lg font-black text-emerald-700">
+                              <span className="text-[15.5px] sm:text-[17px] font-black text-emerald-700 whitespace-nowrap">
                                 {crop.progress_pct}%
                               </span>
                             </div>
@@ -9794,7 +9794,7 @@ export default function UserIntroPage() {
                                 className="h-full rounded-full bg-emerald-600 transition-all"
                               />
                             </div>
-                            <div className="text-[13.5px] sm:text-[14.5px] font-bold text-slate-600 truncate">
+                            <div className="text-[13px] sm:text-[13.5px] font-bold text-slate-600 truncate">
                               진행상태: <strong className="text-slate-900 font-black">{crop.status_text}</strong>
                               {Number(crop.pending_modified_count || 0) > 0 && (
                                 <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-black">
@@ -9805,7 +9805,7 @@ export default function UserIntroPage() {
                           </div>
 
                           {/* 우측: 현재 생육단계 확인 + 일정 상세 열기/접기 + 삭제 액션 버튼 */}
-                          <div className="lg:w-auto shrink-0 flex items-center justify-end gap-2">
+                          <div className="lg:w-auto shrink-0 flex items-center justify-end gap-1.5 sm:gap-2">
                             {(() => {
                               const compCnt = Number(crop.completed_stage_count ?? 0);
                               const pcStepIdx: 0 | 1 | 2 | 3 =
@@ -9821,10 +9821,10 @@ export default function UserIntroPage() {
                                     setSelectedRequestNo(reqNo);
                                     openGrowthConfirmModal(reqNo, pcStepIdx);
                                   }}
-                                  className="px-4 py-3 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs shrink-0"
+                                  className="px-3.5 py-2.5 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white font-black text-[14px] xl:text-[15px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs shrink-0"
                                 >
                                   <span>{`${pcStepLabel} 확인`}</span>
-                                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                                  <ChevronRight className="w-4 h-4 stroke-[2.5] shrink-0" />
                                 </button>
                               );
                             })()}
@@ -9835,7 +9835,7 @@ export default function UserIntroPage() {
                                 e.stopPropagation();
                                 toggleCropAccordion();
                               }}
-                              className={`flex-1 lg:flex-none px-4 py-3 rounded-xl font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+                              className={`flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl font-black text-[14px] xl:text-[15px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 ${
                                 myPageProgressDetailReqNo === crop.request_no
                                   ? 'border border-emerald-600 bg-emerald-600 text-white shadow-2xs'
                                   : isExpanded
@@ -9848,7 +9848,7 @@ export default function UserIntroPage() {
                                 {isExpanded ? '일정 상세 접기' : '일정 상세 보기'}
                               </span>
                               <ChevronRight
-                                className={`w-4 h-4 transition-transform duration-200 ${
+                                className={`w-4 h-4 shrink-0 transition-transform duration-200 ${
                                   isExpanded ? 'lg:rotate-90' : ''
                                 }`}
                               />
@@ -9858,9 +9858,9 @@ export default function UserIntroPage() {
                               type="button"
                               onClick={(e) => handleDeleteConfirmedScheduleOnly(crop, e)}
                               title="생성된 재배일정 확인 데이터만 삭제 (재배일정 요청 데이터는 유지되어 재요청 가능)"
-                              className="px-3.5 py-3 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
+                              className="px-3 py-2.5 rounded-xl border border-rose-200 bg-white hover:bg-rose-50 hover:border-rose-300 text-rose-600 font-black text-[14px] xl:text-[15px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4 shrink-0" />
                               <span>삭제</span>
                             </button>
                           </div>
