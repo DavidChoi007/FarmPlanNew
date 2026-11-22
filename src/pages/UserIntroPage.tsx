@@ -21121,6 +21121,10 @@ export default function UserIntroPage() {
                       setAuthNoticeMsg(null);
                       if (signupStep === 2) {
                         setSignupStep(1);
+                      } else if (signupStep === 3) {
+                        setIsAuthModalOpen(false);
+                        setSignupStep(1);
+                        setActiveMenuState('홈');
                       } else {
                         setIsAuthModalOpen(false);
                         setSignupStep(1);
@@ -22361,7 +22365,21 @@ export default function UserIntroPage() {
                         onClick={() => {
                           setIsAuthModalOpen(false);
                           setSignupStep(1);
-                          setActiveMenu('홈');
+                          setAuthModalTab('LOGIN');
+                          setIsMobileGnbDrawerOpen(false);
+                          setIsMyPageMobileDrawerOpen(false);
+                          setMobileStageOverviewReqNo(null);
+                          setMyPageProgressDetailReqNo(null);
+                          setMyPageStageDetailItem(null);
+                          setSelectedReqDetailCrop(null);
+                          setIsScheduleReqModelessOpen(false);
+                          setActiveMenuState('홈');
+                          if (typeof window !== 'undefined') {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            if (window.location.pathname !== '/') {
+                              window.location.href = '/';
+                            }
+                          }
                         }}
                         className="w-full h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#111827] border-[1.5px] border-[#2E7D47] font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center cursor-pointer transition"
                       >
