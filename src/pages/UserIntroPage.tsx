@@ -578,6 +578,33 @@ export default function UserIntroPage() {
   const [isWorkLogMaterialDeleteModalOpen, setIsWorkLogMaterialDeleteModalOpen] =
     useState<boolean>(false);
   const [selectedDeleteMatIds, setSelectedDeleteMatIds] = useState<string[]>([]);
+  const [stageRecommendedBuyTarget, setStageRecommendedBuyTarget] = useState<{
+    reqNo: string;
+    itemId: string;
+    stepOrder: number;
+    subItemName: string;
+    linkedTaskDisplayTitle: string;
+    effDate: string;
+    raw: any;
+    items: Array<{
+      id: string;
+      checked: boolean;
+      roleBadge: string;
+      visualType: 'BAG' | 'BOTTLE';
+      bagLabelTop: string;
+      bagLabelMid: string;
+      name: string;
+      formulaSub: string;
+      dosageRangeLabel: string;
+      qty: number;
+      stepDelta: number;
+      unit: string;
+      unitPrice: number;
+      materialId: string;
+      materialCategory: string;
+    }>;
+    usageGuides: string[];
+  } | null>(null);
   const [workLogPhotos, setWorkLogPhotos] = useState<string[]>([
     '/images/crops/crop-thumb-cabbage.jpg',
   ]);
@@ -25323,6 +25350,302 @@ export default function UserIntroPage() {
             }));
           };
 
+          const openStageRecommendedBuyModal = (entry: any) => {
+            const subName = String(entry?.subItemName || '추비 2차').trim();
+            const stepOrd = Number(entry?.stepOrder || 9);
+            const pyeong = areaPyeongVal || 500;
+            const scale = Math.max(0.2, pyeong / 500);
+
+            let linkedTaskDisplayTitle = subName;
+            let primaryItem = {
+              id: 'rec-mat-1',
+              checked: true,
+              roleBadge: '주비료',
+              visualType: 'BAG' as 'BAG' | 'BOTTLE',
+              bagLabelTop: '복합비료',
+              bagLabelMid: '17-0-17',
+              name: '질소·칼리 복합비료',
+              formulaSub: '(17-0-17)',
+              dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
+                5,
+                Math.round(25 * scale)
+              )} kg / ${pyeong.toLocaleString()}평`,
+              qty: Math.max(5, Math.round(25 * scale)),
+              stepDelta: 5,
+              unit: 'kg',
+              unitPrice: 1000, // 25kg 기준 25,000원
+              materialId: 'FERT-PRD-03',
+              materialCategory: 'FERTILIZER',
+            };
+            let secondaryItem = {
+              id: 'rec-mat-2',
+              checked: true,
+              roleBadge: '보조제',
+              visualType: 'BOTTLE' as 'BAG' | 'BOTTLE',
+              bagLabelTop: '칼슘·붕소',
+              bagLabelMid: '액상비료',
+              name: '칼슘·붕소 액상비료',
+              formulaSub: '',
+              dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                200,
+                Math.round(1000 * scale)
+              ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+              qty: Math.max(1, Math.round(1 * scale)),
+              stepDelta: 1,
+              unit: 'L',
+              unitPrice: 25000, // 1L 기준 25,000원
+              materialId: 'MAT-NUTR-02',
+              materialCategory: 'NUTRIENT',
+            };
+            let usageGuides = [
+              '결구 시작 후 약 3~5일 내 시비합니다.',
+              '복합비료는 전면 시비 후 가볍게 관수합니다.',
+              '액상비료는 물에 희석하여 엽면 살포합니다.',
+            ];
+
+            if (stepOrd <= 3 || /포장|토양|이랑|기비|밑거름/.test(subName)) {
+              linkedTaskDisplayTitle = subName.includes('토양')
+                ? '토양 개량 (밑거름 시비)'
+                : `${subName} (본밭 준비)`;
+              primaryItem = {
+                ...primaryItem,
+                roleBadge: '주비료',
+                bagLabelTop: '유기질퇴비',
+                bagLabelMid: '특호',
+                name: '고품질 발효 유기질 퇴비',
+                formulaSub: '(유기물 60% 이상)',
+                dosageRangeLabel: `${Math.max(20, Math.round(80 * scale))}~${Math.max(
+                  25,
+                  Math.round(100 * scale)
+                )} kg / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(20, Math.round(100 * scale)),
+                stepDelta: 20,
+                unit: 'kg',
+                unitPrice: 300,
+                materialId: 'FERT-PRD-01',
+                materialCategory: 'FERTILIZER',
+              };
+              secondaryItem = {
+                ...secondaryItem,
+                roleBadge: '보조제',
+                bagLabelTop: '고토·붕소',
+                bagLabelMid: '토양개량제',
+                name: '석회·고토·붕소 토양개량제',
+                formulaSub: '(뿌리혹병·결핍 예방)',
+                dosageRangeLabel: `${Math.max(5, Math.round(15 * scale))}~${Math.max(
+                  10,
+                  Math.round(20 * scale)
+                )} kg / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(5, Math.round(20 * scale)),
+                stepDelta: 5,
+                unit: 'kg',
+                unitPrice: 1000,
+                materialId: 'FERT-PRD-02',
+                materialCategory: 'FERTILIZER',
+              };
+              usageGuides = [
+                '정식 10~14일 전 본밭 전면에 골고루 살포합니다.',
+                '살포 후 깊이갈이(경운)하여 토양과 충분히 혼합합니다.',
+                '이랑 성형 후 토양 수분이 유지되도록 가볍게 관수합니다.',
+              ];
+            } else if (stepOrd >= 4 && stepOrd <= 6) {
+              linkedTaskDisplayTitle = `${subName} (건묘 육묘)`;
+              primaryItem = {
+                ...primaryItem,
+                roleBadge: '주자재',
+                bagLabelTop: '육묘전용',
+                bagLabelMid: '상토·영양',
+                name: '원예·육묘 전용 활착 복합비료',
+                formulaSub: '(12-15-12)',
+                dosageRangeLabel: `${Math.max(4, Math.round(15 * scale))}~${Math.max(
+                  5,
+                  Math.round(20 * scale)
+                )} kg / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(5, Math.round(20 * scale)),
+                stepDelta: 5,
+                unit: 'kg',
+                unitPrice: 1200,
+                materialId: 'FERT-PRD-02',
+                materialCategory: 'FERTILIZER',
+              };
+              secondaryItem = {
+                ...secondaryItem,
+                roleBadge: '보조제',
+                bagLabelTop: '발근·활착',
+                bagLabelMid: '액상영양제',
+                name: '아미노산 뿌리발근 액상비료',
+                formulaSub: '',
+                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                  200,
+                  Math.round(1000 * scale)
+                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(1, Math.round(1 * scale)),
+                stepDelta: 1,
+                unit: 'L',
+                unitPrice: 24000,
+                materialId: 'MAT-NUTR-01',
+                materialCategory: 'NUTRIENT',
+              };
+              usageGuides = [
+                '본엽 전개 시기에 맞춰 500~1,000배 희석하여 관주합니다.',
+                '정식 5~7일 전부터 외기 순화(Hardening)와 함께 살포합니다.',
+                '과습을 피하고 오전 시간대에 엽면 또는 관주 처리합니다.',
+              ];
+            } else if (stepOrd === 7 || stepOrd === 8 || /정식|활착/.test(subName)) {
+              linkedTaskDisplayTitle = `${subName} (초기 뿌리활착)`;
+              primaryItem = {
+                ...primaryItem,
+                roleBadge: '주비료',
+                bagLabelTop: '초기활착',
+                bagLabelMid: '복합비료',
+                name: '정식·초기활착 완효성 복합비료',
+                formulaSub: '(15-10-15)',
+                dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
+                  5,
+                  Math.round(25 * scale)
+                )} kg / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(5, Math.round(25 * scale)),
+                stepDelta: 5,
+                unit: 'kg',
+                unitPrice: 1000,
+                materialId: 'FERT-PRD-03',
+                materialCategory: 'FERTILIZER',
+              };
+              secondaryItem = {
+                ...secondaryItem,
+                roleBadge: '보조제',
+                bagLabelTop: '세근발달',
+                bagLabelMid: '발근영양제',
+                name: '초기 활착·뿌리발근 액상비료',
+                formulaSub: '',
+                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                  200,
+                  Math.round(1000 * scale)
+                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(1, Math.round(1 * scale)),
+                stepDelta: 1,
+                unit: 'L',
+                unitPrice: 25000,
+                materialId: 'MAT-NUTR-01',
+                materialCategory: 'NUTRIENT',
+              };
+              usageGuides = [
+                '본밭 정식 직후 포기 주변에 충분한 활착 관수를 진행합니다.',
+                '정식 후 3~5일경 발근 액상비료를 희석하여 관주합니다.',
+                '초기 고온·건조 시 차광 및 수분 관리로 몸살을 예방합니다.',
+              ];
+            } else if (
+              stepOrd === 12 ||
+              stepOrd === 13 ||
+              stepOrd === 14 ||
+              /병해충|방제|예찰|예방/.test(subName)
+            ) {
+              linkedTaskDisplayTitle = `${subName} (결구기 방제)`;
+              primaryItem = {
+                ...primaryItem,
+                roleBadge: '주약제',
+                visualType: 'BOTTLE',
+                bagLabelTop: '무름·노균',
+                bagLabelMid: '보호살균제',
+                name: '무름병·노균병 동시방제 액상수화제',
+                formulaSub: '(보호살균제)',
+                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                  200,
+                  Math.round(1000 * scale)
+                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(1, Math.round(1 * scale)),
+                stepDelta: 1,
+                unit: 'L',
+                unitPrice: 25000,
+                materialId: 'MAT-PEST-01',
+                materialCategory: 'PESTICIDE',
+              };
+              secondaryItem = {
+                ...secondaryItem,
+                roleBadge: '보조제',
+                visualType: 'BOTTLE',
+                bagLabelTop: '칼슘·붕소',
+                bagLabelMid: '액상비료',
+                name: '칼슘·붕소 액상비료',
+                formulaSub: '',
+                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                  200,
+                  Math.round(1000 * scale)
+                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(1, Math.round(1 * scale)),
+                stepDelta: 1,
+                unit: 'L',
+                unitPrice: 25000,
+                materialId: 'MAT-NUTR-02',
+                materialCategory: 'NUTRIENT',
+              };
+              usageGuides = [
+                '7~10일 간격으로 예방 살포하며 강우 전후 추가 살포합니다.',
+                '물 20L당 약제 20mL를 희석하여 잎 뒷면과 지제부에 고르게 살포합니다.',
+                '칼슘·붕소 액상비료를 병행하여 세포벽 강화 및 무름 증상을 예방합니다.',
+              ];
+            } else if (stepOrd >= 15 || /수확/.test(subName)) {
+              linkedTaskDisplayTitle = `${subName} (저장성 향상)`;
+              primaryItem = {
+                ...primaryItem,
+                roleBadge: '주비료',
+                bagLabelTop: '복합비료',
+                bagLabelMid: '17-0-17',
+                name: '질소·칼리 복합비료',
+                formulaSub: '(17-0-17)',
+                dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
+                  5,
+                  Math.round(25 * scale)
+                )} kg / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(5, Math.round(25 * scale)),
+                stepDelta: 5,
+                unit: 'kg',
+                unitPrice: 1000,
+                materialId: 'FERT-PRD-03',
+                materialCategory: 'FERTILIZER',
+              };
+              secondaryItem = {
+                ...secondaryItem,
+                roleBadge: '보조제',
+                bagLabelTop: '칼슘·붕소',
+                bagLabelMid: '액상비료',
+                name: '칼슘·붕소 액상비료',
+                formulaSub: '',
+                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
+                  200,
+                  Math.round(1000 * scale)
+                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
+                qty: Math.max(1, Math.round(1 * scale)),
+                stepDelta: 1,
+                unit: 'L',
+                unitPrice: 25000,
+                materialId: 'MAT-NUTR-02',
+                materialCategory: 'NUTRIENT',
+              };
+              usageGuides = [
+                '수확 전 결구 충실도 확보 및 저장성 향상을 위해 적기 관리를 진행합니다.',
+                '수확 후 차기 작기 토양 회복을 위해 포장 잔재물 정리 후 시비합니다.',
+                '저온 피해(동해)가 오기 전 맑은 날 수확하여 예건 후 저장합니다.',
+              ];
+            } else {
+              linkedTaskDisplayTitle = /생장|추비|시비|점검/.test(subName)
+                ? `추비 2차 (결구비대)`
+                : `${subName} (결구비대)`;
+            }
+
+            setStageRecommendedBuyTarget({
+              reqNo: modalReqNo,
+              itemId: entry.itemId,
+              stepOrder: stepOrd,
+              subItemName: subName,
+              linkedTaskDisplayTitle,
+              effDate: entry.effDate || '2026-10-14',
+              raw: entry.raw,
+              items: [primaryItem, secondaryItem],
+              usageGuides,
+            });
+          };
+
           return (
             <div className="fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
               <div className="pointer-events-auto w-full max-w-lg max-h-[90vh] flex flex-col rounded-[26px] border border-slate-200 bg-[#F7F9F7] shadow-2xl overflow-hidden select-none">
@@ -25595,7 +25918,7 @@ export default function UserIntroPage() {
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          handleToggleStageItemCompletion(
+                                          handleConfirmStageItemCompletion(
                                             modalReqNo,
                                             entry.raw,
                                             entry.effDate
@@ -25615,13 +25938,23 @@ export default function UserIntroPage() {
                                       </span>
                                     </div>
 
-                                    {/* 우측: 날짜 + 상태 배지 (완료 / 다음 할 일 / 예정) + 화살표 */}
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <span className="text-[13px] font-bold text-[#374151] whitespace-nowrap">
+                                    {/* 우측: 날짜 + [추천농자재] 버튼 + 상태 배지 (완료 / 다음 할 일 / 예정) + 화살표 */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="text-[12.5px] font-bold text-[#374151] whitespace-nowrap">
                                         {toKoreanMd(entry.effDate)}
                                       </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          openStageRecommendedBuyModal(entry);
+                                        }}
+                                        className="px-2.5 py-1 rounded-full border border-[#15803D] bg-[#EAF6ED] hover:bg-[#15803D] text-[#0E712F] hover:text-white text-[11px] font-extrabold whitespace-nowrap cursor-pointer transition shadow-2xs"
+                                      >
+                                        추천농자재
+                                      </button>
                                       <span
-                                        className={`min-w-[64px] text-center px-2.5 py-1 rounded-full text-[11.5px] font-extrabold whitespace-nowrap ${
+                                        className={`min-w-[54px] text-center px-2 py-1 rounded-full text-[11px] font-extrabold whitespace-nowrap ${
                                           entry.isCompleted
                                             ? 'bg-[#DCFCE7] text-[#15803D]'
                                             : isNextTodo
@@ -25665,6 +25998,455 @@ export default function UserIntroPage() {
                     <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
                   </button>
                 </div>
+
+                {/* ==================== [전체 재배일정 > 세부 과정별 '추천농자재' 버튼 클릭 시 열리는 '농자재 구매' 모달리스 폼 (첨부 이미지 media_1795358967123_e5e360f4.jpg 1:1 구성)] ==================== */}
+                {stageRecommendedBuyTarget &&
+                  (() => {
+                    const checkedItems = stageRecommendedBuyTarget.items.filter((i) => i.checked);
+                    const checkedCount = checkedItems.length;
+                    const totalAmount = checkedItems.reduce(
+                      (sum, i) => sum + Math.round(i.qty * i.unitPrice),
+                      0
+                    );
+
+                    const toggleRecItemCheck = (id: string) => {
+                      setStageRecommendedBuyTarget((prev) => {
+                        if (!prev) return null;
+                        return {
+                          ...prev,
+                          items: prev.items.map((it) =>
+                            it.id === id ? { ...it, checked: !it.checked } : it
+                          ),
+                        };
+                      });
+                    };
+
+                    const adjustRecItemQty = (id: string, deltaDir: -1 | 1) => {
+                      setStageRecommendedBuyTarget((prev) => {
+                        if (!prev) return null;
+                        return {
+                          ...prev,
+                          items: prev.items.map((it) => {
+                            if (it.id !== id) return it;
+                            const step = it.stepDelta || 1;
+                            const nextQty = Math.max(step, it.qty + deltaDir * step);
+                            return { ...it, qty: nextQty };
+                          }),
+                        };
+                      });
+                    };
+
+                    const handleAddSelectedRecommendedToCart = () => {
+                      if (checkedItems.length === 0) return;
+                      const now = new Date();
+                      const addedAt = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(
+                        2,
+                        '0'
+                      )}.${String(now.getDate()).padStart(2, '0')} ${String(
+                        now.getHours()
+                      ).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+                      const newCartEntries = checkedItems.map((it, idx) => {
+                        const itemTotal = Math.round(it.qty * it.unitPrice);
+                        const fullProdName = it.formulaSub
+                          ? `${it.name} ${it.formulaSub}`
+                          : it.name;
+                        const thumb =
+                          it.visualType === 'BAG'
+                            ? '/images/fertilizers/FERT-PRD-03-thumb.png'
+                            : '/images/fertilizers/MAT-NUTR-02-thumb.png';
+                        return {
+                          cartId: `CART-REC-${Date.now()}-${idx}`,
+                          checked: true,
+                          addedAt,
+                          requestNo: stageRecommendedBuyTarget.reqNo,
+                          cropTitle: `${seasonalCropLabel} (${modalCrop.cultivar_name || '불암3호'})`,
+                          cropCategory: '엽채류',
+                          plantingType: modalCrop.planting_type || '모종',
+                          region: modalCrop.region || '충청북도 충주시 봉방동',
+                          areaPyeong: areaPyeongVal,
+                          plantingDate: plantingYmd,
+                          expectedHarvestDate: harvestYmd,
+                          stageGroupName: stageRecommendedBuyTarget.subItemName,
+                          stageColor: '#15803d',
+                          processCode: stageRecommendedBuyTarget.itemId,
+                          subItemName: stageRecommendedBuyTarget.subItemName,
+                          processName: stageRecommendedBuyTarget.linkedTaskDisplayTitle,
+                          startDate: stageRecommendedBuyTarget.effDate,
+                          startWeekLabel: '',
+                          targetPgdd: 720,
+                          workDescription: stageRecommendedBuyTarget.usageGuides.join(' '),
+                          material_id: it.materialId,
+                          material_category: it.materialCategory,
+                          subType: it.roleBadge,
+                          manufacturer: '한팜인증',
+                          productName: fullProdName,
+                          unitSpec: `${it.qty}${it.unit}`,
+                          unitLabel: it.unit,
+                          unitPrice: itemTotal,
+                          qty: 1,
+                          recommendedQty: 1,
+                          matchScore: 98,
+                          categorySpecBadge: `권장 사용량 ${it.dosageRangeLabel}`,
+                          thumbnailUrl: thumb,
+                          thumbnail_url: thumb,
+                        };
+                      });
+
+                      saveMyCartItems((prev) => [...newCartEntries, ...prev]);
+
+                      // 구매 농자재 선택 목록에서도 바로 연동될 수 있도록 구매 내역에도 등록
+                      const newPurchaseRecords = newCartEntries.map((ce, idx) => ({
+                        id: `SPUR-REC-${Date.now()}-${idx}`,
+                        purchase_id: `SPUR-REC-${Date.now()}-${idx}`,
+                        orderNo: `ORD-REC-${Date.now()}`,
+                        order_no: `ORD-REC-${Date.now()}`,
+                        purchasedAt: addedAt,
+                        ordered_at: addedAt,
+                        requestNo: ce.requestNo,
+                        request_no: ce.requestNo,
+                        cropTitle: ce.cropTitle,
+                        crop_title: ce.cropTitle,
+                        stageGroupName: ce.stageGroupName,
+                        stage_group_name: ce.stageGroupName,
+                        processCode: ce.processCode,
+                        process_code: ce.processCode,
+                        subItemName: ce.subItemName,
+                        sub_item_name: ce.subItemName,
+                        material_id: ce.material_id,
+                        material_category: ce.material_category,
+                        category_1st:
+                          ce.material_category === 'NUTRIENT'
+                            ? '영양제'
+                            : ce.material_category === 'PESTICIDE'
+                            ? '병해충관리제'
+                            : '비료',
+                        subType: ce.subType,
+                        sub_type: ce.subType,
+                        productName: ce.productName,
+                        product_name: ce.productName,
+                        unitSpec: ce.unitSpec,
+                        unit_spec: ce.unitSpec,
+                        unitLabel: ce.unitLabel,
+                        unit_label: ce.unitLabel,
+                        unitPrice: ce.unitPrice,
+                        unit_price: ce.unitPrice,
+                        qty: 1,
+                        raw_subtotal: ce.unitPrice,
+                        discount_amount: 0,
+                        totalPrice: ce.unitPrice,
+                        final_subtotal: ce.unitPrice,
+                        thumbnailUrl: ce.thumbnailUrl,
+                        thumbnail_url: ce.thumbnail_url,
+                      }));
+                      setStagePurchaseHistory((prev) => {
+                        const updated = [...newPurchaseRecords, ...prev];
+                        try {
+                          localStorage.setItem(STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(updated));
+                        } catch {
+                          // ignore
+                        }
+                        return updated;
+                      });
+
+                      const msg = `[${stageRecommendedBuyTarget.subItemName}] 추천 농자재 ${checkedCount}종(총 ${totalAmount.toLocaleString()}원)이 장바구니 및 내 농자재 목록에 담겼습니다.`;
+                      setPurchaseToastMessage(msg);
+                      setMyPageToast(msg);
+                      setTimeout(() => {
+                        setPurchaseToastMessage('');
+                        setMyPageToast('');
+                      }, 4000);
+                      setStageRecommendedBuyTarget(null);
+                    };
+
+                    return (
+                      <div className="fixed inset-0 z-[76] bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
+                        <div className="w-full max-w-lg max-h-[92vh] bg-[#F5F7F5] rounded-[26px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden select-none">
+                          {/* 1. 상단 바: [←] [한팜 FarmPlan] [⋮] */}
+                          <div className="bg-white px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setStageRecommendedBuyTarget(null)}
+                              aria-label="뒤로가기"
+                              className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                            >
+                              <ArrowLeft className="w-5 h-5 stroke-[2.3]" />
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-[9px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs">
+                                <Sprout className="w-5 h-5 stroke-[2.2]" />
+                              </div>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em]">
+                                  한팜
+                                </span>
+                                <span className="text-[15px] font-extrabold text-[#111827] tracking-[-0.02em]">
+                                  FarmPlan
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setStageRecommendedBuyTarget(null)}
+                              aria-label="닫기"
+                              className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          {/* 스크롤 본문 */}
+                          <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3.5">
+                            {/* 2. 타이틀 & 서브타이틀 */}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <ShoppingCart className="w-6 h-6 text-[#0E712F] stroke-[2.3]" />
+                                <h3 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                  농자재 구매
+                                </h3>
+                              </div>
+                              <p className="mt-1 text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                                선택한 농작업에 필요한 농자재를 간편하게 구매하세요.
+                              </p>
+                            </div>
+
+                            {/* 3. 상단 작물 정보 & 연계 농작업 카드 */}
+                            <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-center justify-between gap-3">
+                              {/* 좌측 작물 요약 */}
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-[58px] h-[58px] rounded-[14px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
+                                  <img
+                                    src={cropThumbUrl}
+                                    alt={shortCropName}
+                                    className="w-full h-full object-cover block"
+                                  />
+                                </div>
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="text-[17px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                    {shortCropName}{' '}
+                                    <span className="text-[14px] font-extrabold">
+                                      ({seasonalCropLabel})
+                                    </span>
+                                  </div>
+                                  <div className="text-[13px] font-semibold text-[#4B5563] truncate">
+                                    {cultTypeLabel}{' '}
+                                    <span className="text-slate-300 mx-1">|</span>{' '}
+                                    {areaPyeongVal.toLocaleString()}평
+                                  </div>
+                                  <div className="text-[12.5px] font-bold text-[#374151] flex items-center gap-1 truncate">
+                                    <Calendar className="w-3.5 h-3.5 text-[#4B5563] shrink-0" />
+                                    <span>정식 {toKoreanMd(plantingYmd)}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="w-[1px] h-14 bg-slate-200 shrink-0" />
+
+                              {/* 우측 연계 농작업 박스 */}
+                              <div className="shrink-0 min-w-[148px] max-w-[185px] space-y-1.5">
+                                <div className="rounded-[13px] bg-[#EAF6ED] px-3 py-2">
+                                  <div className="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-[#0E712F]">
+                                    <Sprout className="w-3.5 h-3.5" />
+                                    <span>연계 농작업</span>
+                                  </div>
+                                  <div className="mt-0.5 text-[15px] font-black text-[#0E712F] tracking-[-0.03em] leading-snug break-keep">
+                                    {stageRecommendedBuyTarget.linkedTaskDisplayTitle}
+                                  </div>
+                                </div>
+                                <div className="px-1 text-[12.5px] font-bold text-[#374151] flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-[#4B5563] shrink-0" />
+                                  <span>
+                                    예정일{' '}
+                                    <strong className="font-black text-[#111827]">
+                                      {toKoreanMd(stageRecommendedBuyTarget.effDate)}
+                                    </strong>
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* 4. 추천 농자재 섹션 헤더 */}
+                            <div className="flex items-center gap-1.5 px-0.5 pt-0.5">
+                              <h4 className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                추천 농자재
+                              </h4>
+                              <span className="w-4 h-4 rounded-full border border-slate-400 text-slate-500 text-[10px] font-bold inline-flex items-center justify-center">
+                                i
+                              </span>
+                            </div>
+
+                            {/* 5. 추천 농자재 카드 리스트 (주비료 + 보조제) */}
+                            <div className="space-y-2.5">
+                              {stageRecommendedBuyTarget.items.map((recIt) => (
+                                <div
+                                  key={recIt.id}
+                                  className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-center justify-between gap-2.5"
+                                >
+                                  {/* 좌측: 체크박스 + 상품 패키지 그래픽 + 배지 + 상품명 */}
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleRecItemCheck(recIt.id)}
+                                      aria-label={`${recIt.name} 선택`}
+                                      className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
+                                        recIt.checked
+                                          ? 'bg-[#0E712F] border-[#0E712F] text-white'
+                                          : 'bg-white border-slate-300 text-transparent'
+                                      }`}
+                                    >
+                                      <Check className="w-4 h-4 stroke-[2.6]" />
+                                    </button>
+
+                                    {/* 포대 / 액상병 패키지 일러스트 */}
+                                    {recIt.visualType === 'BAG' ? (
+                                      <div className="w-[58px] h-[68px] rounded-xl bg-gradient-to-b from-slate-100 via-white to-emerald-50 border border-slate-300 shadow-2xs flex flex-col items-center justify-between p-1.5 shrink-0">
+                                        <div className="w-full h-1.5 rounded-full bg-emerald-700/80" />
+                                        <div className="text-center leading-tight">
+                                          <div className="text-[9.5px] font-black text-[#0E712F] tracking-tighter">
+                                            {recIt.bagLabelTop}
+                                          </div>
+                                          <div className="text-[10.5px] font-black text-[#111827] tracking-tighter">
+                                            {recIt.bagLabelMid}
+                                          </div>
+                                        </div>
+                                        <div className="w-full h-3.5 rounded-md bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 flex items-center justify-center">
+                                          <span className="text-[7.5px] font-extrabold text-white">
+                                            HANFARM
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="w-[58px] h-[68px] flex flex-col items-center justify-center shrink-0">
+                                        <div className="w-5 h-2.5 rounded-t-md bg-slate-200 border border-slate-300" />
+                                        <div className="w-[46px] h-[54px] rounded-xl bg-white border border-slate-300 shadow-2xs overflow-hidden flex flex-col justify-between">
+                                          <div className="h-2 bg-slate-100" />
+                                          <div className="bg-gradient-to-b from-[#15803D] to-[#0E712F] px-1 py-1.5 text-center text-white">
+                                            <div className="text-[8.5px] font-extrabold leading-tight">
+                                              {recIt.bagLabelTop}
+                                            </div>
+                                            <div className="text-[8px] font-bold text-emerald-100 leading-tight">
+                                              {recIt.bagLabelMid}
+                                            </div>
+                                          </div>
+                                          <div className="h-2.5 bg-emerald-50 flex items-center justify-center">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="min-w-0 space-y-0.5">
+                                      <span className="inline-block px-2 py-0.5 rounded-md bg-[#F9EEDB] text-[#5C4018] text-[11px] font-extrabold">
+                                        {recIt.roleBadge}
+                                      </span>
+                                      <div className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
+                                        {recIt.name}
+                                      </div>
+                                      {recIt.formulaSub && (
+                                        <div className="text-[13px] font-bold text-[#374151]">
+                                          {recIt.formulaSub}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="w-[1px] h-16 bg-slate-100 shrink-0" />
+
+                                  {/* 우측: 권장 사용량 + 수량 스텝퍼 */}
+                                  <div className="w-[144px] sm:w-[156px] shrink-0 space-y-1.5">
+                                    <div>
+                                      <div className="text-[11px] font-semibold text-[#4B5563]">
+                                        권장 사용량
+                                      </div>
+                                      <div className="text-[13px] font-black text-[#111827] tracking-[-0.02em] whitespace-nowrap">
+                                        {recIt.dosageRangeLabel}
+                                      </div>
+                                    </div>
+
+                                    <div className="rounded-xl bg-[#F3F5F3] border border-slate-200/90 p-1 flex items-center justify-between">
+                                      <button
+                                        type="button"
+                                        onClick={() => adjustRecItemQty(recIt.id, -1)}
+                                        className="w-7 h-7 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer"
+                                      >
+                                        <Minus className="w-3.5 h-3.5" />
+                                      </button>
+                                      <span className="text-[13.5px] font-black text-[#111827]">
+                                        {recIt.qty} {recIt.unit}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => adjustRecItemQty(recIt.id, 1)}
+                                        className="w-7 h-7 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* 6. 사용방법 안내 카드 */}
+                            <div className="rounded-[18px] bg-[#EAF6ED] border border-[#CFE8D5] p-3.5 flex items-start gap-3">
+                              <div className="inline-flex items-center gap-1.5 text-[#0E712F] font-black text-[14px] shrink-0 mt-0.5">
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  className="w-5 h-5 text-[#0E712F] shrink-0"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M12 6.5C10.2 5.3 7.8 4.8 5 5V18.5C7.8 18.3 10.2 18.8 12 20M12 6.5C13.8 5.3 16.2 4.8 19 5V18.5C16.2 18.3 13.8 18.8 12 20M12 6.5V20"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                                <span>사용방법</span>
+                              </div>
+
+                              <ul className="space-y-1 text-[12.5px] font-bold text-[#1F2937] leading-snug">
+                                {stageRecommendedBuyTarget.usageGuides.map((guide, gIdx) => (
+                                  <li key={gIdx} className="flex items-start gap-1.5">
+                                    <span className="text-[#111827] font-black">•</span>
+                                    <span>{guide}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+
+                          {/* 7. 하단 고정 바: [🛒 선택 N개 | 총 50,000원] + [🛒 장바구니 담기] */}
+                          <div className="bg-[#F5F7F5] px-4 py-3 border-t border-slate-200/80 grid grid-cols-12 gap-2.5 shrink-0">
+                            <div className="col-span-6 h-[50px] rounded-full bg-white border border-slate-300 px-3.5 flex items-center justify-center gap-2 text-[13.5px] font-extrabold text-[#111827]">
+                              <ShoppingCart className="w-4 h-4 text-[#0E712F] shrink-0" />
+                              <span className="whitespace-nowrap">선택 {checkedCount}개</span>
+                              <span className="text-slate-300">|</span>
+                              <span className="whitespace-nowrap">
+                                총{' '}
+                                <strong className="text-[15px] font-black text-[#0E712F]">
+                                  {totalAmount.toLocaleString()}원
+                                </strong>
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              disabled={checkedCount === 0}
+                              onClick={handleAddSelectedRecommendedToCart}
+                              className="col-span-6 h-[50px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] disabled:opacity-45 text-white font-extrabold text-[15.5px] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.25)]"
+                            >
+                              <ShoppingCart className="w-5 h-5" />
+                              <span>장바구니 담기</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
             </div>
           );
