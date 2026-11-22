@@ -585,11 +585,13 @@ export default function UserIntroPage() {
     subItemName: string;
     linkedTaskDisplayTitle: string;
     effDate: string;
+    effDateLabel?: string;
     raw: any;
     items: Array<{
       id: string;
       checked: boolean;
       roleBadge: string;
+      subTaskLabel?: string;
       visualType: 'BAG' | 'BOTTLE';
       bagLabelTop: string;
       bagLabelMid: string;
@@ -25357,8 +25359,20 @@ export default function UserIntroPage() {
             });
           };
 
-          const openStageRecommendedBuyModal = (entry: any) => {
+          // 괄호 (...) 및 대괄호 [...] 텍스트 제거 헬퍼 (타이틀 칼럼에서 () 내용 완전 숨김 처리)
+          const stripParenText = (text: string): string =>
+            String(text || '')
+              .replace(/^\[[^\]]*\]\s*/, '')
+              .replace(/\s*\([^)]*\)/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+          const buildStageEntryRecommendedBundle = (
+            entry: any,
+            includeSubTaskBadge = false
+          ) => {
             const subName = String(entry?.subItemName || '생장 관리(시비·관수)').trim();
+            const cleanSubName = stripParenText(subName) || subName;
             const stepOrd = Number(entry?.stepOrder || 9);
             const itemId = String(entry?.itemId || `SCH-${String(stepOrd).padStart(2, '0')}`);
             const pyeong = areaPyeongVal || 500;
@@ -25657,6 +25671,7 @@ export default function UserIntroPage() {
             const topMaterials = resolvedDbMaterials.slice(0, 2);
 
             // 3. 플랫폼 DB 농자재의 product_name, unit_spec, dosage_per_100pyeong, unit_price를 모달 카드 구조로 변환
+            // 타이틀 칼럼에서는 ()로 추가된 모든 내용을 제거하여 깔끔하고 안정적인 타이틀만 표시
             const mappedModalItems = topMaterials.map((mat, idx) => {
               const rawProdName = String(mat.product_name || '').trim();
               const cat = String(mat.material_category || 'FERTILIZER').toUpperCase();
@@ -25670,22 +25685,21 @@ export default function UserIntroPage() {
                     : '주비료'
                   : '보조제';
 
-              // 상품명에서 괄호 설명과 본 제목을 깔끔하게 분리 (예: "웜해머 분산성액제" + "(벼룩잎벌레·진딧물·총채벌레·나방류 종합살충제) 1L")
-              const parenIdx = rawProdName.indexOf('(');
-              const mainName =
-                parenIdx > 0 ? rawProdName.slice(0, parenIdx).trim() : rawProdName;
-              const formulaSub =
-                parenIdx > 0 ? rawProdName.slice(parenIdx).trim() : String(mat.sub_type || '');
+              // [제조사] 및 모든 (...) 괄호 내용을 제거한 순수 상품 타이틀
+              const cleanMainName = stripParenText(rawProdName) || rawProdName;
 
-              // 포장단위(포/병/봉) 및 1포·1병당 규격 파싱
-              const unitSpecStr = String(mat.unit_spec || (isBag ? '20kg / 포' : '500ml / 병'));
+              // 포장단위(포/병/봉) 및 1포·1병당 규격 파싱 (괄호 제거)
+              const rawUnitSpecStr = String(
+                mat.unit_spec || (isBag ? '20kg / 포' : '500ml / 병')
+              );
+              const unitSpecStr = stripParenText(rawUnitSpecStr) || rawUnitSpecStr;
               const unitMatch = unitSpecStr.match(/(포|병|봉|통|팩|판|박스|개)/);
               const packUnitLabel = unitMatch ? unitMatch[1] : isBag ? '포' : '병';
 
               // 농장 평수(pyeong) 기준 권장 구매 수량(포/병) 및 권장 사용량 텍스트 산출
               const recommendedPackQty = Math.max(1, parseRecommendedQuantity(mat, pyeong));
               const dosageRaw = String(mat.dosage_per_100pyeong || '');
-              let dosageRangeLabel = `${recommendedPackQty}${packUnitLabel} (${unitSpecStr}) / ${pyeong.toLocaleString()}평`;
+              let dosageRangeLabel = `${recommendedPackQty}${packUnitLabel} / ${pyeong.toLocaleString()}평`;
               const rangeKgMatch = dosageRaw.match(/(\d+)\s*~\s*(\d+)\s*(kg|Kg|ml|mL|g)/);
               const singleKgMatch = dosageRaw.match(/100평당\s*(?:관주\s*)?(\d+)\s*(kg|Kg|ml|mL|g)/);
               if (rangeKgMatch) {
@@ -25700,15 +25714,16 @@ export default function UserIntroPage() {
               }
 
               return {
-                id: String(mat.material_id || `rec-mat-${idx + 1}`),
+                id: `${itemId}-${String(mat.material_id || `rec-mat-${idx + 1}`)}`,
                 checked: true,
                 roleBadge,
+                subTaskLabel: includeSubTaskBadge ? cleanSubName : undefined,
                 visualType: (isBag ? 'BAG' : 'BOTTLE') as 'BAG' | 'BOTTLE',
-                bagLabelTop: String(mat.sub_type || roleBadge).slice(0, 6),
-                bagLabelMid: mainName.slice(0, 7),
-                name: mainName,
-                formulaSub,
-                manufacturer: String(mat.manufacturer || '(주)누보'),
+                bagLabelTop: stripParenText(String(mat.sub_type || roleBadge)).slice(0, 6),
+                bagLabelMid: cleanMainName.slice(0, 7),
+                name: cleanMainName,
+                formulaSub: '',
+                manufacturer: stripParenText(String(mat.manufacturer || '누보')),
                 unitSpec: unitSpecStr,
                 thumbnailUrl: resolveAgroProductThumbUrl(mat),
                 dosageRangeLabel,
@@ -25718,7 +25733,7 @@ export default function UserIntroPage() {
                 unitPrice: Number(mat.unit_price || 18000),
                 materialId: String(mat.material_id || `MAT-${idx + 1}`),
                 materialCategory: cat,
-                subType: String(mat.sub_type || roleBadge),
+                subType: stripParenText(String(mat.sub_type || roleBadge)),
               };
             });
 
@@ -25755,25 +25770,79 @@ export default function UserIntroPage() {
             }
             if (usageGuides.length === 0) {
               usageGuides.push(
-                `${subName} 적기에 맞춰 권장 희석배수 및 사용량을 준수하여 살포합니다.`
+                `${cleanSubName} 적기에 맞춰 권장 희석배수 및 사용량을 준수하여 살포합니다.`
               );
             }
 
-            const linkedTaskDisplayTitle =
-              entry?.raw?.process_name ||
-              matchedProvisionStage?.process_name ||
-              `${subName}`;
-
-            setStageRecommendedBuyTarget({
-              reqNo: modalReqNo,
+            return {
               itemId,
-              stepOrder: stepOrd,
-              subItemName: subName,
-              linkedTaskDisplayTitle: `${subName}`,
-              effDate: entry.effDate || '2026-10-14',
-              raw: entry.raw,
+              stepOrd,
+              subName,
+              cleanSubName,
+              effDate: entry?.effDate || '2026-10-14',
+              raw: entry?.raw,
               items: mappedModalItems,
               usageGuides,
+            };
+          };
+
+          const openStageRecommendedBuyModal = (entry: any) => {
+            const bundle = buildStageEntryRecommendedBundle(entry, false);
+            setStageRecommendedBuyTarget({
+              reqNo: modalReqNo,
+              itemId: bundle.itemId,
+              stepOrder: bundle.stepOrd,
+              subItemName: bundle.cleanSubName,
+              linkedTaskDisplayTitle: bundle.cleanSubName,
+              effDate: bundle.effDate,
+              effDateLabel: toKoreanMd(bundle.effDate),
+              raw: bundle.raw,
+              items: bundle.items,
+              usageGuides: bundle.usageGuides,
+            });
+          };
+
+          // 주제항목(정식 전 / 생육초기 / 결구기 / 수확)의 [추천농자재] 클릭 시 해당 주제항목 내 모든 세부항목의 추천 농자재를 통합 표시
+          const openPhaseRecommendedBuyModal = (pg: {
+            phaseIdx: number;
+            title: string;
+            rangeText: string;
+            items: any[];
+          }) => {
+            const phaseEntries = Array.isArray(pg?.items) ? pg.items : [];
+            const combinedItems: Array<any> = [];
+            const combinedGuides: string[] = [];
+
+            phaseEntries.forEach((entry) => {
+              const bundle = buildStageEntryRecommendedBundle(entry, true);
+              bundle.items.forEach((it) => {
+                combinedItems.push(it);
+              });
+              bundle.usageGuides.forEach((g) => {
+                if (
+                  combinedGuides.length < 4 &&
+                  !combinedGuides.some((existing) => existing.slice(0, 12) === g.slice(0, 12))
+                ) {
+                  combinedGuides.push(g);
+                }
+              });
+            });
+
+            const firstEntry = phaseEntries[0];
+            setStageRecommendedBuyTarget({
+              reqNo: modalReqNo,
+              itemId: `PHASE-${pg.phaseIdx + 1}`,
+              stepOrder: Number(firstEntry?.stepOrder || 1),
+              subItemName: `${pg.title} 전체`,
+              linkedTaskDisplayTitle: `${pg.title} 전체 · ${phaseEntries.length}개 과정`,
+              effDate: firstEntry?.effDate || plantingYmd,
+              effDateLabel: pg.rangeText,
+              raw: firstEntry?.raw || null,
+              items: combinedItems,
+              usageGuides:
+                combinedGuides.length > 0
+                  ? combinedGuides
+                  : [`${pg.title} 단계의 각 세부 과정 적기에 맞춰 권장 사용량을 살포합니다.`],
             });
           };
 
@@ -25957,13 +26026,20 @@ export default function UserIntroPage() {
                               : 'bg-white border-[#E5E7EB]'
                           }`}
                         >
-                          {/* 아코디언 헤더 */}
-                          <button
-                            type="button"
+                          {/* 아코디언 헤더 (주제항목) */}
+                          <div
+                            role="button"
+                            tabIndex={0}
                             onClick={() => togglePhaseExpanded(pg.phaseIdx)}
-                            className="w-full px-4 py-3.5 flex items-center justify-between gap-2 text-left cursor-pointer"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                togglePhaseExpanded(pg.phaseIdx);
+                              }
+                            }}
+                            className="w-full px-3.5 sm:px-4 py-3.5 flex items-center justify-between gap-2 text-left cursor-pointer"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                               {isCurrent ? (
                                 <div className="w-7 h-7 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
                                   <Sprout className="w-4 h-4 stroke-[2.2]" />
@@ -25977,22 +26053,32 @@ export default function UserIntroPage() {
                                   <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                                 </div>
                               )}
-                              <div className="flex items-baseline gap-1.5 truncate">
-                                <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                              <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+                                <span className="text-[15.5px] sm:text-[16px] font-black text-[#111827] tracking-[-0.03em] shrink-0">
                                   {pg.title}
                                 </span>
-                                <span className="text-[14px] font-bold text-[#374151] tracking-[-0.02em]">
+                                <span className="text-[13px] sm:text-[14px] font-bold text-[#374151] tracking-[-0.02em] truncate">
                                   ({pg.rangeText})
                                 </span>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                               {isHarvestPhase && !isExpanded && (
-                                <span className="px-3 py-1 rounded-full bg-[#E8F6EC] text-[#0E712F] text-[12px] font-extrabold">
+                                <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-[#E8F6EC] text-[#0E712F] text-[11px] sm:text-[11.5px] font-extrabold whitespace-nowrap">
                                   예정 수확일 {toKoreanMd(harvestYmd)}
                                 </span>
                               )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPhaseRecommendedBuyModal(pg);
+                                }}
+                                className="px-2.5 py-1 rounded-full border border-[#15803D] bg-[#EAF6ED] hover:bg-[#15803D] text-[#0E712F] hover:text-white text-[11px] font-extrabold whitespace-nowrap cursor-pointer transition shadow-2xs"
+                              >
+                                추천농자재
+                              </button>
                               {isExpanded ? (
                                 <ChevronUp className="w-5 h-5 text-[#374151]" />
                               ) : isHarvestPhase ? (
@@ -26001,7 +26087,7 @@ export default function UserIntroPage() {
                                 <ChevronDown className="w-5 h-5 text-[#374151]" />
                               )}
                             </div>
-                          </button>
+                          </div>
 
                           {/* 아코디언 펼쳐진 하위 작업 리스트 */}
                           {isExpanded && (
@@ -26395,7 +26481,8 @@ export default function UserIntroPage() {
                                   <span>
                                     예정일{' '}
                                     <strong className="font-black text-[#111827]">
-                                      {toKoreanMd(stageRecommendedBuyTarget.effDate)}
+                                      {stageRecommendedBuyTarget.effDateLabel ||
+                                        toKoreanMd(stageRecommendedBuyTarget.effDate)}
                                     </strong>
                                   </span>
                                 </div>
@@ -26412,30 +26499,30 @@ export default function UserIntroPage() {
                               </span>
                             </div>
 
-                            {/* 5. 추천 농자재 카드 리스트 (주비료 + 보조제) */}
+                            {/* 5. 추천 농자재 카드 리스트 (타이틀 칼럼 () 숨김 처리 + 타이틀 칼럼 폭 확대 / 우측 권장 사용량·수량 칼럼 폭 축소) */}
                             <div className="space-y-2.5">
                               {stageRecommendedBuyTarget.items.map((recIt) => (
                                 <div
                                   key={recIt.id}
-                                  className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-center justify-between gap-2.5"
+                                  className="bg-white rounded-[20px] border border-[#E5E7EB] p-3 sm:p-3.5 shadow-2xs flex items-center justify-between gap-2"
                                 >
-                                  {/* 좌측: 체크박스 + 상품 패키지 그래픽 + 배지 + 상품명 */}
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  {/* 좌측: 체크박스 + 상품 패키지 이미지 + 배지 + 상품 타이틀 칼럼 (폭 확대) */}
+                                  <div className="flex items-center gap-2 min-w-0 flex-1">
                                     <button
                                       type="button"
                                       onClick={() => toggleRecItemCheck(recIt.id)}
                                       aria-label={`${recIt.name} 선택`}
-                                      className={`w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
+                                      className={`w-5.5 h-5.5 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
                                         recIt.checked
                                           ? 'bg-[#0E712F] border-[#0E712F] text-white'
                                           : 'bg-white border-slate-300 text-transparent'
                                       }`}
                                     >
-                                      <Check className="w-4 h-4 stroke-[2.6]" />
+                                      <Check className="w-3.5 h-3.5 stroke-[2.6]" />
                                     </button>
 
                                     {/* 플랫폼 DB 저장 농자재 실제 상품 썸네일 이미지 */}
-                                    <div className="w-[60px] h-[68px] rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                    <div className="w-[52px] h-[60px] sm:w-[56px] sm:h-[64px] rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                                       <img
                                         src={recIt.thumbnailUrl}
                                         alt={recIt.name}
@@ -26444,62 +26531,59 @@ export default function UserIntroPage() {
                                       />
                                     </div>
 
-                                    <div className="min-w-0 space-y-0.5">
+                                    <div className="min-w-0 flex-1 pr-1 space-y-0.5">
                                       <div className="flex items-center gap-1 flex-wrap">
+                                        {recIt.subTaskLabel && (
+                                          <span className="inline-block px-1.5 py-0.5 rounded-md bg-[#EAF6ED] text-[#0E712F] text-[10px] font-extrabold">
+                                            {recIt.subTaskLabel}
+                                          </span>
+                                        )}
                                         <span className="inline-block px-2 py-0.5 rounded-md bg-[#F9EEDB] text-[#5C4018] text-[10.5px] font-extrabold">
                                           {recIt.roleBadge}
                                         </span>
-                                        <span className="text-[10.5px] font-bold text-[#0E712F] truncate">
-                                          {recIt.manufacturer}
-                                        </span>
                                       </div>
-                                      <div className="text-[14px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
+                                      <div className="text-[13.5px] sm:text-[14px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
                                         {recIt.name}
                                       </div>
-                                      {recIt.formulaSub && (
-                                        <div className="text-[11.5px] font-bold text-[#4B5563] line-clamp-2 leading-tight">
-                                          {recIt.formulaSub}
-                                        </div>
-                                      )}
-                                      <div className="text-[11.5px] font-extrabold text-[#0E712F]">
+                                      <div className="text-[11px] font-extrabold text-[#0E712F]">
                                         {recIt.unitPrice.toLocaleString()}원{' '}
-                                        <span className="text-[10.5px] font-semibold text-slate-500">
+                                        <span className="text-[10px] font-semibold text-slate-500">
                                           / {recIt.unitSpec}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
 
-                                  <div className="w-[1px] h-16 bg-slate-100 shrink-0" />
+                                  <div className="w-[1px] h-14 bg-slate-100 shrink-0" />
 
-                                  {/* 우측: 권장 사용량 + 수량 스텝퍼 */}
-                                  <div className="w-[144px] sm:w-[156px] shrink-0 space-y-1.5">
+                                  {/* 우측: 권장 사용량 + 수량 스텝퍼 (폭을 118px~124px로 축소하여 좌측 타이틀 칼럼 폭 확보) */}
+                                  <div className="w-[118px] sm:w-[124px] shrink-0 space-y-1.5">
                                     <div>
-                                      <div className="text-[11px] font-semibold text-[#4B5563]">
+                                      <div className="text-[10.5px] font-semibold text-[#4B5563] leading-tight">
                                         권장 사용량
                                       </div>
-                                      <div className="text-[13px] font-black text-[#111827] tracking-[-0.02em] whitespace-nowrap">
+                                      <div className="text-[11.5px] sm:text-[12px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
                                         {recIt.dosageRangeLabel}
                                       </div>
                                     </div>
 
-                                    <div className="rounded-xl bg-[#F3F5F3] border border-slate-200/90 p-1 flex items-center justify-between">
+                                    <div className="rounded-xl bg-[#F3F5F3] border border-slate-200/90 p-0.5 flex items-center justify-between">
                                       <button
                                         type="button"
                                         onClick={() => adjustRecItemQty(recIt.id, -1)}
-                                        className="w-7 h-7 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer"
+                                        className="w-6.5 h-6.5 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer shrink-0"
                                       >
-                                        <Minus className="w-3.5 h-3.5" />
+                                        <Minus className="w-3 h-3" />
                                       </button>
-                                      <span className="text-[13.5px] font-black text-[#111827]">
+                                      <span className="text-[12.5px] font-black text-[#111827] whitespace-nowrap px-1">
                                         {recIt.qty} {recIt.unit}
                                       </span>
                                       <button
                                         type="button"
                                         onClick={() => adjustRecItemQty(recIt.id, 1)}
-                                        className="w-7 h-7 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer"
+                                        className="w-6.5 h-6.5 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-[#374151] hover:bg-slate-50 cursor-pointer shrink-0"
                                       >
-                                        <Plus className="w-3.5 h-3.5" />
+                                        <Plus className="w-3 h-3" />
                                       </button>
                                     </div>
                                   </div>
