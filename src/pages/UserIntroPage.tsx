@@ -23914,7 +23914,7 @@ export default function UserIntroPage() {
                   {/* 3. 상단 작물 정보 & 한팜 예정 수확일 카드 */}
                   <div className="bg-white rounded-[22px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-3.5">
                     <div className="flex items-stretch justify-between gap-2.5">
-                      {/* 좌측: 썸네일 + 작물명 + 노지/평수 + 정식일 */}
+                      {/* 좌측: 썸네일 + 작물명 및 아래 () 표시 */}
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className="w-[62px] h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
                           <img
@@ -23923,22 +23923,12 @@ export default function UserIntroPage() {
                             className="w-full h-full object-cover block"
                           />
                         </div>
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-baseline gap-1 flex-wrap">
-                            <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em]">
-                              {shortCropName}
-                            </span>
-                            <span className="text-[13.5px] font-bold text-[#374151] tracking-[-0.02em]">
-                              ({seasonalCropLabel})
-                            </span>
+                        <div className="min-w-0 flex flex-col justify-center space-y-0.5">
+                          <div className="text-[19px] font-black text-[#111827] tracking-[-0.03em] leading-tight">
+                            {shortCropName}
                           </div>
-                          <div className="text-[12.5px] font-semibold text-[#4B5563]">
-                            {cultTypeLabel} <span className="text-slate-300 mx-0.5">|</span>{' '}
-                            {areaPyeongVal.toLocaleString()}평
-                          </div>
-                          <div className="inline-flex items-center gap-1 text-[12px] font-bold text-[#111827]">
-                            <Calendar className="w-3.5 h-3.5 text-[#374151] shrink-0" />
-                            <span>정식일 {toKoreanMd(plantingYmd)}</span>
+                          <div className="text-[14px] font-bold text-[#374151] tracking-[-0.02em] leading-snug">
+                            ({seasonalCropLabel})
                           </div>
                         </div>
                       </div>
