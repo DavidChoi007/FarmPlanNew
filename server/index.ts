@@ -7434,9 +7434,9 @@ const server = http.createServer(async (req, res) => {
           visual_end_col: 3,
           work_content:
             `[${activeRequest.sido} ${activeRequest.sigungu} ${activeRequest.eupmyeondong} · ${cropDisplayName}(${cvDisplayName}) ${areaPyeong.toLocaleString()}평] 전작물 잔재물과 영농 폐비닐을 정리하고, 해당 필지 토양검정(pH ${activeRequest.soil_ph || 6.3}, 유기물 ${activeRequest.organic_matter_g_kg || 26}g/kg, 유효인산 ${activeRequest.avail_p2o5_mg_kg || 340}mg/kg, 칼륨 ${activeRequest.exch_k_cmol || 0.68}cmol+/kg) 결과를 바탕으로 배수로 및 경운 계획을 수립합니다.`,
-          materials: enrichMaterials(['FERT-PRD-04']),
+          materials: enrichMaterials(['FERT-PRD-04', 'MAT-PEST-01']),
           usage_tip:
-            '[농자재 사용팁] ① 전작물 뿌리 잔재물은 토양 전염성 병해의 1차 전염원이 되므로 포장 밖으로 반출하세요. ② 토양 산도(pH) 교정이 필요한 필지는 파종·정식 3주 전에 [우성] 명품입상석회(고토석회)를 미리 살포하고 깊이갈이를 해두어야 합니다.',
+            '[농자재 사용팁] ① 전작물 뿌리 잔재물은 토양 전염성 병해의 1차 전염원이 되므로 포장 밖으로 반출하세요. ② 산성 토양 교정을 위해 파종·정식 2~3주 전에 슈퍼고토석회·칼슘유황 토양개량제를 살포하고 고랑 잡초는 엑스온 액상수화제로 선제 정리하세요.',
           climate_rule: '강우 직후 토양 과습 상태에서의 무리한 경운을 피하고 토양 수분이 적정할 때 예정지 정리를 수행합니다.',
         },
         {
@@ -7458,13 +7458,11 @@ const server = http.createServer(async (req, res) => {
           visual_end_col: 5,
           work_content:
             planByCode.get('PRC-03')?.work_content ||
-            `[${cropDisplayName}(${cvDisplayName}) 맞춤형 기비 처방] 파종·정식 10~14일 전 토양개량제와 완숙 유기질비료(토토유박), ${cropDisplayName} 전용 밑거름 복합비료를 전층 시비한 뒤 토심 15~20cm 깊이로 로터리 경운을 수행합니다.`,
-          materials: planByCode.get('PRC-03')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-03').required_materials_json))
-            : enrichMaterials(['FERT-PRD-04', 'FERT-PRD-05', 'FERT-PRD-01']),
+            `[${cropDisplayName}(${cvDisplayName}) 맞춤형 기비 처방] 파종·정식 10~14일 전 완숙 유기질비료(참조은 발효 퇴비)와 ${cropDisplayName} 전용 밑거름 복합비료(슈퍼원예복합)를 전층 시비한 뒤 토심 15~20cm 깊이로 로터리 경운을 수행합니다.`,
+          materials: enrichMaterials(['FERT-PRD-05', 'FERT-PRD-01']),
           usage_tip:
             planByCode.get('PRC-03')?.usage_tip ||
-            '[농자재 사용팁] ① 명품입상석회(고토석회)는 가스장해 및 암모니아 휘산을 막기 위해 반드시 유박·복합비료 살포 7일 전에 먼저 살포하세요. ② 토토유박과 슈퍼원예복합은 토심 15~20cm까지 골고루 섞이도록 로터리 경운하세요.',
+            '[농자재 사용팁] ① 참조은 1등급 발효 가축분 유박·유기질퇴비와 슈퍼원예복합은 정식 10~14일 전에 살포하고 토심 15~20cm까지 골고루 섞이도록 로터리 경운하세요.',
           climate_rule: '고온·다습기 미숙 퇴비 시용 시 가스와 뿌리 장해가 발생하므로 반드시 완전 부숙된 유박·퇴비만 시용합니다.',
         },
         {
@@ -7485,10 +7483,10 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 3,
           visual_end_col: 7,
           work_content:
-            `[${activeRequest.eupmyeondong} ${activeRequest.land_category || '전(밭)'} 배수·멀칭 설계] 집중호우에 의한 습해를 예방하기 위해 폭 70~80cm, 높이 25~30cm의 이랑(두둑)과 배수로를 조성하고 토양소독제 처리 후 ${Number(activeRequest.mulching_yn) ? '비닐멀칭 피복으로 지온 확보 및 잡초 억제를 수행합니다.' : '두둑 표면을 평탄하게 진압하여 파종상을 완성합니다.'}`,
-          materials: enrichMaterials(['MAT-PEST-04', 'FERT-PRD-03']),
+            `[${activeRequest.eupmyeondong} ${activeRequest.land_category || '전(밭)'} 배수·멀칭 설계] 집중호우에 의한 습해를 예방하기 위해 폭 70~80cm, 높이 25~30cm의 이랑(두둑)과 배수로를 조성하고 완효성 코팅복합 및 토양살충제(포스 입제) 혼화 처리 후 ${Number(activeRequest.mulching_yn) ? '비닐멀칭 피복으로 지온 확보 및 잡초 억제를 수행합니다.' : '두둑 표면을 평탄하게 진압하여 파종상을 완성합니다.'}`,
+          materials: enrichMaterials(['FERT-PRD-03', 'MAT-PEST-17']),
           usage_tip:
-            '[농자재 사용팁] ① [UPL/누보] 사라져 미탁제(1,000배액)를 이랑 성형 직후 토양 표면에 골고루 살포하면 초기 잘록병(입고병)과 토양병해를 효과적으로 차단합니다. ② 멀칭은 토양 수분이 촉촉한 상태(비 온 다음날)에 피복해야 초기 발아·활착이 빠릅니다.',
+            '[농자재 사용팁] ① 두둑 성형 시 단한번 완효성 코팅복합과 포스 입제를 토양에 혼화 처리하면 90일간 양분 지속 공급과 거세미나방·고자리파리 등 토양해충 차단을 동시에 달성합니다.',
           climate_rule: '강우 직후 토양 수분이 65~70% 수준으로 적당히 촉촉할 때 이랑 성형 및 멀칭을 완료하여 지중 수분을 보존합니다.',
         },
 
@@ -7516,9 +7514,9 @@ const server = http.createServer(async (req, res) => {
               : reqCropId === 'CRP-SPINACH'
               ? `[${cvDisplayName} 종자 침종·소독] 직파 예정일(${plantingDate}) 전에 건전 종자를 선별하여 깨끗한 물에 12~24시간 침종(물불림) 처리하고 종자소독 후 파종을 준비합니다.`
               : `[${cvDisplayName} 육묘 파종] 정식 예정일(${plantingDate})로부터 ${nursSowing.days}일 전(육묘 목표적산온도 ${targetNurseryGdd}℃ 역산)에 원예용 무병 상토를 채운 플러그 트레이에 종자를 1립씩 파종하고 충분히 관수합니다.`,
-          materials: enrichMaterials(['MAT-NUTR-03', 'MAT-PEST-04']),
+          materials: enrichMaterials(['MAT-SEED-01', 'MAT-PEST-04']),
           usage_tip:
-            '[농자재 사용팁] ① 파종·종서 준비 시 [UPL/누보] 사라져 미탁제(1,000배액)와 [누보] 엔플러스 참편한 아미노를 활용하면 초기 입고병 예방과 발아세 균일화에 탁월합니다.',
+            '[농자재 사용팁] ① 무사마귀병(CR) 저항성 보증종자를 육묘 트레이에 파종하고 사라져 미탁제(1,000배액)를 파종상에 관주하면 초기 잘록병(입고병)과 뿌리썩음병을 효과적으로 예방합니다.',
           climate_rule: '파종·최아기 외부 기온 급변에 대비하여 적온(15~25℃)과 통풍을 유지합니다.',
         },
         {
@@ -7542,9 +7540,9 @@ const server = http.createServer(async (req, res) => {
             reqCropId === 'CRP-POTATO'
               ? `[${cvDisplayName} 절단 및 큐어링] 씨감자 싹이 5~8mm 크기로 굵고 짧게 자라면 파종 4~5일 전에 눈을 붙여 개당 30~40g 크기로 절단(소독칼 사용)하고, 15~18℃ 다습 조건에서 절단면 코르크층 치유(큐어링)를 완료합니다.`
               : `[${cvDisplayName} 건묘 관리] 모종이 웃자라지(도장) 않도록 오전 일찍 관수하고 저녁에는 상토 표면이 약간 마르도록 관리하며, 적정 주·야간 온도 관리로 뿌리 매트 형성을 유도합니다.`,
-          materials: enrichMaterials(['MAT-NUTR-03', 'MAT-NUTR-01']),
+          materials: enrichMaterials(['MAT-NUTR-18', 'MAT-NUTR-01']),
           usage_tip:
-            '[농자재 사용팁] ① [누보] 엔플러스 참편한 아미노(1,000배액)를 관주하면 흰색 잔뿌리와 초기 발아 활력이 크게 높아집니다.',
+            '[농자재 사용팁] ① 육묘기 트레이침지·활착전용 루트스타터(500배액)와 엔플러스 썬마스터를 처리하면 육묘 상토 뿌리돌림 완성도와 광합성 활력이 크게 높아집니다.',
           climate_rule: '과습 및 야간 고온 시 도장 또는 부패 위험이 높으므로 통풍을 극대화하고 수분을 조절합니다.',
         },
         {
@@ -7565,10 +7563,10 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 10,
           visual_end_col: 15,
           work_content:
-            `본밭 ${isDirectSowing ? '파종' : '정식'}(${plantingDate}) 7~9일 전부터 외기 환경에 적응시키는 순화 관리와 함께 초기 해충(진딧물·벼룩잎벌레·거세미나방) 예방 약제 및 칼슘·아미노산 영양제를 선제 처리합니다.`,
-          materials: enrichMaterials(['MAT-NUTR-02', 'MAT-PEST-05', 'MAT-NUTR-03']),
+            `본밭 ${isDirectSowing ? '파종' : '정식'}(${plantingDate}) 7~9일 전부터 외기 환경에 적응시키는 순화 관리와 함께 뿌리혹병(무사마귀병) 예방 약제 및 초기 진딧물·벼룩잎벌레 육묘상 관주 약제를 선제 처리합니다.`,
+          materials: enrichMaterials(['MAT-PEST-16', 'MAT-PEST-09']),
           usage_tip:
-            '[농자재 사용팁] ① 본밭 이식·파종 전 [인바이오/누보] 웜해머 분산성액제(1,000배액)와 [누보] 엔플러스 튼튼칼슘(500배액)을 선제 처리하면 초기 해충 피해와 몸살을 동시에 막아줍니다.',
+            '[농자재 사용팁] ① 정식 직전 육묘 트레이에 후론사이드 수화제(뿌리혹병 예방)와 아크타라 입상수화제(진딧물·벼룩잎벌레 침투이행 방제)를 침지·관주 처리하면 본밭 이식 초기 병해충을 원천 차단합니다.',
           climate_rule: '본밭 정식·파종 직전 일사량과 외기 기온에 적응시켜 초기 환경 스트레스를 최소화합니다.',
         },
 
@@ -7597,12 +7595,9 @@ const server = http.createServer(async (req, res) => {
               ? `[${cropDisplayName}(${cvDisplayName}) 본밭 직파 · ${plantingDate}] 준비된 본밭 두둑에 조파(줄뿌림) 또는 점파 방식으로 파종하고 1~1.5cm 복토·진압 후 가볍게 관수합니다. (${optPlanting.reason})`
               : planByCode.get('PRC-08')?.work_content ||
                 `[${cropDisplayName}(${cvDisplayName}) 본밭 정식 · ${plantingDate}] 건전한 플러그 묘를 재식거리에 맞춰 본밭에 정식하고 뿌리가 본밭 흙과 밀착되도록 충분히 관수·복토합니다. (${optPlanting.reason})`,
-          materials: planByCode.get('PRC-08')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-08').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-03', 'FERT-PRD-03']),
+          materials: enrichMaterials(['MAT-NUTR-03', 'MAT-PEST-18']),
           usage_tip:
-            planByCode.get('PRC-08')?.usage_tip ||
-            '[농자재 사용팁] ① [누보] 엔플러스 참편한 아미노(500배 희석액)를 정식·파종 직후 관주하면 초기 세근 발생이 3~4일 빨라집니다.',
+            '[농자재 사용팁] ① 본밭 정식 직후 엔플러스 참편한 아미노(500배액)와 프리엔 액상수화제(2,000배액)를 뿌리권에 관주하면 세근 발근 촉진과 고자리파리·선충·균핵병 예방을 동시에 해결합니다.',
           climate_rule: '정식·파종 당일 폭우·폭염·강풍을 피하고 토양 수분이 적습일 때 작업을 완료합니다.',
         },
         {
@@ -7628,12 +7623,9 @@ const server = http.createServer(async (req, res) => {
               : reqCropId === 'CRP-SPINACH'
               ? `[목표 유효적산온도 ${targetRootingPgdd}℃ 도달 (${gddRooting.date})] 파종 후 떡잎이 고르게 출아하고 본엽 1~2매가 전개되는지 예찰하며, 토양 표면이 마르지 않도록 스프링클러 관수를 유지합니다.`
               : `[목표 유효적산온도 ${targetRootingPgdd}℃ 도달 (${gddRooting.date})] 새 흰색 잔뿌리가 본밭 토양에 내리고 중심부 어린잎이 생장을 시작하는지 예찰합니다. 결주 포기는 예비 묘로 즉시 보식하고 활착 관수를 실시합니다.`,
-          materials: planByCode.get('PRC-10')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-10').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-03', 'MAT-NUTR-05']),
+          materials: enrichMaterials(['MAT-NUTR-08', 'MAT-NUTR-13']),
           usage_tip:
-            planByCode.get('PRC-10')?.usage_tip ||
-            '[농자재 사용팁] ① 초기 발아·활착이 지연될 경우 [누보] 엔플러스 참편한 아미노(500배액)와 [누보] 엔플러스 만능이(1,000배액)를 관주 또는 엽면살포하면 초기 뿌리권 형성이 빠르게 촉진됩니다.',
+            '[농자재 사용팁] ① 정식 후 활착기에 대유 루트파워 골드(500배액)와 뿌리왕 하이루트를 관주·엽면살포하면 이식 몸살을 조기에 극복하고 뿌리털 발달을 극대화합니다.',
           climate_rule: `정식·파종 후 누적 유효적산온도 ${targetRootingPgdd}℃ 도달 시점까지 토양 적습을 유지합니다.`,
         },
 
@@ -7646,7 +7638,7 @@ const server = http.createServer(async (req, res) => {
           sub_item_name: '생장 관리(시비·관수)',
           bar_label: '생장 관리(시비·관수)',
           process_code: 'PRC-13',
-          process_name: `1차 추비(PGDD ${targetTop1Pgdd}℃) · 2차 추비(PGDD ${targetTop2Pgdd}℃)`,
+          process_name: `1차 추비(PGDD ${targetTop1Pgdd}℃) · 초기 생장 시비`,
           process_type: 'WORK',
           step_order: 9,
           target_pgdd: targetTop1Pgdd,
@@ -7656,10 +7648,10 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 17,
           visual_end_col: 35,
           work_content:
-            `[${cropDisplayName}(${cvDisplayName}) 단계별 추비·관수 스케줄] 1차 추비 적기(${gddTop1.date}, 목표 PGDD ${targetTop1Pgdd}℃)와 2차 추비 적기(${gddTop2.date}, 목표 PGDD ${targetTop2Pgdd}℃)에 맞춰 NK복합비료 시비 및 수분 집중 관리를 수행합니다.`,
-          materials: enrichMaterials(['FERT-PRD-02', 'MAT-NUTR-04', 'MAT-NUTR-01', 'MAT-PEST-05']),
+            `[${cropDisplayName}(${cvDisplayName}) 초기 추비·관수 스케줄] 1차 추비 적기(${gddTop1.date}, 목표 PGDD ${targetTop1Pgdd}℃)에 맞춰 속효성 NK 마그네슘 추비 비료 시비 및 엽록소 광합성 부스터 관리를 수행합니다.`,
+          materials: enrichMaterials(['FERT-PRD-02', 'MAT-NUTR-11']),
           usage_tip:
-            '[농자재 사용팁] ① 1차 추비기에는 [누보] 엔케이(NK) 마그네슘 추비특호를 포기 사이에 시비하고, 2차 비대기에는 이랑 어깨에 시비하며 [누보] 엔플러스 커진다(500배액)를 병행하세요.',
+            '[농자재 사용팁] ① 1차 추비기에는 엔케이 마그네슘 추비특호를 포기 사이에 시비하고, 그린라이트 클로로필(1,000배액)을 엽면살포하여 외엽 광합성 효율을 극대화하세요.',
           climate_rule: '강우 직전 고농도 비료 시비는 유실 및 가스장해를 유발하므로 무강우 적습일에 나누어 시비합니다.',
         },
         {
@@ -7689,13 +7681,10 @@ const server = http.createServer(async (req, res) => {
               ? `[목표 유효적산온도 ${targetVigorousPgdd}℃ 도달 (${gddVigorous.date})] 출아 후 튼튼한 주경 2~3개만 남기고 곁눈을 제거(적아)하며, 화아분화·개화기에 맞춰 노출된 괴경 녹화 방지를 위한 북주기(배토)와 경엽 관리를 실시합니다.`
               : reqCropId === 'CRP-SPINACH'
               ? `[목표 유효적산온도 ${targetVigorousPgdd}℃ 도달 (${gddVigorous.date})] 밀식된 포기를 5~7cm 간격으로 솎아주어 채광·통풍을 확보하고 로제트형 본엽이 두껍게 전개되도록 관리합니다.`
-              : `[목표 유효적산온도 ${targetVigorousPgdd}℃ 도달 (${gddVigorous.date})] ${cropDisplayName}(${cvDisplayName})의 엽면적과 초세가 최대치로 확대되는 시기입니다. 고랑 제초·배수로 정비 및 칼슘·미량요소 엽면시비를 실시합니다.`,
-          materials: planByCode.get('PRC-17')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-17').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-05', 'MAT-NUTR-02', 'MAT-PEST-02']),
+              : `[목표 유효적산온도 ${targetVigorousPgdd}℃ 도달 (${gddVigorous.date})] ${cropDisplayName}(${cvDisplayName})의 엽면적과 초세가 최대치로 확대되는 시기입니다. 종합미량요소 엽면시비와 초기 흡즙해충(진딧물·총채벌레) 방제를 실시합니다.`,
+          materials: enrichMaterials(['MAT-NUTR-05', 'MAT-PEST-10']),
           usage_tip:
-            planByCode.get('PRC-17')?.usage_tip ||
-            '[농자재 사용팁] ① [누보] 엔플러스 만능이(1,000배액)와 [누보] 엔플러스 튼튼칼슘(500배액)을 엽면시비하여 광합성 동화양분 축적 효율을 극대화하세요.',
+            '[농자재 사용팁] ① 외엽 번무기에 엔플러스 만능이(1,000배액)로 12종 미량요소를 공급하고 빅카드 액상수화제(2,000배액)로 진딧물·총채벌레를 선제 방제하세요.',
           climate_rule: '일교차가 커지면서 광합성 효율이 높아지는 시기이므로 건전한 엽면적을 조기에 확보합니다.',
         },
         {
@@ -7730,28 +7719,25 @@ const server = http.createServer(async (req, res) => {
           visual_end_col: 37,
           work_content:
             reqCropId === 'CRP-POTATO' || reqCropId === 'CRP-SWEETPOTATO' || reqCropId === 'CRP-RADISH' || reqCropId === 'CRP-CARROT'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 지하부 뿌리·괴경이 본격적으로 비대하고 전분·당분이 축적되는 핵심 시기입니다. 열근(갈라짐)·공동과 예방을 위해 적습 관수와 칼륨·칼슘·붕소 엽면시비를 집중 실시합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 지하부 뿌리·괴경이 본격적으로 비대하고 전분·당분이 축적되는 핵심 시기입니다. 열근(갈라짐)·공동과 예방을 위해 적습 관수와 미량요소 엽면시비를 집중 실시합니다.`
               : reqCropId === 'CRP-LETTUCE'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 본엽이 규격 크기(15~20cm)에 도달하여 본 수확 및 연속 수확이 진행되는 시기입니다. 팁번(잎끝마름) 및 추대 여부를 정밀 점검하고 칼슘제를 보충합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 본엽이 규격 크기(15~20cm)에 도달하여 본 수확 및 연속 수확이 진행되는 시기입니다. 팁번(잎끝마름) 및 추대 여부를 정밀 점검합니다.`
               : reqCropId === 'CRP-SPINACH'
               ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 포기 볼륨과 뿌리 목(근관부)이 굵어지며 당도가 축적되는 시기입니다. 생육 균일도와 습해 여부를 점검합니다.`
               : reqCropId === 'CRP-GARLIC' || reqCropId === 'CRP-ONION' || reqCropId === 'CRP-GREENONION'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 인경(구) 또는 연백부가 본격적으로 비대하는 핵심 시기입니다. 구 비대기 수분 부족을 방지하고 칼슘·유황·가리 성분을 적기 보충합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 인경(구) 또는 연백부가 본격적으로 비대하는 핵심 시기입니다. 구 비대기 수분 부족을 방지하고 미량요소 성분을 적기 보충합니다.`
               : reqCropId === 'CRP-PEPPER' || reqCropId === 'CRP-CUCUMBER' || reqCropId === 'CRP-TOMATO' || reqCropId === 'CRP-WATERMELON' || reqCropId === 'CRP-CHAMOE'
-              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 개화·착과 이후 과실이 본격 비대하는 시기입니다. 배꼽썩음병·석회결핍과 및 낙과 예방을 위해 킬레이트 칼슘·붕소 엽면시비와 균일 관수를 실시합니다.`
+              ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName})의 개화·착과 이후 과실이 본격 비대하는 시기입니다. 생리장해 예방을 위해 킬레이트 미량요소 엽면시비와 균일 관수를 실시합니다.`
               : reqCropId === 'CRP-SOYBEAN'
               ? `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] ${cropDisplayName}(${cvDisplayName}) 개화 후 꼬투리(착협)가 형성되고 알곡(종실)이 차오르는 시기입니다. 한발 시 꼬투리 탈락 방지를 위해 수분 관리와 노린재 예찰을 병행합니다.`
-              : `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 외엽 확보 후 속잎이 안쪽으로 말리며 결구가 시작되는 핵심 시기입니다. 꿀통배추(칼슘결핍) 예방을 위해 킬레이트 칼슘·붕소 엽면시비와 적습 관수를 집중 실시합니다.`,
-          materials: planByCode.get('PRC-19')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-19').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-02', 'MAT-NUTR-04', 'MAT-PEST-03']),
+              : `[목표 유효적산온도 ${targetHeadingPgdd}℃ 도달 (${gddHeading.date})] 외엽 확보 후 속잎이 안쪽으로 말리며 결구 전환이 시작되는 시기입니다. EDTA 킬레이트 미량요소 공급과 이상기후 스트레스 예방 처방을 실시합니다.`,
+          materials: enrichMaterials(['MAT-NUTR-20', 'MAT-NUTR-16']),
           usage_tip:
-            planByCode.get('PRC-19')?.usage_tip ||
-            '[농자재 사용팁] ① [누보] 엔플러스 튼튼칼슘(500배액)과 [누보] 엔플러스 커진다(500배액)를 5~7일 간격으로 2~3회 살포하여 생리장해 예방과 구·엽 비대를 동시에 달성하세요.',
-          climate_rule: `생육적온(${optTempMin}~${optTempMax}℃) 구간에서 토양 건조 시 칼슘·양분 이동이 멈추므로 4~5일 간격 적습 관수를 유지합니다.`,
+            '[농자재 사용팁] ① 결구 진입기 생육 점검 시 대유 미리근 골드(1,000배액)와 스트레스제로 프로(800배액)를 살포하여 미량요소 결핍 황화와 온도 변화 스트레스를 선제 예방하세요.',
+          climate_rule: `생육적온(${optTempMin}~${optTempMax}℃) 구간에서 토양 건조 시 양분 이동이 멈추므로 4~5일 간격 적습 관수를 유지합니다.`,
         },
 
-        // 5. 병해충 예찰
+        // 5. 병해충 예찰 (결구기)
         {
           item_id: 'SCH-12',
           stage_group_id: 'STG-PEST',
@@ -7760,7 +7746,7 @@ const server = http.createServer(async (req, res) => {
           sub_item_name: '병해충 예찰(정기 점검)',
           bar_label: '병해충 예찰(정기 점검)',
           process_code: 'PRC-16',
-          process_name: '초기·중기 병해충 정기 예찰 및 선제 점검',
+          process_name: '결구기 병해충 정기 예찰 및 나방·해충 방제',
           process_type: 'WORK',
           step_order: 12,
           target_pgdd: targetPest1Pgdd,
@@ -7770,10 +7756,10 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 8,
           visual_end_col: 39,
           work_content:
-            `[${cropDisplayName}(${cvDisplayName}) 정기 예찰] 주 2회 이상 잎 뒷면과 생장점·지제부를 정밀 예찰합니다. 초기에는 진딧물·총채벌레·벼룩잎벌레·거세미나방을, 중기에는 나방류 유충 및 노균병·역병·무름병 초기 병반 유무를 집중 점검합니다.`,
+            `[${cropDisplayName}(${cvDisplayName}) 결구기 정기 예찰] 주 2회 이상 잎 뒷면과 결구 속잎·지제부를 정밀 예찰합니다. 결구 내부로 파고드는 배추좀나방·파밤나방 유충 및 벼룩잎벌레·총채벌레를 집중 점검하고 교호 살포합니다.`,
           materials: enrichMaterials(['MAT-PEST-05', 'MAT-PEST-02']),
           usage_tip:
-            '[농자재 사용팁] ① 해충 발생 초기에 [인바이오/누보] 웜해머 분산성액제(1,000배액)와 [바이엘/누보] 바이고 액상수화제(2,000배액)를 교호 살포하세요.',
+            '[농자재 사용팁] ① 결구기 해충 예찰 시 웜해머 분산성액제(1,000배액)와 바이고 액상수화제(2,000배액)를 교호 살포하여 나방 유충과 벼룩잎벌레를 완벽히 방제하세요.',
           climate_rule: '무강우 건조기에는 진딧물·총채벌레·나방류 밀도가 급증하므로 예찰 주기를 3~4일 간격으로 단축합니다.',
         },
         {
@@ -7784,7 +7770,7 @@ const server = http.createServer(async (req, res) => {
           sub_item_name: '방제(필요 시)',
           bar_label: '방제(필요 시)',
           process_code: 'PRC-22',
-          process_name: '중기·강우기 주요 병해충 집중 방제',
+          process_name: '결구 중기·강우기 노균병·무름병 집중 방제',
           process_type: 'WORK',
           step_order: 13,
           target_pgdd: targetPest2Pgdd,
@@ -7794,10 +7780,10 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 9,
           visual_end_col: 39,
           work_content:
-            `[${activeRequest.eupmyeondong} 강우·고습도 대응 방제] 강우 및 안개·이슬로 상대습도가 78% 이상 지속되는 시기에 급증하는 ${reqCropId === 'CRP-POTATO' ? '감자 역병·더뎅이병·진딧물' : '무름병(연부병)·노균병·균핵병 및 나방류'}를 적기 방제합니다. 강우 전 보호살균제, 강우 직후 침투이행성 치료살균제를 교호 살포합니다.`,
-          materials: enrichMaterials(['MAT-PEST-03', 'MAT-PEST-01', 'MAT-PEST-02']),
+            `[${activeRequest.eupmyeondong} 강우·고습도 대응 방제] 강우 및 안개·이슬로 상대습도가 78% 이상 지속되는 결구기에 급증하는 ${reqCropId === 'CRP-POTATO' ? '감자 역병·더뎅이병' : '무름병(연부병)·노균병·검은썩음병'}을 적기 방제합니다.`,
+          materials: enrichMaterials(['MAT-PEST-03', 'MAT-PEST-12']),
           usage_tip:
-            '[농자재 사용팁] ① [인바이오/누보] 펀지해머 액상수화제(1,000배액)와 [신젠타/누보] 오티바 액상수화제(2,000배액)를 줄기 밑둥(지제부)과 잎 뒷면까지 충분히 젖도록 살포하세요.',
+            '[농자재 사용팁] ① 결구기 강우 전후 펀지해머 액상수화제(노균병·역병 방제, 1,000배액)와 일품 입상수화제(세균성 무름병 전문, 1,000배액)를 줄기 밑둥(지제부)과 잎 뒷면까지 충분히 살포하세요.',
           climate_rule: '강수량 10mm 이상 강우 직후 또는 평균습도 78% 이상 지속 시 24시간 이내에 선제 방제를 실시합니다.',
         },
         {
@@ -7808,7 +7794,7 @@ const server = http.createServer(async (req, res) => {
           sub_item_name: '예방 관리(환경·위생)',
           bar_label: '예방 관리(환경·위생)',
           process_code: 'PRC-27',
-          process_name: '수확 전 PLS 마감방제 및 포장 위생·기상재해 예방',
+          process_name: '결구 후기 꿀통배추(칼슘결핍) 예방 및 2차 칼슘추비',
           process_type: 'WORK',
           step_order: 14,
           target_pgdd: targetPest3Pgdd,
@@ -7818,11 +7804,11 @@ const server = http.createServer(async (req, res) => {
           visual_start_col: 9,
           visual_end_col: 40,
           work_content:
-            '고랑 물빠짐 정비 및 통풍을 방해하는 노화·병든 하엽 제거 등 환경·위생 관리를 수행하고, 수확 14일 전부터는 농약안전사용기준(PLS)을 엄수하여 잔류 우려가 없는 친환경 유기농업자재로 마감 방제를 실시합니다.',
-          materials: enrichMaterials(['MAT-PEST-06', 'MAT-NUTR-01']),
+            '결구 중후기 속잎이 급격히 차오르면서 발생하는 꿀통배추(내엽갈변·칼슘결핍) 및 무름 증상을 예방하기 위해 아미노산 킬레이트 액상칼슘·붕소제 엽면시비와 칼슘 함유 NK 추비를 병행합니다.',
+          materials: enrichMaterials(['MAT-NUTR-02', 'FERT-PRD-20']),
           usage_tip:
-            '[농자재 사용팁] ① 수확 임박기에는 PLS 잔류 농약 걱정이 전혀 없는 [누보] 엔플러스 해충박살 파워(유기농업자재 공시-2-5-315, 500배액)로 안전하게 마감 방제하세요.',
-          climate_rule: '수확기 저온·서리 또는 집중호우 예보 시 배수로 점검 및 보온·피복 대책을 즉시 가동합니다.',
+            '[농자재 사용팁] ① 결구 비대기에는 엔플러스 튼튼칼슘(500배액)을 속잎까지 엽면 살포하고 단번에엔케이 칼슘추비를 고랑에 추비하여 세포벽 강화와 결구 비대를 완성하세요.',
+          climate_rule: '결구 후기 토양 건조 또는 과습 시 칼슘 흡수가 저해되므로 적습 유지와 엽면 칼슘 공급을 병행합니다.',
         },
 
         // 6. 수확
@@ -7856,13 +7842,10 @@ const server = http.createServer(async (req, res) => {
               ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 과실의 착색도·당도·과중 및 숙기를 판정하여 출하 규격에 도달한 과실부터 적기 수확 일정을 확정합니다.`
               : reqCropId === 'CRP-SOYBEAN'
               ? `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] ${cropDisplayName}(${cvDisplayName}) 잎이 낙엽되고 꼬투리의 80~90%가 갈색으로 성숙했는지 확인하여 탈립 전 적기 수확일을 확정합니다.`
-              : `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 배추 통 상부를 손으로 눌렀을 때 결구율이 85~90% 이상 단단하게 차올랐는지 숙기를 판정하고, 한파·강수 예보를 대조하여 최적 수확일을 확정합니다.`,
-          materials: planByCode.get('PRC-28')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-28').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-04', 'MAT-PEST-06']),
+              : `[목표 유효적산온도 ${targetReadyPgdd}℃ 도달 (${safeReadyDate})] 배추 통 상부를 손으로 눌렀을 때 결구율이 85~90% 이상 단단하게 차올랐는지 숙기를 판정하고, 수확 직전 구중 완성 및 PLS 무잔류 친환경 마감 관리를 실시합니다.`,
+          materials: enrichMaterials(['MAT-NUTR-04', 'MAT-PEST-06']),
           usage_tip:
-            planByCode.get('PRC-28')?.usage_tip ||
-            '[농자재 사용팁] ① 수확 7~10일 전 [누보] 엔플러스 커진다(500배액)를 마지막으로 엽면시비하면 상품성 및 저장성이 크게 향상됩니다.',
+            '[농자재 사용팁] ① 수확 7~10일 전 엔플러스 커진다(500배액)로 결구 구중·치밀도를 완성하고, 엔플러스 해충박살 파워(유기농업자재 공시, 500배액)로 PLS 잔류농약 걱정 없이 안전하게 마감 방제하세요.',
           climate_rule: `누적 유효적산온도 ${targetReadyPgdd}~${requiredTotalGdd}℃ 도달 및 무강우·저습도 맑은 날을 수확 적기로 판정합니다.`,
         },
         {
@@ -7895,13 +7878,10 @@ const server = http.createServer(async (req, res) => {
               ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 아침 서늘한 시간대에 ${cropDisplayName}(${cvDisplayName})을 수확하여 예냉·건조 처리 후 크기·품질 등급별로 선별 포장하여 출하합니다.`
               : reqCropId === 'CRP-SOYBEAN'
               ? `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이슬이 마른 맑은 날 ${cropDisplayName}(${cvDisplayName})을 수확·탈곡한 뒤 수분함량 13~14% 이하로 건조하고 이물질 및 피해립을 선별하여 저장·출하합니다.`
-              : `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이슬이 완전히 마른 맑은 날 본 수확을 실시합니다. 보호 겉잎 2~3매를 남긴 뒤 크기·무게별로 선별하여 3포기 통풍망 포장 출하 또는 0~2℃ 저온저장고 예냉 입고를 완료합니다.`,
-          materials: planByCode.get('PRC-29')?.required_materials_json
-            ? enrichMaterials(JSON.parse(planByCode.get('PRC-29').required_materials_json))
-            : enrichMaterials(['MAT-NUTR-02']),
+              : `[목표 유효적산온도 ${requiredTotalGdd}℃ 도달 (${safeHarvestDate})] 이슬이 완전히 마른 맑은 날 본 수확을 실시합니다. 수확 전 고농도 칼륨·규산 처방으로 초겨울 동해를 방지하고 표피 조직을 강화하여 장기 저온저장성을 극대화합니다.`,
+          materials: enrichMaterials(['MAT-NUTR-14', 'MAT-NUTR-24']),
           usage_tip:
-            planByCode.get('PRC-29')?.usage_tip ||
-            '[농자재 사용팁] ① 비가 내렸거나 아침 안개·이슬이 마르지 않은 상태에서 수확하여 포장하면 저장 중 부패가 급증하므로 반드시 물기가 완전히 마른 뒤 수확·선별하세요.',
+            '[농자재 사용팁] ① 수확·저장 전 하이포타시움 K35(1,000배액)와 엔플러스 규산칼륨 파워(1,000배액)로 세포액 당도·내한성과 잎 표피 조직을 강화하면 저온저장 중 무름과 부패를 크게 줄여줍니다.',
           climate_rule: '수확 당일 상대습도가 낮고 맑은 날 수확하여 현장 예건·예냉 후 호흡열을 식혀 저장합니다.',
         },
       ];
@@ -7972,7 +7952,18 @@ const server = http.createServer(async (req, res) => {
         });
 
         if (dynamicallyRecommended.length > 0) {
-          schItem.materials = dynamicallyRecommended;
+          const topRationaleTemplate = dynamicallyRecommended[0];
+          const curatedStageMats = Array.isArray(schItem.materials) ? schItem.materials : [];
+          if (curatedStageMats.length > 0) {
+            schItem.materials = curatedStageMats.map((cm: any, idx: number) => ({
+              ...topRationaleTemplate,
+              ...cm,
+              match_score: idx === 0 ? Number(topRationaleTemplate?.match_score || 98) : 95,
+              is_top1_recommended: idx === 0,
+            }));
+          } else {
+            schItem.materials = dynamicallyRecommended;
+          }
         }
       }
 

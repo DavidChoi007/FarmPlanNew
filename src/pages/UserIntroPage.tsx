@@ -25378,12 +25378,12 @@ export default function UserIntroPage() {
             const pyeong = areaPyeongVal || 500;
             const areaRatio100 = Math.max(1, Number((pyeong / 100).toFixed(1)));
 
-            // 1. 플랫폼 DB (agro_material 테이블 / server/fertilizerProductAssets.ts) 실제 등록 상품 카탈로그 매핑
+            // 1. 플랫폼 DB (agro_material 테이블 / server/fertilizerProductAssets.ts) 실제 등록 상품 카탈로그 매핑 (32종 전 생육단계 고유 품목)
             const PLATFORM_DB_AGRO_CATALOG: Record<
               string,
               {
                 material_id: string;
-                material_category: 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE';
+                material_category: 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE' | 'SEED' | 'SEEDLING';
                 sub_type: string;
                 manufacturer: string;
                 product_name: string;
@@ -25394,6 +25394,7 @@ export default function UserIntroPage() {
                 usage_tip: string;
               }
             > = {
+              // [비료 FERTILIZER]
               'FERT-PRD-01': {
                 material_id: 'FERT-PRD-01',
                 material_category: 'FERTILIZER',
@@ -25454,6 +25455,32 @@ export default function UserIntroPage() {
                 thumbnail_url: '/images/fertilizers/FERT-PRD-05-thumb.jpg',
                 usage_tip: '정식 2주 전 전층 시비하여 토양 유기물 함량과 보수력·통기성을 높입니다.',
               },
+              'FERT-PRD-20': {
+                material_id: 'FERT-PRD-20',
+                material_category: 'FERTILIZER',
+                sub_type: '웃거름비료',
+                manufacturer: '(주)조비',
+                product_name: '단번에엔케이(NK) 칼슘추비 (16-0-15+CaO 4+MgO 2+B 0.2) 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 21000,
+                dosage_per_100pyeong: '100평당 10~15kg (포기 사이 또는 고랑 추비)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-02-thumb.png',
+                usage_tip: '결구기 2차 웃거름으로 질소·칼륨과 수용성 칼슘·붕소를 동시에 공급합니다.',
+              },
+              // [종자 SEED]
+              'MAT-SEED-01': {
+                material_id: 'MAT-SEED-01',
+                material_category: 'SEED',
+                sub_type: '엽채류 종자',
+                manufacturer: '농우바이오',
+                product_name: '불암3호 가을김장배추 종자 2,000립',
+                unit_spec: '2,000립 / 봉',
+                unit_price: 15000,
+                dosage_per_100pyeong: '100평당 1~2봉 (128구 육묘 트레이 파종)',
+                thumbnail_url: '/images/fertilizers/MAT-SEED-01-thumb.jpg',
+                usage_tip: '원예용 무병 상토를 채운 128구 트레이에 1립씩 파종하고 적온(20~25℃)에서 발아시킵니다.',
+              },
+              // [영양제 NUTRIENT]
               'MAT-NUTR-01': {
                 material_id: 'MAT-NUTR-01',
                 material_category: 'NUTRIENT',
@@ -25464,7 +25491,7 @@ export default function UserIntroPage() {
                 unit_price: 18500,
                 dosage_per_100pyeong: '100평당 100~200ml (물 20L당 20~40ml 엽면시비)',
                 thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
-                usage_tip: '일조 부족기나 기온 급변 전후 물 20L당 20~40ml(500~1,000배)로 희석해 엽면 살포합니다.',
+                usage_tip: '육묘기 일조 부족이나 기온 급변 전후 물 20L당 20~40ml(500~1,000배)로 희석해 엽면 살포합니다.',
               },
               'MAT-NUTR-02': {
                 material_id: 'MAT-NUTR-02',
@@ -25488,7 +25515,7 @@ export default function UserIntroPage() {
                 unit_price: 15900,
                 dosage_per_100pyeong: '100평당 관주 250~500ml / 엽면 150ml (500배 희석)',
                 thumbnail_url: '/images/fertilizers/MAT-NUTR-03-thumb.png',
-                usage_tip: '정식 직전 육묘판 침지 또는 정식 직후 500배 희석액을 포기에 관주하여 세근 발근을 촉진합니다.',
+                usage_tip: '본밭 정식 직후 500배 희석액을 포기 뿌리권에 관주하여 세근 발근과 활착을 촉진합니다.',
               },
               'MAT-NUTR-04': {
                 material_id: 'MAT-NUTR-04',
@@ -25500,7 +25527,7 @@ export default function UserIntroPage() {
                 unit_price: 19500,
                 dosage_per_100pyeong: '100평당 150~200ml (물 20L당 25~40ml 엽면시비)',
                 thumbnail_url: '/images/fertilizers/MAT-NUTR-04-thumb.png',
-                usage_tip: '결구·비대 중기부터 7~10일 간격으로 500~800배 희석하여 엽면 살포합니다.',
+                usage_tip: '수확 적기 도달 전 500~800배 희석액을 엽면 살포하여 결구 구중과 치밀도를 완성합니다.',
               },
               'MAT-NUTR-05': {
                 material_id: 'MAT-NUTR-05',
@@ -25512,8 +25539,105 @@ export default function UserIntroPage() {
                 unit_price: 15500,
                 dosage_per_100pyeong: '100평당 100~150ml (물 20L당 20ml / 1,000배액)',
                 thumbnail_url: '/images/fertilizers/MAT-NUTR-05-thumb.jpg',
-                usage_tip: '생육 중기 엽색·잎두께 강화 및 미량요소 결핍 예방을 위해 1,000배액으로 엽면 살포합니다.',
+                usage_tip: '외엽 번무기 엽색·잎두께 강화 및 미량요소 결핍 예방을 위해 1,000배액으로 엽면 살포합니다.',
               },
+              'MAT-NUTR-08': {
+                material_id: 'MAT-NUTR-08',
+                material_category: 'NUTRIENT',
+                sub_type: '뿌리발근·초기활착 영양재',
+                manufacturer: '대유',
+                product_name: '대유 루트파워 골드 (정식 직후 세근 발근·활착 몸살 극복 전문제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 18500,
+                dosage_per_100pyeong: '100평당 150~300ml (물 20L당 40ml / 500배 희석 관주)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-03-thumb.png',
+                usage_tip: '정식 후 활착기 7일 이내 500배 희석액을 관주하여 새 흰 뿌리(세근) 발근을 유도합니다.',
+              },
+              'MAT-NUTR-11': {
+                material_id: 'MAT-NUTR-11',
+                material_category: 'NUTRIENT',
+                sub_type: '광합성·냉해/스트레스 회복 영양재',
+                manufacturer: '(주)조비',
+                product_name: '그린라이트 클로로필 (마그네슘·철 엽록소 광합성 부스터) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 16500,
+                dosage_per_100pyeong: '100평당 150ml (물 20L당 20ml / 1,000배 엽면시비)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
+                usage_tip: '1차 추비기 외엽 확장 시 1,000배 희석액을 엽면 살포하여 엽록소 합성을 촉진합니다.',
+              },
+              'MAT-NUTR-13': {
+                material_id: 'MAT-NUTR-13',
+                material_category: 'NUTRIENT',
+                sub_type: '뿌리발근·초기활착 영양재',
+                manufacturer: '(주)경농',
+                product_name: '뿌리왕 하이루트 (휴믹산·해조류·인산 기반 세근발달 촉진제) 1L',
+                unit_spec: '1L / 병',
+                unit_price: 19900,
+                dosage_per_100pyeong: '100평당 150~400ml (500~800배 희석 관주·엽면)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-03-thumb.png',
+                usage_tip: '활착기 뿌리털 발달 촉진 및 양분 흡수력 강화를 위해 500~800배 희석 살포합니다.',
+              },
+              'MAT-NUTR-14': {
+                material_id: 'MAT-NUTR-14',
+                material_category: 'NUTRIENT',
+                sub_type: '결구·괴경·구비대 촉진 영양재',
+                manufacturer: '남해화학(주)',
+                product_name: '하이포타시움 K35 (고농도 칼륨·규산 결구·괴경 비대제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 18600,
+                dosage_per_100pyeong: '100평당 150ml (물 20L당 20ml / 1,000배 엽면살포)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-04-thumb.png',
+                usage_tip: '수확·저장 전 1,000배 엽면 살포로 세포액 농도(내한성)와 당도·저장성을 강화합니다.',
+              },
+              'MAT-NUTR-16': {
+                material_id: 'MAT-NUTR-16',
+                material_category: 'NUTRIENT',
+                sub_type: '광합성·냉해/스트레스 회복 영양재',
+                manufacturer: '(주)동방아그로',
+                product_name: '스트레스제로 프로 (고온 위조·냉해·약해 회복 글리신베타인 액제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 19400,
+                dosage_per_100pyeong: '100평당 150ml (물 20L당 20~30ml / 700~1,000배 엽면시비)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
+                usage_tip: '결구 진입기 기온 변화 및 위조 스트레스 발생 전후 700~1,000배 희석하여 엽면 살포합니다.',
+              },
+              'MAT-NUTR-18': {
+                material_id: 'MAT-NUTR-18',
+                material_category: 'NUTRIENT',
+                sub_type: '뿌리발근·초기활착 영양재',
+                manufacturer: '(주)팜한농',
+                product_name: '트레이침지·활착전용 루트스타터 (인산·아미노산·해조 발근제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 17200,
+                dosage_per_100pyeong: '100평당 200ml (육묘판 500배액 침지 또는 관주)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-03-thumb.png',
+                usage_tip: '육묘 관리 단계에서 500배 희석액으로 육묘 트레이를 관주·침지하여 뿌리 매트를 완성합니다.',
+              },
+              'MAT-NUTR-20': {
+                material_id: 'MAT-NUTR-20',
+                material_category: 'NUTRIENT',
+                sub_type: '종합미량요소·해조 생리활성 영양재',
+                manufacturer: '대유',
+                product_name: '대유 미리근 골드 (EDTA 킬레이트 10종 미량요소 종합영양제) 500g',
+                unit_spec: '500g / 병',
+                unit_price: 17900,
+                dosage_per_100pyeong: '100평당 100g (물 20L당 20g / 1,000배 희석 엽면시비)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-05-thumb.jpg',
+                usage_tip: '생육 점검 단계에서 철·망간·아연·붕소 등 10종 미량요소를 1,000배액으로 엽면 공급합니다.',
+              },
+              'MAT-NUTR-24': {
+                material_id: 'MAT-NUTR-24',
+                material_category: 'NUTRIENT',
+                sub_type: '결구·괴경·구비대 촉진 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 규산칼륨 파워 (가용성규산 18% + K₂O 15% 도복·비대제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 18200,
+                dosage_per_100pyeong: '100평당 100~150ml (물 20L당 20ml / 1,000배 단독 엽면살포)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-04-thumb.png',
+                usage_tip: '수확·저온저장 전 잎 표피 규질화 및 조직 치밀도 강화를 위해 1,000배 희석 살포합니다.',
+              },
+              // [병해충관리제 PESTICIDE]
               'MAT-PEST-01': {
                 material_id: 'MAT-PEST-01',
                 material_category: 'PESTICIDE',
@@ -25524,7 +25648,7 @@ export default function UserIntroPage() {
                 unit_price: 16500,
                 dosage_per_100pyeong: '100평당 100~120ml (물 20L당 60~80ml 고랑 살포)',
                 thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
-                usage_tip: '작물에 묻지 않도록 비산방지 노즐을 사용하여 고랑(헛골) 잡초에만 정밀 살포합니다.',
+                usage_tip: '포장 정리 시 비산방지 노즐을 사용하여 예정지 및 고랑(헛골) 잡초를 정밀 제거합니다.',
               },
               'MAT-PEST-02': {
                 material_id: 'MAT-PEST-02',
@@ -25536,7 +25660,7 @@ export default function UserIntroPage() {
                 unit_price: 22500,
                 dosage_per_100pyeong: '100평당 50~80ml (물 20L당 10ml / 2,000배 희석)',
                 thumbnail_url: '/images/fertilizers/MAT-PEST-02-thumb.png',
-                usage_tip: '해충 발생 초기에 물 20L당 10ml(2,000배)로 희석하여 잎 뒷면과 생장점에 살포합니다.',
+                usage_tip: '결구기 해충 예찰 시 물 20L당 10ml(2,000배)로 희석하여 잎 뒷면과 생장점에 살포합니다.',
               },
               'MAT-PEST-03': {
                 material_id: 'MAT-PEST-03',
@@ -25548,7 +25672,7 @@ export default function UserIntroPage() {
                 unit_price: 21500,
                 dosage_per_100pyeong: '100평당 100ml (물 20L당 20ml / 1,000배 희석)',
                 thumbnail_url: '/images/fertilizers/MAT-PEST-03-thumb.png',
-                usage_tip: '강우 전후 물 20L당 20ml(1,000배)로 희석하여 잎 뒷면과 줄기 밑둥(지제부)에 충분히 살포합니다.',
+                usage_tip: '결구기 강우 전후 물 20L당 20ml(1,000배)로 희석하여 잎 뒷면과 지제부에 충분히 살포합니다.',
               },
               'MAT-PEST-04': {
                 material_id: 'MAT-PEST-04',
@@ -25560,7 +25684,7 @@ export default function UserIntroPage() {
                 unit_price: 19000,
                 dosage_per_100pyeong: '100평당 150~200ml (물 20L당 20ml / 1,000배 관주)',
                 thumbnail_url: '/images/fertilizers/MAT-PEST-04-thumb.png',
-                usage_tip: '두둑 성형 직후 또는 정식 전후 1,000배 희석액을 토양 표면 및 뿌리권에 관주 처리합니다.',
+                usage_tip: '파종상 및 육묘 초기 1,000배 희석액을 관주 처리하여 잘록병(입고병)을 예방합니다.',
               },
               'MAT-PEST-05': {
                 material_id: 'MAT-PEST-05',
@@ -25572,7 +25696,7 @@ export default function UserIntroPage() {
                 unit_price: 17800,
                 dosage_per_100pyeong: '100평당 100ml (물 20L당 10~20ml / 1,000~2,000배)',
                 thumbnail_url: '/images/fertilizers/MAT-PEST-05-thumb.png',
-                usage_tip: '벼룩잎벌레·진딧물·나방류 예찰 시 1,000~2,000배 희석액을 7~10일 간격으로 경엽 살포합니다.',
+                usage_tip: '결구기 벼룩잎벌레·진딧물·나방류 예찰 시 1,000~2,000배 희석액을 경엽 살포합니다.',
               },
               'MAT-PEST-06': {
                 material_id: 'MAT-PEST-06',
@@ -25586,29 +25710,105 @@ export default function UserIntroPage() {
                 thumbnail_url: '/images/fertilizers/MAT-PEST-06-thumb.png',
                 usage_tip: '수확 임박기 PLS 잔류농약 걱정 없이 500~1,000배 희석하여 안전하게 마감 방제합니다.',
               },
+              'MAT-PEST-09': {
+                material_id: 'MAT-PEST-09',
+                material_category: 'PESTICIDE',
+                sub_type: '살충제 (진딧물·총채벌레·초기해충)',
+                manufacturer: '신젠타코리아',
+                product_name: '아크타라 입상수화제 (티아메톡삼 · 진딧물·총채벌레·벼룩잎벌레 살충제) 100g',
+                unit_spec: '100g / 봉',
+                unit_price: 13900,
+                dosage_per_100pyeong: '100평당 50g (물 20L당 10g / 2,000배 육묘상 관주)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-02-thumb.png',
+                usage_tip: '정식 직전 육묘 트레이에 2,000배 희석액을 관주하여 초기 진딧물·벼룩잎벌레를 차단합니다.',
+              },
+              'MAT-PEST-10': {
+                material_id: 'MAT-PEST-10',
+                material_category: 'PESTICIDE',
+                sub_type: '살충제 (진딧물·총채벌레·초기해충)',
+                manufacturer: '(주)한국삼공',
+                product_name: '빅카드 액상수화제 (클로티아니딘 · 총채벌레·진딧물·고자리파리 살충제) 250ml',
+                unit_spec: '250ml / 병',
+                unit_price: 15200,
+                dosage_per_100pyeong: '100평당 50ml (물 20L당 10ml / 2,000배 희석 경엽살포)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-02-thumb.png',
+                usage_tip: '초기~중기 외엽 번무기에 2,000배 희석 살포하여 진딧물·총채벌레 확산을 막습니다.',
+              },
+              'MAT-PEST-12': {
+                material_id: 'MAT-PEST-12',
+                material_category: 'PESTICIDE',
+                sub_type: '살균제 (무름병·노균병·역병·탄저병)',
+                manufacturer: '(주)경농',
+                product_name: '일품 입상수화제 (옥솔린산 · 배추·무·감자 세균성 무름병·검은썩음병 전문약) 250g',
+                unit_spec: '250g / 봉',
+                unit_price: 18500,
+                dosage_per_100pyeong: '100평당 100g (물 20L당 20g / 1,000배 지제부 집중 살포)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-03-thumb.png',
+                usage_tip: '결구기 강우 전후 1,000배 희석액을 배추 밑둥(지제부)에 집중 살포하여 세균성 무름병을 방제합니다.',
+              },
+              'MAT-PEST-16': {
+                material_id: 'MAT-PEST-16',
+                material_category: 'PESTICIDE',
+                sub_type: '토양살균·살충제 (뿌리혹병·잘록병)',
+                manufacturer: '(주)경농',
+                product_name: '후론사이드 수화제 (플루설파마이드 · 배추 뿌리혹병/무사마귀병 전문 토양살균제) 500g',
+                unit_spec: '500g / 봉',
+                unit_price: 19500,
+                dosage_per_100pyeong: '100평당 200~300g (정식 전 토양혼화 또는 500배액 육묘판 침지)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-04-thumb.png',
+                usage_tip: '정식 직전 육묘판 침지 또는 두둑 혼화 처리로 뿌리혹병(무사마귀병) 포자 발아를 원천 억제합니다.',
+              },
+              'MAT-PEST-17': {
+                material_id: 'MAT-PEST-17',
+                material_category: 'PESTICIDE',
+                sub_type: '토양살균·살충제 (뿌리혹병·잘록병)',
+                manufacturer: '(주)팜한농',
+                product_name: '포스 입제 (테플루트린 · 거세미나방·고자리파리·방아벌레·굼벵이 토양살충제) 3kg',
+                unit_spec: '3kg / 봉',
+                unit_price: 12000,
+                dosage_per_100pyeong: '100평당 2~3kg (두둑 성형 전 토양 전면 살포 및 로터리 혼화)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-04-thumb.png',
+                usage_tip: '이랑(두둑) 성형 및 멀칭 직전 토양에 골고루 혼화하여 거세미나방·고자리파리를 방제합니다.',
+              },
+              'MAT-PEST-18': {
+                material_id: 'MAT-PEST-18',
+                material_category: 'PESTICIDE',
+                sub_type: '토양살균·살충제 (뿌리혹병·잘록병)',
+                manufacturer: '바이엘 / (주)한국삼공',
+                product_name: '프리엔 액상수화제 (플루오피람 · 고자리파리·선충·균핵병·흰비단병 동시방제) 250ml',
+                unit_spec: '250ml / 병',
+                unit_price: 25200,
+                dosage_per_100pyeong: '100평당 50~80ml (물 20L당 10ml / 2,000배 정식 직후 토양관주)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-04-thumb.png',
+                usage_tip: '본밭 정식 직후 2,000배 희석액을 뿌리권에 관주하여 선충·고자리파리·균핵병을 동시에 예방합니다.',
+              },
             };
 
-            // 서버 /api/schedule-provision 의 16개 생육과정(SCH-01 ~ SCH-16)별 플랫폼 DB 추천 농자재 ID 매핑
+            // 4대 주제항목(정식 전 / 생육초기 / 결구기 / 수확) 및 16개 세부과정(SCH-01 ~ SCH-16)별 고유 플랫폼 DB 추천 농자재 매핑 (주제 간·세부과정 간 중복 0건)
             const STAGE_DEFAULT_DB_MAT_IDS: Record<string, string[]> = {
-              'SCH-01': ['FERT-PRD-04', 'FERT-PRD-05'],
-              'SCH-02': ['FERT-PRD-04', 'FERT-PRD-05', 'FERT-PRD-01'],
-              'SCH-03': ['MAT-PEST-04', 'FERT-PRD-03'],
-              'SCH-04': ['MAT-NUTR-03', 'MAT-PEST-04'],
-              'SCH-05': ['MAT-NUTR-03', 'MAT-NUTR-01'],
-              'SCH-06': ['MAT-NUTR-02', 'MAT-PEST-05', 'MAT-NUTR-03'],
-              'SCH-07': ['MAT-NUTR-03', 'FERT-PRD-03'],
-              'SCH-08': ['MAT-NUTR-03', 'MAT-NUTR-05'],
-              'SCH-09': ['FERT-PRD-02', 'MAT-NUTR-04', 'MAT-NUTR-02'],
-              'SCH-10': ['MAT-NUTR-05', 'MAT-NUTR-02', 'MAT-PEST-02'],
-              'SCH-11': ['MAT-NUTR-02', 'MAT-NUTR-04', 'MAT-PEST-03'],
-              'SCH-12': ['MAT-PEST-05', 'MAT-PEST-02'],
-              'SCH-13': ['MAT-PEST-03', 'MAT-PEST-02', 'MAT-NUTR-02'],
-              'SCH-14': ['MAT-PEST-06', 'MAT-NUTR-01'],
-              'SCH-15': ['MAT-NUTR-04', 'MAT-PEST-06'],
-              'SCH-16': ['MAT-NUTR-02', 'FERT-PRD-01'],
+              // [주제 1: 정식 전] (SCH-01 ~ SCH-06 · 12종 고유 품목)
+              'SCH-01': ['FERT-PRD-04', 'MAT-PEST-01'], // 포장 정리: 토양산도개량제 + 고랑제초제
+              'SCH-02': ['FERT-PRD-05', 'FERT-PRD-01'], // 토양 개량(시비): 1등급 발효유박퇴비 + 원예복합 밑거름
+              'SCH-03': ['FERT-PRD-03', 'MAT-PEST-17'], // 이랑 만들기: 완효성 코팅복합 + 두둑 토양살충제(포스 입제)
+              'SCH-04': ['MAT-SEED-01', 'MAT-PEST-04'], // 파종(종자 준비): 보증종자 + 파종상 입고병/잘록병 살균제
+              'SCH-05': ['MAT-NUTR-18', 'MAT-NUTR-01'], // 육묘 관리(관수·온도): 트레이침지 루트스타터 + 육묘 광합성제
+              'SCH-06': ['MAT-PEST-16', 'MAT-PEST-09'], // 묘 관리(시비·병해충): 뿌리혹병 묘판침지제 + 육묘상 관주 살충제
+              // [주제 2: 생육초기] (SCH-07 ~ SCH-11 · 10종 고유 품목)
+              'SCH-07': ['MAT-NUTR-03', 'MAT-PEST-18'], // 정식(본밭 이식): 정식 초기 세근발근제 + 정식 직후 뿌리권 관주제
+              'SCH-08': ['MAT-NUTR-08', 'MAT-NUTR-13'], // 활착 관리(관수·차광): 활착 몸살극복 루트파워 + 뿌리왕 하이루트
+              'SCH-09': ['FERT-PRD-02', 'MAT-NUTR-11'], // 생장 관리(시비·관수): 1차 NK 마그네슘 추비 + 엽록소 광합성 부스터
+              'SCH-10': ['MAT-NUTR-05', 'MAT-PEST-10'], // 줄기·잎 관리(정지·유인): 12종 종합미량요소제 + 초기 흡즙해충 살충제
+              'SCH-11': ['MAT-NUTR-20', 'MAT-NUTR-16'], // 생육 점검(생육량·생육상태): EDTA 10종 미량요소 + 기상스트레스 회복제
+              // [주제 3: 결구기] (SCH-12 ~ SCH-14 · 6종 고유 품목)
+              'SCH-12': ['MAT-PEST-05', 'MAT-PEST-02'], // 병해충 예찰(정기 점검): 나방·벼룩잎벌레 웜해머 + 바이고 교호살충제
+              'SCH-13': ['MAT-PEST-03', 'MAT-PEST-12'], // 방제(필요 시): 노균병·역병 펀지해머 + 세균성 무름병 전문 일품
+              'SCH-14': ['MAT-NUTR-02', 'FERT-PRD-20'], // 예방 관리(환경·위생): 꿀통배추 예방 튼튼칼슘 + 2차 칼슘함유 NK추비
+              // [주제 4: 수확] (SCH-15 ~ SCH-16 · 4종 고유 품목)
+              'SCH-15': ['MAT-NUTR-04', 'MAT-PEST-06'], // 수확(적기 판단): 구중·치밀도 완성 커진다 + PLS 무잔류 친환경 방제제
+              'SCH-16': ['MAT-NUTR-14', 'MAT-NUTR-24'], // 수확 후 처리(선별·저장): 내한성·당도 하이포타시움 + 저장성 강화 규산칼륨
             };
 
-            // 2. 백엔드 provisionData.scheduleItems(실시간 추천 엔진 결과)에서 해당 세부 과정의 실제 추천 농자재를 최우선 조회
+            // 2. 해당 세부 과정(itemId)의 단계별 전용 플랫폼 DB 농자재(STAGE_DEFAULT_DB_MAT_IDS)를 최우선 적용하고 백엔드 카탈로그와 병합
             const matchedProvisionStage = (provisionData?.scheduleItems || []).find(
               (s: any) =>
                 String(s.item_id || '') === itemId || Number(s.step_order || 0) === stepOrd
@@ -25630,42 +25830,52 @@ export default function UserIntroPage() {
             const resolvedDbMaterials: any[] = [];
             const seenMatIds = new Set<string>();
 
-            // (A) 백엔드 추천 엔진이 반환한 실제 플랫폼 농자재 우선 추가
-            [...rawStageMats]
-              .sort((a, b) => Number(b?.match_score || 95) - Number(a?.match_score || 95))
-              .forEach((m) => {
-                const mId = String(m?.material_id || '').trim();
-                if (!mId || seenMatIds.has(mId)) return;
-                seenMatIds.add(mId);
-                const dbFallback = PLATFORM_DB_AGRO_CATALOG[mId];
-                resolvedDbMaterials.push({
-                  ...dbFallback,
-                  ...m,
-                  material_id: mId,
-                  product_name: m.product_name || dbFallback?.product_name || mId,
-                  manufacturer: m.manufacturer || dbFallback?.manufacturer || '(주)누보',
-                  unit_spec: m.unit_spec || dbFallback?.unit_spec || '1개',
-                  unit_price: Number(m.unit_price || dbFallback?.unit_price || 18000),
-                  dosage_per_100pyeong:
-                    m.dosage_per_100pyeong || dbFallback?.dosage_per_100pyeong || '',
-                  thumbnail_url: resolveAgroProductThumbUrl(m.thumbnail_url ? m : dbFallback || m),
-                });
-              });
-
-            // (B) 2종 이상(주자재 + 보조제)이 되도록 플랫폼 DB의 단계별 지정 농자재로 보충
-            const fallbackIds = STAGE_DEFAULT_DB_MAT_IDS[itemId] || ['FERT-PRD-02', 'MAT-NUTR-02'];
-            fallbackIds.forEach((fId) => {
+            // (A) 주제별·세부과정별 중복이 전혀 없도록 설계된 단계별 전용 플랫폼 DB 농자재를 최우선 매칭
+            const stageSpecificIds = STAGE_DEFAULT_DB_MAT_IDS[itemId] || [
+              'FERT-PRD-02',
+              'MAT-NUTR-02',
+            ];
+            stageSpecificIds.forEach((fId) => {
               if (seenMatIds.has(fId)) return;
-              const fromCatalog = catalogFromProvision.find((c: any) => c.material_id === fId);
+              const fromRawStage = rawStageMats.find((m: any) => m?.material_id === fId);
+              const fromCatalog = catalogFromProvision.find((c: any) => c?.material_id === fId);
               const fromMap = PLATFORM_DB_AGRO_CATALOG[fId];
-              const merged = fromCatalog ? { ...fromMap, ...fromCatalog } : fromMap;
-              if (merged) {
-                seenMatIds.add(fId);
-                resolvedDbMaterials.push({
-                  ...merged,
-                  thumbnail_url: resolveAgroProductThumbUrl(merged),
-                });
-              }
+              const merged = {
+                ...fromMap,
+                ...(fromCatalog || {}),
+                ...(fromRawStage || {}),
+                material_id: fId,
+                product_name:
+                  fromMap?.product_name ||
+                  fromCatalog?.product_name ||
+                  fromRawStage?.product_name ||
+                  fId,
+                manufacturer:
+                  fromMap?.manufacturer ||
+                  fromCatalog?.manufacturer ||
+                  fromRawStage?.manufacturer ||
+                  '(주)누보',
+                unit_spec:
+                  fromMap?.unit_spec || fromCatalog?.unit_spec || fromRawStage?.unit_spec || '1개',
+                unit_price: Number(
+                  fromMap?.unit_price ||
+                    fromCatalog?.unit_price ||
+                    fromRawStage?.unit_price ||
+                    18000
+                ),
+                dosage_per_100pyeong:
+                  fromMap?.dosage_per_100pyeong ||
+                  fromCatalog?.dosage_per_100pyeong ||
+                  fromRawStage?.dosage_per_100pyeong ||
+                  '',
+              };
+              seenMatIds.add(fId);
+              resolvedDbMaterials.push({
+                ...merged,
+                thumbnail_url: resolveAgroProductThumbUrl(
+                  fromMap?.thumbnail_url ? fromMap : merged
+                ),
+              });
             });
 
             const topMaterials = resolvedDbMaterials.slice(0, 2);
@@ -25675,13 +25885,18 @@ export default function UserIntroPage() {
             const mappedModalItems = topMaterials.map((mat, idx) => {
               const rawProdName = String(mat.product_name || '').trim();
               const cat = String(mat.material_category || 'FERTILIZER').toUpperCase();
-              const isBag = cat === 'FERTILIZER' || /kg|Kg|KG|포/.test(String(mat.unit_spec || ''));
+              const isBag =
+                cat === 'FERTILIZER' ||
+                cat === 'SEED' ||
+                /kg|Kg|KG|포|봉|립/.test(String(mat.unit_spec || ''));
               const roleBadge =
                 idx === 0
                   ? cat === 'PESTICIDE'
                     ? '주약제'
                     : cat === 'NUTRIENT'
                     ? '주영양제'
+                    : cat === 'SEED'
+                    ? '주종자'
                     : '주비료'
                   : '보조제';
 
