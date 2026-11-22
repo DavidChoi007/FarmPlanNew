@@ -23629,7 +23629,7 @@ export default function UserIntroPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleToggleStageItemCompletion(
+                                  handleConfirmStageItemCompletion(
                                     ovReqNo,
                                     primaryTask.raw,
                                     primaryTask.effDate
@@ -24118,17 +24118,23 @@ export default function UserIntroPage() {
                             }).catch(() => {});
                             return next;
                           });
-                          if (
-                            workLogRecordMode === 'FROM_SCHEDULE' &&
-                            activeSelectedTask?.raw &&
-                            !activeSelectedTask.isCompleted
-                          ) {
-                            handleToggleStageItemCompletion(
-                              ovReqNo,
-                              activeSelectedTask.raw,
-                              workLogForm.workDate || activeSelectedTask.effDate
-                            );
+                          try {
+                            if (
+                              workLogRecordMode === 'FROM_SCHEDULE' &&
+                              activeSelectedTask?.raw &&
+                              !activeSelectedTask.isCompleted
+                            ) {
+                              handleConfirmStageItemCompletion(
+                                ovReqNo,
+                                activeSelectedTask.raw,
+                                workLogForm.workDate || activeSelectedTask.effDate
+                              );
+                            }
+                          } catch {
+                            // ignore completion sync error so modal always closes
                           }
+                          setIsWorkLogMaterialPickerOpen(false);
+                          setIsWorkLogMaterialDeleteModalOpen(false);
                           setIsWorkLogTaskDropdownOpen(false);
                           setIsWorkLogFormOpen(false);
                         };
