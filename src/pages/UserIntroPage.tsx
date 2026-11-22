@@ -595,6 +595,9 @@ export default function UserIntroPage() {
       bagLabelMid: string;
       name: string;
       formulaSub: string;
+      manufacturer: string;
+      unitSpec: string;
+      thumbnailUrl: string;
       dosageRangeLabel: string;
       qty: number;
       stepDelta: number;
@@ -602,6 +605,7 @@ export default function UserIntroPage() {
       unitPrice: number;
       materialId: string;
       materialCategory: string;
+      subType: string;
     }>;
     usageGuides: string[];
   } | null>(null);
@@ -25354,297 +25358,421 @@ export default function UserIntroPage() {
           };
 
           const openStageRecommendedBuyModal = (entry: any) => {
-            const subName = String(entry?.subItemName || '추비 2차').trim();
+            const subName = String(entry?.subItemName || '생장 관리(시비·관수)').trim();
             const stepOrd = Number(entry?.stepOrder || 9);
+            const itemId = String(entry?.itemId || `SCH-${String(stepOrd).padStart(2, '0')}`);
             const pyeong = areaPyeongVal || 500;
-            const scale = Math.max(0.2, pyeong / 500);
+            const areaRatio100 = Math.max(1, Number((pyeong / 100).toFixed(1)));
 
-            let linkedTaskDisplayTitle = subName;
-            let primaryItem = {
-              id: 'rec-mat-1',
-              checked: true,
-              roleBadge: '주비료',
-              visualType: 'BAG' as 'BAG' | 'BOTTLE',
-              bagLabelTop: '복합비료',
-              bagLabelMid: '17-0-17',
-              name: '질소·칼리 복합비료',
-              formulaSub: '(17-0-17)',
-              dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
-                5,
-                Math.round(25 * scale)
-              )} kg / ${pyeong.toLocaleString()}평`,
-              qty: Math.max(5, Math.round(25 * scale)),
-              stepDelta: 5,
-              unit: 'kg',
-              unitPrice: 1000, // 25kg 기준 25,000원
-              materialId: 'FERT-PRD-03',
-              materialCategory: 'FERTILIZER',
+            // 1. 플랫폼 DB (agro_material 테이블 / server/fertilizerProductAssets.ts) 실제 등록 상품 카탈로그 매핑
+            const PLATFORM_DB_AGRO_CATALOG: Record<
+              string,
+              {
+                material_id: string;
+                material_category: 'FERTILIZER' | 'NUTRIENT' | 'PESTICIDE';
+                sub_type: string;
+                manufacturer: string;
+                product_name: string;
+                unit_spec: string;
+                unit_price: number;
+                dosage_per_100pyeong: string;
+                thumbnail_url: string;
+                usage_tip: string;
+              }
+            > = {
+              'FERT-PRD-01': {
+                material_id: 'FERT-PRD-01',
+                material_category: 'FERTILIZER',
+                sub_type: '복합비료',
+                manufacturer: '남해화학(주)',
+                product_name: '슈퍼원예복합 (12-7-9+고토2+붕소0.3) 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 21500,
+                dosage_per_100pyeong: '100평당 30~40kg (1.5~2포 전층시비)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-01-thumb.png',
+                usage_tip: '파종·정식 1~2주 전 본밭 전면에 살포하고 토심 15~20cm로 로터리 경운합니다.',
+              },
+              'FERT-PRD-02': {
+                material_id: 'FERT-PRD-02',
+                material_category: 'FERTILIZER',
+                sub_type: '웃거름비료',
+                manufacturer: '(주)누보',
+                product_name: '엔케이(NK) 마그네슘 추비특호 (18-0-16+고토2+붕소0.2) 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 19800,
+                dosage_per_100pyeong: '100평당 10~15kg (0.5~0.8포 포기사이 추비)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-02-thumb.png',
+                usage_tip: '포기 사이 또는 이랑 어깨에 고르게 추비한 뒤 가볍게 흙을 덮고 관수합니다.',
+              },
+              'FERT-PRD-03': {
+                material_id: 'FERT-PRD-03',
+                material_category: 'FERTILIZER',
+                sub_type: '완효성비료',
+                manufacturer: '(주)조비',
+                product_name: '단한번 완효성 코팅복합 (14-6-8+고토1+붕소0.2) 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 28500,
+                dosage_per_100pyeong: '100평당 25~30kg (1.2~1.5포 밑거름 시비)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-03-thumb.png',
+                usage_tip: '두둑 성형 및 정식 전 1회 시비로 90일간 지온·수분에 맞춰 양분을 지속 공급합니다.',
+              },
+              'FERT-PRD-04': {
+                material_id: 'FERT-PRD-04',
+                material_category: 'FERTILIZER',
+                sub_type: '토양개량·칼슘비료',
+                manufacturer: '(주)풍농',
+                product_name: '슈퍼고토석회·칼슘유황 토양개량제 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 10500,
+                dosage_per_100pyeong: '100평당 40~60kg (2~3포 심경 로터리)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-04-thumb.jpg',
+                usage_tip: '가스장해 방지를 위해 유박·복합비료 살포 7~14일 전에 먼저 살포하고 깊이갈이합니다.',
+              },
+              'FERT-PRD-05': {
+                material_id: 'FERT-PRD-05',
+                material_category: 'FERTILIZER',
+                sub_type: '유기질·퇴비',
+                manufacturer: '상록유기농산',
+                product_name: '참조은 1등급 발효 가축분 유박·유기질퇴비 20kg',
+                unit_spec: '20kg / 포',
+                unit_price: 11000,
+                dosage_per_100pyeong: '100평당 80~120kg (4~6포 기비 전층시비)',
+                thumbnail_url: '/images/fertilizers/FERT-PRD-05-thumb.jpg',
+                usage_tip: '정식 2주 전 전층 시비하여 토양 유기물 함량과 보수력·통기성을 높입니다.',
+              },
+              'MAT-NUTR-01': {
+                material_id: 'MAT-NUTR-01',
+                material_category: 'NUTRIENT',
+                sub_type: '광합성·냉해/스트레스 회복 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 썬마스터 (광합성 향상 · 일조부족 · 냉해회복제) 500g',
+                unit_spec: '500g (500ml) / 병',
+                unit_price: 18500,
+                dosage_per_100pyeong: '100평당 100~200ml (물 20L당 20~40ml 엽면시비)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-01-thumb.png',
+                usage_tip: '일조 부족기나 기온 급변 전후 물 20L당 20~40ml(500~1,000배)로 희석해 엽면 살포합니다.',
+              },
+              'MAT-NUTR-02': {
+                material_id: 'MAT-NUTR-02',
+                material_category: 'NUTRIENT',
+                sub_type: '칼슘·붕소 결핍예방 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 튼튼칼슘 (아미노산 킬레이트 액상칼슘·붕소제) 500g',
+                unit_spec: '500g (500ml) / 병',
+                unit_price: 16800,
+                dosage_per_100pyeong: '100평당 150~200ml (물 20L당 20~40ml 엽면살포)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+                usage_tip: '결구기 꿀통배추(칼슘결핍) 및 무름 예방을 위해 5~7일 간격으로 속잎까지 엽면 살포합니다.',
+              },
+              'MAT-NUTR-03': {
+                material_id: 'MAT-NUTR-03',
+                material_category: 'NUTRIENT',
+                sub_type: '뿌리발근·초기활착 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 참편한 아미노 (9-1-2+붕소+철+망간 뿌리발근·초기활착) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 15900,
+                dosage_per_100pyeong: '100평당 관주 250~500ml / 엽면 150ml (500배 희석)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-03-thumb.png',
+                usage_tip: '정식 직전 육묘판 침지 또는 정식 직후 500배 희석액을 포기에 관주하여 세근 발근을 촉진합니다.',
+              },
+              'MAT-NUTR-04': {
+                material_id: 'MAT-NUTR-04',
+                material_category: 'NUTRIENT',
+                sub_type: '결구·괴경·구비대 촉진 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 커진다 (결구·구비대·괴경 발육 향상 인산가리 비대제) 500g',
+                unit_spec: '500g (500ml) / 병',
+                unit_price: 19500,
+                dosage_per_100pyeong: '100평당 150~200ml (물 20L당 25~40ml 엽면시비)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-04-thumb.png',
+                usage_tip: '결구·비대 중기부터 7~10일 간격으로 500~800배 희석하여 엽면 살포합니다.',
+              },
+              'MAT-NUTR-05': {
+                material_id: 'MAT-NUTR-05',
+                material_category: 'NUTRIENT',
+                sub_type: '종합미량요소·해조 생리활성 영양재',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 만능이 (12종 영양성분 & 해조·종합미량요소 영양제) 500g',
+                unit_spec: '500g (500ml) / 병',
+                unit_price: 15500,
+                dosage_per_100pyeong: '100평당 100~150ml (물 20L당 20ml / 1,000배액)',
+                thumbnail_url: '/images/fertilizers/MAT-NUTR-05-thumb.jpg',
+                usage_tip: '생육 중기 엽색·잎두께 강화 및 미량요소 결핍 예방을 위해 1,000배액으로 엽면 살포합니다.',
+              },
+              'MAT-PEST-01': {
+                material_id: 'MAT-PEST-01',
+                material_category: 'PESTICIDE',
+                sub_type: '제초제 (고랑·헛골 비선택성/토양처리)',
+                manufacturer: '(주)누보',
+                product_name: '엑스온 액상수화제 (고랑·헛골 잡초 전문 제초제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 16500,
+                dosage_per_100pyeong: '100평당 100~120ml (물 20L당 60~80ml 고랑 살포)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-01-thumb.jpg',
+                usage_tip: '작물에 묻지 않도록 비산방지 노즐을 사용하여 고랑(헛골) 잡초에만 정밀 살포합니다.',
+              },
+              'MAT-PEST-02': {
+                material_id: 'MAT-PEST-02',
+                material_category: 'PESTICIDE',
+                sub_type: '살충제 (진딧물·총채벌레·초기해충)',
+                manufacturer: '바이엘크롭사이언스 / (주)누보',
+                product_name: '바이고® 액상수화제 (배추좀나방·파밤나방·총채벌레 전문 살충제) 250ml',
+                unit_spec: '250ml / 병',
+                unit_price: 22500,
+                dosage_per_100pyeong: '100평당 50~80ml (물 20L당 10ml / 2,000배 희석)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-02-thumb.png',
+                usage_tip: '해충 발생 초기에 물 20L당 10ml(2,000배)로 희석하여 잎 뒷면과 생장점에 살포합니다.',
+              },
+              'MAT-PEST-03': {
+                material_id: 'MAT-PEST-03',
+                material_category: 'PESTICIDE',
+                sub_type: '살균제 (무름병·노균병·역병·탄저병)',
+                manufacturer: '인바이오(주) / (주)누보',
+                product_name: '펀지해머 액상수화제 (노균병·역병·무름병·탄저병 종합살균제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 21500,
+                dosage_per_100pyeong: '100평당 100ml (물 20L당 20ml / 1,000배 희석)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-03-thumb.png',
+                usage_tip: '강우 전후 물 20L당 20ml(1,000배)로 희석하여 잎 뒷면과 줄기 밑둥(지제부)에 충분히 살포합니다.',
+              },
+              'MAT-PEST-04': {
+                material_id: 'MAT-PEST-04',
+                material_category: 'PESTICIDE',
+                sub_type: '토양살균·살충제 (뿌리혹병·잘록병)',
+                manufacturer: 'UPL코리아 / (주)누보',
+                product_name: '사라져 미탁제 (뿌리혹병·잘록병/입고병·뿌리썩음병 토양살균제) 500ml',
+                unit_spec: '500ml / 병',
+                unit_price: 19000,
+                dosage_per_100pyeong: '100평당 150~200ml (물 20L당 20ml / 1,000배 관주)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-04-thumb.png',
+                usage_tip: '두둑 성형 직후 또는 정식 전후 1,000배 희석액을 토양 표면 및 뿌리권에 관주 처리합니다.',
+              },
+              'MAT-PEST-05': {
+                material_id: 'MAT-PEST-05',
+                material_category: 'PESTICIDE',
+                sub_type: '나방·벼룩잎벌레 종합살충제',
+                manufacturer: '인바이오(주) / (주)누보',
+                product_name: '웜해머 분산성액제 (벼룩잎벌레·진딧물·총채벌레·나방류 종합살충제) 1L',
+                unit_spec: '1L (1,000ml) / 병',
+                unit_price: 17800,
+                dosage_per_100pyeong: '100평당 100ml (물 20L당 10~20ml / 1,000~2,000배)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-05-thumb.png',
+                usage_tip: '벼룩잎벌레·진딧물·나방류 예찰 시 1,000~2,000배 희석액을 7~10일 간격으로 경엽 살포합니다.',
+              },
+              'MAT-PEST-06': {
+                material_id: 'MAT-PEST-06',
+                material_category: 'PESTICIDE',
+                sub_type: '친환경 유기농업자재 (PLS 수확전 방제)',
+                manufacturer: '(주)누보',
+                product_name: '엔플러스 해충박살 파워 (유기농업자재 공시-2-5-315 · 친환경 방제제) 250ml',
+                unit_spec: '250ml / 병',
+                unit_price: 16500,
+                dosage_per_100pyeong: '100평당 100~200ml (물 20L당 20~40ml / 500~1,000배)',
+                thumbnail_url: '/images/fertilizers/MAT-PEST-06-thumb.png',
+                usage_tip: '수확 임박기 PLS 잔류농약 걱정 없이 500~1,000배 희석하여 안전하게 마감 방제합니다.',
+              },
             };
-            let secondaryItem = {
-              id: 'rec-mat-2',
-              checked: true,
-              roleBadge: '보조제',
-              visualType: 'BOTTLE' as 'BAG' | 'BOTTLE',
-              bagLabelTop: '칼슘·붕소',
-              bagLabelMid: '액상비료',
-              name: '칼슘·붕소 액상비료',
-              formulaSub: '',
-              dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                200,
-                Math.round(1000 * scale)
-              ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-              qty: Math.max(1, Math.round(1 * scale)),
-              stepDelta: 1,
-              unit: 'L',
-              unitPrice: 25000, // 1L 기준 25,000원
-              materialId: 'MAT-NUTR-02',
-              materialCategory: 'NUTRIENT',
-            };
-            let usageGuides = [
-              '결구 시작 후 약 3~5일 내 시비합니다.',
-              '복합비료는 전면 시비 후 가볍게 관수합니다.',
-              '액상비료는 물에 희석하여 엽면 살포합니다.',
-            ];
 
-            if (stepOrd <= 3 || /포장|토양|이랑|기비|밑거름/.test(subName)) {
-              linkedTaskDisplayTitle = subName.includes('토양')
-                ? '토양 개량 (밑거름 시비)'
-                : `${subName} (본밭 준비)`;
-              primaryItem = {
-                ...primaryItem,
-                roleBadge: '주비료',
-                bagLabelTop: '유기질퇴비',
-                bagLabelMid: '특호',
-                name: '고품질 발효 유기질 퇴비',
-                formulaSub: '(유기물 60% 이상)',
-                dosageRangeLabel: `${Math.max(20, Math.round(80 * scale))}~${Math.max(
-                  25,
-                  Math.round(100 * scale)
-                )} kg / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(20, Math.round(100 * scale)),
-                stepDelta: 20,
-                unit: 'kg',
-                unitPrice: 300,
-                materialId: 'FERT-PRD-01',
-                materialCategory: 'FERTILIZER',
-              };
-              secondaryItem = {
-                ...secondaryItem,
-                roleBadge: '보조제',
-                bagLabelTop: '고토·붕소',
-                bagLabelMid: '토양개량제',
-                name: '석회·고토·붕소 토양개량제',
-                formulaSub: '(뿌리혹병·결핍 예방)',
-                dosageRangeLabel: `${Math.max(5, Math.round(15 * scale))}~${Math.max(
-                  10,
-                  Math.round(20 * scale)
-                )} kg / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(5, Math.round(20 * scale)),
-                stepDelta: 5,
-                unit: 'kg',
-                unitPrice: 1000,
-                materialId: 'FERT-PRD-02',
-                materialCategory: 'FERTILIZER',
-              };
-              usageGuides = [
-                '정식 10~14일 전 본밭 전면에 골고루 살포합니다.',
-                '살포 후 깊이갈이(경운)하여 토양과 충분히 혼합합니다.',
-                '이랑 성형 후 토양 수분이 유지되도록 가볍게 관수합니다.',
-              ];
-            } else if (stepOrd >= 4 && stepOrd <= 6) {
-              linkedTaskDisplayTitle = `${subName} (건묘 육묘)`;
-              primaryItem = {
-                ...primaryItem,
-                roleBadge: '주자재',
-                bagLabelTop: '육묘전용',
-                bagLabelMid: '상토·영양',
-                name: '원예·육묘 전용 활착 복합비료',
-                formulaSub: '(12-15-12)',
-                dosageRangeLabel: `${Math.max(4, Math.round(15 * scale))}~${Math.max(
-                  5,
-                  Math.round(20 * scale)
-                )} kg / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(5, Math.round(20 * scale)),
-                stepDelta: 5,
-                unit: 'kg',
-                unitPrice: 1200,
-                materialId: 'FERT-PRD-02',
-                materialCategory: 'FERTILIZER',
-              };
-              secondaryItem = {
-                ...secondaryItem,
-                roleBadge: '보조제',
-                bagLabelTop: '발근·활착',
-                bagLabelMid: '액상영양제',
-                name: '아미노산 뿌리발근 액상비료',
-                formulaSub: '',
-                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                  200,
-                  Math.round(1000 * scale)
-                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(1, Math.round(1 * scale)),
+            // 서버 /api/schedule-provision 의 16개 생육과정(SCH-01 ~ SCH-16)별 플랫폼 DB 추천 농자재 ID 매핑
+            const STAGE_DEFAULT_DB_MAT_IDS: Record<string, string[]> = {
+              'SCH-01': ['FERT-PRD-04', 'FERT-PRD-05'],
+              'SCH-02': ['FERT-PRD-04', 'FERT-PRD-05', 'FERT-PRD-01'],
+              'SCH-03': ['MAT-PEST-04', 'FERT-PRD-03'],
+              'SCH-04': ['MAT-NUTR-03', 'MAT-PEST-04'],
+              'SCH-05': ['MAT-NUTR-03', 'MAT-NUTR-01'],
+              'SCH-06': ['MAT-NUTR-02', 'MAT-PEST-05', 'MAT-NUTR-03'],
+              'SCH-07': ['MAT-NUTR-03', 'FERT-PRD-03'],
+              'SCH-08': ['MAT-NUTR-03', 'MAT-NUTR-05'],
+              'SCH-09': ['FERT-PRD-02', 'MAT-NUTR-04', 'MAT-NUTR-02'],
+              'SCH-10': ['MAT-NUTR-05', 'MAT-NUTR-02', 'MAT-PEST-02'],
+              'SCH-11': ['MAT-NUTR-02', 'MAT-NUTR-04', 'MAT-PEST-03'],
+              'SCH-12': ['MAT-PEST-05', 'MAT-PEST-02'],
+              'SCH-13': ['MAT-PEST-03', 'MAT-PEST-02', 'MAT-NUTR-02'],
+              'SCH-14': ['MAT-PEST-06', 'MAT-NUTR-01'],
+              'SCH-15': ['MAT-NUTR-04', 'MAT-PEST-06'],
+              'SCH-16': ['MAT-NUTR-02', 'FERT-PRD-01'],
+            };
+
+            // 2. 백엔드 provisionData.scheduleItems(실시간 추천 엔진 결과)에서 해당 세부 과정의 실제 추천 농자재를 최우선 조회
+            const matchedProvisionStage = (provisionData?.scheduleItems || []).find(
+              (s: any) =>
+                String(s.item_id || '') === itemId || Number(s.step_order || 0) === stepOrd
+            );
+            const rawStageMats: any[] =
+              Array.isArray(entry?.raw?.materials) && entry.raw.materials.length > 0
+                ? entry.raw.materials
+                : Array.isArray(matchedProvisionStage?.materials) &&
+                  matchedProvisionStage.materials.length > 0
+                ? matchedProvisionStage.materials
+                : [];
+
+            const catalogFromProvision: any[] = Array.isArray(
+              provisionData?.availableMaterialsCatalog
+            )
+              ? provisionData.availableMaterialsCatalog
+              : [];
+
+            const resolvedDbMaterials: any[] = [];
+            const seenMatIds = new Set<string>();
+
+            // (A) 백엔드 추천 엔진이 반환한 실제 플랫폼 농자재 우선 추가
+            [...rawStageMats]
+              .sort((a, b) => Number(b?.match_score || 95) - Number(a?.match_score || 95))
+              .forEach((m) => {
+                const mId = String(m?.material_id || '').trim();
+                if (!mId || seenMatIds.has(mId)) return;
+                seenMatIds.add(mId);
+                const dbFallback = PLATFORM_DB_AGRO_CATALOG[mId];
+                resolvedDbMaterials.push({
+                  ...dbFallback,
+                  ...m,
+                  material_id: mId,
+                  product_name: m.product_name || dbFallback?.product_name || mId,
+                  manufacturer: m.manufacturer || dbFallback?.manufacturer || '(주)누보',
+                  unit_spec: m.unit_spec || dbFallback?.unit_spec || '1개',
+                  unit_price: Number(m.unit_price || dbFallback?.unit_price || 18000),
+                  dosage_per_100pyeong:
+                    m.dosage_per_100pyeong || dbFallback?.dosage_per_100pyeong || '',
+                  thumbnail_url: resolveAgroProductThumbUrl(m.thumbnail_url ? m : dbFallback || m),
+                });
+              });
+
+            // (B) 2종 이상(주자재 + 보조제)이 되도록 플랫폼 DB의 단계별 지정 농자재로 보충
+            const fallbackIds = STAGE_DEFAULT_DB_MAT_IDS[itemId] || ['FERT-PRD-02', 'MAT-NUTR-02'];
+            fallbackIds.forEach((fId) => {
+              if (seenMatIds.has(fId)) return;
+              const fromCatalog = catalogFromProvision.find((c: any) => c.material_id === fId);
+              const fromMap = PLATFORM_DB_AGRO_CATALOG[fId];
+              const merged = fromCatalog ? { ...fromMap, ...fromCatalog } : fromMap;
+              if (merged) {
+                seenMatIds.add(fId);
+                resolvedDbMaterials.push({
+                  ...merged,
+                  thumbnail_url: resolveAgroProductThumbUrl(merged),
+                });
+              }
+            });
+
+            const topMaterials = resolvedDbMaterials.slice(0, 2);
+
+            // 3. 플랫폼 DB 농자재의 product_name, unit_spec, dosage_per_100pyeong, unit_price를 모달 카드 구조로 변환
+            const mappedModalItems = topMaterials.map((mat, idx) => {
+              const rawProdName = String(mat.product_name || '').trim();
+              const cat = String(mat.material_category || 'FERTILIZER').toUpperCase();
+              const isBag = cat === 'FERTILIZER' || /kg|Kg|KG|포/.test(String(mat.unit_spec || ''));
+              const roleBadge =
+                idx === 0
+                  ? cat === 'PESTICIDE'
+                    ? '주약제'
+                    : cat === 'NUTRIENT'
+                    ? '주영양제'
+                    : '주비료'
+                  : '보조제';
+
+              // 상품명에서 괄호 설명과 본 제목을 깔끔하게 분리 (예: "웜해머 분산성액제" + "(벼룩잎벌레·진딧물·총채벌레·나방류 종합살충제) 1L")
+              const parenIdx = rawProdName.indexOf('(');
+              const mainName =
+                parenIdx > 0 ? rawProdName.slice(0, parenIdx).trim() : rawProdName;
+              const formulaSub =
+                parenIdx > 0 ? rawProdName.slice(parenIdx).trim() : String(mat.sub_type || '');
+
+              // 포장단위(포/병/봉) 및 1포·1병당 규격 파싱
+              const unitSpecStr = String(mat.unit_spec || (isBag ? '20kg / 포' : '500ml / 병'));
+              const unitMatch = unitSpecStr.match(/(포|병|봉|통|팩|판|박스|개)/);
+              const packUnitLabel = unitMatch ? unitMatch[1] : isBag ? '포' : '병';
+
+              // 농장 평수(pyeong) 기준 권장 구매 수량(포/병) 및 권장 사용량 텍스트 산출
+              const recommendedPackQty = Math.max(1, parseRecommendedQuantity(mat, pyeong));
+              const dosageRaw = String(mat.dosage_per_100pyeong || '');
+              let dosageRangeLabel = `${recommendedPackQty}${packUnitLabel} (${unitSpecStr}) / ${pyeong.toLocaleString()}평`;
+              const rangeKgMatch = dosageRaw.match(/(\d+)\s*~\s*(\d+)\s*(kg|Kg|ml|mL|g)/);
+              const singleKgMatch = dosageRaw.match(/100평당\s*(?:관주\s*)?(\d+)\s*(kg|Kg|ml|mL|g)/);
+              if (rangeKgMatch) {
+                const minScaled = Math.round(Number(rangeKgMatch[1]) * areaRatio100);
+                const maxScaled = Math.round(Number(rangeKgMatch[2]) * areaRatio100);
+                const u = rangeKgMatch[3];
+                dosageRangeLabel = `${minScaled.toLocaleString()}~${maxScaled.toLocaleString()} ${u} / ${pyeong.toLocaleString()}평`;
+              } else if (singleKgMatch) {
+                const valScaled = Math.round(Number(singleKgMatch[1]) * areaRatio100);
+                const u = singleKgMatch[2];
+                dosageRangeLabel = `약 ${valScaled.toLocaleString()} ${u} / ${pyeong.toLocaleString()}평`;
+              }
+
+              return {
+                id: String(mat.material_id || `rec-mat-${idx + 1}`),
+                checked: true,
+                roleBadge,
+                visualType: (isBag ? 'BAG' : 'BOTTLE') as 'BAG' | 'BOTTLE',
+                bagLabelTop: String(mat.sub_type || roleBadge).slice(0, 6),
+                bagLabelMid: mainName.slice(0, 7),
+                name: mainName,
+                formulaSub,
+                manufacturer: String(mat.manufacturer || '(주)누보'),
+                unitSpec: unitSpecStr,
+                thumbnailUrl: resolveAgroProductThumbUrl(mat),
+                dosageRangeLabel,
+                qty: recommendedPackQty,
                 stepDelta: 1,
-                unit: 'L',
-                unitPrice: 24000,
-                materialId: 'MAT-NUTR-01',
-                materialCategory: 'NUTRIENT',
+                unit: packUnitLabel,
+                unitPrice: Number(mat.unit_price || 18000),
+                materialId: String(mat.material_id || `MAT-${idx + 1}`),
+                materialCategory: cat,
+                subType: String(mat.sub_type || roleBadge),
               };
-              usageGuides = [
-                '본엽 전개 시기에 맞춰 500~1,000배 희석하여 관주합니다.',
-                '정식 5~7일 전부터 외기 순화(Hardening)와 함께 살포합니다.',
-                '과습을 피하고 오전 시간대에 엽면 또는 관주 처리합니다.',
-              ];
-            } else if (stepOrd === 7 || stepOrd === 8 || /정식|활착/.test(subName)) {
-              linkedTaskDisplayTitle = `${subName} (초기 뿌리활착)`;
-              primaryItem = {
-                ...primaryItem,
-                roleBadge: '주비료',
-                bagLabelTop: '초기활착',
-                bagLabelMid: '복합비료',
-                name: '정식·초기활착 완효성 복합비료',
-                formulaSub: '(15-10-15)',
-                dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
-                  5,
-                  Math.round(25 * scale)
-                )} kg / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(5, Math.round(25 * scale)),
-                stepDelta: 5,
-                unit: 'kg',
-                unitPrice: 1000,
-                materialId: 'FERT-PRD-03',
-                materialCategory: 'FERTILIZER',
-              };
-              secondaryItem = {
-                ...secondaryItem,
-                roleBadge: '보조제',
-                bagLabelTop: '세근발달',
-                bagLabelMid: '발근영양제',
-                name: '초기 활착·뿌리발근 액상비료',
-                formulaSub: '',
-                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                  200,
-                  Math.round(1000 * scale)
-                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(1, Math.round(1 * scale)),
-                stepDelta: 1,
-                unit: 'L',
-                unitPrice: 25000,
-                materialId: 'MAT-NUTR-01',
-                materialCategory: 'NUTRIENT',
-              };
-              usageGuides = [
-                '본밭 정식 직후 포기 주변에 충분한 활착 관수를 진행합니다.',
-                '정식 후 3~5일경 발근 액상비료를 희석하여 관주합니다.',
-                '초기 고온·건조 시 차광 및 수분 관리로 몸살을 예방합니다.',
-              ];
-            } else if (
-              stepOrd === 12 ||
-              stepOrd === 13 ||
-              stepOrd === 14 ||
-              /병해충|방제|예찰|예방/.test(subName)
-            ) {
-              linkedTaskDisplayTitle = `${subName} (결구기 방제)`;
-              primaryItem = {
-                ...primaryItem,
-                roleBadge: '주약제',
-                visualType: 'BOTTLE',
-                bagLabelTop: '무름·노균',
-                bagLabelMid: '보호살균제',
-                name: '무름병·노균병 동시방제 액상수화제',
-                formulaSub: '(보호살균제)',
-                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                  200,
-                  Math.round(1000 * scale)
-                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(1, Math.round(1 * scale)),
-                stepDelta: 1,
-                unit: 'L',
-                unitPrice: 25000,
-                materialId: 'MAT-PEST-01',
-                materialCategory: 'PESTICIDE',
-              };
-              secondaryItem = {
-                ...secondaryItem,
-                roleBadge: '보조제',
-                visualType: 'BOTTLE',
-                bagLabelTop: '칼슘·붕소',
-                bagLabelMid: '액상비료',
-                name: '칼슘·붕소 액상비료',
-                formulaSub: '',
-                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                  200,
-                  Math.round(1000 * scale)
-                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(1, Math.round(1 * scale)),
-                stepDelta: 1,
-                unit: 'L',
-                unitPrice: 25000,
-                materialId: 'MAT-NUTR-02',
-                materialCategory: 'NUTRIENT',
-              };
-              usageGuides = [
-                '7~10일 간격으로 예방 살포하며 강우 전후 추가 살포합니다.',
-                '물 20L당 약제 20mL를 희석하여 잎 뒷면과 지제부에 고르게 살포합니다.',
-                '칼슘·붕소 액상비료를 병행하여 세포벽 강화 및 무름 증상을 예방합니다.',
-              ];
-            } else if (stepOrd >= 15 || /수확/.test(subName)) {
-              linkedTaskDisplayTitle = `${subName} (저장성 향상)`;
-              primaryItem = {
-                ...primaryItem,
-                roleBadge: '주비료',
-                bagLabelTop: '복합비료',
-                bagLabelMid: '17-0-17',
-                name: '질소·칼리 복합비료',
-                formulaSub: '(17-0-17)',
-                dosageRangeLabel: `${Math.max(4, Math.round(20 * scale))}~${Math.max(
-                  5,
-                  Math.round(25 * scale)
-                )} kg / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(5, Math.round(25 * scale)),
-                stepDelta: 5,
-                unit: 'kg',
-                unitPrice: 1000,
-                materialId: 'FERT-PRD-03',
-                materialCategory: 'FERTILIZER',
-              };
-              secondaryItem = {
-                ...secondaryItem,
-                roleBadge: '보조제',
-                bagLabelTop: '칼슘·붕소',
-                bagLabelMid: '액상비료',
-                name: '칼슘·붕소 액상비료',
-                formulaSub: '',
-                dosageRangeLabel: `${Math.max(100, Math.round(500 * scale))}~${Math.max(
-                  200,
-                  Math.round(1000 * scale)
-                ).toLocaleString()} mL / ${pyeong.toLocaleString()}평`,
-                qty: Math.max(1, Math.round(1 * scale)),
-                stepDelta: 1,
-                unit: 'L',
-                unitPrice: 25000,
-                materialId: 'MAT-NUTR-02',
-                materialCategory: 'NUTRIENT',
-              };
-              usageGuides = [
-                '수확 전 결구 충실도 확보 및 저장성 향상을 위해 적기 관리를 진행합니다.',
-                '수확 후 차기 작기 토양 회복을 위해 포장 잔재물 정리 후 시비합니다.',
-                '저온 피해(동해)가 오기 전 맑은 날 수확하여 예건 후 저장합니다.',
-              ];
-            } else {
-              linkedTaskDisplayTitle = /생장|추비|시비|점검/.test(subName)
-                ? `추비 2차 (결구비대)`
-                : `${subName} (결구비대)`;
+            });
+
+            // 4. 플랫폼 DB의 실제 usage_tip 및 climate_rule 기반 사용방법 구성
+            const rawUsageTip = String(
+              entry?.raw?.usage_tip || matchedProvisionStage?.usage_tip || ''
+            )
+              .replace(/^\[농자재 사용팁\]\s*/, '')
+              .trim();
+            const rawClimateRule = String(
+              entry?.raw?.climate_rule || matchedProvisionStage?.climate_rule || ''
+            ).trim();
+
+            const tipSentences = rawUsageTip
+              .split(/(?:①|②|③|\.\s+)/)
+              .map((s) => s.trim())
+              .filter((s) => s.length > 4)
+              .map((s) => (s.endsWith('.') || s.endsWith('요') ? s : `${s}.`));
+
+            const usageGuides: string[] = [];
+            tipSentences.forEach((s) => {
+              if (usageGuides.length < 2) usageGuides.push(s);
+            });
+            topMaterials.forEach((m) => {
+              const catEntry = PLATFORM_DB_AGRO_CATALOG[m.material_id];
+              if (catEntry?.usage_tip && usageGuides.length < 3) {
+                if (!usageGuides.some((u) => u.includes(catEntry.usage_tip.slice(0, 10)))) {
+                  usageGuides.push(catEntry.usage_tip);
+                }
+              }
+            });
+            if (rawClimateRule && usageGuides.length < 3) {
+              usageGuides.push(rawClimateRule);
             }
+            if (usageGuides.length === 0) {
+              usageGuides.push(
+                `${subName} 적기에 맞춰 권장 희석배수 및 사용량을 준수하여 살포합니다.`
+              );
+            }
+
+            const linkedTaskDisplayTitle =
+              entry?.raw?.process_name ||
+              matchedProvisionStage?.process_name ||
+              `${subName}`;
 
             setStageRecommendedBuyTarget({
               reqNo: modalReqNo,
-              itemId: entry.itemId,
+              itemId,
               stepOrder: stepOrd,
               subItemName: subName,
-              linkedTaskDisplayTitle,
+              linkedTaskDisplayTitle: `${subName}`,
               effDate: entry.effDate || '2026-10-14',
               raw: entry.raw,
-              items: [primaryItem, secondaryItem],
+              items: mappedModalItems,
               usageGuides,
             });
           };
@@ -26050,14 +26178,16 @@ export default function UserIntroPage() {
                       ).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
                       const newCartEntries = checkedItems.map((it, idx) => {
-                        const itemTotal = Math.round(it.qty * it.unitPrice);
+                        const safeQty = Math.max(1, Number(it.qty) || 1);
+                        const itemTotal = Math.round(safeQty * it.unitPrice);
                         const fullProdName = it.formulaSub
                           ? `${it.name} ${it.formulaSub}`
                           : it.name;
                         const thumb =
-                          it.visualType === 'BAG'
+                          it.thumbnailUrl ||
+                          (it.visualType === 'BAG'
                             ? '/images/fertilizers/FERT-PRD-03-thumb.png'
-                            : '/images/fertilizers/MAT-NUTR-02-thumb.png';
+                            : '/images/fertilizers/MAT-NUTR-02-thumb.png');
                         return {
                           cartId: `CART-REC-${Date.now()}-${idx}`,
                           checked: true,
@@ -26081,14 +26211,15 @@ export default function UserIntroPage() {
                           workDescription: stageRecommendedBuyTarget.usageGuides.join(' '),
                           material_id: it.materialId,
                           material_category: it.materialCategory,
-                          subType: it.roleBadge,
-                          manufacturer: '한팜인증',
+                          subType: it.subType || it.roleBadge,
+                          manufacturer: it.manufacturer || '(주)누보',
                           productName: fullProdName,
-                          unitSpec: `${it.qty}${it.unit}`,
+                          unitSpec: it.unitSpec || `1${it.unit}`,
                           unitLabel: it.unit,
-                          unitPrice: itemTotal,
-                          qty: 1,
-                          recommendedQty: 1,
+                          unitPrice: it.unitPrice,
+                          qty: safeQty,
+                          recommendedQty: safeQty,
+                          totalPrice: itemTotal,
                           matchScore: 98,
                           categorySpecBadge: `권장 사용량 ${it.dosageRangeLabel}`,
                           thumbnailUrl: thumb,
@@ -26126,6 +26257,7 @@ export default function UserIntroPage() {
                             : '비료',
                         subType: ce.subType,
                         sub_type: ce.subType,
+                        manufacturer: ce.manufacturer,
                         productName: ce.productName,
                         product_name: ce.productName,
                         unitSpec: ce.unitSpec,
@@ -26134,11 +26266,11 @@ export default function UserIntroPage() {
                         unit_label: ce.unitLabel,
                         unitPrice: ce.unitPrice,
                         unit_price: ce.unitPrice,
-                        qty: 1,
-                        raw_subtotal: ce.unitPrice,
+                        qty: ce.qty,
+                        raw_subtotal: ce.unitPrice * ce.qty,
                         discount_amount: 0,
-                        totalPrice: ce.unitPrice,
-                        final_subtotal: ce.unitPrice,
+                        totalPrice: ce.unitPrice * ce.qty,
+                        final_subtotal: ce.unitPrice * ce.qty,
                         thumbnailUrl: ce.thumbnailUrl,
                         thumbnail_url: ce.thumbnail_url,
                       }));
@@ -26302,56 +26434,39 @@ export default function UserIntroPage() {
                                       <Check className="w-4 h-4 stroke-[2.6]" />
                                     </button>
 
-                                    {/* 포대 / 액상병 패키지 일러스트 */}
-                                    {recIt.visualType === 'BAG' ? (
-                                      <div className="w-[58px] h-[68px] rounded-xl bg-gradient-to-b from-slate-100 via-white to-emerald-50 border border-slate-300 shadow-2xs flex flex-col items-center justify-between p-1.5 shrink-0">
-                                        <div className="w-full h-1.5 rounded-full bg-emerald-700/80" />
-                                        <div className="text-center leading-tight">
-                                          <div className="text-[9.5px] font-black text-[#0E712F] tracking-tighter">
-                                            {recIt.bagLabelTop}
-                                          </div>
-                                          <div className="text-[10.5px] font-black text-[#111827] tracking-tighter">
-                                            {recIt.bagLabelMid}
-                                          </div>
-                                        </div>
-                                        <div className="w-full h-3.5 rounded-md bg-gradient-to-r from-emerald-600 via-green-500 to-lime-500 flex items-center justify-center">
-                                          <span className="text-[7.5px] font-extrabold text-white">
-                                            HANFARM
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="w-[58px] h-[68px] flex flex-col items-center justify-center shrink-0">
-                                        <div className="w-5 h-2.5 rounded-t-md bg-slate-200 border border-slate-300" />
-                                        <div className="w-[46px] h-[54px] rounded-xl bg-white border border-slate-300 shadow-2xs overflow-hidden flex flex-col justify-between">
-                                          <div className="h-2 bg-slate-100" />
-                                          <div className="bg-gradient-to-b from-[#15803D] to-[#0E712F] px-1 py-1.5 text-center text-white">
-                                            <div className="text-[8.5px] font-extrabold leading-tight">
-                                              {recIt.bagLabelTop}
-                                            </div>
-                                            <div className="text-[8px] font-bold text-emerald-100 leading-tight">
-                                              {recIt.bagLabelMid}
-                                            </div>
-                                          </div>
-                                          <div className="h-2.5 bg-emerald-50 flex items-center justify-center">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
+                                    {/* 플랫폼 DB 저장 농자재 실제 상품 썸네일 이미지 */}
+                                    <div className="w-[60px] h-[68px] rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                      <img
+                                        src={recIt.thumbnailUrl}
+                                        alt={recIt.name}
+                                        onError={handleAgroThumbImgError}
+                                        className="w-full h-full object-contain block"
+                                      />
+                                    </div>
 
                                     <div className="min-w-0 space-y-0.5">
-                                      <span className="inline-block px-2 py-0.5 rounded-md bg-[#F9EEDB] text-[#5C4018] text-[11px] font-extrabold">
-                                        {recIt.roleBadge}
-                                      </span>
-                                      <div className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <span className="inline-block px-2 py-0.5 rounded-md bg-[#F9EEDB] text-[#5C4018] text-[10.5px] font-extrabold">
+                                          {recIt.roleBadge}
+                                        </span>
+                                        <span className="text-[10.5px] font-bold text-[#0E712F] truncate">
+                                          {recIt.manufacturer}
+                                        </span>
+                                      </div>
+                                      <div className="text-[14px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
                                         {recIt.name}
                                       </div>
                                       {recIt.formulaSub && (
-                                        <div className="text-[13px] font-bold text-[#374151]">
+                                        <div className="text-[11.5px] font-bold text-[#4B5563] line-clamp-2 leading-tight">
                                           {recIt.formulaSub}
                                         </div>
                                       )}
+                                      <div className="text-[11.5px] font-extrabold text-[#0E712F]">
+                                        {recIt.unitPrice.toLocaleString()}원{' '}
+                                        <span className="text-[10.5px] font-semibold text-slate-500">
+                                          / {recIt.unitSpec}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
 
