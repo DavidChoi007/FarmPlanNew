@@ -530,9 +530,27 @@ export default function UserIntroPage() {
   const [fullScheduleOpenStepMap, setFullScheduleOpenStepMap] = useState<Record<number, boolean>>({});
   const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
   const [growthConfirmDateInput, setGrowthConfirmDateInput] = useState<string>('');
+  const [growthConfirmModalTarget, setGrowthConfirmModalTarget] = useState<{
+    reqNo: string;
+    stepIdx?: 0 | 1 | 2 | 3;
+  } | null>(null);
+  const [growthConfirmRadioChoice, setGrowthConfirmRadioChoice] = useState<
+    'STARTED' | 'NOT_YET' | 'UNKNOWN'
+  >('STARTED');
   const [stageGrowthConfirmDates, setStageGrowthConfirmDates] = useState<Record<string, string>>(() => {
     try {
       return JSON.parse(localStorage.getItem('hanfarm_stage_growth_confirm_dates_v1') || '{}') || {};
+    } catch {
+      return {};
+    }
+  });
+  const [stageGrowthConfirmStatuses, setStageGrowthConfirmStatuses] = useState<
+    Record<string, 'STARTED' | 'NOT_YET' | 'UNKNOWN'>
+  >(() => {
+    try {
+      return (
+        JSON.parse(localStorage.getItem('hanfarm_stage_growth_confirm_statuses_v1') || '{}') || {}
+      );
     } catch {
       return {};
     }
@@ -1009,6 +1027,32 @@ export default function UserIntroPage() {
     const m = Number(String(ymd || '').slice(5, 7));
     const d = Number(String(ymd || '').slice(8, 10));
     return m && d ? `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}` : ymd || '-';
+  };
+
+  const formatYmdToSlashMdYy = (ymd?: string): string => {
+    const target = ymd && /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? ymd : getTodayKstYmd();
+    const yy = target.slice(2, 4);
+    const mm = target.slice(5, 7);
+    const dd = target.slice(8, 10);
+    return `${mm}/${dd}/${yy}`;
+  };
+
+  const openGrowthConfirmModal = (
+    reqNo: string,
+    stepIdx?: 0 | 1 | 2 | 3,
+    defaultDateYmd?: string
+  ) => {
+    const resolvedStepIdx: 0 | 1 | 2 | 3 = stepIdx !== undefined ? stepIdx : 2;
+    const confirmKey = `${reqNo}__STEP_${resolvedStepIdx}`;
+    const savedDate = stageGrowthConfirmDates[confirmKey] || defaultDateYmd || '';
+    const savedStatus = stageGrowthConfirmStatuses[confirmKey] || 'STARTED';
+    setGrowthConfirmDateInput(savedDate);
+    setGrowthConfirmRadioChoice(savedStatus);
+    setIsGrowthConfirmDatePickerOpen(true);
+    setGrowthConfirmModalTarget({
+      reqNo,
+      stepIdx,
+    });
   };
 
   const isPastStagesShownForReq = (reqNo: string): boolean => {
@@ -2777,6 +2821,22 @@ export default function UserIntroPage() {
           }
         } else if (!isCloudBaeTarget) {
           setStageGrowthConfirmDates({});
+        }
+        if (
+          states.stage_growth_confirm_statuses_v1 &&
+          typeof states.stage_growth_confirm_statuses_v1 === 'object'
+        ) {
+          setStageGrowthConfirmStatuses(states.stage_growth_confirm_statuses_v1);
+          try {
+            localStorage.setItem(
+              'hanfarm_stage_growth_confirm_statuses_v1',
+              JSON.stringify(states.stage_growth_confirm_statuses_v1)
+            );
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setStageGrowthConfirmStatuses({});
         }
         if (states.crop_work_logs_v1 && typeof states.crop_work_logs_v1 === 'object') {
           setCropWorkLogs(states.crop_work_logs_v1);
@@ -9055,9 +9115,8 @@ export default function UserIntroPage() {
                                 const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
                                 setSelectedRequestNo(targetReqNo);
                                 setMyPageStageDetailItem(null);
-                                setIsGrowthConfirmDatePickerOpen(false);
                                 setIsWorkLogFormOpen(false);
-                                setMobileStageOverviewReqNo(targetReqNo);
+                                openGrowthConfirmModal(targetReqNo, activeCropItem.activeStepIdx);
                               }}
                               className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
                             >
@@ -9102,7 +9161,17 @@ export default function UserIntroPage() {
                                 return (
                                   <div
                                     key={stepLabel}
-                                    className="relative z-10 flex flex-col items-center gap-2 bg-white px-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const targetReqNo =
+                                        activeCropItem.request_no || 'REQ-20261106-009';
+                                      setSelectedRequestNo(targetReqNo);
+                                      openGrowthConfirmModal(
+                                        targetReqNo,
+                                        sIdx as 0 | 1 | 2 | 3
+                                      );
+                                    }}
+                                    className="relative z-10 flex flex-col items-center gap-2 bg-white px-1 cursor-pointer"
                                   >
                                     {isCompletedStep ? (
                                       <div className="w-[26px] h-[26px] rounded-full bg-[#BBF7D0] border border-[#86EFAC] text-[#15803D] flex items-center justify-center">
@@ -9568,8 +9637,31 @@ export default function UserIntroPage() {
                             </div>
                           </div>
 
-                          {/* 우측: 일정 상세 열기/접기 + 삭제 액션 버튼 */}
+                          {/* 우측: 현재 생육단계 확인 + 일정 상세 열기/접기 + 삭제 액션 버튼 */}
                           <div className="lg:w-auto shrink-0 flex items-center justify-end gap-2">
+                            {(() => {
+                              const compCnt = Number(crop.completed_stage_count ?? 0);
+                              const pcStepIdx: 0 | 1 | 2 | 3 =
+                                compCnt >= 14 ? 3 : compCnt >= 11 ? 2 : compCnt >= 8 ? 1 : 0;
+                              const pcStepLabel =
+                                (['정식', '생육기', '결구기(병해충)', '수확기'] as const)[pcStepIdx];
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const reqNo = crop.request_no || 'REQ-20261106-009';
+                                    setSelectedRequestNo(reqNo);
+                                    openGrowthConfirmModal(reqNo, pcStepIdx);
+                                  }}
+                                  className="px-4 py-3 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white font-black text-[15px] sm:text-base transition cursor-pointer inline-flex items-center justify-center gap-1 shadow-2xs shrink-0"
+                                >
+                                  <span>{`${pcStepLabel} 확인`}</span>
+                                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                                </button>
+                              );
+                            })()}
+
                             <button
                               type="button"
                               onClick={(e) => {
@@ -23153,7 +23245,14 @@ export default function UserIntroPage() {
                           return (
                             <div
                               key={st.baseName}
-                              className="relative z-10 flex flex-col items-center text-center min-w-[68px]"
+                              onClick={() =>
+                                openGrowthConfirmModal(
+                                  ovReqNo,
+                                  st.idx as 0 | 1 | 2 | 3,
+                                  st.defaultConfirmYmd
+                                )
+                              }
+                              className="relative z-10 flex flex-col items-center text-center min-w-[68px] cursor-pointer"
                             >
                               {isDone ? (
                                 <div className="w-[26px] h-[26px] rounded-full bg-[#BBF7D0] border border-[#86EFAC] text-[#15803D] flex items-center justify-center">
@@ -23227,7 +23326,10 @@ export default function UserIntroPage() {
                   </div>
 
                   {/* 4. 생육확인 (시작일 기록) 카드 */}
-                  <div className="rounded-[20px] bg-[#EFF7F1] border border-[#D5E8DA] p-4 space-y-2.5">
+                  <div
+                    onClick={() => openGrowthConfirmModal(ovReqNo, activeIdx, recordedConfirmYmd)}
+                    className="rounded-[20px] bg-[#EFF7F1] border border-[#D5E8DA] p-4 space-y-2.5 cursor-pointer hover:border-[#86EFAC] transition"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <Sprout className="w-5 h-5 text-[#0E712F] shrink-0" />
@@ -23246,9 +23348,9 @@ export default function UserIntroPage() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setGrowthConfirmDateInput(recordedConfirmYmd);
-                          setIsGrowthConfirmDatePickerOpen((prev) => !prev);
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openGrowthConfirmModal(ovReqNo, activeIdx, recordedConfirmYmd);
                         }}
                         className="px-3 py-1.5 rounded-full bg-white hover:bg-emerald-50 border border-[#86EFAC] text-[#0E712F] text-[12px] font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer transition shadow-2xs"
                       >
@@ -23257,38 +23359,15 @@ export default function UserIntroPage() {
                       </button>
                     </div>
 
-                    {isGrowthConfirmDatePickerOpen && (
-                      <div className="rounded-xl bg-white border border-emerald-200 p-2.5 flex items-center justify-between gap-2">
-                        <input
-                          type="date"
-                          value={growthConfirmDateInput}
-                          onChange={(e) => setGrowthConfirmDateInput(e.target.value)}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-900"
-                        />
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setIsGrowthConfirmDatePickerOpen(false)}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 cursor-pointer"
-                          >
-                            취소
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSaveGrowthConfirmDate(growthConfirmDateInput)}
-                            className="px-3 py-1.5 rounded-lg bg-[#0E712F] text-white text-xs font-extrabold cursor-pointer"
-                          >
-                            기록 저장
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     <div className="pl-7">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>
-                          {curStepDef.confirmBadgePrefix} : {toKoreanMd(recordedConfirmYmd)}
+                          {stageGrowthConfirmStatuses[confirmKey] === 'NOT_YET'
+                            ? `${curStepDef.confirmBadgePrefix} : 아직 시작 전 (추후 재확인)`
+                            : stageGrowthConfirmStatuses[confirmKey] === 'UNKNOWN'
+                            ? `${curStepDef.confirmBadgePrefix} : 확인 보류 (추후 재확인)`
+                            : `${curStepDef.confirmBadgePrefix} : ${toKoreanMd(recordedConfirmYmd)}`}
                         </span>
                       </span>
                     </div>
@@ -24089,14 +24168,11 @@ export default function UserIntroPage() {
                     })}
                   </div>
 
-                  {/* 6. 하단 생육 확인 카드 (클릭 시 생육단계 상세/시작일 기록 폼으로 이동) */}
+                  {/* 6. 하단 생육 확인 카드 (클릭 시 생육 확인 모달리스 폼 오픈) */}
                   <button
                     type="button"
                     onClick={() => {
-                      setMyPageStageDetailItem(null);
-                      setMyPageProgressDetailReqNo(null);
-                      setIsGrowthConfirmDatePickerOpen(true);
-                      setMobileStageOverviewReqNo(modalReqNo);
+                      openGrowthConfirmModal(modalReqNo, currentPhaseIdx);
                     }}
                     className="w-full rounded-[20px] bg-white hover:bg-emerald-50/40 border border-[#E5E7EB] px-4 py-3.5 flex items-center justify-between gap-3 text-left shadow-2xs cursor-pointer transition"
                   >
@@ -24497,6 +24573,325 @@ export default function UserIntroPage() {
                     </div>
                   );
                 })()}
+            </div>
+          );
+        })()}
+
+      {/* ==================== [생육 확인 (정식/생육/결구/수확 시작일 확인) 전용 모달리스 폼 (첨부 이미지 1:1 구성)] ==================== */}
+      {growthConfirmModalTarget &&
+        (() => {
+          const gcReqNo =
+            growthConfirmModalTarget.reqNo || selectedRequestNo || 'REQ-20261106-009';
+          const gcCrop =
+            cloudBaeCropList.find((c: any) => c.request_no === gcReqNo) ||
+            activeCropCard ||
+            cloudBaeCropList[0] || {
+              request_no: gcReqNo,
+              crop_short: provisionData?.activeRequest?.crop_name || '가을배추',
+              planting_date: provisionData?.activeRequest?.desired_start_date || '2026-08-25',
+              expected_harvest_date: '2026-11-20',
+            };
+
+          const shortName =
+            String(gcCrop.crop_short || gcCrop.crop_name || '배추')
+              .replace(/^(가을|봄|월동|고랭지|여름)/, '')
+              .trim() || '배추';
+
+          const hasProvisionForCrop =
+            Array.isArray(provisionData?.scheduleItems) &&
+            provisionData.scheduleItems.length > 0 &&
+            (provisionData?.activeRequest?.request_no === gcReqNo ||
+              selectedRequestNo === gcReqNo);
+
+          const rawItems = hasProvisionForCrop
+            ? provisionData.scheduleItems
+            : STANDARD_16_STAGE_META.map((meta) => ({
+                item_id: meta.itemId,
+                step_order: meta.stepOrder,
+                stage_group_name: meta.stageGroupName,
+                sub_item_name: meta.subItemName,
+                start_date: addDaysToYmd(gcCrop.planting_date || '2026-08-25', meta.offsetDays),
+              }));
+
+          const evaluated = rawItems.map((it: any, idx: number) => {
+            const effDate = getEffectiveStageItemDate(gcReqNo, it);
+            const comp = getStageItemCompletionState(gcReqNo, it);
+            return {
+              raw: it,
+              itemId: String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`),
+              stepOrder: Number(it.step_order || idx + 1),
+              effDate,
+              isCompleted: comp.isRecognized,
+            };
+          });
+
+          const uncompleted = evaluated.filter((e: any) => !e.isCompleted);
+          const nextStage = uncompleted[0] || evaluated[evaluated.length - 1] || null;
+          const isAllDone = uncompleted.length === 0 && evaluated.length > 0;
+
+          let computedActiveIdx: 0 | 1 | 2 | 3 = 2;
+          if (isAllDone) {
+            computedActiveIdx = 3;
+          } else if (nextStage) {
+            const ord = nextStage.stepOrder;
+            if (ord <= 8) computedActiveIdx = 0;
+            else if (ord <= 11) computedActiveIdx = 1;
+            else if (ord <= 14) computedActiveIdx = 2;
+            else computedActiveIdx = 3;
+          }
+
+          const stepIdx: 0 | 1 | 2 | 3 =
+            growthConfirmModalTarget.stepIdx !== undefined
+              ? growthConfirmModalTarget.stepIdx
+              : computedActiveIdx;
+
+          const dateStep0 =
+            evaluated.find((e: any) => e.stepOrder === 7)?.effDate ||
+            gcCrop.planting_date ||
+            '2026-09-15';
+          const dateStep1Start =
+            evaluated.find((e: any) => e.stepOrder === 9)?.effDate ||
+            evaluated.find((e: any) => e.stepOrder === 8)?.effDate ||
+            dateStep0;
+          const dateStep2Start =
+            evaluated.find((e: any) => e.stepOrder === 12)?.effDate ||
+            addDaysToYmd(dateStep0, 26);
+          const dateStep3 =
+            evaluated.find((e: any) => e.stepOrder === 15)?.effDate ||
+            gcCrop.expected_harvest_date ||
+            '2026-11-20';
+
+          const confirmSpecs = [
+            {
+              idx: 0 as const,
+              modalTitle: '정식 시작일 확인',
+              questionPrompt: `${shortName} 모종을 본밭에 심는 정식이 시작되었나요?`,
+              radioStartedLabel: '네, 정식이 시작되었습니다.',
+              radioNotYetLabel: '아직 정식이 시작되지 않았습니다.',
+              radioUnknownLabel: '잘 모르겠습니다.',
+              dateFieldLabel: '실제 정식 시작일',
+              helperDesc:
+                '오늘 확인했더라도 실제 정식이 시작된 날짜를 알고 있다면 그 날짜를 선택하세요.',
+              defaultYmd: dateStep0,
+              targetItemId: 'SCH-07',
+            },
+            {
+              idx: 1 as const,
+              modalTitle: '생육 시작일 확인',
+              questionPrompt: `${shortName}의 본엽이 자라면서 생육이 시작되었나요?`,
+              radioStartedLabel: '네, 생육이 시작되었습니다.',
+              radioNotYetLabel: '아직 생육이 시작되지 않았습니다.',
+              radioUnknownLabel: '잘 모르겠습니다.',
+              dateFieldLabel: '실제 생육 시작일',
+              helperDesc:
+                '오늘 확인했더라도 실제 생육이 시작된 날짜를 알고 있다면 그 날짜를 선택하세요.',
+              defaultYmd: dateStep1Start,
+              targetItemId: 'SCH-09',
+            },
+            {
+              idx: 2 as const,
+              modalTitle: '결구 시작일 확인',
+              questionPrompt: `${shortName}의 안쪽 잎이 모이면서 결구가 시작되었나요?`,
+              radioStartedLabel: '네, 결구가 시작되었습니다.',
+              radioNotYetLabel: '아직 결구가 시작되지 않았습니다.',
+              radioUnknownLabel: '잘 모르겠습니다.',
+              dateFieldLabel: '실제 결구 시작일',
+              helperDesc:
+                '오늘 확인했더라도 실제 결구가 시작된 날짜를 알고 있다면 그 날짜를 선택하세요.',
+              defaultYmd: dateStep2Start,
+              targetItemId: 'SCH-12',
+            },
+            {
+              idx: 3 as const,
+              modalTitle: '수확 시작일 확인',
+              questionPrompt: `${shortName}의 안쪽 잎이 단단히 차서 수확이 시작되었나요?`,
+              radioStartedLabel: '네, 수확이 시작되었습니다.',
+              radioNotYetLabel: '아직 수확이 시작되지 않았습니다.',
+              radioUnknownLabel: '잘 모르겠습니다.',
+              dateFieldLabel: '실제 수확 시작일',
+              helperDesc:
+                '오늘 확인했더라도 실제 수확이 시작된 날짜를 알고 있다면 그 날짜를 선택하세요.',
+              defaultYmd: dateStep3,
+              targetItemId: 'SCH-15',
+            },
+          ];
+
+          const confirmSpec = confirmSpecs[stepIdx] || confirmSpecs[2];
+          const confirmKey = `${gcReqNo}__STEP_${stepIdx}`;
+          const effectiveConfirmYmd =
+            growthConfirmDateInput && /^\d{4}-\d{2}-\d{2}$/.test(growthConfirmDateInput)
+              ? growthConfirmDateInput
+              : stageGrowthConfirmDates[confirmKey] || confirmSpec.defaultYmd;
+
+          const handleConfirmGrowthResultSave = () => {
+            // 1. 선택 상태 (STARTED / NOT_YET / UNKNOWN) 저장 및 DB 동기화
+            setStageGrowthConfirmStatuses((prev) => {
+              const next = { ...prev, [confirmKey]: growthConfirmRadioChoice };
+              try {
+                localStorage.setItem(
+                  'hanfarm_stage_growth_confirm_statuses_v1',
+                  JSON.stringify(next)
+                );
+              } catch {
+                // ignore
+              }
+              fetch('/api/client-sync-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: loggedInUser.email || 'CloudBae@naver.com',
+                  state_key: 'stage_growth_confirm_statuses_v1',
+                  state_value: next,
+                }),
+              }).catch(() => {});
+              return next;
+            });
+
+            // 2. 도달('STARTED') 선택 시 실제 시작일자 저장 및 해당 단계 일정 반영
+            if (growthConfirmRadioChoice === 'STARTED' && effectiveConfirmYmd) {
+              setStageGrowthConfirmDates((prev) => {
+                const next = { ...prev, [confirmKey]: effectiveConfirmYmd };
+                try {
+                  localStorage.setItem(
+                    'hanfarm_stage_growth_confirm_dates_v1',
+                    JSON.stringify(next)
+                  );
+                } catch {
+                  // ignore
+                }
+                fetch('/api/client-sync-state', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: loggedInUser.email || 'CloudBae@naver.com',
+                    state_key: 'stage_growth_confirm_dates_v1',
+                    state_value: next,
+                  }),
+                }).catch(() => {});
+                return next;
+              });
+
+              const draftKey = `${gcReqNo}__${confirmSpec.targetItemId}`;
+              setInlineStageDateDrafts((prev) => ({
+                ...prev,
+                [draftKey]: effectiveConfirmYmd,
+              }));
+            }
+
+            setIsGrowthConfirmDatePickerOpen(false);
+            setGrowthConfirmModalTarget(null);
+          };
+
+          return (
+            <div
+              onClick={() => {
+                setIsGrowthConfirmDatePickerOpen(false);
+                setGrowthConfirmModalTarget(null);
+              }}
+              className="fixed inset-0 z-[70] bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center p-4"
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-[410px] rounded-[26px] border border-[#E5E7EB] bg-white p-5 sm:p-6 shadow-[0_24px_64px_rgba(15,23,42,0.28)] space-y-4 select-none"
+              >
+                {/* 1. 상단 타이틀 + 우측 '생육 확인' 그린 배지 */}
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-[21px] sm:text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                    {confirmSpec.modalTitle}
+                  </h3>
+                  <span className="px-3 py-1 rounded-full bg-[#E6F4EA] text-[#15803D] text-[13px] font-extrabold tracking-[-0.02em] shrink-0">
+                    생육 확인
+                  </span>
+                </div>
+
+                {/* 2. 질문 문구 */}
+                <p className="text-[15px] font-semibold text-[#374151] tracking-[-0.02em] leading-snug">
+                  {confirmSpec.questionPrompt}
+                </p>
+
+                {/* 3. 3개 라디오 선택지 */}
+                <div className="space-y-3.5 pt-1">
+                  {(
+                    [
+                      { key: 'STARTED', label: confirmSpec.radioStartedLabel },
+                      { key: 'NOT_YET', label: confirmSpec.radioNotYetLabel },
+                      { key: 'UNKNOWN', label: confirmSpec.radioUnknownLabel },
+                    ] as const
+                  ).map((opt) => {
+                    const isSelected = growthConfirmRadioChoice === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setGrowthConfirmRadioChoice(opt.key)}
+                        className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                      >
+                        <span
+                          className={`w-[26px] h-[26px] rounded-full flex items-center justify-center shrink-0 transition ${
+                            isSelected
+                              ? 'bg-[#111827]'
+                              : 'border-[1.8px] border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="w-[9px] h-[9px] rounded-full bg-white" />
+                          )}
+                        </span>
+                        <span className="text-[16.5px] sm:text-[17px] font-bold text-[#111827] tracking-[-0.02em]">
+                          {opt.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* 4. 실제 시작일 날짜 선택 영역 */}
+                <div className="pt-1 space-y-2">
+                  <label className="block text-[14px] font-bold text-[#4B5563] tracking-[-0.02em]">
+                    {confirmSpec.dateFieldLabel}
+                  </label>
+                  <label className="relative w-full h-[52px] rounded-full border border-[#D1D5DB] bg-white px-4 flex items-center justify-between cursor-pointer hover:border-[#15803D] transition">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="w-[19px] h-[19px] text-[#111827] stroke-[2]" />
+                      <span className="text-[16.5px] font-bold text-[#111827] tracking-tight">
+                        {formatYmdToSlashMdYy(effectiveConfirmYmd)}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-5 h-5 text-[#6B7280] stroke-[2]" />
+                    <input
+                      type="date"
+                      value={effectiveConfirmYmd}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setGrowthConfirmDateInput(e.target.value);
+                        }
+                      }}
+                      onClick={(e) => {
+                        try {
+                          (e.currentTarget as any).showPicker?.();
+                        } catch {
+                          // ignore
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                  </label>
+                  <p className="text-[13.5px] font-medium text-[#6B7280] leading-[1.45] tracking-[-0.02em] break-keep pt-0.5">
+                    {confirmSpec.helperDesc}
+                  </p>
+                </div>
+
+                {/* 5. 확인 결과 저장 버튼 */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={handleConfirmGrowthResultSave}
+                    className="w-full h-[52px] rounded-full bg-[#158E3E] hover:bg-[#0E712F] active:scale-[0.99] text-white font-extrabold text-[16.5px] tracking-[-0.02em] flex items-center justify-center shadow-[0_4px_12px_rgba(21,142,62,0.24)] cursor-pointer transition"
+                  >
+                    확인 결과 저장
+                  </button>
+                </div>
+              </div>
             </div>
           );
         })()}
