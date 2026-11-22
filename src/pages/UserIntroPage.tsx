@@ -9286,11 +9286,8 @@ export default function UserIntroPage() {
                               />
 
                               {fourStepLabels.map((stepLabel, sIdx) => {
-                                const isCompletedStep =
-                                  activeCropItem.isAllCompleted || sIdx < activeCropItem.activeStepIdx;
-                                const isCurrentStep =
-                                  !activeCropItem.isAllCompleted &&
-                                  sIdx === activeCropItem.activeStepIdx;
+                                const isCompletedStep = sIdx < activeCropItem.activeStepIdx;
+                                const isCurrentStep = sIdx === activeCropItem.activeStepIdx;
                                 const displayLabel = stepLabel;
 
                                 return (
@@ -23406,8 +23403,8 @@ export default function UserIntroPage() {
                         />
 
                         {stepDefinitions.map((st) => {
-                          const isDone = isAllDone || st.idx < activeIdx;
-                          const isCur = !isAllDone && st.idx === activeIdx;
+                          const isDone = st.idx < activeIdx;
+                          const isCur = st.idx === activeIdx;
                           return (
                             <div
                               key={st.baseName}
