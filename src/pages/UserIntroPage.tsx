@@ -19622,10 +19622,15 @@ export default function UserIntroPage() {
                             onClick={() => {
                               const reqNo = crop.request_no || 'REQ-20261106-009';
                               setSelectedRequestNo(reqNo);
+                              setExpandedScheduleRequestNo(reqNo);
                               setMyPageStageDetailItem(null);
-                              setMyPageProgressDetailReqNo((prev) =>
-                                prev === reqNo ? null : reqNo
-                              );
+                              setMyPageProgressDetailReqNo(null);
+                              setMobileStageOverviewReqNo(null);
+                              setActiveMenu('재배일정 확인');
+                              setMobileScheduleStep('list');
+                              if (typeof window !== 'undefined') {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }
                             }}
                             className={`w-full rounded-3xl lg:rounded-2xl px-4 sm:px-5 py-4 border-2 bg-white shadow-xs lg:shadow-none transition cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 lg:gap-4 overflow-hidden ${
                               isSelected
@@ -19725,7 +19730,7 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 우측: 세부보기 (일정 세부정보 모달리스 창) + 삭제 액션 버튼 */}
+                            {/* 우측: 세부보기 (메인페이지 > 재배일정 확인 페이지로 이동) + 삭제 액션 버튼 */}
                             <div className="lg:w-auto shrink-0 flex flex-col lg:items-end gap-1.5">
                               <div className="flex items-center justify-end gap-2">
                                 <button
@@ -19734,16 +19739,17 @@ export default function UserIntroPage() {
                                     e.stopPropagation();
                                     const reqNo = crop.request_no || 'REQ-20261106-009';
                                     setSelectedRequestNo(reqNo);
+                                    setExpandedScheduleRequestNo(reqNo);
                                     setMyPageStageDetailItem(null);
-                                    setMyPageProgressDetailReqNo((prev) =>
-                                      prev === reqNo ? null : reqNo
-                                    );
+                                    setMyPageProgressDetailReqNo(null);
+                                    setMobileStageOverviewReqNo(null);
+                                    setActiveMenu('재배일정 확인');
+                                    setMobileScheduleStep('list');
+                                    if (typeof window !== 'undefined') {
+                                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    }
                                   }}
-                                  className={`flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl border font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 ${
-                                    myPageProgressDetailReqNo === crop.request_no
-                                      ? 'border-emerald-600 bg-emerald-600 text-white'
-                                      : 'border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900'
-                                  }`}
+                                  className="flex-1 lg:flex-none px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white hover:bg-emerald-600 hover:text-white hover:border-emerald-600 text-slate-900 font-black text-[14px] sm:text-[14.5px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1"
                                 >
                                   <span>세부보기</span>
                                   <ChevronRight className="w-4 h-4 shrink-0" />
