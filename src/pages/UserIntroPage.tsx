@@ -530,6 +530,7 @@ export default function UserIntroPage() {
   const [taskDetailActualAmount, setTaskDetailActualAmount] = useState<string>('40');
   const [taskDetailMemo, setTaskDetailMemo] = useState<string>('');
   const [taskDetailPhotoName, setTaskDetailPhotoName] = useState<string>('');
+  const [isTaskCompletionRecordOpen, setIsTaskCompletionRecordOpen] = useState<boolean>(true);
   const [mobileStageOverviewReqNo, setMobileStageOverviewReqNo] = useState<string | null>(null);
   const [fullScheduleOpenStepMap, setFullScheduleOpenStepMap] = useState<Record<number, boolean>>({});
   const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
@@ -1069,6 +1070,50 @@ export default function UserIntroPage() {
       reqNo,
       stepIdx,
     });
+  };
+
+  const classifyFarmTaskCategory = (
+    stageItem: any
+  ): {
+    categoryKey: 'FARM_WORK' | 'FERTILIZER' | 'PEST_CONTROL';
+    categorySuffix: '(농작업)' | '(시비)' | '(병해충예방)';
+  } => {
+    const rawSub = String(stageItem?.sub_item_name || stageItem?.subItemName || '').trim();
+    const rawGroup = String(stageItem?.stage_group_name || stageItem?.stageGroupName || '').trim();
+    const rawContent = String(
+      stageItem?.work_content || stageItem?.work_description || stageItem?.workContent || ''
+    ).trim();
+    const stepOrd = Number(stageItem?.step_order || stageItem?.stepOrder || 0);
+    const combined = `${rawSub} ${rawGroup}`;
+
+    // 1. 병충해 (병해충예방) 판정
+    if (
+      /병해충|병충해|방제|예찰|살균|살충|약제|무름병|노균병|진딧물|나방|탄저|예방\s*관리/.test(
+        combined
+      ) ||
+      stepOrd === 6 ||
+      stepOrd === 12 ||
+      stepOrd === 13 ||
+      stepOrd === 14
+    ) {
+      return { categoryKey: 'PEST_CONTROL', categorySuffix: '(병해충예방)' };
+    }
+
+    // 2. 시비 판정
+    if (
+      /시비|추비|웃거름|밑거름|비료|퇴비|엽면|토양\s*개량|생장\s*관리|생육\s*점검|영양/.test(
+        combined
+      ) ||
+      /웃거름|밑거름|추비|복합비료|시비/.test(rawContent) ||
+      stepOrd === 2 ||
+      stepOrd === 9 ||
+      stepOrd === 11
+    ) {
+      return { categoryKey: 'FERTILIZER', categorySuffix: '(시비)' };
+    }
+
+    // 3. 농작업 판정
+    return { categoryKey: 'FARM_WORK', categorySuffix: '(농작업)' };
   };
 
   const isPastStagesShownForReq = (reqNo: string): boolean => {
@@ -23166,10 +23211,41 @@ export default function UserIntroPage() {
             ? `권장기간 ${toDotMd(primaryTask.effDate)} ~ ${toDotMd(addDaysToYmd(primaryTask.effDate, 5))}`
             : '권장기간 10.11 ~ 10.16';
           const upcomingTasks = uncompleted.slice(1, 3);
-          const fallbackUpcoming =
-            upcomingTasks.length > 0
-              ? upcomingTasks
-              : evaluated.slice(Math.max(0, (primaryTask?.stepOrder || 1) - 1), (primaryTask?.stepOrder || 1) + 1);
+          const fallbackUpcoming = (() => {
+            if (upcomingTasks.length >= 2) return upcomingTasks;
+            const picked: any[] = [...upcomingTasks];
+            const usedIds = new Set<string>([
+              String(primaryTask?.itemId || ''),
+              ...picked.map((p) => String(p.itemId || '')),
+            ]);
+            const primaryCat = classifyFarmTaskCategory(primaryTask?.raw || primaryTask).categoryKey;
+            const targetCats: Array<'FARM_WORK' | 'FERTILIZER' | 'PEST_CONTROL'> = (
+              ['FARM_WORK', 'FERTILIZER', 'PEST_CONTROL'] as const
+            ).filter((c) => c !== primaryCat);
+
+            for (const tCat of targetCats) {
+              if (picked.length >= 2) break;
+              const found = [...evaluated]
+                .reverse()
+                .find(
+                  (e: any) =>
+                    !usedIds.has(String(e.itemId)) &&
+                    classifyFarmTaskCategory(e.raw || e).categoryKey === tCat
+                );
+              if (found) {
+                picked.push(found);
+                usedIds.add(String(found.itemId));
+              }
+            }
+            for (const e of evaluated) {
+              if (picked.length >= 2) break;
+              if (!usedIds.has(String(e.itemId))) {
+                picked.push(e);
+                usedIds.add(String(e.itemId));
+              }
+            }
+            return picked;
+          })();
 
           const logsForReq = cropWorkLogs[ovReqNo] || [];
 
@@ -23463,82 +23539,88 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 5. 오늘 할 일 카드 (영역 클릭 시 '농작업 상세' 모달리스 폼 오픈) */}
-                  {primaryTask && (
-                    <div
-                      onClick={() => {
-                        setTaskDetailActualDate(primaryTask.effDate || getTodayKstYmd());
-                        setTaskDetailActualAmount(
-                          String(
-                            Math.max(
-                              5,
-                              Math.round(
-                                Number(
-                                  provisionData?.activeRequest?.area_pyeong ||
-                                    ovCrop.area_pyeong ||
-                                    500
-                                ) * 0.08
-                              )
-                            )
-                          )
+                  {/* 5. 오늘 할 일 카드 (영역 클릭 시 분류별 '농작업 상세' 모달리스 폼 오픈) */}
+                  {primaryTask &&
+                    (() => {
+                      const pCat = classifyFarmTaskCategory(primaryTask.raw);
+                      const openTaskModal = (taskObj: any) => {
+                        const tCat = classifyFarmTaskCategory(taskObj.raw || taskObj);
+                        const pyeong = Number(
+                          provisionData?.activeRequest?.area_pyeong || ovCrop.area_pyeong || 500
                         );
+                        const defaultAmt =
+                          tCat.categoryKey === 'FARM_WORK'
+                            ? String(Math.max(1, Math.round((pyeong * 3.3058 * 20) / 1000)))
+                            : tCat.categoryKey === 'FERTILIZER'
+                            ? String(Math.max(5, Math.round(pyeong * 0.08)))
+                            : String(Math.max(100, Math.round(pyeong * 3.2)));
+                        setTaskDetailActualDate(taskObj.effDate || getTodayKstYmd());
+                        setTaskDetailActualAmount(defaultAmt);
                         setTaskDetailMemo('');
                         setTaskDetailPhotoName('');
-                        handleSelectStageItem(primaryTask.raw);
-                        setMyPageStageDetailItem(primaryTask.raw);
-                      }}
-                      className="rounded-[20px] bg-white hover:bg-emerald-50/30 border border-[#E5E7EB] p-4 shadow-2xs space-y-3 cursor-pointer transition"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-[#0E712F]" />
-                        <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
-                          오늘 할 일
-                        </span>
-                        <span className="text-[14px] font-bold text-[#374151] ml-1">
-                          {formatKoreanMonthDayWeekday(primaryTask.effDate)}
-                        </span>
-                      </div>
+                        setIsTaskCompletionRecordOpen(tCat.categoryKey !== 'PEST_CONTROL');
+                        handleSelectStageItem(taskObj.raw || taskObj);
+                        setMyPageStageDetailItem(taskObj.raw || taskObj);
+                      };
+                      return (
+                        <div
+                          onClick={() => openTaskModal(primaryTask)}
+                          className="rounded-[20px] bg-white hover:bg-emerald-50/30 border border-[#E5E7EB] p-4 shadow-2xs space-y-3 cursor-pointer transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-5 h-5 text-[#0E712F]" />
+                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                              오늘 할 일
+                            </span>
+                            <span className="text-[14px] font-bold text-[#374151] ml-1">
+                              {formatKoreanMonthDayWeekday(primaryTask.effDate)}
+                            </span>
+                          </div>
 
-                      <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2.5">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleStageItemCompletion(
-                                ovReqNo,
-                                primaryTask.raw,
-                                primaryTask.effDate
-                              );
-                            }}
-                            aria-label="오늘 할 일 완료 체크"
-                            className={`mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
-                              primaryTask.isCompleted
-                                ? 'bg-[#0E712F] border-[#0E712F] text-white'
-                                : 'bg-white border-slate-300 text-transparent hover:border-[#0E712F]'
-                            }`}
-                          >
-                            <Check className="w-4 h-4 stroke-[2.5]" />
-                          </button>
-                          <div className="min-w-0 cursor-pointer">
-                            <div className="text-[16px] font-black text-[#111827] tracking-[-0.02em] truncate">
-                              {primaryTask.subItemName}
+                          <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2.5">
+                            <div className="flex items-start gap-3 min-w-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleStageItemCompletion(
+                                    ovReqNo,
+                                    primaryTask.raw,
+                                    primaryTask.effDate
+                                  );
+                                }}
+                                aria-label="오늘 할 일 완료 체크"
+                                className={`mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
+                                  primaryTask.isCompleted
+                                    ? 'bg-[#0E712F] border-[#0E712F] text-white'
+                                    : 'bg-white border-slate-300 text-transparent hover:border-[#0E712F]'
+                                }`}
+                              >
+                                <Check className="w-4 h-4 stroke-[2.5]" />
+                              </button>
+                              <div className="min-w-0 cursor-pointer">
+                                <div className="text-[16px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                  {primaryTask.subItemName}{' '}
+                                  <span className="text-[13px] font-extrabold text-[#0E712F]">
+                                    {pCat.categorySuffix}
+                                  </span>
+                                </div>
+                                <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
+                                  {primaryTask.workContent || '생육 단계별 맞춤 관리를 진행합니다.'}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
-                              {primaryTask.workContent || '생육 단계별 맞춤 관리를 진행합니다.'}
+
+                            <div className="inline-flex items-center gap-1 shrink-0">
+                              <span className="px-2.5 py-1 rounded-full bg-[#EAF6ED] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
+                                {primaryTaskRangeLabel}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
                             </div>
                           </div>
                         </div>
-
-                        <div className="inline-flex items-center gap-1 shrink-0">
-                          <span className="px-2.5 py-1 rounded-full bg-[#EAF6ED] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
-                            {primaryTaskRangeLabel}
-                          </span>
-                          <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                      );
+                    })()}
 
                   {/* 6. 다음 할 일 카드 */}
                   <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
@@ -23550,64 +23632,71 @@ export default function UserIntroPage() {
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                      {fallbackUpcoming.map((upItem: any, uIdx: number) => (
-                        <div
-                          key={upItem.itemId || uIdx}
-                          onClick={() => {
-                            setTaskDetailActualDate(upItem.effDate || getTodayKstYmd());
-                            setTaskDetailActualAmount(
-                              String(
-                                Math.max(
-                                  5,
-                                  Math.round(
-                                    Number(
-                                      provisionData?.activeRequest?.area_pyeong ||
-                                        ovCrop.area_pyeong ||
-                                        500
-                                    ) * 0.08
-                                  )
-                                )
-                              )
-                            );
-                            setTaskDetailMemo('');
-                            setTaskDetailPhotoName('');
-                            handleSelectStageItem(upItem.raw);
-                            setMyPageStageDetailItem(upItem.raw);
-                          }}
-                          className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-slate-50/70 rounded-xl px-1 transition"
-                        >
-                          <div className="flex items-start gap-3 min-w-0">
-                            <div
-                              className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                                uIdx === 0
-                                  ? 'bg-sky-50 text-sky-600 border border-sky-200'
-                                  : 'bg-emerald-50 text-[#0E712F] border border-emerald-200'
-                              }`}
-                            >
-                              {uIdx === 0 ? (
-                                <Droplets className="w-5 h-5" />
-                              ) : (
-                                <ShieldCheck className="w-5 h-5" />
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-[15.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
-                                {upItem.subItemName}
+                      {fallbackUpcoming.map((upItem: any, uIdx: number) => {
+                        const upCat = classifyFarmTaskCategory(upItem.raw || upItem);
+                        return (
+                          <div
+                            key={upItem.itemId || uIdx}
+                            onClick={() => {
+                              const pyeong = Number(
+                                provisionData?.activeRequest?.area_pyeong ||
+                                  ovCrop.area_pyeong ||
+                                  500
+                              );
+                              const defaultAmt =
+                                upCat.categoryKey === 'FARM_WORK'
+                                  ? String(Math.max(1, Math.round((pyeong * 3.3058 * 20) / 1000)))
+                                  : upCat.categoryKey === 'FERTILIZER'
+                                  ? String(Math.max(5, Math.round(pyeong * 0.08)))
+                                  : String(Math.max(100, Math.round(pyeong * 3.2)));
+                              setTaskDetailActualDate(upItem.effDate || getTodayKstYmd());
+                              setTaskDetailActualAmount(defaultAmt);
+                              setTaskDetailMemo('');
+                              setTaskDetailPhotoName('');
+                              setIsTaskCompletionRecordOpen(upCat.categoryKey !== 'PEST_CONTROL');
+                              handleSelectStageItem(upItem.raw);
+                              setMyPageStageDetailItem(upItem.raw);
+                            }}
+                            className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-slate-50/70 rounded-xl px-1 transition"
+                          >
+                            <div className="flex items-start gap-3 min-w-0">
+                              <div
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                  upCat.categoryKey === 'FARM_WORK'
+                                    ? 'bg-sky-50 text-sky-600 border border-sky-200'
+                                    : 'bg-emerald-50 text-[#0E712F] border border-emerald-200'
+                                }`}
+                              >
+                                {upCat.categoryKey === 'FARM_WORK' ? (
+                                  <Droplets className="w-5 h-5" />
+                                ) : upCat.categoryKey === 'PEST_CONTROL' ? (
+                                  <ShieldCheck className="w-5 h-5" />
+                                ) : (
+                                  <Sprout className="w-5 h-5" />
+                                )}
                               </div>
-                              <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
-                                {upItem.workContent || '예정된 생육단계 농작업을 준비합니다.'}
+                              <div className="min-w-0">
+                                <div className="text-[15.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                  {upItem.subItemName}{' '}
+                                  <span className="text-[12.5px] font-extrabold text-[#0E712F]">
+                                    {upCat.categorySuffix}
+                                  </span>
+                                </div>
+                                <div className="text-[12.5px] font-medium text-[#4B5563] truncate mt-0.5">
+                                  {upItem.workContent || '예정된 생육단계 농작업을 준비합니다.'}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          <div className="inline-flex items-center gap-1 shrink-0">
-                            <span className="px-2.5 py-1 rounded-full bg-[#F3F6F4] text-[#374151] text-[11.5px] font-extrabold whitespace-nowrap">
-                              예정일 {formatKoreanMonthDayWeekday(upItem.effDate)}
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
+                            <div className="inline-flex items-center gap-1 shrink-0">
+                              <span className="px-2.5 py-1 rounded-full bg-[#F3F6F4] text-[#374151] text-[11.5px] font-extrabold whitespace-nowrap">
+                                예정일 {formatKoreanMonthDayWeekday(upItem.effDate)}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-slate-400" />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -24214,6 +24303,25 @@ export default function UserIntroPage() {
                                   <div
                                     key={entry.itemId}
                                     onClick={() => {
+                                      const eCat = classifyFarmTaskCategory(entry.raw);
+                                      const defaultAmt =
+                                        eCat.categoryKey === 'FARM_WORK'
+                                          ? String(
+                                              Math.max(
+                                                1,
+                                                Math.round((areaPyeongVal * 3.3058 * 20) / 1000)
+                                              )
+                                            )
+                                          : eCat.categoryKey === 'FERTILIZER'
+                                          ? String(Math.max(5, Math.round(areaPyeongVal * 0.08)))
+                                          : String(Math.max(100, Math.round(areaPyeongVal * 3.2)));
+                                      setTaskDetailActualDate(entry.effDate || getTodayKstYmd());
+                                      setTaskDetailActualAmount(defaultAmt);
+                                      setTaskDetailMemo('');
+                                      setTaskDetailPhotoName('');
+                                      setIsTaskCompletionRecordOpen(
+                                        eCat.categoryKey !== 'PEST_CONTROL'
+                                      );
                                       handleSelectStageItem(entry.raw);
                                       setMyPageStageDetailItem(entry.raw);
                                     }}
@@ -24300,7 +24408,7 @@ export default function UserIntroPage() {
           );
         })()}
 
-      {/* ==================== ['오늘 할 일' / '다음 할 일' / 세부일정 클릭 시 열리는 '농작업 상세' 모달리스 폼 (첨부 이미지 1:1 구성)] ==================== */}
+      {/* ==================== ['오늘 할 일' / '다음 할 일' / 세부일정 클릭 시 열리는 분류별('농작업' / '시비' / '병충해') '농작업 상세' 모달리스 폼 (첨부 이미지 1~3번 1:1 구성)] ==================== */}
       {myPageStageDetailItem &&
         (() => {
           const detailReqNo =
@@ -24325,6 +24433,8 @@ export default function UserIntroPage() {
               (si: any) => resolveStageItemId(si) === targetStageId
             ) || myPageStageDetailItem;
 
+          const { categoryKey, categorySuffix } = classifyFarmTaskCategory(liveStageItem);
+
           const shortCropName =
             String(detailCrop.crop_short || detailCrop.crop_name || '배추')
               .replace(/^(가을|봄|월동|고랭지|여름)/, '')
@@ -24343,33 +24453,56 @@ export default function UserIntroPage() {
               ? '결구기'
               : '수확기';
 
-          const rawSubName = String(liveStageItem.sub_item_name || '추비 2차').trim();
+          const rawSubName = String(
+            liveStageItem.sub_item_name ||
+              (categoryKey === 'FARM_WORK'
+                ? '관수 관리'
+                : categoryKey === 'PEST_CONTROL'
+                ? '병충해 예방'
+                : '추비 2차')
+          ).trim();
           const stageCleanName =
-            rawSubName.replace(/\s*\([^)]*\)/g, '').trim() || rawSubName || '추비 2차';
+            rawSubName.replace(/\s*\([^)]*\)/g, '').trim() || rawSubName || '농작업';
           const stageEffDate =
             getEffectiveStageItemDate(detailReqNo, liveStageItem) || getTodayKstYmd();
+          const baseRecommendedYmd =
+            String(liveStageItem.start_date || stageEffDate) || stageEffDate;
 
           const toDotMd = (ymd?: string) => {
             if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
             return `${Number(ymd.slice(5, 7))}.${Number(ymd.slice(8, 10))}`;
           };
-          const recRangeEndYmd = addDaysToYmd(stageEffDate, 5);
+          const recRangeSpan =
+            categoryKey === 'FARM_WORK' ? 9 : categoryKey === 'PEST_CONTROL' ? 3 : 5;
+          const recRangeEndYmd = addDaysToYmd(stageEffDate, recRangeSpan);
           const recommendedRangeText = `권장기간 ${toDotMd(stageEffDate) || '10.11'} ~ ${
             toDotMd(recRangeEndYmd) || '10.16'
           }`;
+
+          const defaultDescByCat =
+            categoryKey === 'FARM_WORK'
+              ? '결구 형성과 생육 유지를 위한 적정 수분 공급'
+              : categoryKey === 'PEST_CONTROL'
+              ? `${stagePhaseLabel} 주요 병해충 발생을 사전에 관리합니다.`
+              : '결구 촉진과 결구 충실도를 높이기 위한 웃거름';
 
           const taskSummaryDesc =
             String(
               liveStageItem.work_content ||
                 liveStageItem.work_description ||
-                '결구 촉진과 결구 충실도를 높이기 위한 웃거름'
+                defaultDescByCat
             )
               .split('\n')[0]
-              .trim() || '결구 촉진과 결구 충실도를 높이기 위한 웃거름';
+              .trim() || defaultDescByCat;
 
           const areaPyeong = Number(
             provisionData?.activeRequest?.area_pyeong || detailCrop.area_pyeong || 500
           );
+          const areaSqm = Math.round(areaPyeong * 3.3058);
+          const waterLiters = Math.round(areaSqm * 20);
+          const waterTons = Math.max(1, Math.round(waterLiters / 1000));
+          const sprayLiters = Math.max(100, Math.round(areaPyeong * 3.2));
+
           const minKg = Math.max(5, Math.round(areaPyeong * 0.066));
           const maxKg = Math.max(10, Math.round(areaPyeong * 0.1));
           const recKg = Math.max(5, Math.round(areaPyeong * 0.08));
@@ -24379,32 +24512,73 @@ export default function UserIntroPage() {
           )[0];
           const prodDisp = topMat
             ? parseStageRecommendedProductDisplay(topMat)
+            : categoryKey === 'PEST_CONTROL'
+            ? {
+                cleanTitle: '세균케어(액상수화제)',
+                formulaLine: '(보호살균제)',
+                categoryTag: '병해충방지제',
+              }
             : {
                 cleanTitle: `${stagePhaseLabel}용 복합비료`,
                 formulaLine: '(N-P-K 13-5-18)',
                 categoryTag: '맞춤 비료',
               };
-          const productTitle = prodDisp.cleanTitle || `${stagePhaseLabel}용 복합비료`;
+          const productTitle =
+            prodDisp.cleanTitle ||
+            (categoryKey === 'PEST_CONTROL'
+              ? '세균케어(액상수화제)'
+              : `${stagePhaseLabel}용 복합비료`);
           const productFormula = prodDisp.formulaLine
             ? prodDisp.formulaLine.startsWith('(')
               ? prodDisp.formulaLine
               : `(${prodDisp.formulaLine})`
+            : categoryKey === 'PEST_CONTROL'
+            ? '(보호살균제)'
             : '(N-P-K 13-5-18)';
           const productThumbUrl = topMat
             ? resolveAgroProductThumbUrl(topMat)
+            : categoryKey === 'PEST_CONTROL'
+            ? '/images/products/pesticide-organic-neem.jpg'
             : '/images/products/fertilizer-npk-21.jpg';
 
           const purchasedInfo = topMat
             ? getPurchasedStageProductInfo(detailReqNo, liveStageItem, topMat)
-            : { isPurchased: true, totalQty: 2 };
+            : { isPurchased: true, totalQty: categoryKey === 'PEST_CONTROL' ? 3 : 2 };
           const bagCount = Math.max(1, purchasedInfo?.totalQty || Math.ceil(recKg / 25) || 2);
           const totalBagKg = bagCount * 25;
+          const bottleCount = Math.max(1, purchasedInfo?.totalQty || 3);
           const purchaseYmd = addDaysToYmd(stageEffDate, -2);
+          const prevDayYmd = addDaysToYmd(stageEffDate, -1);
+          const prevDayClimate = getDayClimate(prevDayYmd);
+          const curDayClimate = getDayClimate(stageEffDate);
 
           const effectiveActualDate =
             taskDetailActualDate && /^\d{4}-\d{2}-\d{2}$/.test(taskDetailActualDate)
               ? taskDetailActualDate
               : stageEffDate;
+
+          const unitText =
+            categoryKey === 'FARM_WORK'
+              ? '톤'
+              : categoryKey === 'PEST_CONTROL'
+              ? 'L'
+              : 'kg';
+          const amountFieldLabel =
+            categoryKey === 'FARM_WORK'
+              ? '실제 관수량'
+              : categoryKey === 'PEST_CONTROL'
+              ? '실제 살포량'
+              : '실제 사용량';
+
+          const handleChangePlannedDate = (newYmd: string) => {
+            if (!newYmd) return;
+            const draftKey = `${detailReqNo}__${targetStageId}`;
+            setInlineStageDateDrafts((prev) => ({
+              ...prev,
+              [draftKey]: newYmd,
+            }));
+            setTaskDetailActualDate(newYmd);
+          };
 
           const handleSaveTaskCompletionDetail = () => {
             const finalYmd = effectiveActualDate || stageEffDate;
@@ -24421,9 +24595,9 @@ export default function UserIntroPage() {
             const newLogEntry = {
               id: `WLOG-${Date.now()}`,
               workDate: finalYmd,
-              stageLabel: stagePhaseLabel,
-              taskTitle: `${stageCleanName}${
-                taskDetailActualAmount ? ` (${taskDetailActualAmount}kg)` : ''
+              stageLabel: `${stagePhaseLabel} ${categorySuffix}`,
+              taskTitle: `${stageCleanName} ${categorySuffix}${
+                taskDetailActualAmount ? ` (${taskDetailActualAmount}${unitText})` : ''
               }`,
               memo: [
                 taskDetailMemo.trim(),
@@ -24458,6 +24632,109 @@ export default function UserIntroPage() {
 
             setMyPageStageDetailItem(null);
           };
+
+          const renderCompletionInputsBlock = () => (
+            <div className="flex items-stretch gap-2.5 pt-1">
+              {/* 좌측: 실제 작업일 + 실제 관수량/사용량 + 작업 메모 */}
+              <div className="flex-1 min-w-0 space-y-2.5">
+                <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
+                      실제 작업일
+                    </span>
+                    <label className="relative h-[38px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#111827] cursor-pointer hover:border-[#15803D] transition">
+                      <Calendar className="w-3.5 h-3.5 text-[#374151] shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {formatKoreanMonthDayWeekday(effectiveActualDate)}
+                      </span>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] shrink-0" />
+                      <input
+                        type="date"
+                        value={effectiveActualDate}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setTaskDetailActualDate(e.target.value);
+                          }
+                        }}
+                        onClick={(e) => {
+                          try {
+                            (e.currentTarget as any).showPicker?.();
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
+                      {amountFieldLabel}
+                    </span>
+                    <div className="h-[38px] w-[74px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center justify-end gap-1">
+                      <input
+                        type="text"
+                        value={taskDetailActualAmount}
+                        onChange={(e) => setTaskDetailActualAmount(e.target.value)}
+                        className="w-full text-right font-extrabold text-[13.5px] text-[#111827] bg-transparent focus:outline-none"
+                      />
+                      <span className="text-[12.5px] font-bold text-[#374151] shrink-0">
+                        {unitText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 작업 메모 입력란 */}
+                <div className="h-[44px] w-full px-3 rounded-xl border border-[#CBD5E1] bg-white flex items-center gap-2">
+                  <FileEdit className="w-4 h-4 text-[#6B7280] shrink-0" />
+                  <input
+                    type="text"
+                    value={taskDetailMemo}
+                    onChange={(e) => setTaskDetailMemo(e.target.value)}
+                    placeholder="작업 메모 (선택)"
+                    className="w-full text-[13.5px] font-medium text-[#111827] placeholder:text-[#6B7280] bg-transparent focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 우측: 작업 사진 추가 박스 */}
+              <label className="w-[82px] shrink-0 rounded-2xl border border-dashed border-[#9AC8A9] bg-white/95 hover:bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer transition relative overflow-hidden">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="w-6 h-6 text-[#15803D] shrink-0"
+                  fill="none"
+                >
+                  <path
+                    d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinejoin="round"
+                  />
+                  <circle
+                    cx="12"
+                    cy="13"
+                    r="3.2"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                  />
+                </svg>
+                <span className="mt-1 text-[11.5px] font-bold text-[#15803D] leading-[1.2] break-keep whitespace-pre-line">
+                  {taskDetailPhotoName ? '사진 첨부됨' : '작업 사진\n추가'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setTaskDetailPhotoName(f.name);
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </label>
+            </div>
+          );
 
           return (
             <div className="fixed inset-0 z-[65] bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
@@ -24499,12 +24776,15 @@ export default function UserIntroPage() {
 
                 {/* 본문 스크롤 영역 */}
                 <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3">
-                  {/* 2. 페이지 타이틀: 농작업 상세 */}
-                  <h2 className="text-[22px] font-black text-[#111827] tracking-[-0.03em] px-0.5">
-                    농작업 상세
+                  {/* 2. 페이지 타이틀: 농작업 상세 + (농작업) / (시비) / (병해충예방) */}
+                  <h2 className="text-[22px] font-black text-[#111827] tracking-[-0.03em] px-0.5 flex items-baseline gap-1.5 flex-wrap">
+                    <span>농작업 상세</span>
+                    <span className="text-[18px] font-extrabold text-[#0E712F]">
+                      {categorySuffix}
+                    </span>
                   </h2>
 
-                  {/* 3. 상단 작물 & 농작업 요약 카드 */}
+                  {/* 3. 공통 상단 작물 & 실제 작업 이름 + 분류 카드 */}
                   <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs">
                     <div className="flex items-start gap-3.5">
                       <div className="w-[54px] h-[54px] rounded-[13px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
@@ -24532,38 +24812,64 @@ export default function UserIntroPage() {
                           </span>
                         </div>
 
-                        {/* 둘째 줄: 비료포대 아이콘 + 작업명(예: 추비 2차) */}
+                        {/* 둘째 줄: 분류별 아이콘 + 실제 해당 작업 이름 + (농작업)/(시비)/(병해충예방) */}
                         <div className="flex items-center gap-2 pt-0.5">
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="w-6 h-6 text-[#15803D] shrink-0"
-                            fill="none"
-                          >
-                            <path
-                              d="M6.5 4.5H17.5L16.2 7.5H7.8L6.5 4.5Z"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                              strokeLinejoin="round"
-                            />
-                            <rect
-                              x="6"
-                              y="7.5"
-                              width="12"
-                              height="12"
-                              rx="2"
-                              stroke="currentColor"
-                              strokeWidth="1.8"
-                            />
-                            <path
-                              d="M12 16V11.5M12 13.5C12 11.8 10.5 10.8 9 10.8C9 12.5 10.5 13.5 12 13.5ZM12 13C12 11.3 13.5 10.3 15 10.3C15 12 13.5 13 12 13Z"
-                              stroke="currentColor"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                          {categoryKey === 'FARM_WORK' ? (
+                            <Droplets className="w-6 h-6 text-[#0284C7] shrink-0 stroke-[2.1]" />
+                          ) : categoryKey === 'PEST_CONTROL' ? (
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-6 h-6 text-[#15803D] shrink-0"
+                              fill="none"
+                            >
+                              <path
+                                d="M12 3L4.5 6.2V11.8C4.5 16.6 7.7 20.8 12 22C16.3 20.8 19.5 16.6 19.5 11.8V6.2L12 3Z"
+                                stroke="currentColor"
+                                strokeWidth="1.9"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M12 8.5V15.5M8.5 12H15.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-6 h-6 text-[#15803D] shrink-0"
+                              fill="none"
+                            >
+                              <path
+                                d="M6.5 4.5H17.5L16.2 7.5H7.8L6.5 4.5Z"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinejoin="round"
+                              />
+                              <rect
+                                x="6"
+                                y="7.5"
+                                width="12"
+                                height="12"
+                                rx="2"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                              />
+                              <path
+                                d="M12 16V11.5M12 13.5C12 11.8 10.5 10.8 9 10.8C9 12.5 10.5 13.5 12 13.5ZM12 13C12 11.3 13.5 10.3 15 10.3C15 12 13.5 13 12 13Z"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
                           <span className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
-                            {stageCleanName}
+                            {stageCleanName}{' '}
+                            <span className="text-[15.5px] font-extrabold text-[#0E712F]">
+                              {categorySuffix}
+                            </span>
                           </span>
                         </div>
 
@@ -24575,299 +24881,755 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 4. 작업일 카드 (예정일 + [작업일 변경 >]) */}
-                  <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-[#15803D] stroke-[2.1]" />
-                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
-                        작업일
-                      </span>
-                    </div>
+                  {/* ==================== [분류 1: "농작업" (첫 번째 첨부 이미지 구성)] ==================== */}
+                  {categoryKey === 'FARM_WORK' && (
+                    <>
+                      {/* 4-A. 한팜 추천일 / 나의 작업 예정일 / [✎ 작업일 변경] 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-end justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="space-y-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#111827]">
+                            <Calendar className="w-4 h-4 text-[#15803D]" />
+                            <span>한팜 추천일</span>
+                          </div>
+                          <div className="h-[36px] px-3 rounded-full bg-[#E8F6EC] text-[#0E712F] text-[13.5px] font-black inline-flex items-center justify-center whitespace-nowrap">
+                            {formatKoreanMonthDayWeekday(baseRecommendedYmd)}
+                          </div>
+                        </div>
 
-                    <div className="flex items-center justify-between gap-2 pl-1">
-                      <div className="flex items-center gap-3 text-[15px] tracking-[-0.02em]">
-                        <span className="font-bold text-[#374151]">예정일</span>
-                        <span className="font-black text-[#111827]">
-                          {formatKoreanMonthDayWeekday(stageEffDate)}
-                        </span>
-                      </div>
+                        <div className="space-y-1.5 flex-1 min-w-[135px]">
+                          <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#111827]">
+                            <Calendar className="w-4 h-4 text-[#15803D]" />
+                            <span>나의 작업 예정일</span>
+                          </div>
+                          <label className="relative h-[36px] px-3 rounded-full border border-[#D1D5DB] bg-white flex items-center justify-between gap-1.5 text-[13.5px] font-black text-[#111827] cursor-pointer hover:border-[#15803D] transition">
+                            <span className="whitespace-nowrap">
+                              {formatKoreanMonthDayWeekday(stageEffDate)}
+                            </span>
+                            <ChevronDown className="w-4 h-4 text-[#15803D] shrink-0" />
+                            <input
+                              type="date"
+                              value={stageEffDate}
+                              onChange={(e) => handleChangePlannedDate(e.target.value)}
+                              onClick={(e) => {
+                                try {
+                                  (e.currentTarget as any).showPicker?.();
+                                } catch {
+                                  // ignore
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </label>
+                        </div>
 
-                      <label className="relative px-3.5 py-1.5 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[#374151] text-[12.5px] font-bold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs">
-                        <span>작업일 변경</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
-                        <input
-                          type="date"
-                          value={stageEffDate}
-                          onChange={(e) => {
-                            const newYmd = e.target.value;
-                            if (!newYmd) return;
-                            const draftKey = `${detailReqNo}__${targetStageId}`;
-                            setInlineStageDateDrafts((prev) => ({
-                              ...prev,
-                              [draftKey]: newYmd,
-                            }));
-                            setTaskDetailActualDate(newYmd);
-                          }}
-                          onClick={(e) => {
-                            try {
-                              (e.currentTarget as any).showPicker?.();
-                            } catch {
-                              // ignore
-                            }
-                          }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* 5. 농자재 구매 완료 카드 */}
-                  <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-3.5 space-y-2.5">
-                    <div className="flex items-center gap-2 px-0.5">
-                      <span className="w-6 h-6 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
-                        <Check className="w-3.5 h-3.5 stroke-[2.8]" />
-                      </span>
-                      <span className="text-[16px] font-black text-[#15803D] tracking-[-0.03em]">
-                        농자재 구매 완료
-                      </span>
-                    </div>
-
-                    <div className="rounded-[16px] bg-white border border-[#E2EFE6] p-3 flex items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-[46px] h-[54px] rounded-lg border border-slate-200/80 bg-slate-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
-                          <img
-                            src={productThumbUrl}
-                            alt={productTitle}
-                            onError={handleAgroThumbImgError}
-                            className="w-full h-full object-contain block"
+                        <label className="relative h-[36px] px-3 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[#374151] text-[12px] font-bold inline-flex items-center gap-1 cursor-pointer transition shrink-0 shadow-2xs">
+                          <FileEdit className="w-3.5 h-3.5 text-[#6B7280]" />
+                          <span>작업일 변경</span>
+                          <input
+                            type="date"
+                            value={stageEffDate}
+                            onChange={(e) => handleChangePlannedDate(e.target.value)}
+                            onClick={(e) => {
+                              try {
+                                (e.currentTarget as any).showPicker?.();
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[14.5px] font-black text-[#111827] tracking-[-0.02em] leading-tight truncate">
-                            {productTitle}
-                          </div>
-                          <div className="text-[12.5px] font-semibold text-[#374151] tracking-[-0.02em] mt-0.5 truncate">
-                            {productFormula}
-                          </div>
-                        </div>
+                        </label>
                       </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <div className="text-[12px] space-y-1 text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[#6B7280] font-semibold">구매일</span>
-                            <span className="font-bold text-[#111827]">
-                              {formatKoreanMonthDayWeekday(purchaseYmd)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[#6B7280] font-semibold">수량</span>
-                            <span className="font-bold text-[#111827]">
-                              25kg × {bagCount}포 (총 {totalBagKg}kg)
-                            </span>
-                          </div>
-                        </div>
-
-                        <span className="w-7 h-7 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
-                          <Check className="w-4 h-4 stroke-[2.6]" />
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 6. 사용방법 카드 */}
-                  <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-5 h-5 text-[#15803D] shrink-0"
-                        fill="none"
-                      >
-                        <path
-                          d="M12 6.5C10.2 5.2 7.5 4.8 4.5 5.2V18.2C7.5 17.8 10.2 18.2 12 19.5M12 6.5C13.8 5.2 16.5 4.8 19.5 5.2V18.2C16.5 17.8 13.8 18.2 12 19.5M12 6.5V19.5"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
-                        사용방법
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5 pl-0.5 text-[13.5px]">
-                      {[
-                        {
-                          num: 1,
-                          title: '사용량',
-                          desc: `우리 농장(${areaPyeong.toLocaleString()}평) 기준 ${minKg}~${maxKg}kg (권장 ${recKg}kg)`,
-                        },
-                        {
-                          num: 2,
-                          title: '시비방법',
-                          desc: '포기 사이에 고르게 뿌린 후 가볍게 흙을 덮고 관수',
-                        },
-                        {
-                          num: 3,
-                          title: '시비 시기',
-                          desc: '맑은 날, 토양이 너무 건조하지 않을 때',
-                        },
-                      ].map((row) => (
-                        <div key={row.num} className="flex items-start gap-2.5">
-                          <span className="w-5 h-5 rounded-full bg-[#22A04A] text-white text-[11.5px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
-                            {row.num}
-                          </span>
-                          <span className="w-[58px] font-black text-[#111827] shrink-0 tracking-[-0.02em]">
-                            {row.title}
-                          </span>
-                          <span className="font-medium text-[#374151] tracking-[-0.02em] leading-snug break-keep">
-                            {row.desc}
+                      {/* 5-A. 작업 안내 (목적 / 관수량 / 관수방법 + 우측 관수 이미지) 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Sprout className="w-5 h-5 text-[#15803D] stroke-[2.2]" />
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            작업 안내
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  {/* 7. 작업 완료 기록 카드 */}
-                  <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-5 h-5 text-[#15803D] shrink-0"
-                        fill="none"
-                      >
-                        <rect
-                          x="3.5"
-                          y="4.5"
-                          width="17"
-                          height="16"
-                          rx="2.5"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        />
-                        <path
-                          d="M8 2.8V6M16 2.8V6M3.5 9H20.5"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        />
-                        <path
-                          d="M8.8 14.5L11.1 16.8L15.5 12.2"
-                          stroke="currentColor"
-                          strokeWidth="2.1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
-                        작업 완료 기록
-                      </span>
-                    </div>
-
-                    <div className="flex items-stretch gap-2.5">
-                      {/* 좌측: 실제 작업일 + 실제 사용량 + 작업 메모 */}
-                      <div className="flex-1 min-w-0 space-y-2.5">
-                        <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
-                              실제 작업일
-                            </span>
-                            <label className="relative h-[38px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#111827] cursor-pointer hover:border-[#15803D] transition">
-                              <Calendar className="w-3.5 h-3.5 text-[#374151] shrink-0" />
-                              <span className="whitespace-nowrap">
-                                {formatKoreanMonthDayWeekday(effectiveActualDate)}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0 space-y-2.5 text-[12.5px]">
+                            <div className="flex items-start gap-2">
+                              <span className="w-[58px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                                목적
                               </span>
-                              <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] shrink-0" />
-                              <input
-                                type="date"
-                                value={effectiveActualDate}
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    setTaskDetailActualDate(e.target.value);
-                                  }
-                                }}
-                                onClick={(e) => {
-                                  try {
-                                    (e.currentTarget as any).showPicker?.();
-                                  } catch {
-                                    // ignore
-                                  }
-                                }}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                              />
-                            </label>
+                              <p className="text-[#1F2937] font-semibold leading-snug break-keep">
+                                토양 수분을 적정 수준으로 유지하여 결구를 원활하게 하고 생육을 안정시킵니다.
+                              </p>
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <span className="w-[58px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                                관수량
+                              </span>
+                              <div className="min-w-0 space-y-1">
+                                <div className="inline-block px-2.5 py-0.5 rounded-full bg-[#E8F6EC] text-[#111827] font-black text-[12.5px]">
+                                  약 20 mm (우리 농장 {areaPyeong.toLocaleString()}평 기준 약 {waterTons}톤)
+                                </div>
+                                <p className="text-[11px] font-medium text-[#4B5563] leading-snug">
+                                  ※ 1 mm = 1 m²당 1 L,
+                                  <br />
+                                  {areaPyeong.toLocaleString()}평(약 {areaSqm.toLocaleString()} m²) 기준 20 mm = 약{' '}
+                                  {waterLiters.toLocaleString()} L({waterTons}톤)
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start gap-2">
+                              <span className="w-[58px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                                관수방법
+                              </span>
+                              <ul className="text-[#1F2937] font-semibold space-y-0.5 leading-snug">
+                                <li>• 스프링클러 또는 점적관수로 골고루 공급합니다.</li>
+                                <li>• 토양이 마르기 시작할 때 오전에 관수합니다.</li>
+                              </ul>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
-                              실제 사용량
-                            </span>
-                            <div className="h-[38px] w-[72px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center justify-end gap-1">
-                              <input
-                                type="text"
-                                value={taskDetailActualAmount}
-                                onChange={(e) => setTaskDetailActualAmount(e.target.value)}
-                                className="w-full text-right font-extrabold text-[13.5px] text-[#111827] bg-transparent focus:outline-none"
-                              />
-                              <span className="text-[12.5px] font-bold text-[#374151] shrink-0">
-                                kg
+                          {/* 우측 스프링클러 관수 일러스트 썸네일 */}
+                          <div className="w-[104px] h-[108px] rounded-[16px] overflow-hidden shrink-0 border border-emerald-200 bg-gradient-to-b from-sky-100 via-emerald-50 to-emerald-700 relative flex items-center justify-center shadow-2xs">
+                            <img
+                              src={cropThumbUrl}
+                              alt="관수 작업 안내"
+                              className="w-full h-full object-cover opacity-85"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/55 via-sky-500/15 to-white/40 flex flex-col items-center justify-center p-1.5">
+                              <Droplets className="w-7 h-7 text-white drop-shadow" />
+                              <span className="mt-1 px-2 py-0.5 rounded-full bg-white/90 text-[#0E712F] text-[10px] font-black">
+                                적정 관수
                               </span>
                             </div>
                           </div>
                         </div>
+                      </div>
 
-                        {/* 작업 메모 입력란 */}
-                        <div className="h-[44px] w-full px-3 rounded-xl border border-[#CBD5E1] bg-white flex items-center gap-2">
-                          <FileEdit className="w-4 h-4 text-[#6B7280] shrink-0" />
-                          <input
-                            type="text"
-                            value={taskDetailMemo}
-                            onChange={(e) => setTaskDetailMemo(e.target.value)}
-                            placeholder="작업 메모 (선택)"
-                            className="w-full text-[13.5px] font-medium text-[#111827] placeholder:text-[#6B7280] bg-transparent focus:outline-none"
-                          />
+                      {/* 6-A. 관수 판단 정보 (토양 상태 / 강수예보) 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-5 h-5 text-[#15803D] shrink-0"
+                            fill="none"
+                          >
+                            <path
+                              d="M5 19V13M10 19V8M15 19V11M20 19V5"
+                              stroke="currentColor"
+                              strokeWidth="2.3"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            관수 판단 정보
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5 pt-0.5 items-center">
+                          {/* 좌측: 토양 상태 */}
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-full overflow-hidden border border-emerald-200 bg-gradient-to-b from-emerald-50 to-amber-700 flex flex-col items-center justify-center shrink-0">
+                              <Droplets className="w-4 h-4 text-sky-600" />
+                            </div>
+                            <div className="leading-tight shrink-0">
+                              <div className="text-[13px] font-black text-[#111827]">토양 상태</div>
+                              <div className="text-[11px] font-medium text-[#4B5563]">(참고)</div>
+                            </div>
+                            <div className="px-2.5 py-1 rounded-xl bg-[#E8F6EC] text-center ml-auto">
+                              <div className="text-[12.5px] font-black text-[#0E712F] whitespace-nowrap">
+                                약간 건조
+                              </div>
+                              <div className="text-[10.5px] font-bold text-[#374151] whitespace-nowrap">
+                                (관수 권장)
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 우측: 강수예보 */}
+                          <div className="border-l border-slate-200 pl-2.5 flex items-center gap-2">
+                            <CloudRain className="w-7 h-7 text-[#0284C7] shrink-0" />
+                            <span className="text-[13px] font-black text-[#111827] shrink-0">
+                              강수예보
+                            </span>
+                            <div className="text-[11.5px] font-bold text-[#111827] space-y-0.5 ml-auto text-right whitespace-nowrap">
+                              <div>
+                                {formatKoreanMonthDayWeekday(prevDayYmd)}{' '}
+                                {prevDayClimate?.precipitation_mm ?? 0} mm
+                              </div>
+                              <div>
+                                {formatKoreanMonthDayWeekday(stageEffDate)}{' '}
+                                {curDayClimate?.precipitation_mm ?? 0} mm
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* 우측: 작업 사진 추가 박스 */}
-                      <label className="w-[82px] shrink-0 rounded-2xl border border-dashed border-[#9AC8A9] bg-white/95 hover:bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer transition relative overflow-hidden">
-                        <svg
-                          viewBox="0 0 24 24"
-                          className="w-6 h-6 text-[#15803D] shrink-0"
-                          fill="none"
+                      {/* 7-A. 작업 완료 기록 카드 (우측 상단 접기/펼치기 아이콘 포함) */}
+                      <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-4 space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsTaskCompletionRecordOpen((prev) => !prev)}
+                          className="w-full flex items-center justify-between gap-2 cursor-pointer"
                         >
-                          <path
-                            d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
-                            stroke="currentColor"
-                            strokeWidth="1.9"
-                            strokeLinejoin="round"
-                          />
-                          <circle
-                            cx="12"
-                            cy="13"
-                            r="3.2"
-                            stroke="currentColor"
-                            strokeWidth="1.9"
-                          />
-                        </svg>
-                        <span className="mt-1 text-[11.5px] font-bold text-[#15803D] leading-[1.2] break-keep">
-                          {taskDetailPhotoName ? '사진 첨부됨' : '작업 사진\n추가'}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) setTaskDetailPhotoName(f.name);
-                          }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                      </label>
-                    </div>
-                  </div>
+                          <div className="flex items-center gap-2">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-5 h-5 text-[#15803D] shrink-0"
+                              fill="none"
+                            >
+                              <rect
+                                x="3.5"
+                                y="4.5"
+                                width="17"
+                                height="16"
+                                rx="2.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              />
+                              <path
+                                d="M8 2.8V6M16 2.8V6M3.5 9H20.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M8.8 14.5L11.1 16.8L15.5 12.2"
+                                stroke="currentColor"
+                                strokeWidth="2.1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                              작업 완료 기록
+                            </span>
+                          </div>
+                          {isTaskCompletionRecordOpen ? (
+                            <ChevronUp className="w-5 h-5 text-[#374151]" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-[#374151]" />
+                          )}
+                        </button>
 
-                  {/* 8. 하단 [< 이전] & [✓ 작업 완료 저장] 버튼 */}
+                        {isTaskCompletionRecordOpen && renderCompletionInputsBlock()}
+                      </div>
+                    </>
+                  )}
+
+                  {/* ==================== [분류 2: "시비" (두 번째 첨부 이미지 구성)] ==================== */}
+                  {categoryKey === 'FERTILIZER' && (
+                    <>
+                      {/* 4-B. 작업일 카드 (예정일 + [작업일 변경 >]) */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-[#15803D] stroke-[2.1]" />
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            작업일
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 pl-1">
+                          <div className="flex items-center gap-3 text-[15px] tracking-[-0.02em]">
+                            <span className="font-bold text-[#374151]">예정일</span>
+                            <span className="font-black text-[#111827]">
+                              {formatKoreanMonthDayWeekday(stageEffDate)}
+                            </span>
+                          </div>
+
+                          <label className="relative px-3.5 py-1.5 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[#374151] text-[12.5px] font-bold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs">
+                            <span>작업일 변경</span>
+                            <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
+                            <input
+                              type="date"
+                              value={stageEffDate}
+                              onChange={(e) => handleChangePlannedDate(e.target.value)}
+                              onClick={(e) => {
+                                try {
+                                  (e.currentTarget as any).showPicker?.();
+                                } catch {
+                                  // ignore
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* 5-B. 농자재 구매 완료 카드 */}
+                      <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-3.5 space-y-2.5">
+                        <div className="flex items-center gap-2 px-0.5">
+                          <span className="w-6 h-6 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3.5 h-3.5 stroke-[2.8]" />
+                          </span>
+                          <span className="text-[16px] font-black text-[#15803D] tracking-[-0.03em]">
+                            농자재 구매 완료
+                          </span>
+                        </div>
+
+                        <div className="rounded-[16px] bg-white border border-[#E2EFE6] p-3 flex items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-[46px] h-[54px] rounded-lg border border-slate-200/80 bg-slate-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                              <img
+                                src={productThumbUrl}
+                                alt={productTitle}
+                                onError={handleAgroThumbImgError}
+                                className="w-full h-full object-contain block"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[14.5px] font-black text-[#111827] tracking-[-0.02em] leading-tight truncate">
+                                {productTitle}
+                              </div>
+                              <div className="text-[12.5px] font-semibold text-[#374151] tracking-[-0.02em] mt-0.5 truncate">
+                                {productFormula}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2.5 shrink-0">
+                            <div className="text-[12px] space-y-1 text-left">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#6B7280] font-semibold">구매일</span>
+                                <span className="font-bold text-[#111827]">
+                                  {formatKoreanMonthDayWeekday(purchaseYmd)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[#6B7280] font-semibold">수량</span>
+                                <span className="font-bold text-[#111827]">
+                                  25kg × {bagCount}포 (총 {totalBagKg}kg)
+                                </span>
+                              </div>
+                            </div>
+
+                            <span className="w-7 h-7 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-4 h-4 stroke-[2.6]" />
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 6-B. 사용방법 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-5 h-5 text-[#15803D] shrink-0"
+                            fill="none"
+                          >
+                            <path
+                              d="M12 6.5C10.2 5.2 7.5 4.8 4.5 5.2V18.2C7.5 17.8 10.2 18.2 12 19.5M12 6.5C13.8 5.2 16.5 4.8 19.5 5.2V18.2C16.5 17.8 13.8 18.2 12 19.5M12 6.5V19.5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            사용방법
+                          </span>
+                        </div>
+
+                        <div className="space-y-2.5 pl-0.5 text-[13.5px]">
+                          {[
+                            {
+                              num: 1,
+                              title: '사용량',
+                              desc: `우리 농장(${areaPyeong.toLocaleString()}평) 기준 ${minKg}~${maxKg}kg (권장 ${recKg}kg)`,
+                            },
+                            {
+                              num: 2,
+                              title: '시비방법',
+                              desc: '포기 사이에 고르게 뿌린 후 가볍게 흙을 덮고 관수',
+                            },
+                            {
+                              num: 3,
+                              title: '시비 시기',
+                              desc: '맑은 날, 토양이 너무 건조하지 않을 때',
+                            },
+                          ].map((row) => (
+                            <div key={row.num} className="flex items-start gap-2.5">
+                              <span className="w-5 h-5 rounded-full bg-[#22A04A] text-white text-[11.5px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                                {row.num}
+                              </span>
+                              <span className="w-[58px] font-black text-[#111827] shrink-0 tracking-[-0.02em]">
+                                {row.title}
+                              </span>
+                              <span className="font-medium text-[#374151] tracking-[-0.02em] leading-snug break-keep">
+                                {row.desc}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 7-B. 작업 완료 기록 카드 */}
+                      <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-4 space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-5 h-5 text-[#15803D] shrink-0"
+                            fill="none"
+                          >
+                            <rect
+                              x="3.5"
+                              y="4.5"
+                              width="17"
+                              height="16"
+                              rx="2.5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                            />
+                            <path
+                              d="M8 2.8V6M16 2.8V6M3.5 9H20.5"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                            />
+                            <path
+                              d="M8.8 14.5L11.1 16.8L15.5 12.2"
+                              stroke="currentColor"
+                              strokeWidth="2.1"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            작업 완료 기록
+                          </span>
+                        </div>
+
+                        {renderCompletionInputsBlock()}
+                      </div>
+                    </>
+                  )}
+
+                  {/* ==================== [분류 3: "병충해" (세 번째 첨부 이미지 구성)] ==================== */}
+                  {categoryKey === 'PEST_CONTROL' && (
+                    <>
+                      {/* 4-C. 한팜 추천일 / 나의 작업 예정일 / [✎ 작업일 변경] 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-end justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="space-y-1.5 shrink-0">
+                          <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#111827]">
+                            <Calendar className="w-4 h-4 text-[#15803D]" />
+                            <span>한팜 추천일</span>
+                          </div>
+                          <div className="h-[36px] px-3 rounded-full bg-[#E8F6EC] text-[#0E712F] text-[13.5px] font-black inline-flex items-center justify-center whitespace-nowrap">
+                            {formatKoreanMonthDayWeekday(baseRecommendedYmd)}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 flex-1 min-w-[135px]">
+                          <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-[#111827]">
+                            <Calendar className="w-4 h-4 text-[#15803D]" />
+                            <span>나의 작업 예정일</span>
+                          </div>
+                          <label className="relative h-[36px] px-3 rounded-full border border-[#D1D5DB] bg-white flex items-center justify-between gap-1.5 text-[13.5px] font-black text-[#111827] cursor-pointer hover:border-[#15803D] transition">
+                            <span className="whitespace-nowrap">
+                              {formatKoreanMonthDayWeekday(stageEffDate)}
+                            </span>
+                            <ChevronDown className="w-4 h-4 text-[#15803D] shrink-0" />
+                            <input
+                              type="date"
+                              value={stageEffDate}
+                              onChange={(e) => handleChangePlannedDate(e.target.value)}
+                              onClick={(e) => {
+                                try {
+                                  (e.currentTarget as any).showPicker?.();
+                                } catch {
+                                  // ignore
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                          </label>
+                        </div>
+
+                        <label className="relative h-[36px] px-3 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[#374151] text-[12px] font-bold inline-flex items-center gap-1 cursor-pointer transition shrink-0 shadow-2xs">
+                          <FileEdit className="w-3.5 h-3.5 text-[#6B7280]" />
+                          <span>작업일 변경</span>
+                          <input
+                            type="date"
+                            value={stageEffDate}
+                            onChange={(e) => handleChangePlannedDate(e.target.value)}
+                            onClick={(e) => {
+                              try {
+                                (e.currentTarget as any).showPicker?.();
+                              } catch {
+                                // ignore
+                              }
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+
+                      {/* 5-C. 발생 위험 정보 (현재 위험도 중간 + 주의 병해충 3종) 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-5 h-5 text-[#15803D] shrink-0"
+                              fill="none"
+                            >
+                              <rect
+                                x="8"
+                                y="8"
+                                width="8"
+                                height="10"
+                                rx="4"
+                                stroke="currentColor"
+                                strokeWidth="1.9"
+                              />
+                              <path
+                                d="M10 8V6.5C10 5.4 10.9 4.5 12 4.5C13.1 4.5 14 5.4 14 6.5V8M4.5 10.5H8M16 10.5H19.5M4 13.5H8M16 13.5H20M5 17L8.2 15.5M19 17L15.8 15.5"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                              발생 위험 정보
+                            </span>
+                          </div>
+                          <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[#4B5563]">
+                            <span className="w-4 h-4 rounded-full border border-slate-400 text-[10px] inline-flex items-center justify-center font-bold">
+                              i
+                            </span>
+                            <span>상세보기</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </span>
+                        </div>
+
+                        {/* 현재 위험도 배지 + 설명 */}
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-full bg-[#EFF7F1] border border-[#DCE8DF] p-1 pl-3 flex items-center gap-2 shrink-0">
+                            <span className="text-[13px] font-black text-[#111827]">
+                              현재 위험도
+                            </span>
+                            <span className="px-3 py-1 rounded-full bg-[#FDE6C4] text-[#D97706] text-[13.5px] font-black">
+                              중간
+                            </span>
+                          </div>
+                          <p className="text-[12.5px] font-semibold text-[#1F2937] leading-snug break-keep">
+                            최근 기온과 습도 조건으로
+                            <br />
+                            무름병, 노균병 발생 위험이 높아지고 있습니다.
+                          </p>
+                        </div>
+
+                        {/* 주의 병해충 4열 그리드 */}
+                        <div className="grid grid-cols-4 gap-2 pt-0.5 items-stretch">
+                          <div className="rounded-2xl bg-[#ECF7EE] p-2 flex flex-col items-center justify-center text-center">
+                            <div className="text-[13px] font-black text-[#111827] leading-tight">
+                              주의 병해충
+                            </div>
+                            <div className="text-[11.5px] font-semibold text-[#374151] mt-0.5">
+                              ({stagePhaseLabel})
+                            </div>
+                          </div>
+
+                          {[
+                            {
+                              name: '무름병',
+                              tint: 'from-amber-900/35 via-lime-900/15 to-transparent',
+                            },
+                            {
+                              name: '노균병',
+                              tint: 'from-yellow-700/30 via-emerald-800/10 to-transparent',
+                            },
+                            {
+                              name: '배추좀나방',
+                              tint: 'from-slate-900/35 via-emerald-900/15 to-transparent',
+                            },
+                          ].map((pest) => (
+                            <div key={pest.name} className="flex flex-col items-center">
+                              <div className="w-full h-[54px] rounded-xl overflow-hidden border border-slate-200 relative bg-emerald-100">
+                                <img
+                                  src={cropThumbUrl}
+                                  alt={pest.name}
+                                  className="w-full h-full object-cover scale-125"
+                                />
+                                <div className={`absolute inset-0 bg-gradient-to-tr ${pest.tint}`} />
+                              </div>
+                              <span className="mt-1 text-[12px] font-extrabold text-[#111827] tracking-[-0.02em] truncate">
+                                {pest.name}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 6-C. 방제 방법 (목적 / 처리 시기 / 사용 방법) 카드 */}
+                      <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-2.5">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-5 h-5 text-[#15803D] shrink-0"
+                            fill="none"
+                          >
+                            <path
+                              d="M9 4.5H15M12 4.5V7.5M8 7.5H16L17.5 11.5V18.5C17.5 19.6 16.6 20.5 15.5 20.5H8.5C7.4 20.5 6.5 19.6 6.5 18.5V11.5L8 7.5Z"
+                              stroke="currentColor"
+                              strokeWidth="1.9"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            방제 방법
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 text-[12.5px]">
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-[64px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                              목적
+                            </span>
+                            <p className="text-[#1F2937] font-semibold leading-snug pt-0.5 break-keep">
+                              주요 병해충을 예방하고 발생 초기 밀도를 낮춥니다.
+                            </p>
+                          </div>
+
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-[64px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                              처리 시기
+                            </span>
+                            <p className="text-[#1F2937] font-semibold leading-snug pt-0.5 break-keep">
+                              7~10일 간격으로 예방 살포 (강우 후 추가 살포 권장)
+                            </p>
+                          </div>
+
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-[64px] py-1 rounded-lg bg-[#E8F6EC] text-[#15803D] font-extrabold text-[12px] text-center shrink-0">
+                              사용 방법
+                            </span>
+                            <p className="text-[#1F2937] font-semibold leading-snug pt-0.5 break-keep">
+                              물 20 L당 약제 20 mL 희석하여 잎 전체에 고르게 살포
+                              <br />
+                              <span className="text-[#4B5563]">
+                                (우리 농장 {areaPyeong.toLocaleString()}평 기준 약{' '}
+                                {sprayLiters.toLocaleString()} L)
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 7-C. 구매한 농자재 카드 */}
+                      <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-3.5 space-y-2.5">
+                        <div className="flex items-center gap-2 px-0.5">
+                          <span className="w-6 h-6 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-3.5 h-3.5 stroke-[2.8]" />
+                          </span>
+                          <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                            구매한 농자재
+                          </span>
+                        </div>
+
+                        <div className="rounded-[16px] bg-white border border-[#E2EFE6] p-3 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <div className="w-[42px] h-[52px] rounded-lg border border-slate-200/80 bg-slate-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                              <img
+                                src={productThumbUrl}
+                                alt={productTitle}
+                                onError={handleAgroThumbImgError}
+                                className="w-full h-full object-contain block"
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[14px] font-black text-[#111827] tracking-[-0.02em] leading-tight truncate">
+                                {productTitle}
+                              </div>
+                              <div className="text-[12px] font-semibold text-[#374151] tracking-[-0.02em] mt-0.5 truncate">
+                                {productFormula}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-[11.5px] space-y-1 text-left shrink-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[#6B7280] font-semibold">구매일</span>
+                              <span className="font-bold text-[#111827]">
+                                {formatKoreanMonthDayWeekday(purchaseYmd)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[#6B7280] font-semibold">수량</span>
+                              <span className="font-bold text-[#111827]">
+                                500 mL × {bottleCount}병
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setIsTaskCompletionRecordOpen(true)}
+                            className="px-2.5 py-1.5 rounded-xl border border-[#86EFAC] bg-[#F4FBF6] hover:bg-emerald-50 text-[#15803D] text-[11.5px] font-extrabold inline-flex items-center gap-1 shrink-0 cursor-pointer transition"
+                          >
+                            <FileEdit className="w-3.5 h-3.5" />
+                            <span>사용방법 보기</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 8-C. 작업 완료 기록 아코디언 카드 */}
+                      <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-4 space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsTaskCompletionRecordOpen((prev) => !prev)}
+                          className="w-full flex items-center justify-between gap-2 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="w-5 h-5 text-[#15803D] shrink-0"
+                              fill="none"
+                            >
+                              <rect
+                                x="3.5"
+                                y="4.5"
+                                width="17"
+                                height="16"
+                                rx="2.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              />
+                              <path
+                                d="M8 2.8V6M16 2.8V6M3.5 9H20.5"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M8.8 14.5L11.1 16.8L15.5 12.2"
+                                stroke="currentColor"
+                                strokeWidth="2.1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                              작업 완료 기록
+                            </span>
+                          </div>
+                          {isTaskCompletionRecordOpen ? (
+                            <ChevronUp className="w-5 h-5 text-[#374151]" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-[#374151]" />
+                          )}
+                        </button>
+
+                        {isTaskCompletionRecordOpen && renderCompletionInputsBlock()}
+                      </div>
+                    </>
+                  )}
+
+                  {/* 하단 공통 [< 이전] & [✓ 작업 완료 저장] 버튼 */}
                   <div className="pt-1 pb-2 flex items-center gap-2.5">
                     <button
                       type="button"
