@@ -24780,6 +24780,10 @@ export default function UserIntroPage() {
 
             setIsGrowthConfirmDatePickerOpen(false);
             setGrowthConfirmModalTarget(null);
+            setMyPageStageDetailItem(null);
+            setMyPageProgressDetailReqNo(null);
+            setSelectedRequestNo(gcReqNo);
+            setMobileStageOverviewReqNo(gcReqNo);
           };
 
           return (
