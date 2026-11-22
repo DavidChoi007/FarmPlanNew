@@ -573,6 +573,11 @@ export default function UserIntroPage() {
     { id: 'mat-1', iconType: 'BAG', name: '복합비료 (17-0-17)', qty: 25, unit: 'kg' },
     { id: 'mat-2', iconType: 'BOTTLE', name: '칼슘·붕소 액상비료', qty: 1, unit: 'L' },
   ]);
+  const [isWorkLogMaterialPickerOpen, setIsWorkLogMaterialPickerOpen] = useState<boolean>(false);
+  const [selectedPurchasedMatIds, setSelectedPurchasedMatIds] = useState<string[]>([]);
+  const [isWorkLogMaterialDeleteModalOpen, setIsWorkLogMaterialDeleteModalOpen] =
+    useState<boolean>(false);
+  const [selectedDeleteMatIds, setSelectedDeleteMatIds] = useState<string[]>([]);
   const [workLogPhotos, setWorkLogPhotos] = useState<string[]>([
     '/images/crops/crop-thumb-cabbage.jpg',
   ]);
@@ -23831,45 +23836,241 @@ export default function UserIntroPage() {
                           );
                         };
 
-                        const handleAddPresetMaterial = () => {
-                          const presets: Array<{
+                        // 회원이 구매한 농자재 목록 구성 (stagePurchaseHistory + myOrders 연동, 구매내역이 비어있을 경우 기본 구매 농자재 제공)
+                        const memberPurchasedAgroList = (() => {
+                          const rawPurchased: Array<{
+                            key: string;
                             iconType: 'BAG' | 'BOTTLE';
                             name: string;
-                            qty: number;
-                            unit: string;
-                          }> = [
+                            categoryLabel: string;
+                            unitSpec: string;
+                            purchasedQtyLabel: string;
+                            purchasedDate: string;
+                            defaultUseQty: number;
+                            defaultUseUnit: string;
+                          }> = [];
+                          const seenNames = new Set<string>();
+
+                          const parseQtyAndUnitFromSpec = (
+                            specStr: string,
+                            catStr: string,
+                            nameStr: string
+                          ): { iconType: 'BAG' | 'BOTTLE'; qty: number; unit: string } => {
+                            const s = `${specStr} ${nameStr}`;
+                            const kgMatch = s.match(/(\d+(?:\.\d+)?)\s*(kg|Kg|KG)/);
+                            if (kgMatch) {
+                              return {
+                                iconType: 'BAG',
+                                qty: Math.max(1, Math.round(Number(kgMatch[1]))),
+                                unit: 'kg',
+                              };
+                            }
+                            const mlMatch = s.match(/(\d+(?:\.\d+)?)\s*(ml|mL|ML)/);
+                            if (mlMatch) {
+                              return {
+                                iconType: 'BOTTLE',
+                                qty: Math.max(1, Math.round(Number(mlMatch[1]))),
+                                unit: 'mL',
+                              };
+                            }
+                            const lMatch = s.match(/(\d+(?:\.\d+)?)\s*(l|L|리터)/);
+                            if (lMatch) {
+                              return {
+                                iconType: 'BOTTLE',
+                                qty: Math.max(1, Math.round(Number(lMatch[1]))),
+                                unit: 'L',
+                              };
+                            }
+                            const isLiquid =
+                              /영양|액상|살균|살충|방제|유제|수화제|병/.test(`${catStr} ${s}`);
+                            return {
+                              iconType: isLiquid ? 'BOTTLE' : 'BAG',
+                              qty: isLiquid ? 1 : 20,
+                              unit: isLiquid ? 'L' : 'kg',
+                            };
+                          };
+
+                          (stagePurchaseHistory || []).forEach((p: any, idx: number) => {
+                            const pName = String(p.productName || p.product_name || '').trim();
+                            if (!pName || seenNames.has(pName)) return;
+                            seenNames.add(pName);
+                            const spec = String(p.unitSpec || p.unit_spec || '20kg / 포').trim();
+                            const cat = String(
+                              p.category_1st || p.subType || p.sub_type || '비료'
+                            ).trim();
+                            const pQty = Number(p.qty || 1);
+                            const uLabel = String(p.unitLabel || p.unit_label || '개').trim();
+                            const parsed = parseQtyAndUnitFromSpec(spec, cat, pName);
+                            rawPurchased.push({
+                              key: String(p.id || p.purchase_id || `PUR-HIST-${idx}`),
+                              iconType: parsed.iconType,
+                              name: pName,
+                              categoryLabel: cat,
+                              unitSpec: spec,
+                              purchasedQtyLabel: `${pQty}${uLabel} 구매완료`,
+                              purchasedDate: String(
+                                p.purchasedAt || p.ordered_at || '2026.10.12'
+                              ).slice(0, 10),
+                              defaultUseQty: parsed.qty,
+                              defaultUseUnit: parsed.unit,
+                            });
+                          });
+
+                          (myOrders || []).forEach((ord: any, oIdx: number) => {
+                            const items = Array.isArray(ord.items)
+                              ? ord.items
+                              : Array.isArray(ord.order_items)
+                              ? ord.order_items
+                              : [];
+                            items.forEach((it: any, iIdx: number) => {
+                              const pName = String(it.product_name || it.productName || '').trim();
+                              if (!pName || seenNames.has(pName)) return;
+                              seenNames.add(pName);
+                              const spec = String(it.unit_spec || it.unitSpec || '20kg / 포').trim();
+                              const cat = String(
+                                it.category_1st || it.sub_type || '맞춤 농자재'
+                              ).trim();
+                              const pQty = Number(it.qty || 1);
+                              const parsed = parseQtyAndUnitFromSpec(spec, cat, pName);
+                              rawPurchased.push({
+                                key: `ORD-MAT-${oIdx}-${iIdx}`,
+                                iconType: parsed.iconType,
+                                name: pName,
+                                categoryLabel: cat,
+                                unitSpec: spec,
+                                purchasedQtyLabel: `${pQty}개 구매완료`,
+                                purchasedDate: String(ord.ordered_at || '2026.10.12').slice(0, 10),
+                                defaultUseQty: parsed.qty,
+                                defaultUseUnit: parsed.unit,
+                              });
+                            });
+                          });
+
+                          const fallbackPurchasedCatalog = [
                             {
-                              iconType: 'BAG',
-                              name: '결구기용 복합비료 (13-5-18)',
-                              qty: 20,
-                              unit: 'kg',
+                              key: 'FB-PUR-1',
+                              iconType: 'BAG' as const,
+                              name: '복합비료 (17-0-17)',
+                              categoryLabel: '비료 · 웃거름(추비)',
+                              unitSpec: '25kg / 포',
+                              purchasedQtyLabel: '2포 구매완료',
+                              purchasedDate: '2026.10.10',
+                              defaultUseQty: 25,
+                              defaultUseUnit: 'kg',
                             },
                             {
-                              iconType: 'BOTTLE',
-                              name: '유기농 미량요소 영양제',
-                              qty: 2,
-                              unit: 'L',
+                              key: 'FB-PUR-2',
+                              iconType: 'BAG' as const,
+                              name: '결구기용 복합비료 (N-P-K 13-5-18)',
+                              categoryLabel: '비료 · 결구비대용',
+                              unitSpec: '25kg / 포',
+                              purchasedQtyLabel: '2포 구매완료',
+                              purchasedDate: '2026.10.12',
+                              defaultUseQty: 25,
+                              defaultUseUnit: 'kg',
                             },
                             {
-                              iconType: 'BOTTLE',
-                              name: '친환경 병해충 예방제',
-                              qty: 500,
-                              unit: 'mL',
+                              key: 'FB-PUR-3',
+                              iconType: 'BOTTLE' as const,
+                              name: '칼슘·붕소 액상비료',
+                              categoryLabel: '영양제 · 결구강화',
+                              unitSpec: '1L / 병',
+                              purchasedQtyLabel: '3병 구매완료',
+                              purchasedDate: '2026.10.12',
+                              defaultUseQty: 1,
+                              defaultUseUnit: 'L',
+                            },
+                            {
+                              key: 'FB-PUR-4',
+                              iconType: 'BOTTLE' as const,
+                              name: '무름병·노균병 동시방제 살균제 클린팜',
+                              categoryLabel: '병해충방지제 · 보호살균제',
+                              unitSpec: '500mL / 병',
+                              purchasedQtyLabel: '3병 구매완료',
+                              purchasedDate: '2026.10.15',
+                              defaultUseQty: 500,
+                              defaultUseUnit: 'mL',
+                            },
+                            {
+                              key: 'FB-PUR-5',
+                              iconType: 'BAG' as const,
+                              name: '엔케이(NK) 결구비대 속효성 웃거름 비료',
+                              categoryLabel: '비료 · NK추비',
+                              unitSpec: '20kg / 포',
+                              purchasedQtyLabel: '4포 구매완료',
+                              purchasedDate: '2026.09.22',
+                              defaultUseQty: 20,
+                              defaultUseUnit: 'kg',
                             },
                           ];
-                          setWorkLogMaterials((prev) => {
-                            const nextPreset = presets[prev.length % presets.length];
-                            return [
-                              ...prev,
-                              {
-                                id: `mat-${Date.now()}`,
-                                iconType: nextPreset.iconType,
-                                name: nextPreset.name,
-                                qty: nextPreset.qty,
-                                unit: nextPreset.unit,
-                              },
-                            ];
+
+                          fallbackPurchasedCatalog.forEach((fb) => {
+                            if (!seenNames.has(fb.name)) {
+                              seenNames.add(fb.name);
+                              rawPurchased.push(fb);
+                            }
                           });
+
+                          return rawPurchased;
+                        })();
+
+                        const handleOpenPurchasedMaterialPicker = () => {
+                          setSelectedPurchasedMatIds([]);
+                          setIsWorkLogMaterialPickerOpen(true);
+                        };
+
+                        const handleConfirmAddPurchasedMaterials = () => {
+                          if (selectedPurchasedMatIds.length === 0) {
+                            setIsWorkLogMaterialPickerOpen(false);
+                            return;
+                          }
+                          const pickedItems = memberPurchasedAgroList.filter((item) =>
+                            selectedPurchasedMatIds.includes(item.key)
+                          );
+                          setWorkLogMaterials((prev) => {
+                            const next = [...prev];
+                            pickedItems.forEach((picked, idx) => {
+                              const existingIdx = next.findIndex((m) => m.name === picked.name);
+                              if (existingIdx >= 0) {
+                                next[existingIdx] = {
+                                  ...next[existingIdx],
+                                  qty: next[existingIdx].qty + picked.defaultUseQty,
+                                };
+                              } else {
+                                next.push({
+                                  id: `mat-${Date.now()}-${idx}`,
+                                  iconType: picked.iconType,
+                                  name: picked.name,
+                                  qty: picked.defaultUseQty,
+                                  unit: picked.defaultUseUnit,
+                                });
+                              }
+                            });
+                            return next;
+                          });
+                          setSelectedPurchasedMatIds([]);
+                          setIsWorkLogMaterialPickerOpen(false);
+                        };
+
+                        const handleOpenDeleteMaterialModal = (preselectId?: string) => {
+                          if (preselectId) {
+                            setSelectedDeleteMatIds([preselectId]);
+                          } else {
+                            setSelectedDeleteMatIds([]);
+                          }
+                          setIsWorkLogMaterialDeleteModalOpen(true);
+                        };
+
+                        const handleConfirmDeleteSelectedMaterials = () => {
+                          if (selectedDeleteMatIds.length === 0) {
+                            setIsWorkLogMaterialDeleteModalOpen(false);
+                            return;
+                          }
+                          setWorkLogMaterials((prev) =>
+                            prev.filter((m) => !selectedDeleteMatIds.includes(m.id))
+                          );
+                          setSelectedDeleteMatIds([]);
+                          setIsWorkLogMaterialDeleteModalOpen(false);
                         };
 
                         const handleSubmitNewWorkLogModal = () => {
@@ -24274,18 +24475,18 @@ export default function UserIntroPage() {
 
                                   <div className="border-t border-slate-100" />
 
-                                  {/* ③ 실제 작업일 * */}
+                                  {/* ③ 실제 작업일 * (왼쪽 텍스트 영역 20px 확대, 오른쪽 입력 항목 길이 20px 축소) */}
                                   <div className="flex items-center gap-2.5">
-                                    <div className="flex items-center gap-1.5 shrink-0 w-[92px]">
-                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                    <div className="flex items-center gap-1.5 shrink-0 w-[112px] whitespace-nowrap">
+                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center shrink-0">
                                         3
                                       </span>
-                                      <span className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                      <span className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
                                         실제 작업일 <span className="text-rose-600">*</span>
                                       </span>
                                     </div>
 
-                                    <label className="relative flex-1 rounded-[14px] border border-slate-300 bg-white px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:border-[#0E712F] transition">
+                                    <label className="relative flex-1 max-w-[calc(100%-122px)] rounded-[14px] border border-slate-300 bg-white px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:border-[#0E712F] transition">
                                       <span className="text-[15px] font-bold text-[#111827] tracking-[-0.02em]">
                                         {formatYmdToKoreanFullLabel(workLogForm.workDate)}
                                       </span>
@@ -24307,7 +24508,7 @@ export default function UserIntroPage() {
 
                                 {/* 카드 4: ④ 사용한 농자재 */}
                                 <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-2.5">
-                                  <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <div className="flex items-center gap-1.5">
                                       <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
                                         4
@@ -24317,85 +24518,124 @@ export default function UserIntroPage() {
                                       </span>
                                     </div>
 
-                                    <button
-                                      type="button"
-                                      onClick={handleAddPresetMaterial}
-                                      className="px-3 py-1 rounded-full border border-[#0E712F] bg-white hover:bg-[#EAF6ED] text-[#0E712F] text-[12.5px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
-                                    >
-                                      <span>+ 농자재 추가</span>
-                                    </button>
-                                  </div>
-
-                                  <div className="rounded-[15px] bg-[#F8FAF8] border border-slate-200/80 divide-y divide-slate-200/70">
-                                    {workLogMaterials.map((mat) => (
-                                      <div
-                                        key={mat.id}
-                                        className="px-3 py-2.5 flex items-center justify-between gap-2"
+                                    <div className="flex items-center gap-1.5">
+                                      {workLogMaterials.length > 0 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenDeleteMaterialModal()}
+                                          className="px-2.5 py-1 rounded-full border border-rose-300 bg-white hover:bg-rose-50 text-rose-600 text-[12px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <span>농자재 삭제</span>
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={handleOpenPurchasedMaterialPicker}
+                                        className="px-3 py-1 rounded-full border border-[#0E712F] bg-white hover:bg-[#EAF6ED] text-[#0E712F] text-[12.5px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
                                       >
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                          {mat.iconType === 'BAG' ? (
-                                            <svg
-                                              viewBox="0 0 24 24"
-                                              className="w-5 h-5 text-[#0E712F] shrink-0"
-                                              fill="none"
-                                            >
-                                              <rect
-                                                x="5"
-                                                y="5"
-                                                width="14"
-                                                height="15"
-                                                rx="2"
-                                                stroke="currentColor"
-                                                strokeWidth="1.9"
-                                              />
-                                              <path
-                                                d="M5 9H19M9.5 14C9.5 12.2 11 11 13 11C13 12.8 11.5 14 9.5 14Z"
-                                                stroke="currentColor"
-                                                strokeWidth="1.7"
-                                                strokeLinecap="round"
-                                              />
-                                            </svg>
-                                          ) : (
-                                            <svg
-                                              viewBox="0 0 24 24"
-                                              className="w-5 h-5 text-[#0E712F] shrink-0"
-                                              fill="none"
-                                            >
-                                              <path
-                                                d="M9.5 4H14.5V7L16.5 9.5V19C16.5 20.1 15.6 21 14.5 21H9.5C8.4 21 7.5 20.1 7.5 19V9.5L9.5 7V4Z"
-                                                stroke="currentColor"
-                                                strokeWidth="1.9"
-                                                strokeLinejoin="round"
-                                              />
-                                            </svg>
-                                          )}
-                                          <span className="text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] truncate">
-                                            {mat.name}
-                                          </span>
-                                        </div>
-
-                                        <div className="rounded-xl bg-[#EFF3F0] p-1 flex items-center gap-1.5 shrink-0">
-                                          <button
-                                            type="button"
-                                            onClick={() => handleAdjustMaterialQty(mat.id, -1)}
-                                            className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
-                                          >
-                                            <Minus className="w-3.5 h-3.5" />
-                                          </button>
-                                          <span className="min-w-[54px] text-center text-[14.5px] font-black text-[#111827]">
-                                            {mat.qty} {mat.unit}
-                                          </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleAdjustMaterialQty(mat.id, 1)}
-                                            className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
-                                          >
-                                            <Plus className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
+                                        <span>+ 농자재 추가</span>
+                                      </button>
+                                    </div>
                                   </div>
+
+                                  {workLogMaterials.length === 0 ? (
+                                    <div className="rounded-[15px] bg-[#F8FAF8] border border-dashed border-slate-300 py-5 px-3 text-center space-y-1.5">
+                                      <div className="text-[13px] font-bold text-[#4B5563]">
+                                        등록된 사용 농자재가 없습니다.
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={handleOpenPurchasedMaterialPicker}
+                                        className="text-[12.5px] font-extrabold text-[#0E712F] hover:underline cursor-pointer"
+                                      >
+                                        + 구매한 농자재에서 선택하여 추가하기
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-[15px] bg-[#F8FAF8] border border-slate-200/80 divide-y divide-slate-200/70">
+                                      {workLogMaterials.map((mat) => (
+                                        <div
+                                          key={mat.id}
+                                          className="px-3 py-2.5 flex items-center justify-between gap-2"
+                                        >
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            {mat.iconType === 'BAG' ? (
+                                              <svg
+                                                viewBox="0 0 24 24"
+                                                className="w-5 h-5 text-[#0E712F] shrink-0"
+                                                fill="none"
+                                              >
+                                                <rect
+                                                  x="5"
+                                                  y="5"
+                                                  width="14"
+                                                  height="15"
+                                                  rx="2"
+                                                  stroke="currentColor"
+                                                  strokeWidth="1.9"
+                                                />
+                                                <path
+                                                  d="M5 9H19M9.5 14C9.5 12.2 11 11 13 11C13 12.8 11.5 14 9.5 14Z"
+                                                  stroke="currentColor"
+                                                  strokeWidth="1.7"
+                                                  strokeLinecap="round"
+                                                />
+                                              </svg>
+                                            ) : (
+                                              <svg
+                                                viewBox="0 0 24 24"
+                                                className="w-5 h-5 text-[#0E712F] shrink-0"
+                                                fill="none"
+                                              >
+                                                <path
+                                                  d="M9.5 4H14.5V7L16.5 9.5V19C16.5 20.1 15.6 21 14.5 21H9.5C8.4 21 7.5 20.1 7.5 19V9.5L9.5 7V4Z"
+                                                  stroke="currentColor"
+                                                  strokeWidth="1.9"
+                                                  strokeLinejoin="round"
+                                                />
+                                              </svg>
+                                            )}
+                                            <span className="text-[14px] font-extrabold text-[#111827] tracking-[-0.02em] truncate">
+                                              {mat.name}
+                                            </span>
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <div className="rounded-xl bg-[#EFF3F0] p-1 flex items-center gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleAdjustMaterialQty(mat.id, -1)}
+                                                className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
+                                              >
+                                                <Minus className="w-3.5 h-3.5" />
+                                              </button>
+                                              <span className="min-w-[52px] text-center text-[14px] font-black text-[#111827]">
+                                                {mat.qty} {mat.unit}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleAdjustMaterialQty(mat.id, 1)}
+                                                className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
+                                              >
+                                                <Plus className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenDeleteMaterialModal(mat.id)}
+                                              title="농자재 삭제 폼 열기"
+                                              aria-label={`${mat.name} 삭제`}
+                                              className="w-7 h-7 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-600 flex items-center justify-center cursor-pointer transition shrink-0"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
 
                                 {/* 카드 5: ⑤ 작업사진 (선택) */}
@@ -24526,6 +24766,253 @@ export default function UserIntroPage() {
                                 </button>
                               </div>
                             </div>
+
+                            {/* ==================== [서브 모달 1: 회원이 구매한 농자재 선택 및 추가 폼] ==================== */}
+                            {isWorkLogMaterialPickerOpen && (
+                              <div className="fixed inset-0 z-[80] bg-slate-900/55 backdrop-blur-[1px] flex items-center justify-center p-3">
+                                <div className="w-full max-w-md max-h-[82vh] bg-white rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden select-none">
+                                  {/* 헤더 */}
+                                  <div className="px-4 py-3.5 bg-[#EAF6ED] border-b border-[#BBF7D0] flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <ShoppingBag className="w-5 h-5 text-[#0E712F]" />
+                                      <div>
+                                        <h4 className="text-[17px] font-black text-[#111827] tracking-[-0.03em]">
+                                          구매한 농자재 선택 추가
+                                        </h4>
+                                        <p className="text-[11.5px] font-semibold text-[#0E712F]">
+                                          회원님이 구매한 농자재 목록에서 사용할 품목을 선택해 주세요.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsWorkLogMaterialPickerOpen(false)}
+                                      className="w-8 h-8 rounded-full hover:bg-white/70 flex items-center justify-center text-[#374151] cursor-pointer"
+                                    >
+                                      <X className="w-5 h-5" />
+                                    </button>
+                                  </div>
+
+                                  {/* 구매한 농자재 리스트 */}
+                                  <div className="flex-1 overflow-y-auto p-3.5 space-y-2">
+                                    {memberPurchasedAgroList.map((item) => {
+                                      const isChecked = selectedPurchasedMatIds.includes(item.key);
+                                      const isAlreadyInList = workLogMaterials.some(
+                                        (m) => m.name === item.name
+                                      );
+                                      return (
+                                        <div
+                                          key={item.key}
+                                          onClick={() => {
+                                            setSelectedPurchasedMatIds((prev) =>
+                                              prev.includes(item.key)
+                                                ? prev.filter((k) => k !== item.key)
+                                                : [...prev, item.key]
+                                            );
+                                          }}
+                                          className={`rounded-[16px] border p-3 flex items-center justify-between gap-2.5 cursor-pointer transition ${
+                                            isChecked
+                                              ? 'border-[1.8px] border-[#0E712F] bg-[#F2FAF4]'
+                                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <div className="flex items-start gap-2.5 min-w-0">
+                                            <div
+                                              className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                                isChecked
+                                                  ? 'bg-[#0E712F] border-[#0E712F] text-white'
+                                                  : 'bg-white border-slate-300 text-transparent'
+                                              }`}
+                                            >
+                                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[10.5px] font-extrabold">
+                                                  {item.purchasedQtyLabel}
+                                                </span>
+                                                <span className="text-[11px] font-semibold text-[#6B7280]">
+                                                  {item.categoryLabel}
+                                                </span>
+                                                {isAlreadyInList && (
+                                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">
+                                                    추가됨
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="mt-1 text-[14.5px] font-black text-[#111827] tracking-[-0.02em] break-keep">
+                                                {item.name}
+                                              </div>
+                                              <div className="mt-0.5 text-[11.5px] font-medium text-[#4B5563]">
+                                                규격 {item.unitSpec} · 구매일 {item.purchasedDate}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <div className="text-right shrink-0">
+                                            <span className="inline-block px-2.5 py-1 rounded-lg bg-[#EFF3F0] text-[#111827] text-[12px] font-extrabold">
+                                              +{item.defaultUseQty} {item.defaultUseUnit}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* 하단 버튼 */}
+                                  <div className="p-3.5 bg-slate-50 border-t border-slate-200 grid grid-cols-12 gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsWorkLogMaterialPickerOpen(false)}
+                                      className="col-span-5 h-[46px] rounded-full bg-white border border-slate-300 text-[#374151] font-extrabold text-[14.5px] cursor-pointer"
+                                    >
+                                      취소
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={selectedPurchasedMatIds.length === 0}
+                                      onClick={handleConfirmAddPurchasedMaterials}
+                                      className="col-span-7 h-[46px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] disabled:opacity-45 text-white font-extrabold text-[14.5px] inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                    >
+                                      <Check className="w-4 h-4 stroke-[2.5]" />
+                                      <span>
+                                        선택 농자재 추가 ({selectedPurchasedMatIds.length}건)
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* ==================== [서브 모달 2: 추가된 농자재 삭제 전용 폼] ==================== */}
+                            {isWorkLogMaterialDeleteModalOpen && (
+                              <div className="fixed inset-0 z-[80] bg-slate-900/55 backdrop-blur-[1px] flex items-center justify-center p-3">
+                                <div className="w-full max-w-md max-h-[80vh] bg-white rounded-[24px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden select-none">
+                                  {/* 헤더 */}
+                                  <div className="px-4 py-3.5 bg-rose-50 border-b border-rose-200 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Trash2 className="w-5 h-5 text-rose-600" />
+                                      <div>
+                                        <h4 className="text-[17px] font-black text-[#111827] tracking-[-0.03em]">
+                                          추가된 농자재 삭제
+                                        </h4>
+                                        <p className="text-[11.5px] font-semibold text-rose-700">
+                                          사용한 농자재 목록에서 삭제할 항목을 선택해 주세요.
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsWorkLogMaterialDeleteModalOpen(false)}
+                                      className="w-8 h-8 rounded-full hover:bg-white/70 flex items-center justify-center text-[#374151] cursor-pointer"
+                                    >
+                                      <X className="w-5 h-5" />
+                                    </button>
+                                  </div>
+
+                                  {/* 전체 선택 바 */}
+                                  {workLogMaterials.length > 0 && (
+                                    <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (
+                                            selectedDeleteMatIds.length === workLogMaterials.length
+                                          ) {
+                                            setSelectedDeleteMatIds([]);
+                                          } else {
+                                            setSelectedDeleteMatIds(
+                                              workLogMaterials.map((m) => m.id)
+                                            );
+                                          }
+                                        }}
+                                        className="text-[12.5px] font-extrabold text-[#374151] inline-flex items-center gap-1.5 cursor-pointer"
+                                      >
+                                        <span
+                                          className={`w-4 h-4 rounded border inline-flex items-center justify-center ${
+                                            selectedDeleteMatIds.length ===
+                                              workLogMaterials.length &&
+                                            workLogMaterials.length > 0
+                                              ? 'bg-rose-600 border-rose-600 text-white'
+                                              : 'bg-white border-slate-300 text-transparent'
+                                          }`}
+                                        >
+                                          <Check className="w-3 h-3 stroke-[2.5]" />
+                                        </span>
+                                        <span>
+                                          전체 선택 ({selectedDeleteMatIds.length}/
+                                          {workLogMaterials.length})
+                                        </span>
+                                      </button>
+                                    </div>
+                                  )}
+
+                                  {/* 추가된 농자재 삭제 선택 목록 */}
+                                  <div className="flex-1 overflow-y-auto p-3.5 space-y-2">
+                                    {workLogMaterials.map((mat) => {
+                                      const isDelChecked = selectedDeleteMatIds.includes(mat.id);
+                                      return (
+                                        <div
+                                          key={mat.id}
+                                          onClick={() => {
+                                            setSelectedDeleteMatIds((prev) =>
+                                              prev.includes(mat.id)
+                                                ? prev.filter((id) => id !== mat.id)
+                                                : [...prev, mat.id]
+                                            );
+                                          }}
+                                          className={`rounded-[15px] border p-3 flex items-center justify-between gap-2.5 cursor-pointer transition ${
+                                            isDelChecked
+                                              ? 'border-[1.8px] border-rose-500 bg-rose-50/50'
+                                              : 'border-slate-200 bg-white hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                            <div
+                                              className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                                                isDelChecked
+                                                  ? 'bg-rose-600 border-rose-600 text-white'
+                                                  : 'bg-white border-slate-300 text-transparent'
+                                              }`}
+                                            >
+                                              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                                            </div>
+                                            <span className="text-[14.5px] font-black text-[#111827] truncate">
+                                              {mat.name}
+                                            </span>
+                                          </div>
+                                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-[#374151] text-[12.5px] font-extrabold shrink-0">
+                                            {mat.qty} {mat.unit}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* 하단 버튼 */}
+                                  <div className="p-3.5 bg-slate-50 border-t border-slate-200 grid grid-cols-12 gap-2.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsWorkLogMaterialDeleteModalOpen(false)}
+                                      className="col-span-5 h-[46px] rounded-full bg-white border border-slate-300 text-[#374151] font-extrabold text-[14.5px] cursor-pointer"
+                                    >
+                                      취소
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={selectedDeleteMatIds.length === 0}
+                                      onClick={handleConfirmDeleteSelectedMaterials}
+                                      className="col-span-7 h-[46px] rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-45 text-white font-extrabold text-[14.5px] inline-flex items-center justify-center gap-1.5 cursor-pointer transition"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                      <span>
+                                        선택 항목 삭제 ({selectedDeleteMatIds.length}건)
+                                      </span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })()}
