@@ -5968,24 +5968,47 @@ const server = http.createServer(async (req, res) => {
       ).trim();
 
       const explicitFarmlandId = String(body.farmland_id || '').trim();
-      let resolvedFarmland =
-        (explicitFarmlandId && explicitFarmlandId !== 'LAND-CB-01'
+      const inputDetailAddr = String(rowData.detail_address || '').trim();
+      const explicitMatchedLand =
+        explicitFarmlandId && explicitFarmlandId !== 'LAND-CB-01'
           ? (db
-              .prepare('SELECT * FROM member_farmland WHERE farmland_id = ? AND LOWER(email) = LOWER(?) LIMIT 1')
+              .prepare(
+                'SELECT * FROM member_farmland WHERE farmland_id = ? AND LOWER(email) = LOWER(?) LIMIT 1'
+              )
               .get(explicitFarmlandId, ownerEmail) as any)
-          : null) ||
+          : null;
+      const isExplicitLandAddressSame =
+        explicitMatchedLand &&
+        explicitMatchedLand.sido === rowData.sido &&
+        explicitMatchedLand.sigungu === rowData.sigungu &&
+        explicitMatchedLand.eupmyeondong === rowData.eupmyeondong &&
+        (!inputDetailAddr ||
+          String(explicitMatchedLand.detail_jibun || '').trim() === inputDetailAddr);
+
+      let resolvedFarmland =
+        (isExplicitLandAddressSame ? explicitMatchedLand : null) ||
         (db
           .prepare(
-            'SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?) AND (bjd_code = ? OR (sido = ? AND sigungu = ? AND eupmyeondong = ?)) ORDER BY created_at ASC LIMIT 1'
+            `SELECT * FROM member_farmland
+             WHERE LOWER(email) = LOWER(?)
+               AND sido = ? AND sigungu = ? AND eupmyeondong = ?
+               AND (? = '' OR COALESCE(TRIM(detail_jibun), '') = ?)
+             ORDER BY created_at ASC LIMIT 1`
           )
-          .get(ownerEmail, rowData.bjd_code, rowData.sido, rowData.sigungu, rowData.eupmyeondong) as any) ||
-        (db
-          .prepare('SELECT * FROM member_farmland WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC LIMIT 1')
-          .get(ownerEmail) as any);
+          .get(
+            ownerEmail,
+            rowData.sido,
+            rowData.sigungu,
+            rowData.eupmyeondong,
+            inputDetailAddr,
+            inputDetailAddr
+          ) as any);
 
       if (!resolvedFarmland) {
         const autoLandId = `LAND-${Date.now()}`;
-        const autoLandTitle = `${rowData.sigungu} ${rowData.eupmyeondong} 농장`;
+        const autoLandTitle = `${rowData.sigungu} ${rowData.eupmyeondong}${
+          inputDetailAddr ? ` (${inputDetailAddr})` : ''
+        } 농장`;
         db.prepare(`
           INSERT INTO member_farmland (
             farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
@@ -5999,7 +6022,7 @@ const server = http.createServer(async (req, res) => {
           rowData.sido,
           rowData.sigungu,
           rowData.eupmyeondong,
-          rowData.detail_address || '',
+          inputDetailAddr,
           rowData.area_pyeong
         );
         resolvedFarmland = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as any;
@@ -10924,21 +10947,40 @@ const server = http.createServer(async (req, res) => {
       const sido = resolvedAddr.sido;
       const sigungu = resolvedAddr.sigungu;
       const eupmyeondong = resolvedAddr.eupmyeondong;
+      const detailAddress = String(body.detail_address || '').trim();
       let farmlandId = String(body.farmland_id || '').trim();
       const matchedRegionLand = db
         .prepare(
-          'SELECT farmland_id, sido, sigungu, eupmyeondong FROM member_farmland WHERE LOWER(email) = LOWER(?) AND sido = ? AND sigungu = ? AND eupmyeondong = ? LIMIT 1'
+          `SELECT farmland_id, sido, sigungu, eupmyeondong, detail_jibun
+           FROM member_farmland
+           WHERE LOWER(email) = LOWER(?)
+             AND sido = ? AND sigungu = ? AND eupmyeondong = ?
+             AND (? = '' OR COALESCE(TRIM(detail_jibun), '') = ?)
+           ORDER BY created_at ASC LIMIT 1`
         )
-        .get(email, sido, sigungu, eupmyeondong) as
-        | { farmland_id?: string; sido?: string; sigungu?: string; eupmyeondong?: string }
+        .get(email, sido, sigungu, eupmyeondong, detailAddress, detailAddress) as
+        | {
+            farmland_id?: string;
+            sido?: string;
+            sigungu?: string;
+            eupmyeondong?: string;
+            detail_jibun?: string;
+          }
         | undefined;
       const passedLand = farmlandId
         ? (db
             .prepare(
-              'SELECT farmland_id, email, sido, sigungu, eupmyeondong FROM member_farmland WHERE farmland_id = ? LIMIT 1'
+              'SELECT farmland_id, email, sido, sigungu, eupmyeondong, detail_jibun FROM member_farmland WHERE farmland_id = ? LIMIT 1'
             )
             .get(farmlandId) as
-            | { farmland_id?: string; email?: string; sido?: string; sigungu?: string; eupmyeondong?: string }
+            | {
+                farmland_id?: string;
+                email?: string;
+                sido?: string;
+                sigungu?: string;
+                eupmyeondong?: string;
+                detail_jibun?: string;
+              }
             | undefined)
         : undefined;
       const isPassedLandValidForRegion =
@@ -10946,7 +10988,8 @@ const server = http.createServer(async (req, res) => {
         String(passedLand.email || '').toLowerCase() === email.toLowerCase() &&
         passedLand.sido === sido &&
         passedLand.sigungu === sigungu &&
-        passedLand.eupmyeondong === eupmyeondong;
+        passedLand.eupmyeondong === eupmyeondong &&
+        (!detailAddress || String(passedLand.detail_jibun || '').trim() === detailAddress);
       if (isPassedLandValidForRegion && passedLand?.farmland_id) {
         farmlandId = passedLand.farmland_id;
       } else if (matchedRegionLand?.farmland_id) {
@@ -10956,6 +10999,9 @@ const server = http.createServer(async (req, res) => {
       }
       if (!farmlandId) {
         const autoLandId = `LAND-${Date.now()}`;
+        const autoLandTitle = `${sigungu} ${eupmyeondong}${
+          detailAddress ? ` (${detailAddress})` : ''
+        } 농장`;
         db.prepare(`
           INSERT OR REPLACE INTO member_farmland (
             farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
@@ -10964,12 +11010,12 @@ const server = http.createServer(async (req, res) => {
         `).run(
           autoLandId,
           email,
-          `${sigungu} ${eupmyeondong} 농장`,
+          autoLandTitle,
           resolvedAddr.bjd_code,
           sido,
           sigungu,
           eupmyeondong,
-          String(body.detail_address || '').trim(),
+          detailAddress,
           Math.max(10, Number(body.area_pyeong) || 300)
         );
         const savedAutoLand = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as Record<string, any> | undefined;

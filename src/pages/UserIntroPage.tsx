@@ -561,6 +561,21 @@ export default function UserIntroPage() {
     }
   });
   const [isWorkLogFormOpen, setIsWorkLogFormOpen] = useState<boolean>(false);
+  const [workLogRecordMode, setWorkLogRecordMode] = useState<'FROM_SCHEDULE' | 'NEW_CUSTOM'>(
+    'FROM_SCHEDULE'
+  );
+  const [workLogTaskFilter, setWorkLogTaskFilter] = useState<'UNCOMPLETED' | 'ALL'>('UNCOMPLETED');
+  const [isWorkLogTaskDropdownOpen, setIsWorkLogTaskDropdownOpen] = useState<boolean>(false);
+  const [workLogSelectedTaskId, setWorkLogSelectedTaskId] = useState<string>('');
+  const [workLogMaterials, setWorkLogMaterials] = useState<
+    Array<{ id: string; iconType: 'BAG' | 'BOTTLE'; name: string; qty: number; unit: string }>
+  >([
+    { id: 'mat-1', iconType: 'BAG', name: '복합비료 (17-0-17)', qty: 25, unit: 'kg' },
+    { id: 'mat-2', iconType: 'BOTTLE', name: '칼슘·붕소 액상비료', qty: 1, unit: 'L' },
+  ]);
+  const [workLogPhotos, setWorkLogPhotos] = useState<string[]>([
+    '/images/crops/crop-thumb-cabbage.jpg',
+  ]);
   const [workLogForm, setWorkLogForm] = useState<{
     workDate: string;
     stageLabel: string;
@@ -569,8 +584,8 @@ export default function UserIntroPage() {
   }>(() => ({
     workDate: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10),
     stageLabel: '결구기',
-    taskTitle: '',
-    memo: '',
+    taskTitle: '추비 2차',
+    memo: '추비 2차 완료. 생육 양호함.',
   }));
   const [cropWorkLogs, setCropWorkLogs] = useState<
     Record<
@@ -2315,16 +2330,31 @@ export default function UserIntroPage() {
         (f: any) =>
           f.sido === reqForm.sido &&
           f.sigungu === reqForm.sigungu &&
-          f.eupmyeondong === reqForm.eupmyeondong
+          f.eupmyeondong === reqForm.eupmyeondong &&
+          (!detailTrimmed || String(f.detail_jibun || '').trim() === detailTrimmed)
       );
-      const resolvedFarmlandId =
-        matchedUserLand?.farmland_id ||
-        (ownerEmail.toLowerCase() === 'cloudbae@naver.com' &&
-        reqForm.sido === '충청북도' &&
-        reqForm.sigungu === '충주시' &&
-        reqForm.eupmyeondong === '단월동'
-          ? 'LAND-CB-01'
-          : '');
+      let resolvedFarmlandId = matchedUserLand?.farmland_id || '';
+      if (!matchedUserLand) {
+        const autoLandId = `LAND-${Date.now()}`;
+        const autoLandTitle = `${reqForm.sigungu} ${reqForm.eupmyeondong}${
+          detailTrimmed ? ` (${detailTrimmed})` : ''
+        } 농장`;
+        const newFarmlandEntry = {
+          farmland_id: autoLandId,
+          email: ownerEmail,
+          farmland_title: autoLandTitle,
+          bjd_code: '',
+          sido: reqForm.sido,
+          sigungu: reqForm.sigungu,
+          eupmyeondong: reqForm.eupmyeondong,
+          detail_jibun: detailTrimmed,
+          area_pyeong: Number(reqForm.area_pyeong || 500),
+          soil_ph: Number(reqForm.soil_ph || 6.3),
+          soil_ec: Number(reqForm.soil_ec || 1.1),
+        };
+        setMyFarmlands((prev) => [newFarmlandEntry, ...prev]);
+        resolvedFarmlandId = autoLandId;
+      }
 
       try {
         await fetch('/api/member-schedule-requests/save', {
@@ -23711,148 +23741,6 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 7. 작업기록 작성 인라인 폼 & 누적 작업기록 리스트 (DB member_ui_sync_state 연동) */}
-                  {(isWorkLogFormOpen || logsForReq.length > 0) && (
-                    <div className="rounded-[20px] bg-white border border-emerald-300 p-4 shadow-2xs space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <FileEdit className="w-4 h-4 text-[#0E712F]" />
-                          <span className="text-[15.5px] font-black text-[#111827]">
-                            영농 작업기록 ({logsForReq.length}건)
-                          </span>
-                        </div>
-                        {isWorkLogFormOpen && (
-                          <button
-                            type="button"
-                            onClick={() => setIsWorkLogFormOpen(false)}
-                            className="text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
-                          >
-                            닫기
-                          </button>
-                        )}
-                      </div>
-
-                      {isWorkLogFormOpen && (
-                        <form onSubmit={handleSaveWorkLog} className="space-y-2.5 pt-1">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                                작업일자
-                              </label>
-                              <input
-                                type="date"
-                                value={workLogForm.workDate}
-                                onChange={(e) =>
-                                  setWorkLogForm((prev) => ({ ...prev, workDate: e.target.value }))
-                                }
-                                className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                                생육단계
-                              </label>
-                              <select
-                                value={workLogForm.stageLabel}
-                                onChange={(e) =>
-                                  setWorkLogForm((prev) => ({
-                                    ...prev,
-                                    stageLabel: e.target.value,
-                                  }))
-                                }
-                                className="w-full px-2.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white"
-                              >
-                                <option value="정식">정식</option>
-                                <option value="생육기">생육기</option>
-                                <option value="결구기(병해충)">결구기(병해충)</option>
-                                <option value="수확기">수확기</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                              작업명 *
-                            </label>
-                            <input
-                              type="text"
-                              value={workLogForm.taskTitle}
-                              onChange={(e) =>
-                                setWorkLogForm((prev) => ({ ...prev, taskTitle: e.target.value }))
-                              }
-                              placeholder="예: 추비 2차 살포, 관수 관리, 병해충 방제"
-                              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                              작업 메모 (선택)
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={workLogForm.memo}
-                              onChange={(e) =>
-                                setWorkLogForm((prev) => ({ ...prev, memo: e.target.value }))
-                              }
-                              placeholder="투입 농자재량, 작물 생육 상태, 특이사항 등을 기록하세요."
-                              className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-900"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setIsWorkLogFormOpen(false)}
-                              className="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 cursor-pointer"
-                            >
-                              취소
-                            </button>
-                            <button
-                              type="submit"
-                              className="px-4 py-2 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white text-xs font-extrabold cursor-pointer"
-                            >
-                              작업기록 저장
-                            </button>
-                          </div>
-                        </form>
-                      )}
-
-                      {logsForReq.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          {logsForReq.map((logItem) => (
-                            <div
-                              key={logItem.id}
-                              className="rounded-xl bg-slate-50 border border-slate-200/90 p-3 flex items-start justify-between gap-2"
-                            >
-                              <div className="min-w-0 space-y-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="px-2 py-0.5 rounded-md bg-[#DCFCE7] text-[#0E712F] text-[11px] font-extrabold">
-                                    {logItem.stageLabel}
-                                  </span>
-                                  <span className="text-xs font-mono font-bold text-slate-600">
-                                    {logItem.workDate}
-                                  </span>
-                                </div>
-                                <div className="text-[13.5px] font-black text-slate-900">
-                                  {logItem.taskTitle}
-                                </div>
-                                {logItem.memo && (
-                                  <div className="text-xs text-slate-600 break-keep">
-                                    {logItem.memo}
-                                  </div>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteWorkLog(logItem.id)}
-                                className="text-[11px] font-bold text-rose-600 hover:underline shrink-0 cursor-pointer"
-                              >
-                                삭제
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                       {/* 7. 본문 맨 아래 인라인 액션 버튼: [전체 재배일정 보기] / [작업기록 작성] */}
                       <div className="pt-1 pb-2 grid grid-cols-2 gap-2.5">
                         <button
@@ -23871,11 +23759,25 @@ export default function UserIntroPage() {
                         <button
                           type="button"
                           onClick={() => {
+                            const defaultScheduleTask =
+                              evaluated.find((e: any) =>
+                                /추비|시비|웃거름/.test(String(e.subItemName || ''))
+                              ) ||
+                              primaryTask ||
+                              evaluated[0];
+                            const resolvedTaskId = String(defaultScheduleTask?.itemId || '');
+                            const resolvedTaskName =
+                              defaultScheduleTask?.subItemName || '추비 2차';
+                            setWorkLogRecordMode('FROM_SCHEDULE');
+                            setWorkLogTaskFilter('UNCOMPLETED');
+                            setIsWorkLogTaskDropdownOpen(false);
+                            setWorkLogSelectedTaskId(resolvedTaskId);
                             setWorkLogForm((prev) => ({
                               ...prev,
-                              workDate: getTodayKstYmd(),
+                              workDate: defaultScheduleTask?.effDate || '2026-10-14',
                               stageLabel: curStepDef.stageTitle,
-                              taskTitle: prev.taskTitle || primaryTask?.subItemName || '',
+                              taskTitle: resolvedTaskName,
+                              memo: prev.memo || `${resolvedTaskName} 완료. 생육 양호함.`,
                             }));
                             setIsWorkLogFormOpen(true);
                           }}
@@ -23886,6 +23788,747 @@ export default function UserIntroPage() {
                         </button>
                       </div>
                     </div>
+
+                    {/* ==================== [새로운 '작업기록 작성' 단독 모달리스 폼 — 첨부 이미지 media_1795347603840_fed825b5.jpg 1:1 구성] ==================== */}
+                    {isWorkLogFormOpen &&
+                      (() => {
+                        const filteredScheduleTasks =
+                          workLogTaskFilter === 'UNCOMPLETED' && uncompleted.length > 0
+                            ? uncompleted
+                            : evaluated;
+                        const activeSelectedTask =
+                          evaluated.find(
+                            (e: any) => String(e.itemId) === String(workLogSelectedTaskId)
+                          ) ||
+                          filteredScheduleTasks[0] ||
+                          primaryTask ||
+                          evaluated[0];
+                        const displayTaskName =
+                          workLogRecordMode === 'FROM_SCHEDULE'
+                            ? activeSelectedTask?.subItemName || workLogForm.taskTitle || '추비 2차'
+                            : workLogForm.taskTitle;
+                        const myScheduledYmd =
+                          activeSelectedTask?.effDate || workLogForm.workDate || '2026-10-14';
+                        const hanfarmRecYmd = addDaysToYmd(myScheduledYmd, -2);
+                        const formatYmdToKoreanFullLabel = (ymdStr: string) => {
+                          if (!ymdStr || !/^\d{4}-\d{2}-\d{2}$/.test(ymdStr)) {
+                            return '2026년 10월 14일';
+                          }
+                          const [yy, mm, dd] = ymdStr.split('-').map(Number);
+                          return `${yy}년 ${mm}월 ${dd}일`;
+                        };
+                        const uncompletedDisplayCount =
+                          uncompleted.length > 0 ? uncompleted.length : 3;
+                        const totalDisplayCount = evaluated.length > 0 ? evaluated.length : 5;
+
+                        const handleAdjustMaterialQty = (matId: string, delta: number) => {
+                          setWorkLogMaterials((prev) =>
+                            prev.map((m) =>
+                              m.id === matId
+                                ? { ...m, qty: Math.max(1, Number(m.qty || 1) + delta) }
+                                : m
+                            )
+                          );
+                        };
+
+                        const handleAddPresetMaterial = () => {
+                          const presets: Array<{
+                            iconType: 'BAG' | 'BOTTLE';
+                            name: string;
+                            qty: number;
+                            unit: string;
+                          }> = [
+                            {
+                              iconType: 'BAG',
+                              name: '결구기용 복합비료 (13-5-18)',
+                              qty: 20,
+                              unit: 'kg',
+                            },
+                            {
+                              iconType: 'BOTTLE',
+                              name: '유기농 미량요소 영양제',
+                              qty: 2,
+                              unit: 'L',
+                            },
+                            {
+                              iconType: 'BOTTLE',
+                              name: '친환경 병해충 예방제',
+                              qty: 500,
+                              unit: 'mL',
+                            },
+                          ];
+                          setWorkLogMaterials((prev) => {
+                            const nextPreset = presets[prev.length % presets.length];
+                            return [
+                              ...prev,
+                              {
+                                id: `mat-${Date.now()}`,
+                                iconType: nextPreset.iconType,
+                                name: nextPreset.name,
+                                qty: nextPreset.qty,
+                                unit: nextPreset.unit,
+                              },
+                            ];
+                          });
+                        };
+
+                        const handleSubmitNewWorkLogModal = () => {
+                          const finalTaskTitle = String(displayTaskName || '추비 2차').trim();
+                          if (!finalTaskTitle) return;
+                          const materialsSummary = workLogMaterials
+                            .map((m) => `${m.name} ${m.qty}${m.unit}`)
+                            .join(', ');
+                          const combinedMemo = [
+                            workLogForm.memo.trim(),
+                            materialsSummary ? `[사용 농자재: ${materialsSummary}]` : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ');
+                          const newEntry = {
+                            id: `WLOG-${Date.now()}`,
+                            workDate: workLogForm.workDate || getTodayKstYmd(),
+                            stageLabel: curStepDef.stageTitle,
+                            taskTitle: finalTaskTitle,
+                            memo: combinedMemo,
+                            createdAt: new Date().toISOString(),
+                          };
+                          setCropWorkLogs((prev) => {
+                            const prevList = Array.isArray(prev[ovReqNo]) ? prev[ovReqNo] : [];
+                            const next = {
+                              ...prev,
+                              [ovReqNo]: [newEntry, ...prevList],
+                            };
+                            try {
+                              localStorage.setItem(
+                                'hanfarm_crop_work_logs_v1',
+                                JSON.stringify(next)
+                              );
+                            } catch {
+                              // ignore
+                            }
+                            fetch('/api/client-sync-state', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                email: loggedInUser.email || 'CloudBae@naver.com',
+                                state_key: 'crop_work_logs_v1',
+                                state_value: next,
+                              }),
+                            }).catch(() => {});
+                            return next;
+                          });
+                          if (
+                            workLogRecordMode === 'FROM_SCHEDULE' &&
+                            activeSelectedTask?.raw &&
+                            !activeSelectedTask.isCompleted
+                          ) {
+                            handleToggleStageItemCompletion(
+                              ovReqNo,
+                              activeSelectedTask.raw,
+                              workLogForm.workDate || activeSelectedTask.effDate
+                            );
+                          }
+                          setIsWorkLogTaskDropdownOpen(false);
+                          setIsWorkLogFormOpen(false);
+                        };
+
+                        return (
+                          <div className="fixed inset-0 z-[72] bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
+                            <div className="w-full max-w-lg max-h-[92vh] bg-[#F5F7F5] rounded-[26px] border border-slate-200 shadow-2xl flex flex-col overflow-hidden select-none">
+                              {/* 상단 앱 바: [←] [한팜 FarmPlan] [⋮] */}
+                              <div className="bg-white px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsWorkLogTaskDropdownOpen(false);
+                                    setIsWorkLogFormOpen(false);
+                                  }}
+                                  aria-label="뒤로가기"
+                                  className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                                >
+                                  <ArrowLeft className="w-5 h-5 stroke-[2.3]" />
+                                </button>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-[9px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs">
+                                    <Sprout className="w-5 h-5 stroke-[2.2]" />
+                                  </div>
+                                  <div className="flex items-baseline gap-1">
+                                    <span className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em]">
+                                      한팜
+                                    </span>
+                                    <span className="text-[15px] font-extrabold text-[#111827] tracking-[-0.02em]">
+                                      FarmPlan
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsWorkLogTaskDropdownOpen(false);
+                                    setIsWorkLogFormOpen(false);
+                                  }}
+                                  aria-label="닫기"
+                                  className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
+
+                              {/* 스크롤 본문 */}
+                              <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3">
+                                {/* 타이틀 & 안내 문구 */}
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="w-6 h-6 text-[#0E712F] shrink-0"
+                                      fill="none"
+                                    >
+                                      <rect
+                                        x="4"
+                                        y="4"
+                                        width="16"
+                                        height="17"
+                                        rx="2.5"
+                                        stroke="currentColor"
+                                        strokeWidth="2.1"
+                                      />
+                                      <path
+                                        d="M8.5 2.5H15.5V5.5H8.5V2.5Z"
+                                        fill="#F5F7F5"
+                                        stroke="currentColor"
+                                        strokeWidth="1.9"
+                                      />
+                                      <path
+                                        d="M8 11H16M8 15H13.5"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                    <h3 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                      작업기록 작성
+                                    </h3>
+                                  </div>
+                                  <p className="mt-1 text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                                    실제로 수행한 농작업 내용을 기록해 주세요.
+                                  </p>
+                                </div>
+
+                                {/* 상단 작물 요약 & 현재 생육단계 카드 */}
+                                <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-[58px] h-[58px] rounded-[14px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
+                                      <img
+                                        src={thumbUrl}
+                                        alt={shortName}
+                                        className="w-full h-full object-cover block"
+                                      />
+                                    </div>
+                                    <div className="min-w-0 space-y-0.5">
+                                      <div className="text-[17px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                        {shortName}{' '}
+                                        <span className="text-[14.5px] font-extrabold">
+                                          ({fullCropLabel})
+                                        </span>
+                                      </div>
+                                      <div className="text-[13px] font-semibold text-[#4B5563] truncate">
+                                        {cultMethodLabel}{' '}
+                                        <span className="text-slate-300 mx-1">|</span> {areaLabel}
+                                      </div>
+                                      <div className="text-[12.5px] font-bold text-[#374151] flex items-center gap-1 truncate">
+                                        <Calendar className="w-3.5 h-3.5 text-[#4B5563] shrink-0" />
+                                        <span>정식일 {toKoreanMd(dateStep0) || '8월 25일'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="w-[1px] h-12 bg-slate-200 shrink-0" />
+
+                                  <div className="rounded-[15px] bg-[#EAF6ED] px-4 py-2.5 text-center shrink-0 min-w-[126px]">
+                                    <div className="inline-flex items-center gap-1 text-[11.5px] font-extrabold text-[#0E712F]">
+                                      <Sprout className="w-3.5 h-3.5" />
+                                      <span>현재 생육단계</span>
+                                    </div>
+                                    <div className="mt-0.5 text-[21px] font-black text-[#0E712F] tracking-[-0.03em] leading-tight">
+                                      {curStepDef.stageTitle}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* 카드 1~3: ① 기록 방식 / ② 농작업 선택 / ③ 실제 작업일 */}
+                                <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-3.5">
+                                  {/* ① 기록 방식 */}
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="flex items-center gap-1.5 shrink-0 w-[86px]">
+                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                        1
+                                      </span>
+                                      <span className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                        기록 방식
+                                      </span>
+                                    </div>
+
+                                    <div className="flex-1 grid grid-cols-2 gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setWorkLogRecordMode('FROM_SCHEDULE')}
+                                        className={`rounded-[13px] py-2 px-2 text-center transition cursor-pointer border ${
+                                          workLogRecordMode === 'FROM_SCHEDULE'
+                                            ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-2xs'
+                                            : 'bg-white border-slate-300 text-[#111827] hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-center gap-1 text-[13.5px] font-black tracking-[-0.02em]">
+                                          <span
+                                            className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] ${
+                                              workLogRecordMode === 'FROM_SCHEDULE'
+                                                ? 'bg-white text-[#0E712F]'
+                                                : 'border border-slate-400 text-transparent'
+                                            }`}
+                                          >
+                                            ✓
+                                          </span>
+                                          <span>일정에서 선택</span>
+                                        </div>
+                                        <div
+                                          className={`mt-0.5 text-[10.5px] font-semibold tracking-[-0.03em] ${
+                                            workLogRecordMode === 'FROM_SCHEDULE'
+                                              ? 'text-emerald-100'
+                                              : 'text-[#6B7280]'
+                                          }`}
+                                        >
+                                          (재배일정의 작업 기록)
+                                        </div>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setWorkLogRecordMode('NEW_CUSTOM');
+                                          setIsWorkLogTaskDropdownOpen(false);
+                                        }}
+                                        className={`rounded-[13px] py-2 px-2 text-center transition cursor-pointer border ${
+                                          workLogRecordMode === 'NEW_CUSTOM'
+                                            ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-2xs'
+                                            : 'bg-white border-slate-300 text-[#111827] hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-center gap-1 text-[13.5px] font-black tracking-[-0.02em]">
+                                          <span
+                                            className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] ${
+                                              workLogRecordMode === 'NEW_CUSTOM'
+                                                ? 'bg-white text-[#0E712F]'
+                                                : 'border border-slate-400 text-transparent'
+                                            }`}
+                                          >
+                                            ✓
+                                          </span>
+                                          <span>새 작업 추가</span>
+                                        </div>
+                                        <div
+                                          className={`mt-0.5 text-[10.5px] font-semibold tracking-[-0.03em] ${
+                                            workLogRecordMode === 'NEW_CUSTOM'
+                                              ? 'text-emerald-100'
+                                              : 'text-[#6B7280]'
+                                          }`}
+                                        >
+                                          (일정에 없는 작업 기록)
+                                        </div>
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-slate-100" />
+
+                                  {/* ② 농작업 선택 * */}
+                                  <div className="space-y-2">
+                                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                            2
+                                          </span>
+                                          <span className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                            농작업 선택 <span className="text-rose-600">*</span>
+                                          </span>
+                                        </div>
+
+                                        {workLogRecordMode === 'FROM_SCHEDULE' && (
+                                          <div className="inline-flex items-center rounded-full bg-slate-100 p-0.5 border border-slate-200">
+                                            <button
+                                              type="button"
+                                              onClick={() => setWorkLogTaskFilter('UNCOMPLETED')}
+                                              className={`px-2.5 py-1 rounded-full text-[11.5px] font-extrabold transition cursor-pointer ${
+                                                workLogTaskFilter === 'UNCOMPLETED'
+                                                  ? 'bg-[#EAF6ED] text-[#0E712F] border border-[#22A559]'
+                                                  : 'text-[#4B5563]'
+                                              }`}
+                                            >
+                                              미완료({uncompletedDisplayCount})
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setWorkLogTaskFilter('ALL')}
+                                              className={`px-2.5 py-1 rounded-full text-[11.5px] font-extrabold transition cursor-pointer ${
+                                                workLogTaskFilter === 'ALL'
+                                                  ? 'bg-[#EAF6ED] text-[#0E712F] border border-[#22A559]'
+                                                  : 'text-[#4B5563]'
+                                              }`}
+                                            >
+                                              전체({totalDisplayCount})
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      <span className="text-[11px] font-medium text-[#6B7280] tracking-[-0.03em]">
+                                        ⓘ 미완료 작업이 우선 표시됩니다.
+                                      </span>
+                                    </div>
+
+                                    {workLogRecordMode === 'FROM_SCHEDULE' ? (
+                                      <div className="relative pl-0 sm:pl-[96px]">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setIsWorkLogTaskDropdownOpen((prev) => !prev)
+                                          }
+                                          className="w-full rounded-[14px] border border-slate-300 bg-white hover:border-[#0E712F] px-3.5 py-2.5 text-left flex items-center justify-between gap-2 cursor-pointer transition"
+                                        >
+                                          <div className="min-w-0">
+                                            <div className="text-[15.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                              {displayTaskName}
+                                            </div>
+                                            <div className="mt-0.5 text-[11.5px] font-medium text-[#4B5563] truncate">
+                                              한팜 추천일 {toKoreanMd(hanfarmRecYmd) || '10월 12일'}{' '}
+                                              <span className="text-slate-300 mx-1">|</span> 나의
+                                              예정일 {toKoreanMd(myScheduledYmd) || '10월 14일'}
+                                            </div>
+                                          </div>
+                                          <ChevronDown className="w-4 h-4 text-[#374151] shrink-0" />
+                                        </button>
+
+                                        {isWorkLogTaskDropdownOpen && (
+                                          <div className="mt-1.5 rounded-[14px] border border-slate-200 bg-white shadow-lg max-h-44 overflow-y-auto divide-y divide-slate-100">
+                                            {filteredScheduleTasks.map((tItem: any) => {
+                                              const isSel =
+                                                String(tItem.itemId) ===
+                                                String(activeSelectedTask?.itemId);
+                                              return (
+                                                <button
+                                                  key={tItem.itemId}
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setWorkLogSelectedTaskId(String(tItem.itemId));
+                                                    setWorkLogForm((prev) => ({
+                                                      ...prev,
+                                                      workDate: tItem.effDate || prev.workDate,
+                                                      taskTitle: tItem.subItemName,
+                                                      memo: `${tItem.subItemName} 완료. 생육 양호함.`,
+                                                    }));
+                                                    setIsWorkLogTaskDropdownOpen(false);
+                                                  }}
+                                                  className={`w-full px-3.5 py-2.5 text-left flex items-center justify-between gap-2 cursor-pointer transition ${
+                                                    isSel
+                                                      ? 'bg-[#EAF6ED] text-[#0E712F]'
+                                                      : 'hover:bg-slate-50 text-[#111827]'
+                                                  }`}
+                                                >
+                                                  <div className="min-w-0">
+                                                    <div className="text-[13.5px] font-extrabold truncate">
+                                                      {tItem.subItemName}
+                                                    </div>
+                                                    <div className="text-[11px] text-[#6B7280]">
+                                                      나의 예정일 {toKoreanMd(tItem.effDate)}
+                                                    </div>
+                                                  </div>
+                                                  {isSel && (
+                                                    <Check className="w-4 h-4 text-[#0E712F] shrink-0" />
+                                                  )}
+                                                </button>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="pl-0 sm:pl-[96px]">
+                                        <input
+                                          type="text"
+                                          value={workLogForm.taskTitle}
+                                          onChange={(e) =>
+                                            setWorkLogForm((prev) => ({
+                                              ...prev,
+                                              taskTitle: e.target.value,
+                                            }))
+                                          }
+                                          placeholder="수행한 농작업 이름을 입력해 주세요 (예: 추비 2차)"
+                                          className="w-full rounded-[14px] border border-slate-300 bg-white px-3.5 py-2.5 text-[14.5px] font-bold text-[#111827]"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="border-t border-slate-100" />
+
+                                  {/* ③ 실제 작업일 * */}
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="flex items-center gap-1.5 shrink-0 w-[92px]">
+                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                        3
+                                      </span>
+                                      <span className="text-[14.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                        실제 작업일 <span className="text-rose-600">*</span>
+                                      </span>
+                                    </div>
+
+                                    <label className="relative flex-1 rounded-[14px] border border-slate-300 bg-white px-3.5 py-2.5 flex items-center justify-between cursor-pointer hover:border-[#0E712F] transition">
+                                      <span className="text-[15px] font-bold text-[#111827] tracking-[-0.02em]">
+                                        {formatYmdToKoreanFullLabel(workLogForm.workDate)}
+                                      </span>
+                                      <Calendar className="w-4 h-4 text-[#4B5563] shrink-0" />
+                                      <input
+                                        type="date"
+                                        value={workLogForm.workDate}
+                                        onChange={(e) =>
+                                          setWorkLogForm((prev) => ({
+                                            ...prev,
+                                            workDate: e.target.value,
+                                          }))
+                                        }
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                      />
+                                    </label>
+                                  </div>
+                                </div>
+
+                                {/* 카드 4: ④ 사용한 농자재 */}
+                                <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-2.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                        4
+                                      </span>
+                                      <span className="text-[15px] font-black text-[#111827] tracking-[-0.03em]">
+                                        사용한 농자재
+                                      </span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={handleAddPresetMaterial}
+                                      className="px-3 py-1 rounded-full border border-[#0E712F] bg-white hover:bg-[#EAF6ED] text-[#0E712F] text-[12.5px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
+                                    >
+                                      <span>+ 농자재 추가</span>
+                                    </button>
+                                  </div>
+
+                                  <div className="rounded-[15px] bg-[#F8FAF8] border border-slate-200/80 divide-y divide-slate-200/70">
+                                    {workLogMaterials.map((mat) => (
+                                      <div
+                                        key={mat.id}
+                                        className="px-3 py-2.5 flex items-center justify-between gap-2"
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          {mat.iconType === 'BAG' ? (
+                                            <svg
+                                              viewBox="0 0 24 24"
+                                              className="w-5 h-5 text-[#0E712F] shrink-0"
+                                              fill="none"
+                                            >
+                                              <rect
+                                                x="5"
+                                                y="5"
+                                                width="14"
+                                                height="15"
+                                                rx="2"
+                                                stroke="currentColor"
+                                                strokeWidth="1.9"
+                                              />
+                                              <path
+                                                d="M5 9H19M9.5 14C9.5 12.2 11 11 13 11C13 12.8 11.5 14 9.5 14Z"
+                                                stroke="currentColor"
+                                                strokeWidth="1.7"
+                                                strokeLinecap="round"
+                                              />
+                                            </svg>
+                                          ) : (
+                                            <svg
+                                              viewBox="0 0 24 24"
+                                              className="w-5 h-5 text-[#0E712F] shrink-0"
+                                              fill="none"
+                                            >
+                                              <path
+                                                d="M9.5 4H14.5V7L16.5 9.5V19C16.5 20.1 15.6 21 14.5 21H9.5C8.4 21 7.5 20.1 7.5 19V9.5L9.5 7V4Z"
+                                                stroke="currentColor"
+                                                strokeWidth="1.9"
+                                                strokeLinejoin="round"
+                                              />
+                                            </svg>
+                                          )}
+                                          <span className="text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] truncate">
+                                            {mat.name}
+                                          </span>
+                                        </div>
+
+                                        <div className="rounded-xl bg-[#EFF3F0] p-1 flex items-center gap-1.5 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAdjustMaterialQty(mat.id, -1)}
+                                            className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
+                                          >
+                                            <Minus className="w-3.5 h-3.5" />
+                                          </button>
+                                          <span className="min-w-[54px] text-center text-[14.5px] font-black text-[#111827]">
+                                            {mat.qty} {mat.unit}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAdjustMaterialQty(mat.id, 1)}
+                                            className="w-7 h-7 rounded-lg bg-white border border-slate-200/90 flex items-center justify-center text-[#374151] font-bold hover:bg-slate-50 cursor-pointer"
+                                          >
+                                            <Plus className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* 카드 5: ⑤ 작업사진 (선택) */}
+                                <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-2.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                      5
+                                    </span>
+                                    <span className="text-[15px] font-black text-[#111827] tracking-[-0.03em]">
+                                      작업사진{' '}
+                                      <span className="text-[13px] font-semibold text-[#4B5563]">
+                                        (선택)
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-2.5 flex-wrap pl-1">
+                                    {workLogPhotos.map((photoSrc, pIdx) => (
+                                      <div
+                                        key={`${photoSrc}-${pIdx}`}
+                                        className="relative w-[108px] h-[74px] rounded-[14px] overflow-hidden border border-slate-200 bg-slate-100 shrink-0"
+                                      >
+                                        <img
+                                          src={photoSrc}
+                                          alt={`작업사진 ${pIdx + 1}`}
+                                          className="w-full h-full object-cover block"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setWorkLogPhotos((prev) =>
+                                              prev.filter((_, idx) => idx !== pIdx)
+                                            )
+                                          }
+                                          aria-label="사진 삭제"
+                                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/75 text-white flex items-center justify-center cursor-pointer hover:bg-slate-900"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    ))}
+
+                                    {workLogPhotos.length < 3 && (
+                                      <label className="w-[104px] h-[74px] rounded-[14px] bg-[#EAF6ED] hover:bg-[#DCFCE7] border border-[#BBF7D0] flex flex-col items-center justify-center text-[#0E712F] cursor-pointer transition shrink-0">
+                                        <span className="w-6 h-6 rounded-full border-[1.8px] border-[#0E712F] flex items-center justify-center text-[15px] font-black leading-none">
+                                          +
+                                        </span>
+                                        <span className="mt-1 text-[12px] font-extrabold leading-tight">
+                                          사진 추가
+                                        </span>
+                                        <span className="text-[10.5px] font-semibold text-[#15803D]">
+                                          (최대 3장)
+                                        </span>
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const f = e.target.files?.[0];
+                                            if (f) {
+                                              const url = URL.createObjectURL(f);
+                                              setWorkLogPhotos((prev) =>
+                                                prev.length < 3 ? [...prev, url] : prev
+                                              );
+                                            }
+                                          }}
+                                        />
+                                      </label>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* 카드 6: ⑥ 메모 (선택) */}
+                                <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-3.5 shadow-2xs space-y-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white text-[12px] font-black inline-flex items-center justify-center">
+                                      6
+                                    </span>
+                                    <FileEdit className="w-4 h-4 text-[#0E712F]" />
+                                    <span className="text-[15px] font-black text-[#111827] tracking-[-0.03em]">
+                                      메모{' '}
+                                      <span className="text-[13px] font-semibold text-[#4B5563]">
+                                        (선택)
+                                      </span>
+                                    </span>
+                                  </div>
+
+                                  <div className="relative rounded-[14px] border border-slate-300 bg-white p-3">
+                                    <textarea
+                                      rows={2}
+                                      maxLength={200}
+                                      value={workLogForm.memo}
+                                      onChange={(e) =>
+                                        setWorkLogForm((prev) => ({
+                                          ...prev,
+                                          memo: e.target.value.slice(0, 200),
+                                        }))
+                                      }
+                                      placeholder="수행한 농작업 메모를 입력해 주세요."
+                                      className="w-full resize-none text-[14.5px] font-semibold text-[#111827] focus:outline-none"
+                                    />
+                                    <div className="text-right text-[12px] font-bold text-[#6B7280]">
+                                      {workLogForm.memo.length} / 200
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 하단 고정 액션 버튼: [취소] / [✓ 저장] */}
+                              <div className="bg-[#F5F7F5] px-4 py-3 border-t border-slate-200/80 grid grid-cols-12 gap-2.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsWorkLogTaskDropdownOpen(false);
+                                    setIsWorkLogFormOpen(false);
+                                  }}
+                                  className="col-span-5 h-[50px] rounded-full bg-white hover:bg-slate-50 border border-slate-300 text-[#374151] font-extrabold text-[15.5px] cursor-pointer transition"
+                                >
+                                  취소
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleSubmitNewWorkLogModal}
+                                  className="col-span-7 h-[50px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[16px] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.25)]"
+                                >
+                                  <Check className="w-5 h-5 stroke-[2.5]" />
+                                  <span>저장</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
                   </div>
                 </div>
               );
