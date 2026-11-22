@@ -598,6 +598,18 @@ export default function UserIntroPage() {
   const [myScheduleRequests, setMyScheduleRequests] = useState<any[]>([]);
   const [reRequestTargetCrop, setReRequestTargetCrop] = useState<any | null>(null);
   const [reqFormSubmitted, setReqFormSubmitted] = useState<boolean>(false);
+  const [cropRegistrationCompleteInfo, setCropRegistrationCompleteInfo] = useState<{
+    requestNo: string;
+    shortCropName: string;
+    subCropLabel: string;
+    thumbUrl: string;
+    addressLine: string;
+    farmlandTitle?: string;
+    areaLabel: string;
+    cultivationType: string;
+    dateTypeLabel: string;
+    dateFormatted: string;
+  } | null>(null);
   const [mobileReqStep, setMobileReqStep] = useState<1 | 2 | 3>(1);
   const [isMoreCropModalOpen, setIsMoreCropModalOpen] = useState<boolean>(false);
   const [isMobileAddrPickerOpen, setIsMobileAddrPickerOpen] = useState<boolean>(false);
@@ -2335,10 +2347,51 @@ export default function UserIntroPage() {
 
       setSelectedRequestNo(newReqDisplayNo);
       setExpandedScheduleRequestNo(newReqDisplayNo);
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-        setMobileReqStep(1);
-        setActiveMenu('재배일정 확인');
-      }
+      const shortCrop =
+        String(normalizedCropName || '배추')
+          .replace(/^(가을|봄|월동|고랭지|여름)/, '')
+          .trim() || '배추';
+      const subLabel =
+        normalizedCropName && normalizedCropName !== shortCrop
+          ? normalizedCropName
+          : reqForm.cultivar_name || normalizedCropName || '가을배추';
+      const sidoShortMap: Record<string, string> = {
+        충청북도: '충북',
+        충청남도: '충남',
+        전라북도: '전북',
+        전북특별자치도: '전북',
+        전라남도: '전남',
+        경상북도: '경북',
+        경상남도: '경남',
+        경기도: '경기',
+        강원도: '강원',
+        강원특별자치도: '강원',
+        제주특별자치도: '제주',
+      };
+      const shortSido = sidoShortMap[reqForm.sido] || reqForm.sido;
+      const addrLine = [shortSido, reqForm.sigungu, reqForm.eupmyeondong, detailTrimmed]
+        .filter(Boolean)
+        .join(' ');
+      const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(pDate) ? pDate : '2026-08-25';
+      const formattedKoreanDate = `${Number(dateValid.slice(0, 4))}년 ${Number(
+        dateValid.slice(5, 7)
+      )}월 ${Number(dateValid.slice(8, 10))}일`;
+
+      setCropRegistrationCompleteInfo({
+        requestNo: newReqDisplayNo,
+        shortCropName: shortCrop,
+        subCropLabel: subLabel,
+        thumbUrl: resolveCropThumbByShortName(shortCrop),
+        addressLine: addrLine || '충북 충주시 단월동',
+        farmlandTitle: matchedUserLand?.farmland_title || undefined,
+        areaLabel: `${Number(reqForm.area_pyeong || 500).toLocaleString()}${
+          reqForm.area_unit || '평'
+        }`,
+        cultivationType:
+          reqForm.cultivation_type === '시설(하우스)' ? '시설(하우스)' : '노지',
+        dateTypeLabel: isSeed ? '파종일' : '정식일',
+        dateFormatted: formattedKoreanDate,
+      });
       await loadScheduleProvision(newReqDisplayNo, { gdd_mode: patentGddMode }).catch(() => {});
     } finally {
       isSubmittingScheduleReqRef.current = false;
@@ -3496,10 +3549,43 @@ export default function UserIntroPage() {
       if (res?.ok) {
         applyMyPagePayload(res);
         setIsCropPlanRegModalOpen(false);
-        setMyPageToast(
-          `[${newCropPlanForm.sido} ${newCropPlanForm.sigungu} ${newCropPlanForm.eupmyeondong}] ${newCropPlanForm.crop_name}(${newCropPlanForm.cultivar_name}) 작물이 내 재배작물 리스트에 추가되었습니다.`
-        );
-        setTimeout(() => setMyPageToast(''), 3500);
+        const rawCName = String(newCropPlanForm.crop_name || '가을배추');
+        const shortCrop =
+          rawCName.replace(/^(가을|봄|월동|고랭지|여름)/, '').trim() || rawCName;
+        const subLabel =
+          rawCName !== shortCrop
+            ? rawCName
+            : newCropPlanForm.cultivar_name || rawCName;
+        const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(newCropPlanForm.planting_date)
+          ? newCropPlanForm.planting_date
+          : '2026-08-25';
+        const formattedKoreanDate = `${Number(dateValid.slice(0, 4))}년 ${Number(
+          dateValid.slice(5, 7)
+        )}월 ${Number(dateValid.slice(8, 10))}일`;
+        const isSeedPlan = String(newCropPlanForm.planting_type || '').includes('씨');
+        const latestPlanReqNo =
+          res?.cropPlans?.[0]?.request_no ||
+          res?.scheduleRequests?.[0]?.request_no ||
+          selectedRequestNo ||
+          '';
+
+        setCropRegistrationCompleteInfo({
+          requestNo: latestPlanReqNo,
+          shortCropName: shortCrop,
+          subCropLabel: subLabel,
+          thumbUrl: resolveCropThumbByShortName(shortCrop),
+          addressLine: [
+            newCropPlanForm.sido,
+            newCropPlanForm.sigungu,
+            newCropPlanForm.eupmyeondong,
+          ]
+            .filter(Boolean)
+            .join(' '),
+          areaLabel: `${Number(newCropPlanForm.area_pyeong || 300).toLocaleString()}평`,
+          cultivationType: '노지',
+          dateTypeLabel: isSeedPlan ? '파종일' : '정식일',
+          dateFormatted: formattedKoreanDate,
+        });
       }
     } catch {
       // ignore
@@ -24889,6 +24975,161 @@ export default function UserIntroPage() {
             </div>
           );
         })()}
+
+      {/* ==================== [재배일정 요청 / 재배작물 등록 완료 화면 모달 (첨부 이미지 1:1 구성)] ==================== */}
+      {cropRegistrationCompleteInfo && (
+        <div className="fixed inset-0 z-[75] bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-4">
+          <div className="w-full max-w-[390px] rounded-[28px] border border-[#E5E7EB] bg-white px-6 py-7 shadow-[0_24px_64px_rgba(15,23,42,0.28)] flex flex-col items-center select-none">
+            {/* 1. 상단 체크 아이콘 & 폭죽(Confetti) 일러스트 */}
+            <div className="relative flex items-center justify-center">
+              <svg viewBox="0 0 180 86" className="w-[172px] h-[82px]" fill="none">
+                <defs>
+                  <linearGradient id="cropRegCheckGrad" x1="90" y1="11" x2="90" y2="75" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#65C84D" />
+                    <stop offset="100%" stopColor="#0E7C31" />
+                  </linearGradient>
+                </defs>
+                {/* 좌측 방사형 컬러 폭죽 라인 */}
+                <rect x="46" y="10" width="5" height="12" rx="2.5" transform="rotate(-32 46 10)" fill="#A3D977" />
+                <rect x="33" y="21" width="5.5" height="13" rx="2.75" transform="rotate(-55 33 21)" fill="#E86F52" />
+                <rect x="26" y="42" width="5.5" height="14" rx="2.75" transform="rotate(-82 26 42)" fill="#F4B942" />
+                <rect x="38" y="61" width="5" height="12" rx="2.5" transform="rotate(-125 38 61)" fill="#F7D969" />
+                {/* 우측 방사형 컬러 폭죽 라인 */}
+                <rect x="129" y="8" width="5" height="12" rx="2.5" transform="rotate(32 129 8)" fill="#2FA866" />
+                <rect x="142" y="18" width="5.5" height="13" rx="2.75" transform="rotate(55 142 18)" fill="#F4A93B" />
+                <rect x="149" y="38" width="5.5" height="14" rx="2.75" transform="rotate(82 149 38)" fill="#E9DF6B" />
+                <rect x="137" y="57" width="5" height="12" rx="2.5" transform="rotate(125 137 57)" fill="#A8DF8E" />
+                {/* 중앙 그린 원형 배지 */}
+                <circle cx="90" cy="43" r="31" fill="url(#cropRegCheckGrad)" />
+                {/* 중앙 화이트 체크마크 */}
+                <path
+                  d="M77 43.5L86 52.5L104 34.5"
+                  stroke="#FFFFFF"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+
+            {/* 2. 타이틀 */}
+            <h2 className="mt-2 text-center text-[25px] sm:text-[26px] font-black text-[#111827] tracking-[-0.03em] leading-[1.28]">
+              재배작물 등록이
+              <br />
+              완료되었습니다!
+            </h2>
+
+            {/* 3. 등록 작물 요약 카드 */}
+            <div className="w-full mt-5 rounded-[20px] border border-[#E5E7EB] bg-white px-4 py-1 shadow-2xs divide-y divide-[#F1F5F9]">
+              {/* 행 1: 작물 썸네일 + 작물명 (품종/분류) */}
+              <div className="py-3 flex items-center gap-3">
+                <div className="w-[46px] h-[46px] rounded-[11px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
+                  <img
+                    src={cropRegistrationCompleteInfo.thumbUrl}
+                    alt={cropRegistrationCompleteInfo.shortCropName}
+                    className="w-full h-full object-cover block"
+                  />
+                </div>
+                <div className="text-[18.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                  {cropRegistrationCompleteInfo.shortCropName} ({cropRegistrationCompleteInfo.subCropLabel})
+                </div>
+              </div>
+
+              {/* 행 2: 재배지 주소 */}
+              <div className="py-3 flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-[#15803D] shrink-0 mt-0.5 stroke-[2.1]" />
+                <div className="text-[15px] font-medium text-[#1F2937] leading-snug tracking-[-0.02em]">
+                  <div>{cropRegistrationCompleteInfo.addressLine}</div>
+                  {cropRegistrationCompleteInfo.farmlandTitle && (
+                    <div className="mt-0.5 text-[#374151]">
+                      ({cropRegistrationCompleteInfo.farmlandTitle})
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 행 3: 재배 면적 */}
+              <div className="py-3 flex items-center gap-3">
+                <svg viewBox="0 0 20 20" className="w-5 h-5 text-[#15803D] shrink-0" fill="none">
+                  <path
+                    d="M3.5 7V4.5C3.5 3.95 3.95 3.5 4.5 3.5H7M13 3.5H15.5C16.05 3.5 16.5 3.95 16.5 4.5V7M16.5 13V15.5C16.5 16.05 16.05 16.5 15.5 16.5H13M7 16.5H4.5C3.95 16.5 3.5 16.05 3.5 15.5V13"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="text-[15.5px] font-medium text-[#1F2937] tracking-[-0.02em]">
+                  {cropRegistrationCompleteInfo.areaLabel}
+                </span>
+              </div>
+
+              {/* 행 4: 재배 방식 (노지 / 시설) */}
+              <div className="py-3 flex items-center gap-3">
+                <Sprout className="w-5 h-5 text-[#15803D] shrink-0 stroke-[2.1]" />
+                <span className="text-[15.5px] font-medium text-[#1F2937] tracking-[-0.02em]">
+                  {cropRegistrationCompleteInfo.cultivationType}
+                </span>
+              </div>
+
+              {/* 행 5: 정식일 / 파종일 */}
+              <div className="py-3 flex items-center gap-3">
+                <Calendar className="w-5 h-5 text-[#15803D] shrink-0 stroke-[2.1]" />
+                <div className="text-[15.5px] tracking-[-0.02em] flex items-center gap-3">
+                  <span className="font-medium text-[#374151]">
+                    {cropRegistrationCompleteInfo.dateTypeLabel}
+                  </span>
+                  <span className="font-semibold text-[#111827]">
+                    {cropRegistrationCompleteInfo.dateFormatted}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. 하단 액션 버튼 2종: [재배일정 확인하기] / [홈으로 이동] */}
+            <div className="w-full mt-6 space-y-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetReqNo = cropRegistrationCompleteInfo.requestNo;
+                  setCropRegistrationCompleteInfo(null);
+                  setReqFormSubmitted(false);
+                  setIsScheduleReqModelessOpen(false);
+                  setMobileReqStep(1);
+                  if (targetReqNo) {
+                    setSelectedRequestNo(targetReqNo);
+                    setExpandedScheduleRequestNo(targetReqNo);
+                  }
+                  setActiveMenu('재배일정 확인');
+                  setMobileScheduleStep('list');
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="w-full h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+              >
+                재배일정 확인하기
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCropRegistrationCompleteInfo(null);
+                  setReqFormSubmitted(false);
+                  setIsScheduleReqModelessOpen(false);
+                  setMobileReqStep(1);
+                  setActiveMenu('홈');
+                  if (typeof window !== 'undefined') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+                className="w-full h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#0E712F] border-[1.5px] border-[#0E712F] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center cursor-pointer transition"
+              >
+                홈으로 이동
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 3단계 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 1:1 스타일) ==================== */}
       {activeMenu !== '홈' && activeMenu !== '재배일정 요청' && (
