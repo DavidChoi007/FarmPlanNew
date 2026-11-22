@@ -526,6 +526,10 @@ export default function UserIntroPage() {
   const [selectedReqDetailCrop, setSelectedReqDetailCrop] = useState<any | null>(null);
   const [myPageProgressDetailReqNo, setMyPageProgressDetailReqNo] = useState<string | null>(null);
   const [myPageStageDetailItem, setMyPageStageDetailItem] = useState<any | null>(null);
+  const [taskDetailActualDate, setTaskDetailActualDate] = useState<string>('');
+  const [taskDetailActualAmount, setTaskDetailActualAmount] = useState<string>('40');
+  const [taskDetailMemo, setTaskDetailMemo] = useState<string>('');
+  const [taskDetailPhotoName, setTaskDetailPhotoName] = useState<string>('');
   const [mobileStageOverviewReqNo, setMobileStageOverviewReqNo] = useState<string | null>(null);
   const [fullScheduleOpenStepMap, setFullScheduleOpenStepMap] = useState<Record<number, boolean>>({});
   const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
@@ -23459,9 +23463,32 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 5. 오늘 할 일 카드 */}
+                  {/* 5. 오늘 할 일 카드 (영역 클릭 시 '농작업 상세' 모달리스 폼 오픈) */}
                   {primaryTask && (
-                    <div className="rounded-[20px] bg-white border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                    <div
+                      onClick={() => {
+                        setTaskDetailActualDate(primaryTask.effDate || getTodayKstYmd());
+                        setTaskDetailActualAmount(
+                          String(
+                            Math.max(
+                              5,
+                              Math.round(
+                                Number(
+                                  provisionData?.activeRequest?.area_pyeong ||
+                                    ovCrop.area_pyeong ||
+                                    500
+                                ) * 0.08
+                              )
+                            )
+                          )
+                        );
+                        setTaskDetailMemo('');
+                        setTaskDetailPhotoName('');
+                        handleSelectStageItem(primaryTask.raw);
+                        setMyPageStageDetailItem(primaryTask.raw);
+                      }}
+                      className="rounded-[20px] bg-white hover:bg-emerald-50/30 border border-[#E5E7EB] p-4 shadow-2xs space-y-3 cursor-pointer transition"
+                    >
                       <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-[#0E712F]" />
                         <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
@@ -23476,13 +23503,14 @@ export default function UserIntroPage() {
                         <div className="flex items-start gap-3 min-w-0">
                           <button
                             type="button"
-                            onClick={() =>
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleToggleStageItemCompletion(
                                 ovReqNo,
                                 primaryTask.raw,
                                 primaryTask.effDate
-                              )
-                            }
+                              );
+                            }}
                             aria-label="오늘 할 일 완료 체크"
                             className={`mt-0.5 w-6 h-6 rounded-md border-2 flex items-center justify-center shrink-0 cursor-pointer transition ${
                               primaryTask.isCompleted
@@ -23492,14 +23520,7 @@ export default function UserIntroPage() {
                           >
                             <Check className="w-4 h-4 stroke-[2.5]" />
                           </button>
-                          <div
-                            onClick={() => {
-                              handleSelectStageItem(primaryTask.raw);
-                              setMyPageStageDetailItem(primaryTask.raw);
-                              setMyPageProgressDetailReqNo(ovReqNo);
-                            }}
-                            className="min-w-0 cursor-pointer"
-                          >
+                          <div className="min-w-0 cursor-pointer">
                             <div className="text-[16px] font-black text-[#111827] tracking-[-0.02em] truncate">
                               {primaryTask.subItemName}
                             </div>
@@ -23509,20 +23530,12 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectStageItem(primaryTask.raw);
-                            setMyPageStageDetailItem(primaryTask.raw);
-                            setMyPageProgressDetailReqNo(ovReqNo);
-                          }}
-                          className="inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                        >
+                        <div className="inline-flex items-center gap-1 shrink-0">
                           <span className="px-2.5 py-1 rounded-full bg-[#EAF6ED] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
                             {primaryTaskRangeLabel}
                           </span>
                           <ChevronRight className="w-4 h-4 text-slate-400" />
-                        </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -23541,9 +23554,25 @@ export default function UserIntroPage() {
                         <div
                           key={upItem.itemId || uIdx}
                           onClick={() => {
+                            setTaskDetailActualDate(upItem.effDate || getTodayKstYmd());
+                            setTaskDetailActualAmount(
+                              String(
+                                Math.max(
+                                  5,
+                                  Math.round(
+                                    Number(
+                                      provisionData?.activeRequest?.area_pyeong ||
+                                        ovCrop.area_pyeong ||
+                                        500
+                                    ) * 0.08
+                                  )
+                                )
+                              )
+                            );
+                            setTaskDetailMemo('');
+                            setTaskDetailPhotoName('');
                             handleSelectStageItem(upItem.raw);
                             setMyPageStageDetailItem(upItem.raw);
-                            setMyPageProgressDetailReqNo(ovReqNo);
                           }}
                           className="py-2.5 first:pt-1 last:pb-0 flex items-center justify-between gap-2.5 cursor-pointer hover:bg-slate-50/70 rounded-xl px-1 transition"
                         >
@@ -24267,388 +24296,599 @@ export default function UserIntroPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          );
+        })()}
 
-              {/* ==================== [작업상세 또는 세부일정 클릭 시 열리는 '작업 세부정보' 모달리스 폼] ==================== */}
-              {myPageStageDetailItem &&
-                (() => {
-                  const targetStageId = resolveStageItemId(myPageStageDetailItem);
-                  const liveStageItem =
-                    (provisionData?.scheduleItems || []).find(
-                      (si: any) => resolveStageItemId(si) === targetStageId
-                    ) || myPageStageDetailItem;
-                  const stageCleanName = String(liveStageItem.sub_item_name || '')
-                    .replace(/\s*\([^)]*\)/g, '')
-                    .trim();
-                  const stageEffDate = getEffectiveStageItemDate(modalReqNo, liveStageItem);
-                  const stageDayClimate = getDayClimate(stageEffDate);
-                  const topMat = [...(liveStageItem.materials || [])].sort(
-                    (a: any, b: any) =>
-                      Number(b?.match_score || 0) - Number(a?.match_score || 0)
-                  )[0];
-                  const stageGroupCode =
-                    liveStageItem.stage_group_code ||
-                    liveStageItem.stage_group_id ||
-                    liveStageItem.stage_group_name ||
-                    'STG-1';
-                  const matCode = topMat?.material_id || topMat?.product_name || 'MAT-1';
-                  const selKey = `${stageGroupCode}__${matCode}`;
-                  const areaPyeong = Number(
-                    provisionData?.activeRequest?.area_pyeong || modalCrop.area_pyeong || 300
-                  );
-                  const defaultQty = topMat
-                    ? parseRecommendedQuantity(topMat, areaPyeong)
-                    : 1;
-                  const isMatChecked =
-                    (purchaseSelectionMap[selKey]?.checked ?? true) === true;
+      {/* ==================== ['오늘 할 일' / '다음 할 일' / 세부일정 클릭 시 열리는 '농작업 상세' 모달리스 폼 (첨부 이미지 1:1 구성)] ==================== */}
+      {myPageStageDetailItem &&
+        (() => {
+          const detailReqNo =
+            mobileStageOverviewReqNo ||
+            myPageProgressDetailReqNo ||
+            selectedRequestNo ||
+            cloudBaeCropList[0]?.request_no ||
+            'REQ-20261106-009';
+          const detailCrop =
+            cloudBaeCropList.find((c: any) => c.request_no === detailReqNo) ||
+            activeCropCard ||
+            cloudBaeCropList[0] || {
+              request_no: detailReqNo,
+              crop_short: provisionData?.activeRequest?.crop_name || '가을배추',
+              area_pyeong: Number(provisionData?.activeRequest?.area_pyeong || 500),
+              planting_date: provisionData?.activeRequest?.desired_start_date || '2026-08-25',
+            };
 
-                  return (
-                    <div className="fixed inset-0 z-[60] pointer-events-none flex items-center justify-center p-3 sm:p-6">
-                      <div className="pointer-events-auto w-full max-w-lg max-h-[88vh] flex flex-col rounded-3xl border-2 border-emerald-600 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.45)] overflow-hidden">
-                        {/* 작업 세부정보 모달리스 폼 상단 헤더 */}
-                        <div className="relative bg-[#E9F7F1] border-b border-emerald-200 px-4 py-3.5 pr-20 flex flex-col gap-1 shrink-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="text-[19px] font-black text-slate-900">
-                              {stageCleanName ? `${stageCleanName} 작업 세부정보` : '작업 세부정보'}
-                            </h3>
-                            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-xs font-extrabold">
-                              {liveStageItem.stage_group_name || '생육 관리'}
+          const targetStageId = resolveStageItemId(myPageStageDetailItem);
+          const liveStageItem =
+            (provisionData?.scheduleItems || []).find(
+              (si: any) => resolveStageItemId(si) === targetStageId
+            ) || myPageStageDetailItem;
+
+          const shortCropName =
+            String(detailCrop.crop_short || detailCrop.crop_name || '배추')
+              .replace(/^(가을|봄|월동|고랭지|여름)/, '')
+              .trim() || '배추';
+          const cropThumbUrl = resolveCropThumbByShortName(shortCropName);
+
+          const stepOrd = Number(liveStageItem.step_order || 9);
+          const stagePhaseLabel =
+            stepOrd <= 6
+              ? '정식 전'
+              : stepOrd <= 8
+              ? '정식기'
+              : stepOrd <= 11
+              ? '생육기'
+              : stepOrd <= 14
+              ? '결구기'
+              : '수확기';
+
+          const rawSubName = String(liveStageItem.sub_item_name || '추비 2차').trim();
+          const stageCleanName =
+            rawSubName.replace(/\s*\([^)]*\)/g, '').trim() || rawSubName || '추비 2차';
+          const stageEffDate =
+            getEffectiveStageItemDate(detailReqNo, liveStageItem) || getTodayKstYmd();
+
+          const toDotMd = (ymd?: string) => {
+            if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+            return `${Number(ymd.slice(5, 7))}.${Number(ymd.slice(8, 10))}`;
+          };
+          const recRangeEndYmd = addDaysToYmd(stageEffDate, 5);
+          const recommendedRangeText = `권장기간 ${toDotMd(stageEffDate) || '10.11'} ~ ${
+            toDotMd(recRangeEndYmd) || '10.16'
+          }`;
+
+          const taskSummaryDesc =
+            String(
+              liveStageItem.work_content ||
+                liveStageItem.work_description ||
+                '결구 촉진과 결구 충실도를 높이기 위한 웃거름'
+            )
+              .split('\n')[0]
+              .trim() || '결구 촉진과 결구 충실도를 높이기 위한 웃거름';
+
+          const areaPyeong = Number(
+            provisionData?.activeRequest?.area_pyeong || detailCrop.area_pyeong || 500
+          );
+          const minKg = Math.max(5, Math.round(areaPyeong * 0.066));
+          const maxKg = Math.max(10, Math.round(areaPyeong * 0.1));
+          const recKg = Math.max(5, Math.round(areaPyeong * 0.08));
+
+          const topMat = [...(liveStageItem.materials || [])].sort(
+            (a: any, b: any) => Number(b?.match_score || 0) - Number(a?.match_score || 0)
+          )[0];
+          const prodDisp = topMat
+            ? parseStageRecommendedProductDisplay(topMat)
+            : {
+                cleanTitle: `${stagePhaseLabel}용 복합비료`,
+                formulaLine: '(N-P-K 13-5-18)',
+                categoryTag: '맞춤 비료',
+              };
+          const productTitle = prodDisp.cleanTitle || `${stagePhaseLabel}용 복합비료`;
+          const productFormula = prodDisp.formulaLine
+            ? prodDisp.formulaLine.startsWith('(')
+              ? prodDisp.formulaLine
+              : `(${prodDisp.formulaLine})`
+            : '(N-P-K 13-5-18)';
+          const productThumbUrl = topMat
+            ? resolveAgroProductThumbUrl(topMat)
+            : '/images/products/fertilizer-npk-21.jpg';
+
+          const purchasedInfo = topMat
+            ? getPurchasedStageProductInfo(detailReqNo, liveStageItem, topMat)
+            : { isPurchased: true, totalQty: 2 };
+          const bagCount = Math.max(1, purchasedInfo?.totalQty || Math.ceil(recKg / 25) || 2);
+          const totalBagKg = bagCount * 25;
+          const purchaseYmd = addDaysToYmd(stageEffDate, -2);
+
+          const effectiveActualDate =
+            taskDetailActualDate && /^\d{4}-\d{2}-\d{2}$/.test(taskDetailActualDate)
+              ? taskDetailActualDate
+              : stageEffDate;
+
+          const handleSaveTaskCompletionDetail = () => {
+            const finalYmd = effectiveActualDate || stageEffDate;
+            const draftKey = `${detailReqNo}__${targetStageId}`;
+            setInlineStageDateDrafts((prev) => ({
+              ...prev,
+              [draftKey]: finalYmd,
+            }));
+            handleSaveStageCompleted(detailReqNo, liveStageItem, {
+              explicitDate: finalYmd,
+            });
+
+            // 작업 완료 기록을 영농 작업기록(cropWorkLogs)에도 자동 저장 및 동기화
+            const newLogEntry = {
+              id: `WLOG-${Date.now()}`,
+              workDate: finalYmd,
+              stageLabel: stagePhaseLabel,
+              taskTitle: `${stageCleanName}${
+                taskDetailActualAmount ? ` (${taskDetailActualAmount}kg)` : ''
+              }`,
+              memo: [
+                taskDetailMemo.trim(),
+                taskDetailPhotoName ? `[첨부사진: ${taskDetailPhotoName}]` : '',
+              ]
+                .filter(Boolean)
+                .join(' '),
+              createdAt: new Date().toISOString(),
+            };
+            setCropWorkLogs((prev) => {
+              const prevList = Array.isArray(prev[detailReqNo]) ? prev[detailReqNo] : [];
+              const next = {
+                ...prev,
+                [detailReqNo]: [newLogEntry, ...prevList],
+              };
+              try {
+                localStorage.setItem('hanfarm_crop_work_logs_v1', JSON.stringify(next));
+              } catch {
+                // ignore
+              }
+              fetch('/api/client-sync-state', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email: loggedInUser.email || 'CloudBae@naver.com',
+                  state_key: 'crop_work_logs_v1',
+                  state_value: next,
+                }),
+              }).catch(() => {});
+              return next;
+            });
+
+            setMyPageStageDetailItem(null);
+          };
+
+          return (
+            <div className="fixed inset-0 z-[65] bg-slate-900/45 backdrop-blur-[1px] flex items-center justify-center p-2 sm:p-4">
+              <div className="pointer-events-auto w-full max-w-lg max-h-[92vh] flex flex-col rounded-[26px] border border-slate-200 bg-[#F7F9F7] shadow-2xl overflow-hidden select-none">
+                {/* 1. 상단 바: [←] [한팜 FarmPlan] [✕] */}
+                <div className="bg-white px-4 py-3 border-b border-[#E5E7EB] flex items-center justify-between shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setMyPageStageDetailItem(null)}
+                    aria-label="뒤로가기"
+                    className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111827] cursor-pointer"
+                  >
+                    <ArrowLeft className="w-5 h-5 stroke-[2.3]" />
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-[9px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs">
+                      <Sprout className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em]">
+                        한팜
+                      </span>
+                      <span className="text-[15px] font-extrabold text-[#111827] tracking-[-0.02em]">
+                        FarmPlan
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMyPageStageDetailItem(null)}
+                    aria-label="닫기"
+                    className="w-9 h-9 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#4B5563] cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* 본문 스크롤 영역 */}
+                <div className="flex-1 overflow-y-auto px-4 py-3.5 space-y-3">
+                  {/* 2. 페이지 타이틀: 농작업 상세 */}
+                  <h2 className="text-[22px] font-black text-[#111827] tracking-[-0.03em] px-0.5">
+                    농작업 상세
+                  </h2>
+
+                  {/* 3. 상단 작물 & 농작업 요약 카드 */}
+                  <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-[54px] h-[54px] rounded-[13px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80">
+                        <img
+                          src={cropThumbUrl}
+                          alt={shortCropName}
+                          className="w-full h-full object-cover block"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        {/* 첫 줄: 배추 | 결구기 + 우측 권장기간 배지 */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em]">
+                              {shortCropName}
                             </span>
-                            <span className="px-2 py-0.5 rounded bg-white text-emerald-800 border border-emerald-200 text-xs font-mono font-extrabold">
-                              PGDD {liveStageItem.target_pgdd ?? 0}℃
+                            <span className="text-slate-300 font-normal">|</span>
+                            <span className="text-[15.5px] font-semibold text-[#374151] tracking-[-0.02em]">
+                              {stagePhaseLabel}
                             </span>
                           </div>
-                          <div className="text-xs font-extrabold text-slate-700 truncate">
-                            {modalDisplayReqNo} · {modalCrop.crop_title} &gt; {stageCleanName}
-                          </div>
+                          <span className="px-2.5 py-1 rounded-full bg-[#E8F6EC] text-[#15803D] text-[12px] font-extrabold tracking-[-0.02em] whitespace-nowrap">
+                            {recommendedRangeText}
+                          </span>
+                        </div>
 
-                          <button
-                            type="button"
-                            onClick={() => setMyPageStageDetailItem(null)}
-                            className="absolute top-3.5 right-3.5 z-20 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                        {/* 둘째 줄: 비료포대 아이콘 + 작업명(예: 추비 2차) */}
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <svg
+                            viewBox="0 0 24 24"
+                            className="w-6 h-6 text-[#15803D] shrink-0"
+                            fill="none"
                           >
-                            <X className="w-4 h-4" />
-                            <span>닫기</span>
-                          </button>
+                            <path
+                              d="M6.5 4.5H17.5L16.2 7.5H7.8L6.5 4.5Z"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinejoin="round"
+                            />
+                            <rect
+                              x="6"
+                              y="7.5"
+                              width="12"
+                              height="12"
+                              rx="2"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                            />
+                            <path
+                              d="M12 16V11.5M12 13.5C12 11.8 10.5 10.8 9 10.8C9 12.5 10.5 13.5 12 13.5ZM12 13C12 11.3 13.5 10.3 15 10.3C15 12 13.5 13 12 13Z"
+                              stroke="currentColor"
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                            {stageCleanName}
+                          </span>
                         </div>
 
-                        {/* 작업 세부정보 모달리스 폼 본문 */}
-                        <div className="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
-                          {/* 1. 선택 공정명 및 생육관리 일자 · 작업완료 인증 */}
-                          <div className="rounded-2xl bg-[#E9F7F1] border border-emerald-200 p-3.5 space-y-2.5">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <span className="text-[16px] font-black text-emerald-950 leading-snug break-keep">
-                                {stageCleanName}
-                                {renderStageInlineStatusText(modalReqNo, liveStageItem, {
-                                  explicitDate: stageEffDate,
-                                })}
-                              </span>
-                              <span className="px-2 py-0.5 rounded bg-white border border-emerald-200 font-mono font-bold text-emerald-800 text-xs">
-                                {liveStageItem.process_code || targetStageId}
-                              </span>
-                            </div>
-
-                            <div className="rounded-xl bg-white/95 border border-emerald-300 p-3 space-y-2">
-                              <div className="flex items-center justify-between gap-2 flex-wrap">
-                                <span className="text-xs font-extrabold text-emerald-900">
-                                  📅 생육관리 일자 &amp; 작업완료 인증
-                                </span>
-                                <span className="font-mono font-extrabold text-xs text-emerald-800 whitespace-nowrap">
-                                  {formatYmdWithWeekday(stageEffDate)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 flex-nowrap">
-                                <input
-                                  type="date"
-                                  value={stageEffDate}
-                                  onChange={(e) => {
-                                    const newYmd = e.target.value;
-                                    const draftKey = `${modalReqNo}__${targetStageId}`;
-                                    setInlineStageDateDrafts((prev) => ({
-                                      ...prev,
-                                      [draftKey]: newYmd,
-                                    }));
-                                    setEditDetailForm((prev: any) => ({
-                                      ...(prev || liveStageItem),
-                                      start_date: newYmd,
-                                    }));
-                                  }}
-                                  className="px-3 py-1.5 rounded-xl border border-emerald-300 bg-white font-mono font-extrabold text-xs text-slate-900"
-                                />
-                                {renderStageCompletionButton(modalReqNo, liveStageItem, {
-                                  explicitDate: stageEffDate,
-                                })}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 2. 생육과정 핵심 작업내용 & 기후 분석 · 영농 가이드 */}
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-3">
-                            <div className="space-y-1.5">
-                              <div className="text-xs font-extrabold text-slate-900">
-                                ① 생육과정 핵심 작업내용
-                              </div>
-                              <div className="text-[14px] font-semibold text-slate-800 bg-white rounded-xl p-3 border border-slate-200 leading-relaxed whitespace-pre-line">
-                                {liveStageItem.work_content ||
-                                  liveStageItem.work_description ||
-                                  '생육상태 및 기온을 확인하여 적기 작업을 진행합니다.'}
-                              </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <div className="text-xs font-extrabold text-slate-900">
-                                ② 추천 진행일 재배지 기후 대입 분석
-                              </div>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="rounded-xl bg-white border border-slate-200 p-2.5">
-                                  <div className="text-[11px] font-bold text-slate-500">
-                                    추천일 기온 (최저~최고 / 평균)
-                                  </div>
-                                  <div className="font-extrabold text-slate-900 mt-0.5">
-                                    {stageDayClimate.temp_min}~{stageDayClimate.temp_max}℃ (평균{' '}
-                                    <span className="text-emerald-700">
-                                      {stageDayClimate.temp_avg}℃
-                                    </span>
-                                    )
-                                  </div>
-                                </div>
-                                <div className="rounded-xl bg-white border border-slate-200 p-2.5">
-                                  <div className="text-[11px] font-bold text-slate-500">
-                                    평균습도 · 강수량
-                                  </div>
-                                  <div className="font-extrabold text-slate-900 mt-0.5">
-                                    습도 {stageDayClimate.humidity_avg}% · 강수{' '}
-                                    {stageDayClimate.precipitation_mm}mm
-                                  </div>
-                                </div>
-                              </div>
-                              {(liveStageItem.climate_rule ||
-                                liveStageItem.ai_analysis_reason) && (
-                                <div className="rounded-xl bg-sky-50 border border-sky-200 p-2.5 text-xs text-sky-950 font-semibold leading-relaxed">
-                                  🌦️{' '}
-                                  {liveStageItem.climate_rule ||
-                                    liveStageItem.ai_analysis_reason}
-                                </div>
-                              )}
-                            </div>
-
-                            {(liveStageItem.usage_tip || liveStageItem.action_tip) && (
-                              <div className="space-y-1.5">
-                                <div className="text-xs font-extrabold text-amber-950">
-                                  ③ 농자재 사용팁 및 영농 노하우
-                                </div>
-                                <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-2.5 text-xs text-slate-800 font-semibold leading-relaxed whitespace-pre-line">
-                                  {liveStageItem.usage_tip || liveStageItem.action_tip}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* 3. 해당 생육과정 맞춤 추천상품 (1종) */}
-                          {topMat &&
-                            (() => {
-                              const unitSpec = String(topMat.unit_spec || '1개');
-                              const unitMatch = unitSpec.match(/(포|병|봉|통|팩|판|박스|개|롤)/);
-                              const unitLabel =
-                                topMat.unit_label || (unitMatch ? unitMatch[1] : '개');
-                              const unitPrice = Number(topMat.unit_price || 15000);
-                              const recQty = getStageRecQty(
-                                modalReqNo,
-                                liveStageItem,
-                                topMat,
-                                defaultQty
-                              );
-                              const purchasedInfo = getPurchasedStageProductInfo(
-                                modalReqNo,
-                                liveStageItem,
-                                topMat
-                              );
-                              const prodDisp = parseStageRecommendedProductDisplay(topMat);
-
-                              return (
-                                <div className="rounded-2xl bg-white border-2 border-[#0FA968] overflow-hidden shadow-xs">
-                                  <div className="bg-[#E9F9F1] border-b border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
-                                    <label className="flex items-center gap-2 cursor-pointer select-none min-w-0 w-full">
-                                      <input
-                                        type="checkbox"
-                                        checked={isMatChecked}
-                                        onChange={() =>
-                                          handleToggleMaterialCheck(selKey, defaultQty)
-                                        }
-                                        className="w-5 h-5 rounded accent-emerald-600 cursor-pointer shrink-0"
-                                      />
-                                      <span className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap truncate">
-                                        해당 생육과정 맞춤 추천상품 (1종)
-                                      </span>
-                                      {purchasedInfo.isPurchased && (
-                                        <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10.5px] font-black whitespace-nowrap shrink-0">
-                                          <CheckCircle2 className="w-3 h-3" />
-                                          <span>
-                                            구매완료 ({purchasedInfo.totalQty}
-                                            {unitLabel})
-                                          </span>
-                                        </span>
-                                      )}
-                                    </label>
-                                  </div>
-
-                                  <div className="p-3 sm:p-3.5 space-y-2.5">
-                                    <div className="space-y-1">
-                                      <div className="flex items-center justify-between gap-1.5">
-                                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-bold truncate">
-                                          {prodDisp.categoryTag}
-                                        </span>
-                                        <span className="px-2.5 py-0.5 rounded-full bg-[#C7F3DE] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap shrink-0 ml-auto">
-                                          추천점수 {topMat.match_score || 96}점
-                                        </span>
-                                      </div>
-                                      <div className="w-full font-black text-[15.5px] sm:text-[16.5px] text-slate-950 leading-snug truncate">
-                                        {prodDisp.cleanTitle}
-                                      </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 pt-0.5">
-                                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl border border-slate-200 bg-white p-1.5 flex items-center justify-center shrink-0">
-                                        <img
-                                          src={resolveAgroProductThumbUrl(topMat)}
-                                          alt={topMat.product_name}
-                                          onError={handleAgroThumbImgError}
-                                          className="w-full h-full object-contain"
-                                        />
-                                      </div>
-                                      <div className="min-w-0 flex-1 flex flex-col justify-center space-y-1.5">
-                                        <div className="text-[12px] sm:text-[12.5px] font-semibold text-slate-600 leading-snug break-keep">
-                                          {prodDisp.formulaLine}
-                                        </div>
-                                        <div>
-                                          <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#D7F7E9] text-emerald-900 text-[11.5px] font-extrabold whitespace-nowrap">
-                                            {areaPyeong.toLocaleString()}평 권장 {defaultQty}
-                                            {unitLabel}
-                                          </span>
-                                        </div>
-                                        <div className="text-[14px] sm:text-[15px] font-black text-slate-950 whitespace-nowrap">
-                                          단가 {unitPrice.toLocaleString()}원
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    <div className="rounded-xl bg-[#EEF3F7] px-3 py-2 flex items-center justify-between gap-1.5 flex-wrap">
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        <span className="text-[12.5px] font-extrabold text-slate-900 whitespace-nowrap">
-                                          구매 수량
-                                        </span>
-                                        <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden shadow-2xs">
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleSetStageRecQty(
-                                                modalReqNo,
-                                                liveStageItem,
-                                                topMat,
-                                                defaultQty,
-                                                -1,
-                                                true
-                                              )
-                                            }
-                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
-                                          >
-                                            <Minus className="w-3 h-3" />
-                                          </button>
-                                          <input
-                                            type="number"
-                                            min={1}
-                                            max={99}
-                                            value={recQty}
-                                            onChange={(e) =>
-                                              handleSetStageRecQty(
-                                                modalReqNo,
-                                                liveStageItem,
-                                                topMat,
-                                                defaultQty,
-                                                Number(e.target.value) || 1,
-                                                false
-                                              )
-                                            }
-                                            className="w-9 h-7 text-center bg-white font-mono text-[13px] font-black text-slate-950 border-x border-slate-200 focus:outline-none"
-                                          />
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleSetStageRecQty(
-                                                modalReqNo,
-                                                liveStageItem,
-                                                topMat,
-                                                defaultQty,
-                                                1,
-                                                true
-                                              )
-                                            }
-                                            className="w-7 h-7 flex items-center justify-center text-slate-600 hover:bg-slate-100 cursor-pointer"
-                                          >
-                                            <Plus className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                      <span className="text-[13.5px] sm:text-[15px] font-black text-emerald-700 whitespace-nowrap ml-auto">
-                                        총액 {(unitPrice * recQty).toLocaleString()}원
-                                      </span>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleAddStageProductToCart({
-                                            cropObj: modalCrop,
-                                            stageItem: liveStageItem,
-                                            mat: topMat,
-                                            qty: recQty,
-                                          })
-                                        }
-                                        className="w-full py-2.5 px-2.5 rounded-xl border border-emerald-400 bg-white hover:bg-emerald-50 text-emerald-800 text-[13px] font-black shadow-2xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
-                                      >
-                                        <ShoppingCart className="w-4 h-4 shrink-0" />
-                                        <span>장바구니 담기</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handlePurchaseStageRecommendedProduct({
-                                            cropObj: modalCrop,
-                                            stageItem: liveStageItem,
-                                            mat: topMat,
-                                            qty: recQty,
-                                          })
-                                        }
-                                        className="w-full py-2.5 px-2.5 rounded-xl bg-[#009460] hover:bg-emerald-700 text-white text-[13px] font-black shadow-xs cursor-pointer inline-flex items-center justify-center gap-1.5 transition whitespace-nowrap"
-                                      >
-                                        <ShoppingBag className="w-4 h-4 shrink-0" />
-                                        <span>
-                                          {purchasedInfo.isPurchased
-                                            ? `추가 구매 (${recQty}${unitLabel})`
-                                            : `제품 구매 (${recQty}${unitLabel})`}
-                                        </span>
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                        </div>
-
-                        {/* 작업 세부정보 모달리스 폼 하단 닫기 바 */}
-                        <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setMyPageStageDetailItem(null)}
-                            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm cursor-pointer transition"
-                          >
-                            작업 세부정보 창 닫기
-                          </button>
-                        </div>
+                        {/* 셋째 줄: 작업 요약 설명 */}
+                        <p className="text-[13px] font-medium text-[#4B5563] tracking-[-0.02em] leading-snug break-keep">
+                          {taskSummaryDesc}
+                        </p>
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+
+                  {/* 4. 작업일 카드 (예정일 + [작업일 변경 >]) */}
+                  <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-[#15803D] stroke-[2.1]" />
+                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                        작업일
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pl-1">
+                      <div className="flex items-center gap-3 text-[15px] tracking-[-0.02em]">
+                        <span className="font-bold text-[#374151]">예정일</span>
+                        <span className="font-black text-[#111827]">
+                          {formatKoreanMonthDayWeekday(stageEffDate)}
+                        </span>
+                      </div>
+
+                      <label className="relative px-3.5 py-1.5 rounded-full border border-[#D1D5DB] bg-white hover:bg-slate-50 text-[#374151] text-[12.5px] font-bold inline-flex items-center gap-1 cursor-pointer transition shadow-2xs">
+                        <span>작업일 변경</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-[#6B7280]" />
+                        <input
+                          type="date"
+                          value={stageEffDate}
+                          onChange={(e) => {
+                            const newYmd = e.target.value;
+                            if (!newYmd) return;
+                            const draftKey = `${detailReqNo}__${targetStageId}`;
+                            setInlineStageDateDrafts((prev) => ({
+                              ...prev,
+                              [draftKey]: newYmd,
+                            }));
+                            setTaskDetailActualDate(newYmd);
+                          }}
+                          onClick={(e) => {
+                            try {
+                              (e.currentTarget as any).showPicker?.();
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* 5. 농자재 구매 완료 카드 */}
+                  <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 px-0.5">
+                      <span className="w-6 h-6 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
+                        <Check className="w-3.5 h-3.5 stroke-[2.8]" />
+                      </span>
+                      <span className="text-[16px] font-black text-[#15803D] tracking-[-0.03em]">
+                        농자재 구매 완료
+                      </span>
+                    </div>
+
+                    <div className="rounded-[16px] bg-white border border-[#E2EFE6] p-3 flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-[46px] h-[54px] rounded-lg border border-slate-200/80 bg-slate-50 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                          <img
+                            src={productThumbUrl}
+                            alt={productTitle}
+                            onError={handleAgroThumbImgError}
+                            className="w-full h-full object-contain block"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[14.5px] font-black text-[#111827] tracking-[-0.02em] leading-tight truncate">
+                            {productTitle}
+                          </div>
+                          <div className="text-[12.5px] font-semibold text-[#374151] tracking-[-0.02em] mt-0.5 truncate">
+                            {productFormula}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <div className="text-[12px] space-y-1 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#6B7280] font-semibold">구매일</span>
+                            <span className="font-bold text-[#111827]">
+                              {formatKoreanMonthDayWeekday(purchaseYmd)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#6B7280] font-semibold">수량</span>
+                            <span className="font-bold text-[#111827]">
+                              25kg × {bagCount}포 (총 {totalBagKg}kg)
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="w-7 h-7 rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0">
+                          <Check className="w-4 h-4 stroke-[2.6]" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. 사용방법 카드 */}
+                  <div className="bg-white rounded-[20px] border border-[#E5E7EB] p-4 shadow-2xs space-y-3">
+                    <div className="flex items-center gap-2">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-5 h-5 text-[#15803D] shrink-0"
+                        fill="none"
+                      >
+                        <path
+                          d="M12 6.5C10.2 5.2 7.5 4.8 4.5 5.2V18.2C7.5 17.8 10.2 18.2 12 19.5M12 6.5C13.8 5.2 16.5 4.8 19.5 5.2V18.2C16.5 17.8 13.8 18.2 12 19.5M12 6.5V19.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                        사용방법
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 pl-0.5 text-[13.5px]">
+                      {[
+                        {
+                          num: 1,
+                          title: '사용량',
+                          desc: `우리 농장(${areaPyeong.toLocaleString()}평) 기준 ${minKg}~${maxKg}kg (권장 ${recKg}kg)`,
+                        },
+                        {
+                          num: 2,
+                          title: '시비방법',
+                          desc: '포기 사이에 고르게 뿌린 후 가볍게 흙을 덮고 관수',
+                        },
+                        {
+                          num: 3,
+                          title: '시비 시기',
+                          desc: '맑은 날, 토양이 너무 건조하지 않을 때',
+                        },
+                      ].map((row) => (
+                        <div key={row.num} className="flex items-start gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-[#22A04A] text-white text-[11.5px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">
+                            {row.num}
+                          </span>
+                          <span className="w-[58px] font-black text-[#111827] shrink-0 tracking-[-0.02em]">
+                            {row.title}
+                          </span>
+                          <span className="font-medium text-[#374151] tracking-[-0.02em] leading-snug break-keep">
+                            {row.desc}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 7. 작업 완료 기록 카드 */}
+                  <div className="rounded-[20px] bg-[#ECF7EE] border border-[#CFE8D5] p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-5 h-5 text-[#15803D] shrink-0"
+                        fill="none"
+                      >
+                        <rect
+                          x="3.5"
+                          y="4.5"
+                          width="17"
+                          height="16"
+                          rx="2.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M8 2.8V6M16 2.8V6M3.5 9H20.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                        <path
+                          d="M8.8 14.5L11.1 16.8L15.5 12.2"
+                          stroke="currentColor"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em]">
+                        작업 완료 기록
+                      </span>
+                    </div>
+
+                    <div className="flex items-stretch gap-2.5">
+                      {/* 좌측: 실제 작업일 + 실제 사용량 + 작업 메모 */}
+                      <div className="flex-1 min-w-0 space-y-2.5">
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
+                              실제 작업일
+                            </span>
+                            <label className="relative h-[38px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#111827] cursor-pointer hover:border-[#15803D] transition">
+                              <Calendar className="w-3.5 h-3.5 text-[#374151] shrink-0" />
+                              <span className="whitespace-nowrap">
+                                {formatKoreanMonthDayWeekday(effectiveActualDate)}
+                              </span>
+                              <ChevronDown className="w-3.5 h-3.5 text-[#6B7280] shrink-0" />
+                              <input
+                                type="date"
+                                value={effectiveActualDate}
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    setTaskDetailActualDate(e.target.value);
+                                  }
+                                }}
+                                onClick={(e) => {
+                                  try {
+                                    (e.currentTarget as any).showPicker?.();
+                                  } catch {
+                                    // ignore
+                                  }
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                            </label>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[13px] font-extrabold text-[#111827] whitespace-nowrap">
+                              실제 사용량
+                            </span>
+                            <div className="h-[38px] w-[72px] px-2.5 rounded-xl border border-[#CBD5E1] bg-white inline-flex items-center justify-end gap-1">
+                              <input
+                                type="text"
+                                value={taskDetailActualAmount}
+                                onChange={(e) => setTaskDetailActualAmount(e.target.value)}
+                                className="w-full text-right font-extrabold text-[13.5px] text-[#111827] bg-transparent focus:outline-none"
+                              />
+                              <span className="text-[12.5px] font-bold text-[#374151] shrink-0">
+                                kg
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 작업 메모 입력란 */}
+                        <div className="h-[44px] w-full px-3 rounded-xl border border-[#CBD5E1] bg-white flex items-center gap-2">
+                          <FileEdit className="w-4 h-4 text-[#6B7280] shrink-0" />
+                          <input
+                            type="text"
+                            value={taskDetailMemo}
+                            onChange={(e) => setTaskDetailMemo(e.target.value)}
+                            placeholder="작업 메모 (선택)"
+                            className="w-full text-[13.5px] font-medium text-[#111827] placeholder:text-[#6B7280] bg-transparent focus:outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 우측: 작업 사진 추가 박스 */}
+                      <label className="w-[82px] shrink-0 rounded-2xl border border-dashed border-[#9AC8A9] bg-white/95 hover:bg-white flex flex-col items-center justify-center p-2 text-center cursor-pointer transition relative overflow-hidden">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="w-6 h-6 text-[#15803D] shrink-0"
+                          fill="none"
+                        >
+                          <path
+                            d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
+                            stroke="currentColor"
+                            strokeWidth="1.9"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx="12"
+                            cy="13"
+                            r="3.2"
+                            stroke="currentColor"
+                            strokeWidth="1.9"
+                          />
+                        </svg>
+                        <span className="mt-1 text-[11.5px] font-bold text-[#15803D] leading-[1.2] break-keep">
+                          {taskDetailPhotoName ? '사진 첨부됨' : '작업 사진\n추가'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) setTaskDetailPhotoName(f.name);
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* 8. 하단 [< 이전] & [✓ 작업 완료 저장] 버튼 */}
+                  <div className="pt-1 pb-2 flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setMyPageStageDetailItem(null)}
+                      className="w-[112px] h-[52px] rounded-full border-[1.5px] border-[#9CA3AF] bg-white hover:bg-slate-50 text-[#111827] font-extrabold text-[15.5px] flex items-center justify-center gap-1 shrink-0 cursor-pointer transition"
+                    >
+                      <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                      <span>이전</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveTaskCompletionDetail}
+                      className="flex-1 h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[16.5px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                    >
+                      <Check className="w-5 h-5 stroke-[2.6]" />
+                      <span>작업 완료 저장</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })()}
