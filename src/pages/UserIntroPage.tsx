@@ -25344,10 +25344,13 @@ export default function UserIntroPage() {
           };
 
           const togglePhaseExpanded = (pIdx: number) => {
-            setFullScheduleOpenStepMap((prev) => ({
-              ...prev,
-              [pIdx]: !isPhaseExpanded(pIdx),
-            }));
+            const nextOpen = !isPhaseExpanded(pIdx);
+            setFullScheduleOpenStepMap({
+              0: pIdx === 0 ? nextOpen : false,
+              1: pIdx === 1 ? nextOpen : false,
+              2: pIdx === 2 ? nextOpen : false,
+              3: pIdx === 3 ? nextOpen : false,
+            });
           };
 
           const openStageRecommendedBuyModal = (entry: any) => {
