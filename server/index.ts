@@ -341,17 +341,18 @@ function resolveCultivationAddressFromInput(input: {
   eupmyeondong: string;
   full_address: string;
 } {
+  let sido = String(input.sido || '').trim();
+  let sigungu = String(input.sigungu || '').trim();
+  let eupmyeondong = String(input.eupmyeondong || '').trim();
   const bjdTrimmed = String(input.bjd_code || '').trim();
-  if (bjdTrimmed) {
+
+  // 시/도, 시/군/구, 읍/면/동이 명시적으로 전달되지 않았을 때만 bjd_code로 주소 역조회
+  if (bjdTrimmed && !sido && !sigungu && !eupmyeondong) {
     const byBjd = db
       .prepare('SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE bjd_code = ? LIMIT 1')
       .get(bjdTrimmed) as any;
     if (byBjd) return byBjd;
   }
-
-  let sido = String(input.sido || '').trim();
-  let sigungu = String(input.sigungu || '').trim();
-  let eupmyeondong = String(input.eupmyeondong || '').trim();
 
   // road_address 문자열(예: "서울시 강동구 둔촌동", "경기도 고양시 일산로 488", "경기도 고양시 일산서구 일산로 488 (일산동)")에서 시도/시군구/읍면동 추출
   const roadText = String(input.road_address || '').trim();
@@ -406,24 +407,32 @@ function resolveCultivationAddressFromInput(input: {
       'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? AND sigungu LIKE ? AND eupmyeondong LIKE ? LIMIT 1'
     )
     .get(normSido, `%${normSigungu}%`, `%${normDong}%`) as any;
-  if (fuzzyDong) return fuzzyDong;
+  if (fuzzyDong) {
+    return {
+      bjd_code: fuzzyDong.bjd_code || bjdTrimmed || '4313010700',
+      sido: normSido,
+      sigungu: normSigungu,
+      eupmyeondong: normDong,
+      full_address: `${normSido} ${normSigungu} ${normDong}`,
+    };
+  }
 
   const bySigungu = db
     .prepare(
-      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? AND sigungu LIKE ? ORDER BY address_id ASC LIMIT 1'
+      'SELECT bjd_code FROM cultivation_address WHERE sido = ? AND sigungu LIKE ? ORDER BY address_id ASC LIMIT 1'
     )
     .get(normSido, `%${normSigungu}%`) as any;
-  if (bySigungu) return bySigungu;
 
-  const bySido = db
-    .prepare(
-      'SELECT bjd_code, sido, sigungu, eupmyeondong, full_address FROM cultivation_address WHERE sido = ? ORDER BY address_id ASC LIMIT 1'
-    )
-    .get(normSido) as any;
-  if (bySido) return bySido;
+  const bySido = !bySigungu
+    ? (db
+        .prepare(
+          'SELECT bjd_code FROM cultivation_address WHERE sido = ? ORDER BY address_id ASC LIMIT 1'
+        )
+        .get(normSido) as any)
+    : null;
 
   return {
-    bjd_code: bjdTrimmed || '4313010700',
+    bjd_code: bjdTrimmed || bySigungu?.bjd_code || bySido?.bjd_code || '4313010700',
     sido: normSido,
     sigungu: normSigungu,
     eupmyeondong: normDong,
@@ -9957,7 +9966,7 @@ const server = http.createServer(async (req, res) => {
         .all(member.email) as any[];
       const rawCropPlans = db
         .prepare(
-          'SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC, crop_plan_id ASC'
+          'SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?) ORDER BY created_at DESC, crop_plan_id DESC'
         )
         .all(member.email) as any[];
       const seenReqNos = new Set<string>();

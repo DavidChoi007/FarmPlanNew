@@ -1579,8 +1579,8 @@ export default function UserIntroPage() {
 
   const rawCombinedCropList = [
     ...localAddedCropRequests,
-    ...baseCropList,
     ...requestListFromSaved,
+    ...baseCropList,
   ];
   const seenScheduleReqKeys = new Set<string>();
   const currentActiveEmailLower = String(loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
@@ -2686,7 +2686,7 @@ export default function UserIntroPage() {
     }
     if (Array.isArray(res.farmlands)) {
       setMyFarmlands(res.farmlands);
-      if (res.farmlands.length > 0) {
+      if (markLoggedIn && res.farmlands.length > 0) {
         const primaryLand = res.farmlands[0];
         setReqForm((prev) => ({
           ...prev,
@@ -15328,87 +15328,101 @@ export default function UserIntroPage() {
                             </button>
                           </div>
 
-                          {/* 주소 클릭 시 펼쳐지는 시/도 · 시/군/구 · 읍/면/동 선택 패널 */}
-                          {isMobileAddrPickerOpen && (
-                            <div className="rounded-xl bg-[#F4F8F5] border border-[#CFE3D5] p-3 space-y-2">
-                              <div className="grid grid-cols-3 gap-1.5 text-xs">
-                                <select
-                                  value={reqForm.sido}
-                                  onChange={(e) => {
-                                    const nextSido = e.target.value;
-                                    const nextSigungu =
-                                      Object.keys(KOREA_ADMIN_TREE[nextSido] || {})[0] ||
-                                      '충주시';
-                                    const nextDong =
-                                      (KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [])[0] ||
-                                      '단월동';
-                                    setReqForm((prev) => ({
-                                      ...prev,
-                                      sido: nextSido,
-                                      sigungu: nextSigungu,
-                                      eupmyeondong: nextDong,
-                                    }));
-                                  }}
-                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
-                                >
-                                  {Object.keys(KOREA_ADMIN_TREE).map((s) => (
-                                    <option key={s} value={s}>
-                                      {s}
+                          {/* 주소 선택 및 신규 재배지 직접 입력 패널 (항상 시/도 · 시/군/구 · 읍/면/동 및 상세주소 수정 가능) */}
+                          <div className="rounded-xl bg-[#F4F8F5] border border-[#CFE3D5] p-3 space-y-2">
+                            <div className="grid grid-cols-3 gap-1.5 text-xs">
+                              <select
+                                value={reqForm.sido}
+                                onChange={(e) => {
+                                  const nextSido = e.target.value;
+                                  const nextSigungu =
+                                    Object.keys(KOREA_ADMIN_TREE[nextSido] || {})[0] ||
+                                    '충주시';
+                                  const nextDong =
+                                    (KOREA_ADMIN_TREE[nextSido]?.[nextSigungu] || [])[0] ||
+                                    '단월동';
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    farmland_id: '',
+                                    sido: nextSido,
+                                    sigungu: nextSigungu,
+                                    eupmyeondong: nextDong,
+                                  }));
+                                }}
+                                className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                              >
+                                {Object.keys(KOREA_ADMIN_TREE).map((s) => (
+                                  <option key={s} value={s}>
+                                    {s}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                value={reqForm.sigungu}
+                                onChange={(e) => {
+                                  const nextSg = e.target.value;
+                                  const nextDong =
+                                    (KOREA_ADMIN_TREE[reqForm.sido]?.[nextSg] || [])[0] ||
+                                    '단월동';
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    farmland_id: '',
+                                    sigungu: nextSg,
+                                    eupmyeondong: nextDong,
+                                  }));
+                                }}
+                                className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                              >
+                                {Object.keys(KOREA_ADMIN_TREE[reqForm.sido] || {}).map(
+                                  (sg) => (
+                                    <option key={sg} value={sg}>
+                                      {sg}
+                                    </option>
+                                  )
+                                )}
+                              </select>
+                              <select
+                                value={reqForm.eupmyeondong}
+                                onChange={(e) => {
+                                  setReqForm((prev) => ({
+                                    ...prev,
+                                    farmland_id: '',
+                                    eupmyeondong: e.target.value,
+                                  }));
+                                  setIsMobileAddrPickerOpen(false);
+                                }}
+                                className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
+                              >
+                                {Array.from(
+                                  new Set([
+                                    ...(KOREA_ADMIN_TREE[reqForm.sido]?.[
+                                      reqForm.sigungu
+                                    ] || []),
+                                    reqForm.eupmyeondong,
+                                  ])
+                                )
+                                  .filter(Boolean)
+                                  .map((d) => (
+                                    <option key={d} value={d}>
+                                      {d}
                                     </option>
                                   ))}
-                                </select>
-                                <select
-                                  value={reqForm.sigungu}
-                                  onChange={(e) => {
-                                    const nextSg = e.target.value;
-                                    const nextDong =
-                                      (KOREA_ADMIN_TREE[reqForm.sido]?.[nextSg] || [])[0] ||
-                                      '단월동';
-                                    setReqForm((prev) => ({
-                                      ...prev,
-                                      sigungu: nextSg,
-                                      eupmyeondong: nextDong,
-                                    }));
-                                  }}
-                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
-                                >
-                                  {Object.keys(KOREA_ADMIN_TREE[reqForm.sido] || {}).map(
-                                    (sg) => (
-                                      <option key={sg} value={sg}>
-                                        {sg}
-                                      </option>
-                                    )
-                                  )}
-                                </select>
-                                <select
-                                  value={reqForm.eupmyeondong}
-                                  onChange={(e) => {
-                                    setReqForm((prev) => ({
-                                      ...prev,
-                                      eupmyeondong: e.target.value,
-                                    }));
-                                    setIsMobileAddrPickerOpen(false);
-                                  }}
-                                  className="px-2 py-2 rounded-lg border border-slate-300 bg-white font-bold text-slate-900"
-                                >
-                                  {Array.from(
-                                    new Set([
-                                      ...(KOREA_ADMIN_TREE[reqForm.sido]?.[
-                                        reqForm.sigungu
-                                      ] || []),
-                                      reqForm.eupmyeondong,
-                                    ])
-                                  )
-                                    .filter(Boolean)
-                                    .map((d) => (
-                                      <option key={d} value={d}>
-                                        {d}
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
+                              </select>
                             </div>
-                          )}
+                            <input
+                              type="text"
+                              value={reqForm.detail_address}
+                              onChange={(e) =>
+                                setReqForm((prev) => ({
+                                  ...prev,
+                                  farmland_id: '',
+                                  detail_address: e.target.value,
+                                }))
+                              }
+                              placeholder="상세주소 입력 (예: 691-7, 산15-2, 하우스 1동)"
+                              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400"
+                            />
+                          </div>
                         </div>
 
                         {/* 5) 재배 시작일 (파종/정식일) * 카드 */}
