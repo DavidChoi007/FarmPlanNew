@@ -6651,9 +6651,7 @@ export default function UserIntroPage() {
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
         className={`${
-          activeMenu === '홈' ||
-          activeMenu === '재배일정 확인' ||
-          activeMenu === '재배일정 요청'
+          activeMenu === '홈'
             ? 'hidden lg:block'
             : 'block'
         } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
@@ -8882,120 +8880,9 @@ export default function UserIntroPage() {
                   : '정식';
 
               return (
-                <div
-                  className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none"
-                  style={{
-                    paddingTop: isLegacyAndroidWebView
-                      ? 'max(28px, env(safe-area-inset-top, 28px))'
-                      : 'env(safe-area-inset-top, 0px)',
-                  }}
-                >
-                  {/* 1. 상단 헤더: [한팜 재배관리] + 우측 [알림 벨(레드도트)] & [프로필 아이콘] */}
-                  <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMenu('홈')}
-                      className="flex items-center gap-2.5 text-left cursor-pointer"
-                    >
-                      <div className="w-[36px] h-[36px] rounded-[10px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_6px_rgba(14,113,47,0.22)] shrink-0">
-                        <svg viewBox="0 0 32 32" className="w-[23px] h-[23px]" fill="none">
-                          <path
-                            d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
-                            stroke="#FFFFFF"
-                            strokeWidth="2.1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
-                            stroke="#FFFFFF"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
-                            stroke="#FFFFFF"
-                            strokeWidth="2.1"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
-                            stroke="#FFFFFF"
-                            strokeWidth="1.7"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
-                            stroke="#FFFFFF"
-                            strokeWidth="2.1"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </div>
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-[23px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
-                          한팜
-                        </span>
-                        <span className="text-[20px] font-bold text-[#111827] tracking-[-0.03em] leading-none">
-                          재배관리
-                        </span>
-                      </div>
-                    </button>
-
-                    {/* 우측 알림 벨(레드 도트) + 프로필 아이콘 */}
-                    <div className="flex items-center gap-3.5">
-                      <button
-                        type="button"
-                        onClick={() => setIsMobileGnbDrawerOpen(true)}
-                        aria-label="알림 및 메뉴"
-                        className="relative w-8 h-8 flex items-center justify-center text-[#1F2937] cursor-pointer"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
-                          <path
-                            d="M18 8.5A6 6 0 006 8.5C6 15.5 3.5 17 3.5 17H20.5S18 15.5 18 8.5Z"
-                            stroke="#1F2937"
-                            strokeWidth="1.9"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M13.73 20.5A2 2 0 0110.27 20.5"
-                            stroke="#1F2937"
-                            strokeWidth="1.9"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#EF4444] ring-2 ring-[#F7F9F7]" />
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveMenu('마이페이지');
-                          setMyPageTab('FARMLAND');
-                        }}
-                        aria-label="마이페이지"
-                        className="w-8 h-8 flex items-center justify-center text-[#1F2937] cursor-pointer"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
-                          <circle cx="12" cy="8" r="4" stroke="#1F2937" strokeWidth="1.9" />
-                          <path
-                            d="M5 20C5 16.5 8.1 14 12 14C15.9 14 19 16.5 19 20"
-                            stroke="#1F2937"
-                            strokeWidth="1.9"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
-                  {renderMobileScheduleFolderTabs()}
-
+                <div className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none">
                   {/* 2. 회원 인사말 타이틀 */}
-                  <div className="px-4 pt-2 pb-3">
+                  <div className="px-4 pt-3.5 pb-3">
                     <h1 className="text-[23px] min-[390px]:text-[24.5px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
                       {greetingUserName}님, 안녕하세요!
                     </h1>
@@ -14838,98 +14725,9 @@ export default function UserIntroPage() {
 
               return (
                 <>
-                  <div
-                    className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none"
-                    style={{
-                      paddingTop: isLegacyAndroidWebView
-                        ? 'max(28px, env(safe-area-inset-top, 28px))'
-                        : 'env(safe-area-inset-top, 0px)',
-                    }}
-                  >
-                    {/* 1. 상단 공통 네비게이션 바 (좌측 ← 뒤로가기 + 중앙 한팜 로고) */}
-                    <div className="px-4 pt-3.5 pb-1 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (mobileReqStep === 3) {
-                            setMobileReqStep(2);
-                          } else if (mobileReqStep === 2) {
-                            setMobileReqStep(1);
-                          } else {
-                            setActiveMenu('재배일정 확인');
-                          }
-                        }}
-                        aria-label="이전 단계 또는 돌아가기"
-                        className="w-9 h-9 -ml-1 rounded-full hover:bg-slate-200/60 flex items-center justify-center text-[#111111] cursor-pointer transition shrink-0"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
-                          <path
-                            d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
-                            stroke="#111111"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-
-                      <div className="flex items-center gap-2">
-                        <div className="w-[34px] h-[34px] rounded-[10px] bg-[#0E712F] flex items-center justify-center shadow-[0_2px_6px_rgba(14,113,47,0.22)] shrink-0">
-                          <svg viewBox="0 0 32 32" className="w-[22px] h-[22px]" fill="none">
-                            <path
-                              d="M15.6 22.5V13.8C15.6 10.2 12.2 7.5 7.5 7.8C7.3 12.4 10.4 15.8 15.6 15.8"
-                              stroke="#FFFFFF"
-                              strokeWidth="2.1"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M11.2 11.4C12.8 12.4 14.3 13.9 15.4 15.6"
-                              stroke="#FFFFFF"
-                              strokeWidth="1.7"
-                              strokeLinecap="round"
-                            />
-                            <path
-                              d="M16 19.5C16 13.2 19.6 8.2 25.2 7.5C25.4 13.8 21.8 18.6 16 18.8"
-                              stroke="#FFFFFF"
-                              strokeWidth="2.1"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M21.4 11.5C19.6 13.3 17.8 15.6 16.2 18.2"
-                              stroke="#FFFFFF"
-                              strokeWidth="1.7"
-                              strokeLinecap="round"
-                            />
-                            <path
-                              d="M8.5 24.2C11.2 22.4 14.2 22.2 16.5 23.2C18.5 22.3 21.3 22.5 23.5 24.2"
-                              stroke="#FFFFFF"
-                              strokeWidth="2.1"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        </div>
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-[22px] font-black text-[#0E712F] tracking-[-0.03em] leading-none">
-                            한팜
-                          </span>
-                          {mobileReqStep >= 2 && (
-                            <span className="text-[19px] font-bold text-[#111111] tracking-[-0.02em] leading-none">
-                              FarmPlan
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="w-9 h-9 shrink-0" aria-hidden="true" />
-                    </div>
-
-                    {/* 모바일 전용: '재배일정 요청' / '재배일정 확인' 폴더 형태 탭 */}
-                    {renderMobileScheduleFolderTabs()}
-
+                  <div className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none">
                     {/* 2. 단계별 타이틀 & 서브타이틀 */}
-                    <div className="px-4 pt-1 pb-2 text-center">
+                    <div className="px-4 pt-3.5 pb-2 text-center">
                       <h1 className="text-[22px] min-[390px]:text-[24px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
                         {mobileReqStep === 1 && '작물 추가 (재배정보 입력)'}
                         {mobileReqStep === 2 && '작물 추가 (추가 재배조건 입력)'}
