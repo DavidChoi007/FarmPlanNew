@@ -2133,22 +2133,64 @@ export default function UserIntroPage() {
     }, 4000);
   };
 
-  const handleSubmitScheduleReqForm = async () => {
+  const handleSubmitScheduleReqForm = async (overrideParams?: {
+    land?: any;
+    targetCrop?: any;
+  }) => {
     if (isSubmittingScheduleReqRef.current) return;
     isSubmittingScheduleReqRef.current = true;
     try {
+      const activeLand = overrideParams?.land;
+      const activeTargetCrop =
+        overrideParams?.targetCrop !== undefined
+          ? overrideParams.targetCrop
+          : reRequestTargetCrop;
+
+      const effReqForm = {
+        ...reqForm,
+        ...(activeLand
+          ? {
+              farmland_id: activeLand.farmland_id || reqForm.farmland_id,
+              sido: activeLand.sido || reqForm.sido,
+              sigungu: activeLand.sigungu || reqForm.sigungu,
+              eupmyeondong: activeLand.eupmyeondong || reqForm.eupmyeondong,
+              detail_address:
+                activeLand.detail_jibun !== undefined
+                  ? activeLand.detail_jibun
+                  : reqForm.detail_address,
+              area_pyeong: Number(activeLand.area_pyeong || reqForm.area_pyeong || 300),
+              soil_ph: Number(activeLand.soil_ph || reqForm.soil_ph || 6.2),
+              soil_ec: Number(activeLand.soil_ec || reqForm.soil_ec || 1.1),
+            }
+          : {}),
+        ...(activeTargetCrop
+          ? {
+              group_id: activeTargetCrop.group_id || reqForm.group_id,
+              group_name: activeTargetCrop.group_name || reqForm.group_name,
+              crop_name: activeTargetCrop.crop_short || reqForm.crop_name,
+              cultivar_name: activeTargetCrop.cultivar_name || reqForm.cultivar_name,
+              planting_type: String(activeTargetCrop.planting_type || '').includes('씨')
+                ? '씨'
+                : '모종',
+              planting_date: activeTargetCrop.planting_date || reqForm.planting_date,
+              schedule_base_date:
+                activeTargetCrop.planting_date || reqForm.schedule_base_date,
+            }
+          : {}),
+      };
+
       const genModConfig = loadScheduleGenerationModuleFromStorage();
       const modFlags = getEnabledModuleFlags(genModConfig);
       const enabledRuleCount = genModConfig.items.filter((i) => i.category === 'RULE_LOGIC' && i.enabled).length;
       const enabledAiCount = genModConfig.items.filter((i) => i.category === 'AI_AGENT' && i.enabled).length;
 
       const isSeed =
-        reqForm.schedule_base_type === 'SOWING_DATE' ||
-        String(reqForm.planting_type || '').includes('씨');
+        effReqForm.schedule_base_type === 'SOWING_DATE' ||
+        String(effReqForm.planting_type || '').includes('씨');
       const rawDesiredDate =
-        reqForm.schedule_base_type !== 'OPTIMAL_AUTO' && reqForm.schedule_base_date
-          ? reqForm.schedule_base_date
-          : reqForm.planting_date || '2026-08-25';
+        effReqForm.schedule_base_type !== 'OPTIMAL_AUTO' && effReqForm.schedule_base_date
+          ? effReqForm.schedule_base_date
+          : effReqForm.planting_date || '2026-08-25';
       // 선택된 일정 생성 모듈(RULE-03 모종 최적온도 시작 / RULE-04 씨 발아온도 조기 시작 / AI-02 농작업 적기 탐색) 반영
       let startShiftDays = 0;
       if (isSeed && modFlags.seed_germination_early_start === false) {
@@ -2166,25 +2208,25 @@ export default function UserIntroPage() {
       if (modFlags.ai_multivariate_pgdd_model === false) baseSpanDays += 3;
 
       const pDate =
-        reqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && reqForm.schedule_base_date
-          ? addDaysToYmd(reqForm.schedule_base_date, -baseSpanDays)
+        effReqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && effReqForm.schedule_base_date
+          ? addDaysToYmd(effReqForm.schedule_base_date, -baseSpanDays)
           : addDaysToYmd(rawDesiredDate, startShiftDays);
       const wk = getWeekdayNameFromYmd(pDate);
       const dateDot = pDate.replace(/-/g, '.');
       const harvestYmd =
-        reqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && reqForm.schedule_base_date
-          ? reqForm.schedule_base_date
+        effReqForm.schedule_base_type === 'TARGET_HARVEST_DATE' && effReqForm.schedule_base_date
+          ? effReqForm.schedule_base_date
           : addDaysToYmd(pDate, baseSpanDays);
 
       // 재요청 모드인 경우 기존 요청번호(request_no)와 플랜ID(crop_plan_id)를 그대로 재사용하여 중복 생성 없이 일정을 재생성!
       let newReqDisplayNo = '';
       let newPlanId = '';
-      if (reRequestTargetCrop?.request_no) {
+      if (activeTargetCrop?.request_no) {
         newReqDisplayNo = String(
-          reRequestTargetCrop.request_no || reRequestTargetCrop.display_request_no
+          activeTargetCrop.request_no || activeTargetCrop.display_request_no
         ).trim();
         newPlanId = String(
-          reRequestTargetCrop.crop_plan_id || `CPLAN-${newReqDisplayNo}`
+          activeTargetCrop.crop_plan_id || `CPLAN-${newReqDisplayNo}`
         ).trim();
       } else {
         const nowReq = new Date();
@@ -2221,7 +2263,7 @@ export default function UserIntroPage() {
         newPlanId = `CPLAN-${newReqDisplayNo}`;
       }
 
-      // 재요청 시: 재배일정 확인 삭제 키(deletedConfirmedScheduleKeys)에서 제거하여 [재배일정 확인]에 즉시 복원
+      // 재요청 시: 재배일정 확인 삭제 키(deletedConfirmedScheduleKeys) 및 요청 삭제 키(deletedScheduleKeys)에서 제거하여 [재배일정 확인]에 즉시 복원
       const keysToRestore = [newReqDisplayNo, newPlanId].filter(Boolean);
       setDeletedConfirmedScheduleKeys((prev) => {
         if (!prev.some((k) => keysToRestore.includes(k))) return prev;
@@ -2242,17 +2284,36 @@ export default function UserIntroPage() {
         }).catch(() => {});
         return next;
       });
+      setDeletedScheduleKeys((prev) => {
+        if (!prev.some((k) => keysToRestore.includes(k))) return prev;
+        const next = prev.filter((k) => !keysToRestore.includes(k));
+        try {
+          localStorage.setItem('hanfarm_deleted_request_keys_v2', JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+        fetch('/api/client-sync-state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loggedInUser.email || 'CloudBae@naver.com',
+            state_key: 'deleted_request_keys_v2',
+            state_value: next,
+          }),
+        }).catch(() => {});
+        return next;
+      });
 
-      const detailTrimmed = String(reqForm.detail_address || '').trim();
-      const regionLabel = `${reqForm.sido} ${reqForm.sigungu} ${reqForm.eupmyeondong}${
+      const detailTrimmed = String(effReqForm.detail_address || '').trim();
+      const regionLabel = `${effReqForm.sido} ${effReqForm.sigungu} ${effReqForm.eupmyeondong}${
         detailTrimmed ? ` ${detailTrimmed}` : ''
       }`;
 
       const ownerEmail = loggedInUser.email || 'CloudBae@naver.com';
       const normalizedCropName =
-        reqForm.crop_name === '배추' ? '가을배추' : reqForm.crop_name || '가을배추';
+        effReqForm.crop_name === '배추' ? '가을배추' : effReqForm.crop_name || '가을배추';
       const cultMethodBadge =
-        reqForm.cultivation_type === '시설(하우스)'
+        effReqForm.cultivation_type === '시설(하우스)'
           ? isSeed
             ? '시설 직파(씨)'
             : '시설 정식(모종)'
@@ -2265,25 +2326,26 @@ export default function UserIntroPage() {
         display_request_no: newReqDisplayNo,
         email: ownerEmail,
         member_id: ownerEmail,
-        group_id: reqForm.group_id || 'GRP-LEAF',
-        group_name: reqForm.group_name || '엽채류 (잎채소)',
-        crop_title: `${normalizedCropName} (${reqForm.cultivar_name})`,
+        farmland_id: effReqForm.farmland_id || '',
+        group_id: effReqForm.group_id || 'GRP-LEAF',
+        group_name: effReqForm.group_name || '엽채류 (잎채소)',
+        crop_title: `${normalizedCropName} (${effReqForm.cultivar_name})`,
         crop_short: normalizedCropName,
-        cultivar_name: reqForm.cultivar_name,
+        cultivar_name: effReqForm.cultivar_name,
         badge: cultMethodBadge,
-        cultivation_type: reqForm.cultivation_type,
+        cultivation_type: effReqForm.cultivation_type,
         region: regionLabel,
-        sido: reqForm.sido,
-        sigungu: reqForm.sigungu,
-        eupmyeondong: reqForm.eupmyeondong,
+        sido: effReqForm.sido,
+        sigungu: effReqForm.sigungu,
+        eupmyeondong: effReqForm.eupmyeondong,
         detail_address: detailTrimmed,
-        area_pyeong: Number(reqForm.area_pyeong || 500),
-        area_unit: reqForm.area_unit || '평',
-        soil_condition: reqForm.soil_condition || '사양토',
-        irrigation_type: reqForm.irrigation_type || '점적관수',
-        facility_env: reqForm.facility_env || ['멀칭', '부직포'],
-        schedule_base_type: reqForm.schedule_base_type || 'OPTIMAL_AUTO',
-        schedule_base_date: reqForm.schedule_base_date || pDate,
+        area_pyeong: Number(effReqForm.area_pyeong || 500),
+        area_unit: effReqForm.area_unit || '평',
+        soil_condition: effReqForm.soil_condition || '사양토',
+        irrigation_type: effReqForm.irrigation_type || '점적관수',
+        facility_env: effReqForm.facility_env || ['멀칭', '부직포'],
+        schedule_base_type: effReqForm.schedule_base_type || 'OPTIMAL_AUTO',
+        schedule_base_date: effReqForm.schedule_base_date || pDate,
         planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
         planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
         planting_date: pDate,
@@ -2298,8 +2360,8 @@ export default function UserIntroPage() {
         opt_temp: '18~20℃ 적온',
         thumb_gradient: 'from-emerald-700 via-green-600 to-teal-800',
         requested_at: '2026-11-16',
-        soil_ph: reqForm.soil_ph,
-        soil_ec: reqForm.soil_ec,
+        soil_ph: effReqForm.soil_ph,
+        soil_ec: effReqForm.soil_ec,
       };
 
       setMyScheduleRequests((prev) => {
@@ -2333,15 +2395,16 @@ export default function UserIntroPage() {
 
       const matchedUserLand = myFarmlands.find(
         (f: any) =>
-          f.sido === reqForm.sido &&
-          f.sigungu === reqForm.sigungu &&
-          f.eupmyeondong === reqForm.eupmyeondong &&
-          (!detailTrimmed || String(f.detail_jibun || '').trim() === detailTrimmed)
+          (effReqForm.farmland_id && f.farmland_id === effReqForm.farmland_id) ||
+          (f.sido === effReqForm.sido &&
+            f.sigungu === effReqForm.sigungu &&
+            f.eupmyeondong === effReqForm.eupmyeondong &&
+            (!detailTrimmed || String(f.detail_jibun || '').trim() === detailTrimmed))
       );
       let resolvedFarmlandId = matchedUserLand?.farmland_id || '';
       if (!matchedUserLand) {
         const autoLandId = `LAND-${Date.now()}`;
-        const autoLandTitle = `${reqForm.sigungu} ${reqForm.eupmyeondong}${
+        const autoLandTitle = `${effReqForm.sigungu} ${effReqForm.eupmyeondong}${
           detailTrimmed ? ` (${detailTrimmed})` : ''
         } 농장`;
         const newFarmlandEntry = {
@@ -2349,13 +2412,13 @@ export default function UserIntroPage() {
           email: ownerEmail,
           farmland_title: autoLandTitle,
           bjd_code: '',
-          sido: reqForm.sido,
-          sigungu: reqForm.sigungu,
-          eupmyeondong: reqForm.eupmyeondong,
+          sido: effReqForm.sido,
+          sigungu: effReqForm.sigungu,
+          eupmyeondong: effReqForm.eupmyeondong,
           detail_jibun: detailTrimmed,
-          area_pyeong: Number(reqForm.area_pyeong || 500),
-          soil_ph: Number(reqForm.soil_ph || 6.3),
-          soil_ec: Number(reqForm.soil_ec || 1.1),
+          area_pyeong: Number(effReqForm.area_pyeong || 500),
+          soil_ph: Number(effReqForm.soil_ph || 6.3),
+          soil_ec: Number(effReqForm.soil_ec || 1.1),
         };
         setMyFarmlands((prev) => [newFarmlandEntry, ...prev]);
         resolvedFarmlandId = autoLandId;
@@ -2372,24 +2435,24 @@ export default function UserIntroPage() {
             member_id: ownerEmail,
             member_contact: loggedInUser.phone || '010-2026-0109',
             farmland_id: resolvedFarmlandId,
-            group_id: reqForm.group_id || 'GRP-LEAF',
-            group_name: reqForm.group_name || '엽채류 (잎채소)',
-            sido: reqForm.sido,
-            sigungu: reqForm.sigungu,
-            eupmyeondong: reqForm.eupmyeondong,
+            group_id: effReqForm.group_id || 'GRP-LEAF',
+            group_name: effReqForm.group_name || '엽채류 (잎채소)',
+            sido: effReqForm.sido,
+            sigungu: effReqForm.sigungu,
+            eupmyeondong: effReqForm.eupmyeondong,
             detail_address: detailTrimmed,
             crop_name: normalizedCropName,
-            item_name_3rd: reqForm.cultivar_name,
-            cultivation_type: reqForm.cultivation_type,
+            item_name_3rd: effReqForm.cultivar_name,
+            cultivation_type: effReqForm.cultivation_type,
             planting_method: cultMethodBadge,
-            area_pyeong: Number(reqForm.area_pyeong || 500),
-            area_unit: reqForm.area_unit || '평',
-            soil_condition: reqForm.soil_condition || '사양토',
-            irrigation_type: reqForm.irrigation_type || '점적관수',
-            facility_env: reqForm.facility_env || ['멀칭', '부직포'],
-            mulching_yn: (reqForm.facility_env || []).includes('멀칭') ? 1 : 0,
-            schedule_base_type: reqForm.schedule_base_type || 'OPTIMAL_AUTO',
-            schedule_base_date: reqForm.schedule_base_date || pDate,
+            area_pyeong: Number(effReqForm.area_pyeong || 500),
+            area_unit: effReqForm.area_unit || '평',
+            soil_condition: effReqForm.soil_condition || '사양토',
+            irrigation_type: effReqForm.irrigation_type || '점적관수',
+            facility_env: effReqForm.facility_env || ['멀칭', '부직포'],
+            mulching_yn: (effReqForm.facility_env || []).includes('멀칭') ? 1 : 0,
+            schedule_base_type: effReqForm.schedule_base_type || 'OPTIMAL_AUTO',
+            schedule_base_date: effReqForm.schedule_base_date || pDate,
             desired_start_date: pDate,
             expected_harvest_date: harvestYmd,
           }),
@@ -2407,16 +2470,16 @@ export default function UserIntroPage() {
             crop_plan_id: newPlanId,
             request_no: newReqDisplayNo,
             farmland_id: resolvedFarmlandId,
-            group_id: reqForm.group_id || 'GRP-LEAF',
-            group_name: reqForm.group_name || '엽채류 (잎채소)',
-            sido: reqForm.sido,
-            sigungu: reqForm.sigungu,
-            eupmyeondong: reqForm.eupmyeondong,
+            group_id: effReqForm.group_id || 'GRP-LEAF',
+            group_name: effReqForm.group_name || '엽채류 (잎채소)',
+            sido: effReqForm.sido,
+            sigungu: effReqForm.sigungu,
+            eupmyeondong: effReqForm.eupmyeondong,
             detail_address: detailTrimmed,
             crop_name: normalizedCropName,
-            cultivar_name: reqForm.cultivar_name,
-            planting_type: reqForm.planting_type,
-            area_pyeong: Number(reqForm.area_pyeong || 500),
+            cultivar_name: effReqForm.cultivar_name,
+            planting_type: effReqForm.planting_type,
+            area_pyeong: Number(effReqForm.area_pyeong || 500),
             planting_date: pDate,
             progress_pct: 15,
           }),
@@ -2438,7 +2501,7 @@ export default function UserIntroPage() {
       const subLabel =
         normalizedCropName && normalizedCropName !== shortCrop
           ? normalizedCropName
-          : reqForm.cultivar_name || normalizedCropName || '가을배추';
+          : effReqForm.cultivar_name || normalizedCropName || '가을배추';
       const sidoShortMap: Record<string, string> = {
         충청북도: '충북',
         충청남도: '충남',
@@ -2452,8 +2515,8 @@ export default function UserIntroPage() {
         강원특별자치도: '강원',
         제주특별자치도: '제주',
       };
-      const shortSido = sidoShortMap[reqForm.sido] || reqForm.sido;
-      const addrLine = [shortSido, reqForm.sigungu, reqForm.eupmyeondong, detailTrimmed]
+      const shortSido = sidoShortMap[effReqForm.sido] || effReqForm.sido;
+      const addrLine = [shortSido, effReqForm.sigungu, effReqForm.eupmyeondong, detailTrimmed]
         .filter(Boolean)
         .join(' ');
       const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(pDate) ? pDate : '2026-08-25';
@@ -2468,11 +2531,11 @@ export default function UserIntroPage() {
         thumbUrl: resolveCropThumbByShortName(shortCrop),
         addressLine: addrLine || '충북 충주시 단월동',
         farmlandTitle: matchedUserLand?.farmland_title || undefined,
-        areaLabel: `${Number(reqForm.area_pyeong || 500).toLocaleString()}${
-          reqForm.area_unit || '평'
+        areaLabel: `${Number(effReqForm.area_pyeong || 500).toLocaleString()}${
+          effReqForm.area_unit || '평'
         }`,
         cultivationType:
-          reqForm.cultivation_type === '시설(하우스)' ? '시설(하우스)' : '노지',
+          effReqForm.cultivation_type === '시설(하우스)' ? '시설(하우스)' : '노지',
         dateTypeLabel: isSeed ? '파종일' : '정식일',
         dateFormatted: formattedKoreanDate,
       });
@@ -16032,7 +16095,7 @@ export default function UserIntroPage() {
 
                           <button
                             type="button"
-                            onClick={handleSubmitScheduleReqForm}
+                            onClick={() => void handleSubmitScheduleReqForm()}
                             className="flex-1 h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
                           >
                             <Calendar className="w-5 h-5" />
@@ -16856,7 +16919,7 @@ export default function UserIntroPage() {
                           )}
                           <button
                             type="button"
-                            onClick={handleSubmitScheduleReqForm}
+                            onClick={() => void handleSubmitScheduleReqForm()}
                             className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs sm:text-sm transition cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                           >
                             <CheckCircle2 className="w-4 h-4" />
@@ -19790,16 +19853,68 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
+                              const matchedPastCrop = scheduleRequestCropList.find(
+                                (c: any) =>
+                                  (land.farmland_id && c.farmland_id === land.farmland_id) ||
+                                  (c.sido === land.sido &&
+                                    c.sigungu === land.sigungu &&
+                                    c.eupmyeondong === land.eupmyeondong &&
+                                    (!land.detail_jibun ||
+                                      String(c.detail_address || '').trim() ===
+                                        String(land.detail_jibun || '').trim()))
+                              );
+                              if (matchedPastCrop && matchedPastCrop.isConfirmedScheduleDeleted) {
+                                setReRequestTargetCrop(matchedPastCrop);
+                              } else {
+                                setReRequestTargetCrop(null);
+                              }
                               setReqForm((prev) => ({
                                 ...prev,
+                                farmland_id: land.farmland_id || prev.farmland_id,
                                 sido: land.sido || prev.sido,
                                 sigungu: land.sigungu || prev.sigungu,
                                 eupmyeondong: land.eupmyeondong || prev.eupmyeondong,
-                                detail_address: land.detail_jibun || prev.detail_address,
+                                detail_address:
+                                  land.detail_jibun !== undefined
+                                    ? land.detail_jibun
+                                    : prev.detail_address,
                                 area_pyeong: Number(land.area_pyeong || 300),
+                                soil_ph: Number(land.soil_ph || prev.soil_ph || 6.2),
+                                soil_ec: Number(land.soil_ec || prev.soil_ec || 1.1),
+                                ...(matchedPastCrop
+                                  ? {
+                                      group_id: matchedPastCrop.group_id || prev.group_id,
+                                      group_name: matchedPastCrop.group_name || prev.group_name,
+                                      crop_name: matchedPastCrop.crop_short || prev.crop_name,
+                                      cultivar_name:
+                                        matchedPastCrop.cultivar_name || prev.cultivar_name,
+                                      planting_type: String(
+                                        matchedPastCrop.planting_type || ''
+                                      ).includes('씨')
+                                        ? '씨'
+                                        : '모종',
+                                      planting_date:
+                                        matchedPastCrop.planting_date || prev.planting_date,
+                                      schedule_base_date:
+                                        matchedPastCrop.planting_date || prev.schedule_base_date,
+                                    }
+                                  : {}),
                               }));
-                              setIsReqFormModalOpen(true);
+                              setMobileReqStep(1);
+                              setReqFormSubmitted(false);
+                              setScheduleReqModalPos({ x: 0, y: 0 });
+                              setIsScheduleReqModelessOpen(true);
                               setActiveMenu('재배일정 요청');
+                              if (typeof window !== 'undefined') {
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                              }
+                              void handleSubmitScheduleReqForm({
+                                land,
+                                targetCrop:
+                                  matchedPastCrop && matchedPastCrop.isConfirmedScheduleDeleted
+                                    ? matchedPastCrop
+                                    : null,
+                              });
                             }}
                             className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-extrabold text-emerald-800 cursor-pointer transition"
                           >
