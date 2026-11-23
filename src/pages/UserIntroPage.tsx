@@ -833,6 +833,7 @@ export default function UserIntroPage() {
             next_task_dday: Number(cp.progress_pct) >= 100 ? '완료' : '2일 후',
             opt_temp: '18~20℃ 적온',
             thumb_gradient: gradients[idx % gradients.length],
+            created_at: cp.created_at || '',
           };
         })
       : defaultCloudBaeCropList;
@@ -981,10 +982,9 @@ export default function UserIntroPage() {
 
   // provisionData가 로드되었을 때, 초기 시드(isSeeded: true) 상태인 항목의 confirmedDate를 서버 산출 start_date와 1회 정합화
   useEffect(() => {
-    const activeReqNo =
-      provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
+    const activeReqNo = provisionData?.activeRequest?.request_no;
     const items: any[] = provisionData?.scheduleItems || [];
-    if (!items.length) return;
+    if (!activeReqNo || !items.length) return;
 
     setStageItemCompletions((prev) => {
       const curReqMap = prev[activeReqNo] || {};
@@ -1376,7 +1376,7 @@ export default function UserIntroPage() {
       provisionData &&
       Array.isArray(provisionData.scheduleItems) &&
       provisionData.scheduleItems.length > 0 &&
-      (provisionData.activeRequest?.request_no === rNo || selectedRequestNo === rNo);
+      provisionData.activeRequest?.request_no === rNo;
 
     const reqMap = stageItemCompletions[rNo] || {};
 
@@ -1567,6 +1567,8 @@ export default function UserIntroPage() {
       next_task_dday: sr.next_task_dday || '추천 진행일 대기',
       opt_temp: sr.opt_temp || '18~20℃ 적온',
       thumb_gradient: sr.thumb_gradient || gradients[idx % gradients.length],
+      requested_at: sr.requested_at || sr.created_at || '',
+      created_at: sr.created_at || sr.requested_at || '',
     };
   });
 
@@ -1627,6 +1629,8 @@ export default function UserIntroPage() {
       next_task_dday: sr.next_task_dday || '추천 진행일 대기',
       opt_temp: sr.opt_temp || '18~20℃ 적온',
       thumb_gradient: sr.thumb_gradient || gradients[idx % gradients.length],
+      requested_at: sr.requested_at || sr.created_at || '',
+      created_at: sr.created_at || sr.requested_at || '',
     };
   });
 
@@ -1668,6 +1672,16 @@ export default function UserIntroPage() {
       if (reqKey) seenScheduleReqKeys.add(`REQ:${reqKey}`);
       if (planKey) seenScheduleReqKeys.add(`PLAN:${planKey}`);
       return true;
+    })
+    .sort((a: any, b: any) => {
+      const aTime = String(a.created_at || a.requested_at || '').trim();
+      const bTime = String(b.created_at || b.requested_at || '').trim();
+      if (aTime && bTime && aTime !== bTime) {
+        return aTime.localeCompare(bTime);
+      }
+      const aKey = String(a.request_no || a.display_request_no || a.crop_plan_id || '').trim();
+      const bKey = String(b.request_no || b.display_request_no || b.crop_plan_id || '').trim();
+      return aKey.localeCompare(bKey);
     })
     .map((crop: any) => {
       const reqNo = crop.request_no || 'REQ-20261106-009';
@@ -2886,9 +2900,22 @@ export default function UserIntroPage() {
           ? []
           : prev.filter((loc) => {
               const rNo = String(loc?.request_no || loc?.display_request_no || '').trim();
-              return rNo && seen.has(rNo);
+              return rNo && !seen.has(rNo);
             })
       );
+      const validReqNos = Array.from(
+        new Set(
+          [
+            ...(Array.isArray(res.cropPlans) ? res.cropPlans.map((cp: any) => cp?.request_no) : []),
+            ...deduped.map((r: any) => r?.request_no || r?.display_request_no),
+          ]
+            .filter(Boolean)
+            .map((k) => String(k).trim())
+        )
+      );
+      if (validReqNos.length > 0) {
+        setSelectedRequestNo((prev) => (prev && validReqNos.includes(prev) ? prev : validReqNos[0]));
+      }
     }
     if (Array.isArray(res.orders)) {
       const sanitizedOrders = res.orders.map((ord: any) => ({
@@ -9197,8 +9224,7 @@ export default function UserIntroPage() {
                   provisionData &&
                   Array.isArray(provisionData.scheduleItems) &&
                   provisionData.scheduleItems.length > 0 &&
-                  (provisionData.activeRequest?.request_no === reqNo ||
-                    selectedRequestNo === reqNo);
+                  provisionData.activeRequest?.request_no === reqNo;
 
                 type EvalStage = {
                   itemId: string;
@@ -9480,6 +9506,9 @@ export default function UserIntroPage() {
                                 onClick={() => {
                                   setSelectedRequestNo(item.request_no);
                                   setMyPageStageDetailItem(null);
+                                  if (!provisionData || provisionData?.activeRequest?.request_no !== item.request_no) {
+                                    loadScheduleProvision(item.request_no, { gdd_mode: patentGddMode });
+                                  }
                                 }}
                                 className={`flex-1 min-w-[96px] rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
                                   isSelectedCrop
@@ -23456,7 +23485,7 @@ export default function UserIntroPage() {
           const hasProvisionForOv =
             Array.isArray(provisionData?.scheduleItems) &&
             provisionData.scheduleItems.length > 0 &&
-            (provisionData?.activeRequest?.request_no === ovReqNo || selectedRequestNo === ovReqNo);
+            provisionData?.activeRequest?.request_no === ovReqNo;
 
           const rawItems = hasProvisionForOv
             ? provisionData.scheduleItems
@@ -25406,8 +25435,7 @@ export default function UserIntroPage() {
           const hasActiveProvisionItems =
             Array.isArray(provisionData?.scheduleItems) &&
             provisionData.scheduleItems.length > 0 &&
-            (provisionData?.activeRequest?.request_no === modalReqNo ||
-              selectedRequestNo === modalReqNo);
+            provisionData?.activeRequest?.request_no === modalReqNo;
 
           const timelineItems = hasActiveProvisionItems
             ? provisionData.scheduleItems

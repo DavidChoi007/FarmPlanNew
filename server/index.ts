@@ -636,20 +636,22 @@ async function syncAdminMemberTablesFromSupabase() {
     }
     if (Array.isArray(sbReqs)) {
       db.prepare('DELETE FROM member_schedule_request').run();
+      const stmt = db.prepare(`
+        INSERT OR REPLACE INTO member_schedule_request (
+          request_no, member_id, member_contact,
+          group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+          bjd_code, sido, sigungu, eupmyeondong, detail_address,
+          area_pyeong, cultivation_type, land_category, planting_method,
+          desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+          is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+          soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const existingReqNos = new Set<string>();
       if (sbReqs.length > 0) {
-        const stmt = db.prepare(`
-          INSERT OR REPLACE INTO member_schedule_request (
-            request_no, member_id, member_contact,
-            group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
-            bjd_code, sido, sigungu, eupmyeondong, detail_address,
-            area_pyeong, cultivation_type, land_category, planting_method,
-            desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
-            is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
-            soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
         for (const r of sbReqs) {
           if (!r?.request_no) continue;
+          existingReqNos.add(String(r.request_no));
           const resolvedTax = resolveCropTaxonomyFromInput({
             group_id: r.group_id,
             group_name: r.group_name,
@@ -697,6 +699,106 @@ async function syncAdminMemberTablesFromSupabase() {
             String(r.schedule_base_date || r.desired_start_date || '2026-08-25'),
             String(r.area_unit || '평')
           );
+        }
+      }
+      // member_crop_plan에는 존재하지만 member_schedule_request에 누락된 건은 자동 동기화(Backfill)하여 모든 기기에서 동일한 재배일정이 조회되도록 보장
+      if (Array.isArray(sbPlans) && sbPlans.length > 0) {
+        const missingReqRowsToUpsert: Record<string, any>[] = [];
+        for (const cp of sbPlans) {
+          const rNo = String(cp?.request_no || '').trim();
+          if (!rNo || existingReqNos.has(rNo)) continue;
+          existingReqNos.add(rNo);
+          const resolvedTax = resolveCropTaxonomyFromInput({
+            crop_name: cp.crop_name,
+            item_name_3rd: cp.cultivar_name,
+          });
+          const resolvedAddr = resolveCultivationAddressFromInput({
+            sido: cp.sido,
+            sigungu: cp.sigungu,
+            eupmyeondong: cp.eupmyeondong,
+          });
+          const isSeed = String(cp.planting_type || '').includes('씨');
+          const pDate = String(cp.planting_date || '2026-08-25');
+          const hDate = String(cp.expected_harvest_date || '2026-11-15');
+          const reqAt = String(cp.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '));
+          const synthesized = {
+            request_no: rNo,
+            member_id: String(cp.email || 'CloudBae@naver.com'),
+            member_contact: '010-2026-0109',
+            group_id: resolvedTax.group_id,
+            group_name: resolvedTax.group_name,
+            crop_id: resolvedTax.crop_id,
+            crop_name: resolvedTax.crop_name,
+            cultivar_id: resolvedTax.cultivar_id,
+            item_name_3rd: resolvedTax.item_name_3rd,
+            system_id: resolvedTax.system_id,
+            system_name: resolvedTax.system_name,
+            bjd_code: resolvedAddr.bjd_code,
+            sido: resolvedAddr.sido,
+            sigungu: resolvedAddr.sigungu,
+            eupmyeondong: resolvedAddr.eupmyeondong,
+            detail_address: '',
+            area_pyeong: Number(cp.area_pyeong) || 300,
+            cultivation_type: '노지',
+            land_category: '전(밭)',
+            planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+            desired_start_date: pDate,
+            expected_harvest_date: hDate,
+            mulching_yn: 1,
+            irrigation_type: '점적관수',
+            is_organic: 0,
+            soil_test_linked_yn: 1,
+            target_yield_kg: 3500,
+            etc_notes: `토양:사양토 | 관수:점적관수 | 환경:멀칭,부직포 | 일정기준:OPTIMAL_AUTO(${pDate})`,
+            request_status: '일정산출완료',
+            requested_at: reqAt,
+            soil_condition: '사양토',
+            facility_env_json: '["멀칭","부직포"]',
+            schedule_base_type: 'OPTIMAL_AUTO',
+            schedule_base_date: pDate,
+            area_unit: '평',
+          };
+          stmt.run(
+            synthesized.request_no,
+            synthesized.member_id,
+            synthesized.member_contact,
+            synthesized.group_id,
+            synthesized.group_name,
+            synthesized.crop_id,
+            synthesized.crop_name,
+            synthesized.cultivar_id,
+            synthesized.item_name_3rd,
+            synthesized.system_id,
+            synthesized.system_name,
+            synthesized.bjd_code,
+            synthesized.sido,
+            synthesized.sigungu,
+            synthesized.eupmyeondong,
+            synthesized.detail_address,
+            synthesized.area_pyeong,
+            synthesized.cultivation_type,
+            synthesized.land_category,
+            synthesized.planting_method,
+            synthesized.desired_start_date,
+            synthesized.expected_harvest_date,
+            synthesized.mulching_yn,
+            synthesized.irrigation_type,
+            synthesized.is_organic,
+            synthesized.soil_test_linked_yn,
+            synthesized.target_yield_kg,
+            synthesized.etc_notes,
+            synthesized.request_status,
+            synthesized.requested_at,
+            synthesized.soil_condition,
+            synthesized.facility_env_json,
+            synthesized.schedule_base_type,
+            synthesized.schedule_base_date,
+            synthesized.area_unit
+          );
+          missingReqRowsToUpsert.push(synthesized);
+        }
+        if (missingReqRowsToUpsert.length > 0) {
+          await supabaseRestUpsert('member_schedule_request', missingReqRowsToUpsert, 'request_no').catch(() => {});
         }
       }
     }
@@ -6284,6 +6386,63 @@ const server = http.createServer(async (req, res) => {
 
       const activeRequest =
         (requestedNo ? allRequests.find((r) => r.request_no === requestedNo) : null) ||
+        (requestedNo
+          ? (() => {
+              const planFallback = db
+                .prepare('SELECT * FROM member_crop_plan WHERE request_no = ? OR crop_plan_id = ? LIMIT 1')
+                .get(requestedNo, requestedNo) as any;
+              if (!planFallback) return null;
+              const resolvedTax = resolveCropTaxonomyFromInput({
+                crop_name: planFallback.crop_name,
+                item_name_3rd: planFallback.cultivar_name,
+              });
+              const resolvedAddr = resolveCultivationAddressFromInput({
+                sido: planFallback.sido,
+                sigungu: planFallback.sigungu,
+                eupmyeondong: planFallback.eupmyeondong,
+              });
+              const isSeed = String(planFallback.planting_type || '').includes('씨');
+              const pDate = String(planFallback.planting_date || '2026-08-25');
+              const hDate = String(planFallback.expected_harvest_date || '2026-11-15');
+              return {
+                request_no: String(planFallback.request_no || requestedNo),
+                member_id: String(planFallback.email || 'CloudBae@naver.com'),
+                member_contact: '010-2026-0109',
+                group_id: resolvedTax.group_id,
+                group_name: resolvedTax.group_name,
+                crop_id: resolvedTax.crop_id,
+                crop_name: resolvedTax.crop_name,
+                cultivar_id: resolvedTax.cultivar_id,
+                item_name_3rd: resolvedTax.item_name_3rd,
+                system_id: resolvedTax.system_id,
+                system_name: resolvedTax.system_name,
+                bjd_code: resolvedAddr.bjd_code,
+                sido: resolvedAddr.sido,
+                sigungu: resolvedAddr.sigungu,
+                eupmyeondong: resolvedAddr.eupmyeondong,
+                detail_address: '',
+                area_pyeong: Number(planFallback.area_pyeong) || 300,
+                cultivation_type: '노지',
+                land_category: '전(밭)',
+                planting_method: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
+                desired_start_date: pDate,
+                expected_harvest_date: hDate,
+                mulching_yn: 1,
+                irrigation_type: '점적관수',
+                is_organic: 0,
+                soil_test_linked_yn: 1,
+                target_yield_kg: 3500,
+                etc_notes: `토양:사양토 | 관수:점적관수 | 환경:멀칭,부직포 | 일정기준:OPTIMAL_AUTO(${pDate})`,
+                request_status: '일정산출완료',
+                requested_at: String(planFallback.created_at || ''),
+                soil_condition: '사양토',
+                facility_env_json: '["멀칭","부직포"]',
+                schedule_base_type: 'OPTIMAL_AUTO',
+                schedule_base_date: pDate,
+                area_unit: '평',
+              };
+            })()
+          : null) ||
         allRequests.find((r) => r.item_name_3rd === '불암3호' || r.cultivar_id === 'CV-BRM3' || r.cultivar_id === 'CV-BULAM3') ||
         allRequests[0];
 
@@ -9980,7 +10139,7 @@ const server = http.createServer(async (req, res) => {
         .all(member.email) as any[];
       const rawCropPlans = db
         .prepare(
-          'SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?) ORDER BY created_at DESC, crop_plan_id DESC'
+          'SELECT * FROM member_crop_plan WHERE LOWER(email) = LOWER(?) ORDER BY created_at ASC, request_no ASC, crop_plan_id ASC'
         )
         .all(member.email) as any[];
       const seenReqNos = new Set<string>();
@@ -10015,7 +10174,7 @@ const server = http.createServer(async (req, res) => {
         })(),
       }));
       const allScheduleRequests = db
-        .prepare('SELECT * FROM member_schedule_request ORDER BY requested_at DESC, request_no DESC')
+        .prepare('SELECT * FROM member_schedule_request ORDER BY requested_at ASC, request_no ASC')
         .all() as any[];
       const targetEmailLower = String(member.email || '').toLowerCase();
       const isCloudBae =
@@ -10736,6 +10895,78 @@ const server = http.createServer(async (req, res) => {
       if (savedCropPlan) {
         await supabaseRestUpsert('member_crop_plan', savedCropPlan, 'crop_plan_id');
       }
+
+      // member_schedule_request에도 동일 request_no로 자동 동기화하여 모든 원격 브라우저/기기에서 동일한 재배일정이 조회되도록 보장
+      const existingReqRow = db
+        .prepare('SELECT request_no FROM member_schedule_request WHERE request_no = ? LIMIT 1')
+        .get(requestNo) as { request_no?: string } | undefined;
+      if (!existingReqRow) {
+        const resolvedTax = resolveCropTaxonomyFromInput({
+          group_id: body.group_id,
+          group_name: body.group_name,
+          crop_name: cropName,
+          item_name_3rd: cultivarName,
+        });
+        const isSeedMethod = plantingType.includes('씨') || plantingType.includes('직파');
+        const nowReqAt = String(savedCropPlan?.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '));
+        const syncReqRow = {
+          request_no: requestNo,
+          member_id: email,
+          member_contact: '010-2026-0109',
+          group_id: resolvedTax.group_id,
+          group_name: resolvedTax.group_name,
+          crop_id: resolvedTax.crop_id,
+          crop_name: resolvedTax.crop_name,
+          cultivar_id: resolvedTax.cultivar_id,
+          item_name_3rd: resolvedTax.item_name_3rd,
+          system_id: resolvedTax.system_id,
+          system_name: resolvedTax.system_name,
+          bjd_code: resolvedAddr.bjd_code,
+          sido,
+          sigungu,
+          eupmyeondong,
+          detail_address: String(body.detail_address || ''),
+          area_pyeong: areaPyeong,
+          cultivation_type: '노지',
+          land_category: '전(밭)',
+          planting_method: isSeedMethod ? '노지 직파(씨)' : '노지 정식(모종)',
+          desired_start_date: plantingDate,
+          expected_harvest_date: expectedHarvestDate,
+          mulching_yn: 1,
+          irrigation_type: '점적관수',
+          is_organic: 0,
+          soil_test_linked_yn: 1,
+          target_yield_kg: 3500,
+          etc_notes: `토양:사양토 | 관수:점적관수 | 환경:멀칭,부직포 | 일정기준:OPTIMAL_AUTO(${plantingDate})`,
+          request_status: '일정산출완료',
+          requested_at: nowReqAt,
+          soil_condition: '사양토',
+          facility_env_json: '["멀칭","부직포"]',
+          schedule_base_type: 'OPTIMAL_AUTO',
+          schedule_base_date: plantingDate,
+          area_unit: '평',
+        };
+        db.prepare(`
+          INSERT OR REPLACE INTO member_schedule_request (
+            request_no, member_id, member_contact,
+            group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+            bjd_code, sido, sigungu, eupmyeondong, detail_address,
+            area_pyeong, cultivation_type, land_category, planting_method,
+            desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+            is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+            soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          syncReqRow.request_no, syncReqRow.member_id, syncReqRow.member_contact,
+          syncReqRow.group_id, syncReqRow.group_name, syncReqRow.crop_id, syncReqRow.crop_name, syncReqRow.cultivar_id, syncReqRow.item_name_3rd, syncReqRow.system_id, syncReqRow.system_name,
+          syncReqRow.bjd_code, syncReqRow.sido, syncReqRow.sigungu, syncReqRow.eupmyeondong, syncReqRow.detail_address,
+          syncReqRow.area_pyeong, syncReqRow.cultivation_type, syncReqRow.land_category, syncReqRow.planting_method,
+          syncReqRow.desired_start_date, syncReqRow.expected_harvest_date, syncReqRow.mulching_yn, syncReqRow.irrigation_type,
+          syncReqRow.is_organic, syncReqRow.soil_test_linked_yn, syncReqRow.target_yield_kg, syncReqRow.etc_notes, syncReqRow.request_status, syncReqRow.requested_at,
+          syncReqRow.soil_condition, syncReqRow.facility_env_json, syncReqRow.schedule_base_type, syncReqRow.schedule_base_date, syncReqRow.area_unit
+        );
+        await supabaseRestUpsert('member_schedule_request', syncReqRow, 'request_no');
+      }
       sendJson(res, { ok: true, cropPlan: savedCropPlan, ...buildAdminMembersPayload() });
       return;
     }
@@ -11106,6 +11337,78 @@ const server = http.createServer(async (req, res) => {
       const savedCropPlan = db.prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?').get(cropPlanId) as Record<string, any> | undefined;
       if (savedCropPlan) {
         await supabaseRestUpsert('member_crop_plan', savedCropPlan, 'crop_plan_id');
+      }
+
+      // member_schedule_request에도 동일 request_no로 자동 동기화하여 모든 원격 브라우저/기기에서 동일한 재배일정이 조회되도록 보장
+      const existingReqRow = db
+        .prepare('SELECT request_no FROM member_schedule_request WHERE request_no = ? LIMIT 1')
+        .get(requestNo) as { request_no?: string } | undefined;
+      if (!existingReqRow) {
+        const resolvedTax = resolveCropTaxonomyFromInput({
+          group_id: body.group_id,
+          group_name: body.group_name,
+          crop_name: cropName,
+          item_name_3rd: cultivarName,
+        });
+        const isSeedMethod = plantingType.includes('씨') || plantingType.includes('직파');
+        const nowReqAt = String(savedCropPlan?.created_at || new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '));
+        const syncReqRow = {
+          request_no: requestNo,
+          member_id: email,
+          member_contact: '010-2026-0109',
+          group_id: resolvedTax.group_id,
+          group_name: resolvedTax.group_name,
+          crop_id: resolvedTax.crop_id,
+          crop_name: resolvedTax.crop_name,
+          cultivar_id: resolvedTax.cultivar_id,
+          item_name_3rd: resolvedTax.item_name_3rd,
+          system_id: resolvedTax.system_id,
+          system_name: resolvedTax.system_name,
+          bjd_code: resolvedAddr.bjd_code,
+          sido,
+          sigungu,
+          eupmyeondong,
+          detail_address: String(body.detail_address || ''),
+          area_pyeong: areaPyeong,
+          cultivation_type: '노지',
+          land_category: '전(밭)',
+          planting_method: isSeedMethod ? '노지 직파(씨)' : '노지 정식(모종)',
+          desired_start_date: plantingDate,
+          expected_harvest_date: expectedHarvestDate,
+          mulching_yn: 1,
+          irrigation_type: '점적관수',
+          is_organic: 0,
+          soil_test_linked_yn: 1,
+          target_yield_kg: 3500,
+          etc_notes: `토양:사양토 | 관수:점적관수 | 환경:멀칭,부직포 | 일정기준:OPTIMAL_AUTO(${plantingDate})`,
+          request_status: '일정산출완료',
+          requested_at: nowReqAt,
+          soil_condition: '사양토',
+          facility_env_json: '["멀칭","부직포"]',
+          schedule_base_type: 'OPTIMAL_AUTO',
+          schedule_base_date: plantingDate,
+          area_unit: '평',
+        };
+        db.prepare(`
+          INSERT OR REPLACE INTO member_schedule_request (
+            request_no, member_id, member_contact,
+            group_id, group_name, crop_id, crop_name, cultivar_id, item_name_3rd, system_id, system_name,
+            bjd_code, sido, sigungu, eupmyeondong, detail_address,
+            area_pyeong, cultivation_type, land_category, planting_method,
+            desired_start_date, expected_harvest_date, mulching_yn, irrigation_type,
+            is_organic, soil_test_linked_yn, target_yield_kg, etc_notes, request_status, requested_at,
+            soil_condition, facility_env_json, schedule_base_type, schedule_base_date, area_unit
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          syncReqRow.request_no, syncReqRow.member_id, syncReqRow.member_contact,
+          syncReqRow.group_id, syncReqRow.group_name, syncReqRow.crop_id, syncReqRow.crop_name, syncReqRow.cultivar_id, syncReqRow.item_name_3rd, syncReqRow.system_id, syncReqRow.system_name,
+          syncReqRow.bjd_code, syncReqRow.sido, syncReqRow.sigungu, syncReqRow.eupmyeondong, syncReqRow.detail_address,
+          syncReqRow.area_pyeong, syncReqRow.cultivation_type, syncReqRow.land_category, syncReqRow.planting_method,
+          syncReqRow.desired_start_date, syncReqRow.expected_harvest_date, syncReqRow.mulching_yn, syncReqRow.irrigation_type,
+          syncReqRow.is_organic, syncReqRow.soil_test_linked_yn, syncReqRow.target_yield_kg, syncReqRow.etc_notes, syncReqRow.request_status, syncReqRow.requested_at,
+          syncReqRow.soil_condition, syncReqRow.facility_env_json, syncReqRow.schedule_base_type, syncReqRow.schedule_base_date, syncReqRow.area_unit
+        );
+        await supabaseRestUpsert('member_schedule_request', syncReqRow, 'request_no');
       }
 
       const payload = buildMemberMyPagePayload(email);
