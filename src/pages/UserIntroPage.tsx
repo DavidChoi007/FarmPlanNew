@@ -815,11 +815,18 @@ export default function UserIntroPage() {
           return {
             crop_plan_id: cp.crop_plan_id,
             request_no: cp.request_no || 'REQ-20261106-009',
+            display_request_no: cp.request_no || 'REQ-20261106-009',
+            email: cp.email || 'CloudBae@naver.com',
+            member_id: cp.email || 'CloudBae@naver.com',
+            farmland_id: cp.farmland_id || '',
             crop_title: `${cp.crop_name} (${cp.cultivar_name})`,
             crop_short: cp.crop_name,
             cultivar_name: cp.cultivar_name,
             badge: isSeed ? '노지 직파(씨)' : '노지 정식(모종)',
             region: `${cp.sido} ${cp.sigungu} ${cp.eupmyeondong}`,
+            sido: cp.sido || '충청북도',
+            sigungu: cp.sigungu || '충주시',
+            eupmyeondong: cp.eupmyeondong || '단월동',
             area_pyeong: Number(cp.area_pyeong || 300),
             planting_type: isSeed ? '씨 (적정발아 20℃)' : '모종',
             planting_label: `${isSeed ? '파종' : '정식'} ${dateDot}${wk ? ` (${wk})` : ''}`,
@@ -1636,8 +1643,8 @@ export default function UserIntroPage() {
 
   const rawCombinedCropList = [
     ...localAddedCropRequests,
-    ...requestListFromSaved,
     ...baseCropList,
+    ...requestListFromSaved,
   ];
   const seenScheduleReqKeys = new Set<string>();
   const currentActiveEmailLower = String(loggedInUser.email || 'CloudBae@naver.com').toLowerCase();
@@ -9335,6 +9342,47 @@ export default function UserIntroPage() {
                   }
                 }
 
+                const cultivarName = String(
+                  crop.cultivar_name || crop.item_name_3rd || ''
+                ).trim();
+                const fullCropName = String(
+                  crop.crop_short || crop.crop_name || shortName || '배추'
+                ).trim();
+                const areaPyeongVal = Number(crop.area_pyeong || 500);
+                const regionText = String(
+                  crop.region ||
+                    [crop.sido, crop.sigungu, crop.eupmyeondong, crop.detail_address]
+                      .filter(Boolean)
+                      .join(' ') ||
+                    ''
+                ).trim();
+
+                const normalizeWorkContentWithCropAddress = (rawContent: string, itemId: string): string => {
+                  const text = String(rawContent || '').trim();
+                  if (!text) return '';
+                  if (itemId === 'SCH-01' && /^\[[^\]]+\]/.test(text)) {
+                    return text.replace(
+                      /^\[[^\]]+\]/,
+                      `[${regionText} · ${fullCropName}${cultivarName ? `(${cultivarName})` : ''} ${areaPyeongVal.toLocaleString()}평]`
+                    );
+                  }
+                  if (itemId === 'SCH-03' && /^\[[^\]]+\]/.test(text)) {
+                    const dongLabel = String(crop.eupmyeondong || regionText).trim();
+                    return text.replace(
+                      /^\[[^\]]+\]/,
+                      `[${dongLabel} 전(밭) 배수·멀칭 설계]`
+                    );
+                  }
+                  if (itemId === 'SCH-13' && /^\[[^\]]+\]/.test(text)) {
+                    const dongLabel = String(crop.eupmyeondong || regionText).trim();
+                    return text.replace(
+                      /^\[[^\]]+\]/,
+                      `[${dongLabel} 강우·고습도 대응 방제]`
+                    );
+                  }
+                  return text;
+                };
+
                 // 다음 농작업(nextStage) 제목 · 요약 설명 · 예정일(M월 D일(요일))
                 let nextTaskTitle = '전 공정 수확 완료';
                 let nextTaskDesc = '수확 및 선별·저장 관리가 모두 완료되었습니다.';
@@ -9344,13 +9392,17 @@ export default function UserIntroPage() {
 
                 if (nextStage) {
                   nextTaskTitle = nextStage.subItemName;
-                  if (nextStage.workContent) {
-                    nextTaskDesc = nextStage.workContent;
+                  const normalizedWorkContent = normalizeWorkContentWithCropAddress(
+                    nextStage.workContent,
+                    nextStage.itemId
+                  );
+                  if (normalizedWorkContent) {
+                    nextTaskDesc = normalizedWorkContent;
                   } else {
                     const descByItemId: Record<string, string> = {
-                      'SCH-01': '전작물 잔재물 제거 및 포장 배수로 정비',
-                      'SCH-02': '토양검정 맞춤 밑거름 시비 및 경운 작업',
-                      'SCH-03': '배수·통기성 확보를 위한 두둑 및 멀칭 조성',
+                      'SCH-01': `[${regionText} · ${fullCropName}${cultivarName ? `(${cultivarName})` : ''} ${areaPyeongVal.toLocaleString()}평] 전작물 잔재물 제거 및 포장 배수로 정비`,
+                      'SCH-02': `[${regionText} · ${fullCropName}${cultivarName ? `(${cultivarName})` : ''}] 토양검정 맞춤 밑거름 시비 및 경운 작업`,
+                      'SCH-03': `[${regionText}] 배수·통기성 확보를 위한 두둑 및 멀칭 조성`,
                       'SCH-04': '우량 코팅종자 준비 및 육묘 트레이 파종',
                       'SCH-05': '육묘상 적정 온도·수분 유지 및 본엽 관리',
                       'SCH-06': '정식 전 외기 순화 및 육묘기 병해충 예방',
@@ -9367,19 +9419,10 @@ export default function UserIntroPage() {
                     };
                     nextTaskDesc =
                       descByItemId[nextStage.itemId] ||
-                      `${nextStage.stageGroupName} · 현재 시점 맞춤 농작업 진행`;
+                      `[${regionText}] ${nextStage.stageGroupName} · 현재 시점 맞춤 농작업 진행`;
                   }
                   nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
                 }
-
-                const cultivarName = String(
-                  crop.cultivar_name || crop.item_name_3rd || ''
-                ).trim();
-                const regionText = String(
-                  crop.region ||
-                    [crop.sido, crop.sigungu, crop.eupmyeondong].filter(Boolean).join(' ') ||
-                    ''
-                ).trim();
 
                 return {
                   id: reqNo,
@@ -23498,18 +23541,50 @@ export default function UserIntroPage() {
                 work_content: `${meta.stageGroupName} 단계 ${meta.subItemName} 적기 작업 및 생육상태 확인`,
               }));
 
+          const ovRegionText = String(
+            ovCrop.region ||
+              [ovCrop.sido, ovCrop.sigungu, ovCrop.eupmyeondong, ovCrop.detail_address]
+                .filter(Boolean)
+                .join(' ') ||
+              ''
+          ).trim();
+          const normalizeOvWorkContent = (rawContent: string, itemId: string): string => {
+            const text = String(rawContent || '').trim();
+            if (!text) return '';
+            if (itemId === 'SCH-01' && /^\[[^\]]+\]/.test(text)) {
+              return text.replace(
+                /^\[[^\]]+\]/,
+                `[${ovRegionText} · ${fullCropLabel}${cultivarLabel ? `(${cultivarLabel})` : ''} ${areaLabel}]`
+              );
+            }
+            if (itemId === 'SCH-03' && /^\[[^\]]+\]/.test(text)) {
+              const dongLabel = String(ovCrop.eupmyeondong || ovRegionText).trim();
+              return text.replace(/^\[[^\]]+\]/, `[${dongLabel} 전(밭) 배수·멀칭 설계]`);
+            }
+            if (itemId === 'SCH-13' && /^\[[^\]]+\]/.test(text)) {
+              const dongLabel = String(ovCrop.eupmyeondong || ovRegionText).trim();
+              return text.replace(/^\[[^\]]+\]/, `[${dongLabel} 강우·고습도 대응 방제]`);
+            }
+            return text;
+          };
+
           const evaluated = rawItems.map((it: any, idx: number) => {
             const effDate = getEffectiveStageItemDate(ovReqNo, it);
             const comp = getStageItemCompletionState(ovReqNo, it);
             const cleanTitle = String(it.sub_item_name || '')
               .replace(/\s*\([^)]*\)/g, '')
               .trim();
+            const itemIdStr = String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`);
+            const normalizedWC = normalizeOvWorkContent(
+              String(it.work_content || it.work_description || '').trim(),
+              itemIdStr
+            );
             return {
-              raw: it,
-              itemId: String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`),
+              raw: { ...it, work_content: normalizedWC || it.work_content },
+              itemId: itemIdStr,
               stepOrder: Number(it.step_order || idx + 1),
               subItemName: cleanTitle || `농작업 #${idx + 1}`,
-              workContent: String(it.work_content || it.work_description || '').trim(),
+              workContent: normalizedWC,
               effDate,
               isCompleted: comp.isRecognized,
             };
@@ -25464,20 +25539,55 @@ export default function UserIntroPage() {
           );
           const cropThumbUrl = resolveCropThumbByShortName(shortCropName);
 
+          const modalRegionText = String(
+            modalCrop.region ||
+              [modalCrop.sido, modalCrop.sigungu, modalCrop.eupmyeondong, modalCrop.detail_address]
+                .filter(Boolean)
+                .join(' ') ||
+              ''
+          ).trim();
+          const modalCultivarLabel = String(
+            modalCrop.cultivar_name || modalCrop.item_name_3rd || ''
+          ).trim();
+          const normalizeModalWorkContent = (rawContent: string, itemId: string): string => {
+            const text = String(rawContent || '').trim();
+            if (!text) return '';
+            if (itemId === 'SCH-01' && /^\[[^\]]+\]/.test(text)) {
+              return text.replace(
+                /^\[[^\]]+\]/,
+                `[${modalRegionText} · ${seasonalCropLabel}${modalCultivarLabel ? `(${modalCultivarLabel})` : ''} ${areaPyeongVal.toLocaleString()}평]`
+              );
+            }
+            if (itemId === 'SCH-03' && /^\[[^\]]+\]/.test(text)) {
+              const dongLabel = String(modalCrop.eupmyeondong || modalRegionText).trim();
+              return text.replace(/^\[[^\]]+\]/, `[${dongLabel} 전(밭) 배수·멀칭 설계]`);
+            }
+            if (itemId === 'SCH-13' && /^\[[^\]]+\]/.test(text)) {
+              const dongLabel = String(modalCrop.eupmyeondong || modalRegionText).trim();
+              return text.replace(/^\[[^\]]+\]/, `[${dongLabel} 강우·고습도 대응 방제]`);
+            }
+            return text;
+          };
+
           const evaluatedItems = timelineItems.map((it: any, idx: number) => {
             const effDate = getEffectiveStageItemDate(modalReqNo, it);
             const comp = getStageItemCompletionState(modalReqNo, it);
             const cleanName = String(it.sub_item_name || '')
               .replace(/\s*\([^)]*\)/g, '')
               .trim();
+            const itemIdStr = String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`);
+            const normalizedWC = normalizeModalWorkContent(
+              String(it.work_content || it.work_description || '').trim(),
+              itemIdStr
+            );
             return {
-              raw: it,
+              raw: { ...it, work_content: normalizedWC || it.work_content },
               origIdx: idx,
-              itemId: String(it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`),
+              itemId: itemIdStr,
               stepOrder: Number(it.step_order || idx + 1),
               subItemName: String(it.sub_item_name || cleanName || `농작업 #${idx + 1}`).trim(),
               cleanName: cleanName || `농작업 #${idx + 1}`,
-              workContent: String(it.work_content || it.work_description || '').trim(),
+              workContent: normalizedWC,
               effDate,
               isCompleted: comp.isRecognized,
             };

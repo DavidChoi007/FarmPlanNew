@@ -662,6 +662,12 @@ async function syncAdminMemberTablesFromSupabase() {
             system_id: r.system_id,
             system_name: r.system_name,
           });
+          const resolvedAddr = resolveCultivationAddressFromInput({
+            bjd_code: r.bjd_code,
+            sido: r.sido,
+            sigungu: r.sigungu,
+            eupmyeondong: r.eupmyeondong,
+          });
           stmt.run(
             String(r.request_no),
             String(r.member_id || 'CloudBae@naver.com (배철민)'),
@@ -674,10 +680,10 @@ async function syncAdminMemberTablesFromSupabase() {
             resolvedTax.item_name_3rd,
             resolvedTax.system_id,
             resolvedTax.system_name,
-            String(r.bjd_code || '4313010700'),
-            String(r.sido || '충청북도'),
-            String(r.sigungu || '충주시'),
-            String(r.eupmyeondong || '단월동'),
+            String(resolvedAddr.bjd_code || r.bjd_code || '4313010700'),
+            String(resolvedAddr.sido || r.sido || '충청북도'),
+            String(resolvedAddr.sigungu || r.sigungu || '충주시'),
+            String(resolvedAddr.eupmyeondong || r.eupmyeondong || '단월동'),
             String(r.detail_address || ''),
             Number(r.area_pyeong) || 300,
             String(r.cultivation_type || '노지'),
@@ -6449,6 +6455,20 @@ const server = http.createServer(async (req, res) => {
       if (!activeRequest) {
         sendJson(res, { error: '등록된 재배 일정 요청 데이터가 없습니다.' }, 404);
         return;
+      }
+
+      // member_crop_plan에 등록된 주소·작물·품종·면적 정보를 최우선 기준으로 동기화하여 이번 작업과 다음 작업의 재배지가 100% 일치하도록 보장
+      const matchedCropPlan = db
+        .prepare('SELECT * FROM member_crop_plan WHERE request_no = ? OR crop_plan_id = ? LIMIT 1')
+        .get(activeRequest.request_no, activeRequest.request_no) as any;
+      if (matchedCropPlan) {
+        if (matchedCropPlan.sido) activeRequest.sido = matchedCropPlan.sido;
+        if (matchedCropPlan.sigungu) activeRequest.sigungu = matchedCropPlan.sigungu;
+        if (matchedCropPlan.eupmyeondong) activeRequest.eupmyeondong = matchedCropPlan.eupmyeondong;
+        if (matchedCropPlan.crop_name) activeRequest.crop_name = matchedCropPlan.crop_name;
+        if (matchedCropPlan.cultivar_name) activeRequest.item_name_3rd = matchedCropPlan.cultivar_name;
+        if (Number(matchedCropPlan.area_pyeong) > 0) activeRequest.area_pyeong = Number(matchedCropPlan.area_pyeong);
+        if (matchedCropPlan.planting_date) activeRequest.desired_start_date = matchedCropPlan.planting_date;
       }
 
       // 재배지 읍면동 법정동 코드 확인 및 365일 기후 데이터(2025년 실측 + 2026년 예보/기후) 조회
