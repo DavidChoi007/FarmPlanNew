@@ -365,8 +365,16 @@ export default function UserIntroPage() {
   const [isSavingDetailItem, setIsSavingDetailItem] = useState<boolean>(false);
   const [detailSaveMessage, setDetailSaveMessage] = useState<string>('');
 
-  // 모바일 단계 전환: 'list' (1단계 작물재배 리스트) -> 'detail' (2·3단계 선택 작물 상세)
-  const [mobileScheduleStep, setMobileScheduleStep] = useState<'list' | 'detail'>('list');
+  // 모바일 단계 전환: 'list' (1단계 작물 목록) -> 'detail' (2단계 대시보드) -> 'tasks' (3단계 농작업 목록) -> 'task_exec' (4단계 실행하기) -> 'work_log' (5단계 작업 기록) -> 'growth_check' (생육단계 확인)
+  const [mobileScheduleStep, setMobileScheduleStep] = useState<
+    'list' | 'detail' | 'tasks' | 'task_exec' | 'work_log' | 'growth_check'
+  >('list');
+  const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
+  const [selectedScheduleTaskId, setSelectedScheduleTaskId] = useState<string>('');
+  const [workLogSelectedMaterialName, setWorkLogSelectedMaterialName] = useState<string>('복합비료 15-15-15');
+  const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/products/fertilizer-npk-21.jpg');
+  const [workLogUnit, setWorkLogUnit] = useState<string>('kg');
+  const [isPostponeDatePickerOpen, setIsPostponeDatePickerOpen] = useState<boolean>(false);
 
   // 3가지 일정 보기 탭: 'timeline' (타임라인) | 'calendar' (달력) | 'stages' (생육단계)
   const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'calendar' | 'stages'>('timeline');
@@ -6022,7 +6030,7 @@ export default function UserIntroPage() {
       activeMenu === '마이페이지'
         ? `tab:${myPageTab}`
         : activeMenu === '재배일정 확인'
-        ? `step:${mobileScheduleStep}|exp:${expandedScheduleRequestNo || ''}|view:${scheduleViewMode}`
+        ? `step:${mobileScheduleStep}|req:${selectedRequestNo || ''}|taskTab:${mobileScheduleTaskTab}|task:${selectedScheduleTaskId || ''}|exp:${expandedScheduleRequestNo || ''}|view:${scheduleViewMode}`
         : activeMenu === '재배일정 요청'
         ? `reqStep:${mobileReqStep}`
         : '';
@@ -6066,6 +6074,8 @@ export default function UserIntroPage() {
       activeMenu,
       myPageTab,
       mobileScheduleStep,
+      mobileScheduleTaskTab,
+      selectedScheduleTaskId,
       mobileReqStep,
       expandedScheduleRequestNo: expandedScheduleRequestNo || null,
       selectedRequestNo: selectedRequestNo || 'REQ-20261106-009',
@@ -6091,6 +6101,8 @@ export default function UserIntroPage() {
           activeMenu: s.activeMenu,
           myPageTab: s.myPageTab,
           mobileScheduleStep: s.mobileScheduleStep,
+          mobileScheduleTaskTab: s.mobileScheduleTaskTab,
+          selectedScheduleTaskId: s.selectedScheduleTaskId,
           mobileReqStep: s.mobileReqStep,
           expandedScheduleRequestNo: s.expandedScheduleRequestNo,
           selectedRequestNo: s.selectedRequestNo,
@@ -6171,6 +6183,8 @@ export default function UserIntroPage() {
     activeMenu,
     myPageTab,
     mobileScheduleStep,
+    mobileScheduleTaskTab,
+    selectedScheduleTaskId,
     mobileReqStep,
     expandedScheduleRequestNo,
     selectedRequestNo,
@@ -6208,6 +6222,10 @@ export default function UserIntroPage() {
       setActiveMenu(targetSnap.activeMenu || '홈');
       setMyPageTab(targetSnap.myPageTab || 'FARMLAND');
       setMobileScheduleStep(targetSnap.mobileScheduleStep || 'list');
+      setMobileScheduleTaskTab(targetSnap.mobileScheduleTaskTab || 'todo');
+      if (targetSnap.selectedScheduleTaskId !== undefined) {
+        setSelectedScheduleTaskId(targetSnap.selectedScheduleTaskId || '');
+      }
       setMobileReqStep((targetSnap.mobileReqStep as 1 | 2 | 3 | 4) || 1);
       setExpandedScheduleRequestNo(targetSnap.expandedScheduleRequestNo ?? null);
       if (targetSnap.selectedRequestNo) {
@@ -7209,10 +7227,8 @@ export default function UserIntroPage() {
   return (
     <div
       className={`min-h-screen w-full max-w-full overflow-x-hidden ${
-        activeMenu === '홈'
+        activeMenu === '홈' || activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청'
           ? 'bg-white lg:bg-[#F8FAFC]'
-          : activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청'
-          ? 'bg-[#F7F9F7] lg:bg-[#F8FAFC]'
           : 'bg-[#F8FAFC]'
       } text-slate-900 flex flex-col break-keep ${
         isLegacyAndroidWebView ? 'pb-12' : ''
@@ -7226,7 +7242,7 @@ export default function UserIntroPage() {
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
         className={`${
-          activeMenu === '홈' || activeMenu === '재배일정 요청'
+          activeMenu === '홈' || activeMenu === '재배일정 요청' || activeMenu === '재배일정 확인'
             ? 'hidden lg:block'
             : 'block'
         } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
@@ -9457,26 +9473,125 @@ export default function UserIntroPage() {
                   nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
                 }
 
+                const expectedHarvestYmd =
+                  crop.expected_harvest_date &&
+                  /^\d{4}-\d{2}-\d{2}$/.test(crop.expected_harvest_date)
+                    ? crop.expected_harvest_date
+                    : evaluatedStages[evaluatedStages.length - 1]?.effDate ||
+                      addDaysToYmd(basePlantingYmd, 92);
+
+                const formatYmdToDot = (ymd: string) => {
+                  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '2026.8.25';
+                  const [y, m, d] = ymd.split('-').map(Number);
+                  return `${y}.${m}.${d}`;
+                };
+
+                const periodDotLabel = `${formatYmdToDot(basePlantingYmd)} ~ ${formatYmdToDot(
+                  expectedHarvestYmd
+                )}`;
+
+                const rawElapsed = diffDaysBetweenYmd(basePlantingYmd, todayKstYmd);
+                const elapsedDays = rawElapsed > 0 ? rawElapsed : 46;
+
+                const anchorBaseYmd = nextStage
+                  ? diffDaysBetweenYmd(todayKstYmd, nextStage.effDate) > 0
+                    ? todayKstYmd
+                    : addDaysToYmd(nextStage.effDate, -5)
+                  : todayKstYmd;
+
+                const enrichTaskItem = (stg: EvalStage, sIdx: number) => {
+                  const combinedTitle = `${stg.stageGroupName} ${stg.subItemName}`;
+                  const isPest = /병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle);
+                  const isFert = /시비|밑거름|추비|웃거름|비료|토양개량|생육 촉진/.test(
+                    combinedTitle
+                  );
+                  const iconType: 'FERTILIZER' | 'PEST' | 'WORK' = isPest
+                    ? 'PEST'
+                    : isFert
+                    ? 'FERTILIZER'
+                    : 'WORK';
+
+                  const rawDiff = diffDaysBetweenYmd(anchorBaseYmd, stg.effDate);
+                  const ddayVal = rawDiff > 0 ? rawDiff : Math.max(1, (sIdx + 1) * 5);
+                  const ddayLabel = stg.isRecognized ? '완료' : `D-${ddayVal}`;
+
+                  const usageAmountNum = isPest
+                    ? Math.max(1, Math.round((areaPyeongVal / 500) * 2))
+                    : Math.max(10, Math.round((areaPyeongVal / 500) * 50));
+                  const usageUnit = isPest ? 'L' : 'kg';
+                  const materialName = isPest
+                    ? '친환경 살균·살충 방제제'
+                    : '복합비료 15-15-15';
+                  const materialThumb = isPest
+                    ? '/images/products/pesticide-organic-neem.jpg'
+                    : '/images/products/fertilizer-npk-21.jpg';
+                  const usageMethod = isPest
+                    ? '작물 잎 앞뒷면에 골고루 분무 살포'
+                    : '밭에 골고루 살포 후 관수';
+                  const usageCaution = isPest
+                    ? '강우 직전이나 한낮 고온기 살포 피하기'
+                    : '비온 직후 또는 토양이 습할 때';
+
+                  return {
+                    ...stg,
+                    shortTitle: stg.subItemName,
+                    dateLabel: formatKoreanMonthDayWeekday(stg.effDate),
+                    ddayLabel,
+                    iconType,
+                    materialName,
+                    materialThumb,
+                    usageAmountNum,
+                    usageUnit,
+                    usageMethod,
+                    usageCaution,
+                  };
+                };
+
+                const enrichedTodoTasks = uncompletedStages.map((s, i) =>
+                  enrichTaskItem(s, i)
+                );
+                const enrichedDoneTasks = completedStages.map((s, i) =>
+                  enrichTaskItem(s, i)
+                );
+                const enrichedAllTasks = evaluatedStages.map((s, i) =>
+                  enrichTaskItem(s, i)
+                );
+                const primaryNextTask =
+                  enrichedTodoTasks[0] ||
+                  enrichedAllTasks[enrichedAllTasks.length - 1] ||
+                  null;
+
                 return {
                   id: reqNo,
                   request_no: reqNo,
                   isRealCrop: true,
                   isAllCompleted,
                   shortName,
-                  cultivarName,
+                  cultivarName: cultivarName || '춘추배추',
                   region: regionText,
                   thumbUrl: resolveCropThumbByShortName(shortName),
                   stageBadge,
-                  cultivationMethod: String(crop.badge || '').includes('시설') ? '시설' : '노지',
-                  areaPyeong: Number(crop.area_pyeong || 500),
+                  cultivationMethod: String(crop.badge || '').includes('시설')
+                    ? '시설(하우스)'
+                    : '노지',
+                  areaPyeong: areaPyeongVal,
+                  basePlantingYmd,
+                  expectedHarvestYmd,
+                  periodDotLabel,
+                  elapsedDays,
                   activeStepIdx,
                   nextTaskTitle,
                   nextTaskDesc,
                   nextTaskDateLabel,
+                  nextTaskDdayLabel: primaryNextTask?.ddayLabel || 'D-5',
+                  primaryNextTask,
+                  todoTasks: enrichedTodoTasks,
+                  doneTasks: enrichedDoneTasks,
+                  allTasks: enrichedAllTasks,
                 };
               };
 
-              // 회원의 실제 재배작물 리스트(cloudBaeCropList)를 PC와 100% 동일하게 연동 (데이터가 0건일 때 임의 기본작물 생성 금지)
+              // 회원의 실제 재배작물 리스트(cloudBaeCropList)를 PC와 100% 동일하게 연동
               const sourceCrops = cloudBaeCropList;
 
               const combinedMobileCrops = sourceCrops.map((c: any, idx: number) =>
@@ -9488,502 +9603,1390 @@ export default function UserIntroPage() {
                 combinedMobileCrops[0] ||
                 null;
 
-              const visibleCropTabs = showAllMobileScheduleCrops
-                ? combinedMobileCrops
-                : combinedMobileCrops.slice(0, 3);
+              const fourStepShortLabels = ['정식', '생육', '결구', '수확'] as const;
+              const fourStepFullTitles = ['정식기', '생육기', '결구기', '수확기'] as const;
+              const currentStageTitle = activeCropItem
+                ? fourStepFullTitles[activeCropItem.activeStepIdx] || '결구기'
+                : '결구기';
 
-              const greetingUserName = loggedInUser.isLoggedIn
-                ? loggedInUser.name || '회원'
-                : '홍길동';
+              const selectedTaskItem =
+                activeCropItem?.allTasks.find(
+                  (t) => t.itemId === selectedScheduleTaskId
+                ) ||
+                activeCropItem?.primaryNextTask ||
+                activeCropItem?.allTasks[0] ||
+                null;
 
-              const fourStepLabels = ['정식', '생육기', '결구기(병해충)', '수확기'] as const;
-              const currentStepLabel =
-                activeCropItem
-                  ? fourStepLabels[activeCropItem.activeStepIdx] || '정식'
-                  : '정식';
+              const formatYmdToKoreanFull = (ymd: string) => {
+                if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '2026년 10월 15일';
+                const [y, m, d] = ymd.split('-').map(Number);
+                return `${y}년 ${m}월 ${d}일`;
+              };
+
+              const goToScheduleStep = (
+                nextStep:
+                  | 'list'
+                  | 'detail'
+                  | 'tasks'
+                  | 'task_exec'
+                  | 'work_log'
+                  | 'growth_check'
+              ) => {
+                setIsWorkLogMaterialPickerOpen(false);
+                setIsPostponeDatePickerOpen(false);
+                setMobileScheduleStep(nextStep);
+                if (typeof window !== 'undefined') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              };
+
+              const goBackScheduleStep = () => {
+                setIsWorkLogMaterialPickerOpen(false);
+                setIsPostponeDatePickerOpen(false);
+                if (typeof window !== 'undefined') {
+                  const curIdx = navIndexRef.current;
+                  const prevSnap = curIdx > 0 ? navStackRef.current[curIdx - 1] : null;
+                  if (
+                    prevSnap &&
+                    prevSnap.activeMenu === '재배일정 확인' &&
+                    prevSnap.mobileScheduleStep &&
+                    prevSnap.mobileScheduleStep !== mobileScheduleStep
+                  ) {
+                    window.history.back();
+                    return;
+                  }
+                  if (mobileScheduleStep === 'work_log') {
+                    setMobileScheduleStep('task_exec');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (mobileScheduleStep === 'task_exec') {
+                    setMobileScheduleStep('tasks');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (
+                    mobileScheduleStep === 'tasks' ||
+                    mobileScheduleStep === 'growth_check'
+                  ) {
+                    setMobileScheduleStep('detail');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (mobileScheduleStep === 'detail') {
+                    setMobileScheduleStep('list');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (curIdx > 0) {
+                    window.history.back();
+                    return;
+                  }
+                }
+                setActiveMenu('홈');
+              };
+
+              const prepareTaskForExecAndLog = (task: any) => {
+                if (!task) return;
+                setSelectedScheduleTaskId(task.itemId);
+                setTaskDetailActualDate(task.effDate);
+                setTaskDetailActualAmount(String(task.usageAmountNum || 50));
+                setWorkLogUnit(task.usageUnit || 'kg');
+                setWorkLogSelectedMaterialName(
+                  task.materialName || '복합비료 15-15-15'
+                );
+                setWorkLogSelectedMaterialThumb(
+                  task.materialThumb || '/images/products/fertilizer-npk-21.jpg'
+                );
+                setTaskDetailMemo('');
+                setTaskDetailPhotoName('');
+              };
+
+              const renderTaskCategoryIcon = (
+                iconType: 'FERTILIZER' | 'PEST' | 'WORK'
+              ) => {
+                if (iconType === 'PEST') {
+                  return (
+                    <svg
+                      viewBox="0 0 32 32"
+                      className="w-8 h-8 text-[#0E712F] shrink-0"
+                      fill="none"
+                    >
+                      <path
+                        d="M16 4.5L6.5 8.5V15.5C6.5 21.6 10.5 26.8 16 28.5C21.5 26.8 25.5 21.6 25.5 15.5V8.5L16 4.5Z"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M12 16.5L14.8 19.3L20.5 13.5"
+                        stroke="currentColor"
+                        strokeWidth="2.3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  );
+                }
+                return (
+                  <svg
+                    viewBox="0 0 32 32"
+                    className="w-8 h-8 text-[#0E712F] shrink-0"
+                    fill="none"
+                  >
+                    <path
+                      d="M11.5 6.5H20.5L18.5 10.5H13.5L11.5 6.5Z"
+                      stroke="currentColor"
+                      strokeWidth="2.1"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M13 10.5C9.5 12.2 7.5 16.5 7.5 21.5C7.5 24 9.5 26 12 26H20C22.5 26 24.5 24 24.5 21.5C24.5 16.5 22.5 12.2 19 10.5H13Z"
+                      stroke="currentColor"
+                      strokeWidth="2.1"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M16 21.5V16M16 18.5C16 16.8 14.3 15.5 12.5 15.5C12.5 17.5 14.2 18.5 16 18.5ZM16 18C16 16.3 17.7 15 19.5 15C19.5 17 17.8 18 16 18Z"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                );
+              };
+
+              const availableWorkLogMaterials = [
+                {
+                  name: '복합비료 15-15-15',
+                  thumb: '/images/products/fertilizer-npk-21.jpg',
+                  unit: 'kg',
+                  defaultAmt: '50',
+                },
+                {
+                  name: 'NK 마그네슘 추비특호 (18-0-16)',
+                  thumb: '/images/products/fertilizer-nk-top.jpg',
+                  unit: 'kg',
+                  defaultAmt: '40',
+                },
+                {
+                  name: '완숙 유박 비료 (4-2-1)',
+                  thumb: '/images/products/fertilizer-organic-pellet.jpg',
+                  unit: 'kg',
+                  defaultAmt: '100',
+                },
+                {
+                  name: '친환경 살균·살충 방제제',
+                  thumb: '/images/products/pesticide-organic-neem.jpg',
+                  unit: 'L',
+                  defaultAmt: '2',
+                },
+              ];
 
               return (
-                <div className="lg:hidden w-full min-h-screen bg-[#F7F9F7] text-[#111827] pb-24 select-none">
-                  {/* 2. 회원 인사말 타이틀 */}
-                  <div className="px-4 pt-3.5 pb-3">
-                    <h1 className="text-[23px] min-[390px]:text-[24.5px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
-                      {greetingUserName}님, 안녕하세요!
-                    </h1>
-                  </div>
+                <div className="w-full min-h-screen bg-white lg:bg-transparent lg:py-6 flex justify-center select-none pb-24">
+                  <div className="w-full max-w-[460px] min-h-screen lg:min-h-[720px] bg-white lg:rounded-[28px] lg:border lg:border-[#E5E7EB] lg:shadow-[0_12px_40px_rgba(15,23,42,0.06)] flex flex-col px-5 pt-4 pb-10">
+                    {/* ==================== [공통 상단 헤더: 좌측 ← 뒤로가기 + 중앙 한팜 FarmPlan 로고] ==================== */}
+                    <div className="relative h-12 flex items-center justify-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={goBackScheduleStep}
+                        aria-label="이전 페이지로 뒤로 가기"
+                        className="absolute left-0 w-10 h-10 -ml-1.5 rounded-full hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center text-[#111827] cursor-pointer transition"
+                      >
+                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                          <path
+                            d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
 
-                  <div className="px-3.5 space-y-3.5">
-                    {/* 3. 내 재배작물 N개 상단 선택 영역 */}
-                    <section className="rounded-[22px] bg-[#EFF5F1] p-3.5 space-y-3">
-                      <div className="flex items-center justify-between px-0.5">
-                        <div className="flex items-center gap-2">
-                          <svg viewBox="0 0 28 28" className="w-6 h-6 shrink-0" fill="none">
-                            <path
-                              d="M14 21.5V11M14 14.5C14 10.5 10.8 8 6.8 8C6.8 12 10 14.5 14 14.5ZM14 13C14 9 17.2 6.5 21.2 6.5C21.2 10.5 18 13 14 13Z"
-                              stroke="#0E712F"
-                              strokeWidth="2.1"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <path
-                              d="M6.5 22.5C9.5 20.8 18.5 20.8 21.5 22.5"
-                              stroke="#0E712F"
-                              strokeWidth="2.1"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                          <div className="text-[17px] min-[390px]:text-[18px] font-black tracking-[-0.03em]">
-                            <span className="text-[#111827]">내 재배작물 </span>
-                            <span className="text-[#0E712F]">{combinedMobileCrops.length}개</span>
-                          </div>
+                      <div className="inline-flex items-center gap-2">
+                        <div className="w-[30px] h-[30px] rounded-[8px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs shrink-0">
+                          <Sprout className="w-4 h-4 stroke-[2.3]" />
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => setActiveMenu('재배일정 요청')}
-                          className="inline-flex items-center gap-1.5 text-[13.5px] font-bold text-[#1F2937] hover:text-[#0E712F] cursor-pointer transition"
-                        >
-                          <span>작물 추가</span>
-                          <span className="w-6 h-6 rounded-full border-[1.5px] border-[#0E712F] bg-white text-[#0E712F] inline-flex items-center justify-center">
-                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <div className="flex items-baseline gap-1 tracking-[-0.03em]">
+                          <span className="text-[19px] font-black text-[#0E712F]">
+                            한팜
                           </span>
-                        </button>
-                      </div>
-
-                      {/* 재배작물 가로 선택 카드 리스트 + [••• 전체보기] (0건일 경우 빈 안내 표시) */}
-                      {combinedMobileCrops.length === 0 ? (
-                        <div className="rounded-[16px] bg-white/95 border border-dashed border-[#B7CFC0] p-4 text-center space-y-2.5">
-                          <div className="text-[14.5px] font-black text-[#111827]">
-                            등록된 재배일정 확인 데이터가 없습니다 (0건)
-                          </div>
-                          <p className="text-[12px] font-medium text-[#4B5563] leading-relaxed">
-                            상단 <strong>[재배일정 요청]</strong> 탭 또는 우측 상단 <strong>[작물 추가 +]</strong> 버튼을 눌러 맞춤 재배일정을 생성해 주세요.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMobileReqStep(1);
-                              setActiveMenu('재배일정 요청');
-                            }}
-                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13px] font-extrabold shadow-2xs cursor-pointer transition"
-                          >
-                            <Plus className="w-4 h-4 stroke-[2.5]" />
-                            <span>맞춤 재배일정 요청하기</span>
-                          </button>
+                          <span className="text-[17px] font-bold text-[#111827]">
+                            FarmPlan
+                          </span>
                         </div>
-                      ) : (
-                        <div className="flex items-stretch gap-2 overflow-x-auto no-scrollbar">
-                          {visibleCropTabs.map((item) => {
-                            const isSelectedCrop =
-                              activeCropItem && item.request_no === activeCropItem.request_no;
-                            return (
+                      </div>
+                    </div>
+
+                    {/* ==================== [페이지 1: 재배작물 목록 페이지 (첨부 이미지 1번)] ==================== */}
+                    {mobileScheduleStep === 'list' && (
+                      <div className="mt-4 flex-1">
+                        {combinedMobileCrops.length === 0 ? (
+                          <div className="mt-6 rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
+                            <div className="text-[17px] font-black text-[#111827]">
+                              등록된 재배작물이 없습니다
+                            </div>
+                            <p className="text-[13.5px] font-medium text-[#4B5563] leading-relaxed">
+                              재배할 작물과 재배지를 등록하고 나만의 맞춤 재배일정을 확인해 보세요.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setMobileReqStep(1);
+                                setActiveMenu('재배일정 요청');
+                              }}
+                              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[14.5px] font-extrabold shadow-xs cursor-pointer transition"
+                            >
+                              <Plus className="w-4 h-4 stroke-[2.5]" />
+                              <span>재배작물 등록하기</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-[#D1D5DB]">
+                            {combinedMobileCrops.map((item) => (
                               <button
                                 key={item.id}
                                 type="button"
                                 onClick={() => {
                                   setSelectedRequestNo(item.request_no);
-                                  setMyPageStageDetailItem(null);
-                                  if (!provisionData || provisionData?.activeRequest?.request_no !== item.request_no) {
-                                    loadScheduleProvision(item.request_no, { gdd_mode: patentGddMode });
+                                  if (
+                                    !provisionData ||
+                                    provisionData?.activeRequest?.request_no !==
+                                      item.request_no
+                                  ) {
+                                    loadScheduleProvision(item.request_no, {
+                                      gdd_mode: patentGddMode,
+                                    }).catch(() => {});
                                   }
+                                  if (item.primaryNextTask) {
+                                    prepareTaskForExecAndLog(item.primaryNextTask);
+                                  }
+                                  goToScheduleStep('detail');
                                 }}
-                                className={`flex-1 min-w-[96px] rounded-[15px] p-2 flex items-center gap-2 text-left transition cursor-pointer ${
-                                  isSelectedCrop
-                                    ? 'bg-white border-[1.8px] border-[#0E712F] shadow-[0_2px_10px_rgba(14,113,47,0.1)]'
-                                    : 'bg-white/95 border border-transparent hover:bg-white'
-                                }`}
+                                className="w-full py-4 flex items-center gap-4 text-left hover:bg-slate-50/70 active:bg-slate-100/70 cursor-pointer transition"
                               >
-                                <div className="w-[42px] h-[42px] min-[390px]:w-[46px] min-[390px]:h-[46px] rounded-[11px] overflow-hidden shrink-0 bg-slate-100">
+                                <div className="w-[78px] h-[78px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/70 shadow-2xs">
                                   <img
                                     src={item.thumbUrl}
                                     alt={item.shortName}
                                     className="w-full h-full object-cover block"
                                   />
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="text-[14.5px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
-                                    {item.shortName}
+                                <div className="min-w-0 flex-1 space-y-1">
+                                  <div className="flex items-baseline gap-1.5 truncate">
+                                    <span className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                      {item.shortName}
+                                    </span>
+                                    <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
+                                      ({item.cultivarName})
+                                    </span>
                                   </div>
-                                  <div className="mt-0.5 text-[11.5px] min-[390px]:text-[12px] font-medium text-[#4B5563] tracking-[-0.02em] leading-tight truncate">
-                                    {item.stageBadge}
+                                  <div className="text-[16px] font-medium text-[#374151] tracking-[-0.02em] flex items-center gap-2">
+                                    <span>{item.cultivationMethod}</span>
+                                    <span className="text-[#D1D5DB]">|</span>
+                                    <span>{item.areaPyeong.toLocaleString()}평</span>
+                                  </div>
+                                  <div className="text-[15.5px] font-medium text-[#111827] tracking-[-0.01em]">
+                                    {item.periodDotLabel}
                                   </div>
                                 </div>
                               </button>
-                            );
-                          })}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                          {/* 우측 ••• 전체보기 버튼 */}
-                          <button
-                            type="button"
-                            onClick={() => setShowAllMobileScheduleCrops((prev) => !prev)}
-                            className="rounded-[15px] bg-white/95 hover:bg-white px-2.5 py-2 flex flex-col items-center justify-center gap-1 text-center cursor-pointer transition min-w-[54px] shrink-0"
-                          >
-                            <div className="flex items-center gap-1 text-[#6B7280]">
-                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
-                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
-                              <span className="w-1 h-1 rounded-full bg-[#6B7280]" />
+                    {/* ==================== [페이지 2: 선택 작물 재배관리 대시보드 페이지 (첨부 이미지 2번)] ==================== */}
+                    {mobileScheduleStep === 'detail' && activeCropItem && (
+                      <div className="mt-4 space-y-5 flex-1">
+                        {/* 1) 상단 작물 기본 정보 */}
+                        <div className="flex items-center gap-4">
+                          <div className="w-[78px] h-[78px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/70 shadow-2xs">
+                            <img
+                              src={activeCropItem.thumbUrl}
+                              alt={activeCropItem.shortName}
+                              className="w-full h-full object-cover block"
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-baseline gap-1.5 truncate">
+                              <span className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                {activeCropItem.shortName}
+                              </span>
+                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
+                                ({activeCropItem.cultivarName})
+                              </span>
                             </div>
-                            <span className="text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
-                              {showAllMobileScheduleCrops ? '접기' : '전체보기'}
-                            </span>
-                          </button>
+                            <div className="text-[16px] font-medium text-[#374151] tracking-[-0.02em] flex items-center gap-2">
+                              <span>{activeCropItem.cultivationMethod}</span>
+                              <span className="text-[#D1D5DB]">|</span>
+                              <span>{activeCropItem.areaPyeong.toLocaleString()}평</span>
+                            </div>
+                            <div className="text-[15.5px] font-medium text-[#111827] tracking-[-0.01em]">
+                              {activeCropItem.periodDotLabel}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                    </section>
 
-                    {activeCropItem && (
-                      <>
-                        {/* 4. 선택된 작물 연동 ①: [{작물명} 재배현황] 및 4단계 생육 진행 바 카드 (클릭 또는 [{현위치} 확인] 버튼 터치 시 생육단계 상세 모달리스 폼 오픈) */}
-                        <section
-                          onClick={() => {
-                            const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
-                            setSelectedRequestNo(targetReqNo);
-                            setMyPageStageDetailItem(null);
-                            setIsGrowthConfirmDatePickerOpen(false);
-                            setIsWorkLogFormOpen(false);
-                            setMobileStageOverviewReqNo(targetReqNo);
-                          }}
-                          className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-5 cursor-pointer active:scale-[0.99] transition"
-                        >
-                          <div className="flex items-center justify-between gap-2.5">
-                            <div className="flex items-center gap-3.5 min-w-0">
-                              <div className="w-[58px] h-[58px] min-[390px]:w-[62px] min-[390px]:h-[62px] rounded-[15px] overflow-hidden shrink-0 bg-slate-100 shadow-2xs">
-                                <img
-                                  src={activeCropItem.thumbUrl}
-                                  alt={activeCropItem.shortName}
-                                  className="w-full h-full object-cover block"
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <h2 className="text-[18px] min-[390px]:text-[19.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
-                                    {activeCropItem.shortName}
-                                    {activeCropItem.cultivarName
-                                      ? ` (${activeCropItem.cultivarName})`
-                                      : ''}{' '}
-                                    재배현황
-                                  </h2>
-                                  <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#0E712F] text-[12px] font-extrabold tracking-[-0.02em] shrink-0">
-                                    {activeCropItem.stageBadge}
-                                  </span>
-                                </div>
-                                <p className="mt-0.5 text-[13px] min-[390px]:text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
-                                  {activeCropItem.region ? `${activeCropItem.region} · ` : ''}
-                                  {activeCropItem.cultivationMethod} ·{' '}
-                                  {activeCropItem.areaPyeong.toLocaleString()}평
-                                </p>
-                              </div>
-                            </div>
+                        {/* 2) 4단계 생육 진행 바 (정식 ── 생육 ── 결구(현재) ── 수확) */}
+                        <div className="px-2 pt-2 pb-1">
+                          <div className="relative flex items-center justify-between">
+                            {/* 연결선 0 -> 1 */}
+                            <div
+                              className={`absolute left-[18px] w-[calc(33.333%-18px)] top-[12px] h-[2.5px] ${
+                                activeCropItem.activeStepIdx >= 1
+                                  ? 'bg-[#0E712F]'
+                                  : 'bg-[#D1D5DB]'
+                              }`}
+                              aria-hidden="true"
+                            />
+                            {/* 연결선 1 -> 2 */}
+                            <div
+                              className={`absolute left-[33.333%] w-[33.333%] top-[12px] h-[2.5px] ${
+                                activeCropItem.activeStepIdx >= 2
+                                  ? 'bg-[#0E712F]'
+                                  : 'bg-[#D1D5DB]'
+                              }`}
+                              aria-hidden="true"
+                            />
+                            {/* 연결선 2 -> 3 */}
+                            <div
+                              className={`absolute left-[66.666%] right-[18px] top-[12px] h-[2.5px] ${
+                                activeCropItem.activeStepIdx >= 3
+                                  ? 'bg-[#0E712F]'
+                                  : 'bg-[#D1D5DB]'
+                              }`}
+                              aria-hidden="true"
+                            />
 
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
-                                setSelectedRequestNo(targetReqNo);
-                                setMyPageStageDetailItem(null);
-                                setIsWorkLogFormOpen(false);
-                                openGrowthConfirmModal(targetReqNo, activeCropItem.activeStepIdx);
-                              }}
-                              className="px-3.5 py-2 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[13.5px] min-[390px]:text-[14px] font-extrabold tracking-[-0.02em] inline-flex items-center gap-1 shadow-2xs shrink-0 cursor-pointer transition"
-                            >
-                              <span>{`${currentStepLabel} 확인`}</span>
-                              <ChevronRight className="w-4 h-4 stroke-[2.5] -mr-0.5" />
-                            </button>
-                          </div>
+                            {fourStepShortLabels.map((stepLabel, sIdx) => {
+                              const isDone = sIdx < activeCropItem.activeStepIdx;
+                              const isCurrent = sIdx === activeCropItem.activeStepIdx;
+                              const labelText = isCurrent
+                                ? `${stepLabel}(현재)`
+                                : stepLabel;
+                              return (
+                                <button
+                                  key={stepLabel}
+                                  type="button"
+                                  onClick={() => {
+                                    setGrowthConfirmModalTarget({
+                                      reqNo: activeCropItem.request_no,
+                                      stepIdx: sIdx as 0 | 1 | 2 | 3,
+                                    });
+                                    goToScheduleStep('growth_check');
+                                  }}
+                                  className="relative z-10 flex flex-col items-center gap-2 bg-white px-1.5 cursor-pointer"
+                                >
+                                  {isDone ? (
+                                    <div className="w-[24px] h-[24px] rounded-full bg-[#0E712F] text-white flex items-center justify-center">
+                                      <svg
+                                        viewBox="0 0 16 16"
+                                        className="w-3.5 h-3.5"
+                                        fill="none"
+                                      >
+                                        <path
+                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                          stroke="#FFFFFF"
+                                          strokeWidth="2.2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    </div>
+                                  ) : isCurrent ? (
+                                    <div className="w-[26px] h-[26px] rounded-full border-[2.5px] border-[#22C55E] bg-white flex items-center justify-center shadow-2xs">
+                                      <span className="w-[14px] h-[14px] rounded-full bg-[#22C55E]" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-[24px] h-[24px] rounded-full border-[2px] border-[#D1D5DB] bg-white" />
+                                  )}
 
-                          {/* 4단계 생육 진행 스텝 바 (정식 ── 생육기 ── 결구기 ── 수확기) */}
-                          <div className="px-4 pt-0.5 pb-1">
-                            <div className="relative flex items-center justify-between">
-                              {/* 연결 라인 0 -> 1 */}
-                              <div
-                                className={`absolute left-[14px] w-[calc(33.333%-14px)] top-[13px] h-[2.5px] transition-colors ${
-                                  activeCropItem.activeStepIdx >= 1 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                                }`}
-                                aria-hidden="true"
-                              />
-                              {/* 연결 라인 1 -> 2 */}
-                              <div
-                                className={`absolute left-[33.333%] w-[33.333%] top-[13px] h-[2.5px] transition-colors ${
-                                  activeCropItem.activeStepIdx >= 2 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                                }`}
-                                aria-hidden="true"
-                              />
-                              {/* 연결 라인 2 -> 3 */}
-                              <div
-                                className={`absolute left-[66.666%] right-[14px] top-[13px] h-[2.5px] transition-colors ${
-                                  activeCropItem.activeStepIdx >= 3 ? 'bg-[#15803D]' : 'bg-[#CBD5E1]'
-                                }`}
-                                aria-hidden="true"
-                              />
-
-                              {fourStepLabels.map((stepLabel, sIdx) => {
-                                const isCompletedStep = sIdx < activeCropItem.activeStepIdx;
-                                const isCurrentStep = sIdx === activeCropItem.activeStepIdx;
-                                const displayLabel = stepLabel;
-
-                                return (
-                                  <div
-                                    key={stepLabel}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const targetReqNo =
-                                        activeCropItem.request_no || 'REQ-20261106-009';
-                                      setSelectedRequestNo(targetReqNo);
-                                      openGrowthConfirmModal(
-                                        targetReqNo,
-                                        sIdx as 0 | 1 | 2 | 3
-                                      );
-                                    }}
-                                    className="relative z-10 flex flex-col items-center gap-2 bg-white px-1 cursor-pointer"
+                                  <span
+                                    className={`text-[14px] tracking-[-0.03em] whitespace-nowrap ${
+                                      isCurrent
+                                        ? 'font-extrabold text-[#0E712F]'
+                                        : 'font-medium text-[#374151]'
+                                    }`}
                                   >
-                                    {isCompletedStep ? (
-                                      <div className="w-[26px] h-[26px] rounded-full bg-[#BBF7D0] border border-[#86EFAC] text-[#15803D] flex items-center justify-center">
-                                        <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none">
-                                          <path
-                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                            stroke="#15803D"
-                                            strokeWidth="2.2"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        </svg>
-                                      </div>
-                                    ) : isCurrentStep ? (
-                                      <div className="w-[28px] h-[28px] rounded-full border-[2.5px] border-[#15803D] bg-white flex items-center justify-center">
-                                        <span className="w-[16px] h-[16px] rounded-full bg-[#15803D]" />
-                                      </div>
-                                    ) : (
-                                      <div className="w-[26px] h-[26px] rounded-full border-[2px] border-[#CBD5E1] bg-white" />
-                                    )}
+                                    {labelText}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
 
-                                    <span
-                                      className={`text-[13.5px] tracking-[-0.02em] whitespace-nowrap ${
-                                        isCurrentStep
-                                          ? 'font-black text-[#111827]'
-                                          : isCompletedStep
-                                          ? 'font-medium text-[#374151]'
-                                          : 'font-medium text-[#4B5563]'
-                                      }`}
-                                    >
-                                      {displayLabel}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                        {/* 3) 현재 생육단계 카드 */}
+                        <div className="rounded-[18px] bg-[#EFF8F1] p-4 flex items-center justify-between gap-3">
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Sprout className="w-5 h-5 text-[#16A34A] stroke-[2.2] shrink-0" />
+                              <span className="text-[15.5px] font-bold text-[#1F2937] tracking-[-0.02em]">
+                                현재 생육단계
+                              </span>
+                            </div>
+                            <div className="text-[21px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                              {currentStageTitle} (D+{activeCropItem.elapsedDays}일)
                             </div>
                           </div>
-                        </section>
+                          <div className="w-[78px] h-[66px] rounded-[12px] overflow-hidden shrink-0 bg-white shadow-2xs">
+                            <img
+                              src={activeCropItem.thumbUrl}
+                              alt={activeCropItem.shortName}
+                              className="w-full h-full object-cover block"
+                            />
+                          </div>
+                        </div>
 
-                        {/* 5. 선택된 작물 연동 ②: [다음 농작업] 카드 (클릭 시 모달리스 폼 오픈) */}
-                        <section
-                          onClick={() => {
-                            const targetReqNo = activeCropItem.request_no || 'REQ-20261106-009';
-                            setSelectedRequestNo(targetReqNo);
-                            setMyPageStageDetailItem(null);
-                            setIsGrowthConfirmDatePickerOpen(false);
-                            setIsWorkLogFormOpen(false);
-                            setMobileStageOverviewReqNo(targetReqNo);
-                          }}
-                          className="rounded-[22px] bg-white border border-[#E5E7EB]/90 p-4 shadow-[0_2px_14px_rgba(15,23,42,0.03)] space-y-2.5 cursor-pointer active:scale-[0.99] transition"
-                        >
+                        {/* 4) 다음 농작업 섹션 */}
+                        <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
-                            <svg viewBox="0 0 24 24" className="w-[22px] h-[22px] shrink-0" fill="none">
-                              <rect
-                                x="3.5"
-                                y="5"
-                                width="17"
-                                height="15.5"
-                                rx="2.8"
-                                stroke="#0E712F"
-                                strokeWidth="2"
-                              />
-                              <path
-                                d="M8 3V6.5M16 3V6.5M3.5 9.5H20.5"
-                                stroke="#0E712F"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                              />
-                              <circle cx="9" cy="13.5" r="1" fill="#0E712F" />
-                              <circle cx="15" cy="13.5" r="1" fill="#0E712F" />
-                              <circle cx="9" cy="17" r="1" fill="#0E712F" />
-                              <circle cx="12" cy="17" r="1" fill="#0E712F" />
-                            </svg>
-                            <span className="text-[16.5px] min-[390px]:text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
+                              <svg viewBox="0 0 16 16" className="w-3 h-3" fill="none">
+                                <path
+                                  d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </span>
+                            <span className="text-[17.5px] font-extrabold text-[#111827] tracking-[-0.03em]">
                               다음 농작업
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 pl-7">
-                            <div className="min-w-0">
-                              <div className="text-[20px] min-[390px]:text-[21px] font-black text-[#111827] tracking-[-0.03em] leading-tight truncate">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (activeCropItem.primaryNextTask) {
+                                prepareTaskForExecAndLog(activeCropItem.primaryNextTask);
+                              }
+                              goToScheduleStep('task_exec');
+                            }}
+                            className="w-full rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-center justify-between gap-2 cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {renderTaskCategoryIcon(
+                                activeCropItem.primaryNextTask?.iconType || 'FERTILIZER'
+                              )}
+                              <span className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
                                 {activeCropItem.nextTaskTitle}
-                              </div>
-                              <div className="mt-1 text-[13.5px] min-[390px]:text-[14px] font-medium text-[#4B5563] tracking-[-0.02em] truncate">
-                                {activeCropItem.nextTaskDesc}
-                              </div>
+                              </span>
                             </div>
 
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <div className="px-3.5 py-2 rounded-full bg-[#F4F7F4] border border-[#E5EAE6] inline-flex items-center gap-1.5">
-                                <svg viewBox="0 0 20 20" className="w-4 h-4 shrink-0" fill="none">
-                                  <rect
-                                    x="2.5"
-                                    y="4"
-                                    width="15"
-                                    height="13.5"
-                                    rx="2.2"
-                                    stroke="#0E712F"
-                                    strokeWidth="1.7"
-                                  />
-                                  <path
-                                    d="M6.5 2.5V5M13.5 2.5V5M2.5 7.8H17.5"
-                                    stroke="#0E712F"
-                                    strokeWidth="1.7"
-                                    strokeLinecap="round"
-                                  />
-                                  <circle cx="7.5" cy="11" r="0.9" fill="#0E712F" />
-                                  <circle cx="12.5" cy="11" r="0.9" fill="#0E712F" />
-                                  <circle cx="7.5" cy="14" r="0.9" fill="#0E712F" />
-                                  <circle cx="10" cy="14" r="0.9" fill="#0E712F" />
-                                </svg>
-                                <span className="text-[14px] min-[390px]:text-[14.5px] font-extrabold text-[#111827] tracking-[-0.02em] whitespace-nowrap">
-                                  {activeCropItem.nextTaskDateLabel}
-                                </span>
-                              </div>
-                              <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[16px] font-medium text-[#111827] tracking-[-0.02em] whitespace-nowrap">
+                                {activeCropItem.nextTaskDateLabel}
+                              </span>
+                              <span className="px-2.5 py-0.5 rounded-full bg-[#FDE68A] text-[#111827] text-[13.5px] font-extrabold whitespace-nowrap">
+                                {activeCropItem.nextTaskDdayLabel}
+                              </span>
                             </div>
-                          </div>
-                        </section>
-                      </>
+                          </button>
+                        </div>
+
+                        {/* 5) 하단 3개 메뉴 버튼 (재배일정 전체보기 / 생육단계 확인 / 작업기록) */}
+                        <div className="space-y-2.5 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMobileScheduleTaskTab('todo');
+                              goToScheduleStep('tasks');
+                            }}
+                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <Calendar className="w-6 h-6 text-[#16A34A] stroke-[2.1]" />
+                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                재배일정 전체보기
+                              </span>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGrowthConfirmModalTarget({
+                                reqNo: activeCropItem.request_no,
+                                stepIdx: activeCropItem.activeStepIdx,
+                              });
+                              goToScheduleStep('growth_check');
+                            }}
+                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <Sprout className="w-6 h-6 text-[#16A34A] stroke-[2.1]" />
+                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                생육단계 확인
+                              </span>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (activeCropItem.primaryNextTask) {
+                                prepareTaskForExecAndLog(activeCropItem.primaryNextTask);
+                              }
+                              goToScheduleStep('work_log');
+                            }}
+                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="w-6 h-6 text-[#16A34A]"
+                                fill="none"
+                              >
+                                <rect
+                                  x="4.5"
+                                  y="3.5"
+                                  width="15"
+                                  height="17"
+                                  rx="2.5"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                />
+                                <path
+                                  d="M8.5 9H15.5M8.5 13H15.5M8.5 17H12.5"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                작업기록
+                              </span>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                          </button>
+                        </div>
+                      </div>
                     )}
 
-                    {/* 6. 하단 3열 퀵 액션 카드 (농자재 구매 / 생육단계 확인 / 작업기록) */}
-                    <section className="grid grid-cols-3 gap-2.5 pt-0.5">
-                      {/* 카드 1: 농자재 구매 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMobileAgroCategoryTab('FERTILIZER');
-                          setActiveMenu('농작물 구매');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
-                      >
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <path
-                            d="M8.5 14.5H27.5L26 27.5H10L8.5 14.5Z"
-                            stroke="#15803D"
-                            strokeWidth="2.2"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M13.5 14.5V11.5C13.5 9 15.5 7 18 7C20.5 7 22.5 9 22.5 11.5V14.5"
-                            stroke="#15803D"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          농자재 구매
-                        </span>
-                      </button>
+                    {/* ==================== [페이지 3: 농작업 목록 페이지 (첨부 이미지 3번)] ==================== */}
+                    {mobileScheduleStep === 'tasks' && activeCropItem && (
+                      <div className="mt-5 space-y-5 flex-1">
+                        <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
+                          농작업 목록
+                        </h1>
 
-                      {/* 카드 2: 생육단계 확인 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetReqNo =
-                            activeCropItem?.request_no ||
-                            selectedRequestNo ||
-                            cloudBaeCropList[0]?.request_no;
-                          if (targetReqNo) {
-                            setSelectedRequestNo(targetReqNo);
-                            setMyPageStageDetailItem(null);
-                            setIsGrowthConfirmDatePickerOpen(false);
-                            setIsWorkLogFormOpen(false);
-                            setMobileStageOverviewReqNo(targetReqNo);
-                          } else {
-                            setActiveMenu('재배일정 요청');
-                          }
-                        }}
-                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
-                      >
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <path
-                            d="M7.5 13C7.5 11.6 8.6 10.5 10 10.5H12.8L14.5 8H21.5L23.2 10.5H26C27.4 10.5 28.5 11.6 28.5 13V24.5C28.5 25.9 27.4 27 26 27H10C8.6 27 7.5 25.9 7.5 24.5V13Z"
-                            stroke="#15803D"
-                            strokeWidth="2.2"
-                            strokeLinejoin="round"
-                          />
-                          <circle cx="18" cy="18.8" r="4" stroke="#15803D" strokeWidth="2.2" />
-                        </svg>
-                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          생육단계 확인
-                        </span>
-                      </button>
+                        {/* 할 일 (N) / 완료 (N) 캡슐 탭 */}
+                        <div className="rounded-full bg-[#F3F4F6] p-1 grid grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setMobileScheduleTaskTab('todo')}
+                            className={`h-[44px] rounded-full text-[16.5px] tracking-[-0.02em] cursor-pointer transition ${
+                              mobileScheduleTaskTab === 'todo'
+                                ? 'bg-[#0E712F] text-white font-extrabold shadow-xs'
+                                : 'bg-transparent text-[#111827] font-bold'
+                            }`}
+                          >
+                            할 일 ({activeCropItem.todoTasks.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setMobileScheduleTaskTab('done')}
+                            className={`h-[44px] rounded-full text-[16.5px] tracking-[-0.02em] cursor-pointer transition ${
+                              mobileScheduleTaskTab === 'done'
+                                ? 'bg-[#0E712F] text-white font-extrabold shadow-xs'
+                                : 'bg-transparent text-[#111827] font-bold'
+                            }`}
+                          >
+                            완료 ({activeCropItem.doneTasks.length})
+                          </button>
+                        </div>
 
-                      {/* 카드 3: 작업기록 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const targetReqNo =
-                            activeCropItem?.request_no ||
-                            selectedRequestNo ||
-                            cloudBaeCropList[0]?.request_no;
-                          if (targetReqNo) {
-                            setSelectedRequestNo(targetReqNo);
-                            setMyPageStageDetailItem(null);
-                            setIsGrowthConfirmDatePickerOpen(false);
-                            setWorkLogForm((prev) => ({
-                              ...prev,
-                              workDate: getTodayKstYmd(),
-                              stageLabel: currentStepLabel,
-                              taskTitle: activeCropItem?.nextTaskTitle || '',
-                            }));
-                            setIsWorkLogFormOpen(true);
-                            setMobileStageOverviewReqNo(targetReqNo);
-                          } else {
-                            setActiveMenu('재배일정 요청');
-                          }
-                        }}
-                        className="rounded-[20px] bg-white hover:bg-emerald-50/60 active:scale-[0.98] border border-[#E5E7EB]/90 py-4 px-2 flex flex-col items-center justify-center text-center shadow-[0_2px_12px_rgba(15,23,42,0.03)] cursor-pointer transition"
-                      >
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <rect
-                            x="9"
-                            y="8"
-                            width="18"
-                            height="21"
-                            rx="3"
-                            stroke="#15803D"
-                            strokeWidth="2.2"
-                          />
-                          <path
-                            d="M14 6.5H22V9.5H14V6.5Z"
-                            fill="#FFFFFF"
-                            stroke="#15803D"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M14 19L16.8 21.8L22.5 15.8"
-                            stroke="#15803D"
-                            strokeWidth="2.3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        <span className="mt-2.5 text-[14.5px] min-[390px]:text-[15px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          작업기록
-                        </span>
-                      </button>
-                    </section>
+                        {/* 농작업 카드 리스트 */}
+                        <div className="space-y-3">
+                          {(mobileScheduleTaskTab === 'todo'
+                            ? activeCropItem.todoTasks
+                            : activeCropItem.doneTasks
+                          ).map((task, idx) => {
+                            const isHighlightCard =
+                              mobileScheduleTaskTab === 'todo' && idx === 0;
+                            return (
+                              <button
+                                key={task.itemId}
+                                type="button"
+                                onClick={() => {
+                                  prepareTaskForExecAndLog(task);
+                                  goToScheduleStep('task_exec');
+                                }}
+                                className={`w-full rounded-[18px] p-4 flex items-center justify-between gap-3 text-left cursor-pointer transition ${
+                                  isHighlightCard
+                                    ? 'bg-[#EFF8F1] border border-[#DCFCE7]'
+                                    : 'bg-white border border-[#E5E7EB] hover:border-[#0E712F]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  {renderTaskCategoryIcon(task.iconType)}
+                                  <div className="min-w-0 space-y-1">
+                                    <div className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                      {task.shortTitle}
+                                    </div>
+                                    <div className="text-[16px] font-medium text-[#111827] tracking-[-0.02em] flex items-center gap-3">
+                                      <span>{task.dateLabel}</span>
+                                      <span className="font-semibold text-[#374151]">
+                                        {task.ddayLabel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ==================== [페이지 4: 농작업 실행하기 페이지 (첨부 이미지 4번)] ==================== */}
+                    {mobileScheduleStep === 'task_exec' &&
+                      activeCropItem &&
+                      selectedTaskItem && (
+                        <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                          <div className="space-y-5">
+                            <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
+                              {selectedTaskItem.shortTitle} (실행하기)
+                            </h1>
+
+                            {/* 예정일 배너 */}
+                            <div className="rounded-[14px] bg-[#EFF8F1] px-4 py-3.5 flex items-center gap-3">
+                              <Calendar className="w-6 h-6 text-[#16A34A] stroke-[2.1] shrink-0" />
+                              <span className="text-[16.5px] font-medium text-[#374151]">
+                                예정일
+                              </span>
+                              <span className="text-[17.5px] font-bold text-[#111827]">
+                                {selectedTaskItem.dateLabel}
+                              </span>
+                            </div>
+
+                            {/* 사용 농자재 */}
+                            <div className="space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
+                                  <svg
+                                    viewBox="0 0 16 16"
+                                    className="w-3 h-3"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                      stroke="#FFFFFF"
+                                      strokeWidth="2.3"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </span>
+                                <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                  사용 농자재
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMobileAgroCategoryTab(
+                                    selectedTaskItem.iconType === 'PEST'
+                                      ? 'PESTICIDE'
+                                      : 'FERTILIZER'
+                                  );
+                                  setActiveMenu('농작물 구매');
+                                }}
+                                className="w-full rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white p-3.5 flex items-center justify-between gap-3 cursor-pointer shadow-2xs transition"
+                              >
+                                <div className="flex items-center gap-3.5 min-w-0">
+                                  <div className="w-[52px] h-[52px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+                                    <img
+                                      src={selectedTaskItem.materialThumb}
+                                      alt={selectedTaskItem.materialName}
+                                      className="w-full h-full object-contain block"
+                                    />
+                                  </div>
+                                  <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                    {selectedTaskItem.materialName}
+                                  </span>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
+                              </button>
+                            </div>
+
+                            {/* 사용방법 (사용량 / 방법 / 주의) */}
+                            <div className="space-y-3 pt-1">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
+                                  <svg
+                                    viewBox="0 0 16 16"
+                                    className="w-3 h-3"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                      stroke="#FFFFFF"
+                                      strokeWidth="2.3"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </span>
+                                <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                  사용방법
+                                </span>
+                              </div>
+
+                              <div className="space-y-2.5 pl-1">
+                                {[
+                                  {
+                                    label: '사용량',
+                                    val: `${activeCropItem.areaPyeong.toLocaleString()}평 기준 ${
+                                      selectedTaskItem.usageAmountNum
+                                    }${selectedTaskItem.usageUnit}`,
+                                  },
+                                  {
+                                    label: '방법',
+                                    val: selectedTaskItem.usageMethod,
+                                  },
+                                  {
+                                    label: '주의',
+                                    val: selectedTaskItem.usageCaution,
+                                  },
+                                ].map((row) => (
+                                  <div
+                                    key={row.label}
+                                    className="flex items-center gap-3 text-[16px]"
+                                  >
+                                    <span className="w-5 h-5 rounded-full bg-[#16A34A] text-white inline-flex items-center justify-center shrink-0">
+                                      <svg
+                                        viewBox="0 0 16 16"
+                                        className="w-3 h-3"
+                                        fill="none"
+                                      >
+                                        <path
+                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                          stroke="#FFFFFF"
+                                          strokeWidth="2.2"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    </span>
+                                    <span className="w-[52px] font-extrabold text-[#111827] shrink-0">
+                                      {row.label}
+                                    </span>
+                                    <span className="font-medium text-[#1F2937] tracking-[-0.02em]">
+                                      {row.val}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* 연기하기 인라인 날짜 선택 패널 (팝업이 아닌 인라인 표시) */}
+                            {isPostponeDatePickerOpen && (
+                              <div className="rounded-[14px] border border-[#0E712F] bg-[#F4F8F5] p-3.5 space-y-2">
+                                <div className="text-[14px] font-extrabold text-[#0E712F]">
+                                  변경할 예정일을 선택하세요
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="date"
+                                    value={selectedTaskItem.effDate}
+                                    onChange={(e) => {
+                                      const nextYmd = e.target.value;
+                                      if (!nextYmd) return;
+                                      const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
+                                      setInlineStageDateDrafts((prev) => ({
+                                        ...prev,
+                                        [draftKey]: nextYmd,
+                                      }));
+                                      setTaskDetailActualDate(nextYmd);
+                                      setIsPostponeDatePickerOpen(false);
+                                    }}
+                                    className="flex-1 h-[42px] px-3 rounded-lg border border-slate-300 bg-white font-bold text-sm text-slate-900"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextYmd = addDaysToYmd(
+                                        selectedTaskItem.effDate,
+                                        3
+                                      );
+                                      const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
+                                      setInlineStageDateDrafts((prev) => ({
+                                        ...prev,
+                                        [draftKey]: nextYmd,
+                                      }));
+                                      setTaskDetailActualDate(nextYmd);
+                                      setIsPostponeDatePickerOpen(false);
+                                    }}
+                                    className="h-[42px] px-3 rounded-lg bg-[#0E712F] text-white font-bold text-xs cursor-pointer shrink-0"
+                                  >
+                                    +3일 연기
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 하단 버튼 3종: [✓ 작업 완료하기] / [📅 연기하기] [✕ 미실시] */}
+                          <div className="space-y-3 pt-4">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                prepareTaskForExecAndLog(selectedTaskItem);
+                                goToScheduleStep('work_log');
+                              }}
+                              className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                            >
+                              <Check className="w-5 h-5 stroke-[2.8]" />
+                              <span>작업 완료하기</span>
+                            </button>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setIsPostponeDatePickerOpen((prev) => !prev)
+                                }
+                                className="h-[48px] rounded-full border-[1.5px] border-[#16A34A] bg-white hover:bg-[#F4F9F5] text-[#111827] font-extrabold text-[16px] flex items-center justify-center gap-2 cursor-pointer transition"
+                              >
+                                <Calendar className="w-5 h-5 text-[#16A34A] stroke-[2.1]" />
+                                <span>연기하기</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleSaveStageUncompleted(
+                                    activeCropItem.request_no,
+                                    {
+                                      item_id: selectedTaskItem.itemId,
+                                      step_order: selectedTaskItem.stepOrder,
+                                      sub_item_name: selectedTaskItem.subItemName,
+                                      start_date: selectedTaskItem.effDate,
+                                    }
+                                  );
+                                  goToScheduleStep('tasks');
+                                }}
+                                className="h-[48px] rounded-full border-[1.5px] border-[#16A34A] bg-white hover:bg-[#F4F9F5] text-[#111827] font-extrabold text-[16px] flex items-center justify-center gap-2 cursor-pointer transition"
+                              >
+                                <X className="w-5 h-5 text-[#16A34A] stroke-[2.4]" />
+                                <span>미실시</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                    {/* ==================== [페이지 5: 작업 기록 페이지 (첨부 이미지 5번)] ==================== */}
+                    {mobileScheduleStep === 'work_log' && activeCropItem && (
+                      <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                        <div className="space-y-4">
+                          <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
+                            작업 기록
+                          </h1>
+
+                          {/* 1) 작업일 * */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[16px] font-bold text-[#111827]">
+                              작업일 <span className="text-[#DC2626]">*</span>
+                            </label>
+                            <label className="relative h-[52px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white px-4 flex items-center gap-3 cursor-pointer shadow-2xs transition">
+                              <Calendar className="w-5 h-5 text-[#16A34A] stroke-[2.1] shrink-0" />
+                              <span className="text-[17px] font-medium text-[#111827]">
+                                {formatYmdToKoreanFull(
+                                  taskDetailActualDate ||
+                                    selectedTaskItem?.effDate ||
+                                    todayKstYmd
+                                )}
+                              </span>
+                              <input
+                                type="date"
+                                value={
+                                  taskDetailActualDate ||
+                                  selectedTaskItem?.effDate ||
+                                  todayKstYmd
+                                }
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    setTaskDetailActualDate(e.target.value);
+                                  }
+                                }}
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                              />
+                            </label>
+                          </div>
+
+                          {/* 2) 사용 농자재 */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[16px] font-bold text-[#111827]">
+                              사용 농자재
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setIsWorkLogMaterialPickerOpen((prev) => !prev)
+                              }
+                              className="w-full rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white p-3 flex items-center justify-between gap-3 cursor-pointer shadow-2xs transition"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+                                  <img
+                                    src={workLogSelectedMaterialThumb}
+                                    alt={workLogSelectedMaterialName}
+                                    className="w-full h-full object-contain block"
+                                  />
+                                </div>
+                                <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                  {workLogSelectedMaterialName}
+                                </span>
+                              </div>
+                              <ChevronRight
+                                className={`w-5 h-5 text-[#111827] stroke-[2.2] shrink-0 transition-transform ${
+                                  isWorkLogMaterialPickerOpen ? 'rotate-90' : ''
+                                }`}
+                              />
+                            </button>
+
+                            {isWorkLogMaterialPickerOpen && (
+                              <div className="rounded-[14px] border border-[#0E712F]/40 bg-[#F9FBF9] p-2 space-y-1.5">
+                                {availableWorkLogMaterials.map((mat) => (
+                                  <button
+                                    key={mat.name}
+                                    type="button"
+                                    onClick={() => {
+                                      setWorkLogSelectedMaterialName(mat.name);
+                                      setWorkLogSelectedMaterialThumb(mat.thumb);
+                                      setWorkLogUnit(mat.unit);
+                                      setTaskDetailActualAmount(mat.defaultAmt);
+                                      setIsWorkLogMaterialPickerOpen(false);
+                                    }}
+                                    className="w-full rounded-[10px] bg-white hover:bg-[#EDF7ED] p-2 flex items-center gap-2.5 text-left cursor-pointer"
+                                  >
+                                    <img
+                                      src={mat.thumb}
+                                      alt={mat.name}
+                                      className="w-8 h-8 object-contain shrink-0"
+                                    />
+                                    <span className="text-[14px] font-bold text-[#111827]">
+                                      {mat.name}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* 3) 실제 사용량 * */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[16px] font-bold text-[#111827]">
+                              실제 사용량 <span className="text-[#DC2626]">*</span>
+                            </label>
+                            <div className="flex items-center gap-2.5">
+                              <input
+                                type="number"
+                                min={0}
+                                value={taskDetailActualAmount}
+                                onChange={(e) =>
+                                  setTaskDetailActualAmount(e.target.value)
+                                }
+                                className="flex-1 min-w-0 h-[52px] rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white px-4 text-[18px] font-bold text-[#111827] focus:outline-none shadow-2xs"
+                              />
+                              <select
+                                value={workLogUnit}
+                                onChange={(e) => setWorkLogUnit(e.target.value)}
+                                className="w-[88px] h-[52px] rounded-[14px] border border-[#D1D5DB] bg-white text-center text-[17px] font-bold text-[#111827] focus:outline-none cursor-pointer shadow-2xs"
+                              >
+                                <option value="kg">kg</option>
+                                <option value="L">L</option>
+                                <option value="포">포</option>
+                                <option value="병">병</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* 4) 메모 (선택) */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[16px] font-bold text-[#111827]">
+                              메모{' '}
+                              <span className="text-[14.5px] font-normal text-[#4B5563]">
+                                (선택)
+                              </span>
+                            </label>
+                            <textarea
+                              value={taskDetailMemo}
+                              onChange={(e) => setTaskDetailMemo(e.target.value)}
+                              placeholder="작업 내용을 간단히 입력하세요."
+                              rows={3}
+                              className="w-full rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white p-3.5 text-[15.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none resize-none shadow-2xs"
+                            />
+                          </div>
+
+                          {/* 5) 사진 추가 */}
+                          <div>
+                            <label className="w-[112px] h-[94px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition relative overflow-hidden">
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="w-7 h-7 text-[#111827]"
+                                fill="none"
+                              >
+                                <path
+                                  d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                  strokeLinejoin="round"
+                                />
+                                <circle
+                                  cx="12"
+                                  cy="13"
+                                  r="3.2"
+                                  stroke="currentColor"
+                                  strokeWidth="1.8"
+                                />
+                              </svg>
+                              <span className="text-[13.5px] font-medium text-[#111827] truncate max-w-[96px]">
+                                {taskDetailPhotoName ? '사진 첨부됨' : '사진 추가'}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) setTaskDetailPhotoName(f.name);
+                                }}
+                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                              />
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* 하단 [✓ 기록 저장] 버튼 */}
+                        <div className="pt-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const finalYmd =
+                                taskDetailActualDate ||
+                                selectedTaskItem?.effDate ||
+                                todayKstYmd;
+                              if (selectedTaskItem) {
+                                const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
+                                setInlineStageDateDrafts((prev) => ({
+                                  ...prev,
+                                  [draftKey]: finalYmd,
+                                }));
+                                handleSaveStageCompleted(
+                                  activeCropItem.request_no,
+                                  {
+                                    item_id: selectedTaskItem.itemId,
+                                    step_order: selectedTaskItem.stepOrder,
+                                    stage_group_name:
+                                      selectedTaskItem.stageGroupName,
+                                    sub_item_name: selectedTaskItem.subItemName,
+                                    start_date: finalYmd,
+                                  },
+                                  { explicitDate: finalYmd }
+                                );
+                              }
+
+                              const newLogEntry = {
+                                id: `WLOG-${Date.now()}`,
+                                workDate: finalYmd,
+                                stageLabel:
+                                  selectedTaskItem?.stageGroupName ||
+                                  currentStageTitle,
+                                taskTitle: `${
+                                  selectedTaskItem?.shortTitle || '농작업'
+                                } · ${workLogSelectedMaterialName} (${
+                                  taskDetailActualAmount || '50'
+                                }${workLogUnit})`,
+                                memo: [
+                                  taskDetailMemo.trim(),
+                                  taskDetailPhotoName
+                                    ? `[첨부사진: ${taskDetailPhotoName}]`
+                                    : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' '),
+                                createdAt: new Date().toISOString(),
+                              };
+
+                              setCropWorkLogs((prev) => {
+                                const prevList = Array.isArray(
+                                  prev[activeCropItem.request_no]
+                                )
+                                  ? prev[activeCropItem.request_no]
+                                  : [];
+                                const next = {
+                                  ...prev,
+                                  [activeCropItem.request_no]: [
+                                    newLogEntry,
+                                    ...prevList,
+                                  ],
+                                };
+                                try {
+                                  localStorage.setItem(
+                                    'hanfarm_crop_work_logs_v1',
+                                    JSON.stringify(next)
+                                  );
+                                } catch {
+                                  // ignore
+                                }
+                                fetch('/api/client-sync-state', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    email:
+                                      loggedInUser.email || 'CloudBae@naver.com',
+                                    state_key: 'crop_work_logs_v1',
+                                    state_value: next,
+                                  }),
+                                }).catch(() => {});
+                                return next;
+                              });
+
+                              setMobileScheduleTaskTab('done');
+                              goToScheduleStep('tasks');
+                            }}
+                            className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                          >
+                            <Check className="w-5 h-5 stroke-[2.8]" />
+                            <span>기록 저장</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ==================== [페이지 6: 생육단계 확인 개별 페이지 (모달 없는 독립 페이지)] ==================== */}
+                    {mobileScheduleStep === 'growth_check' &&
+                      activeCropItem &&
+                      (() => {
+                        const stepIdx: 0 | 1 | 2 | 3 =
+                          growthConfirmModalTarget?.stepIdx !== undefined
+                            ? growthConfirmModalTarget.stepIdx
+                            : activeCropItem.activeStepIdx;
+                        const confirmSpecs = [
+                          {
+                            idx: 0 as const,
+                            title: '정식 시작일 확인',
+                            prompt: `${activeCropItem.shortName} 모종을 본밭에 심는 정식이 시작되었나요?`,
+                            startedLabel: '네, 정식이 시작되었습니다.',
+                            notYetLabel: '아직 정식이 시작되지 않았습니다.',
+                            unknownLabel: '잘 모르겠습니다.',
+                            dateLabel: '실제 정식 시작일',
+                            defaultYmd: activeCropItem.basePlantingYmd,
+                            targetItemId: 'SCH-07',
+                          },
+                          {
+                            idx: 1 as const,
+                            title: '생육 시작일 확인',
+                            prompt: `${activeCropItem.shortName}의 본엽이 자라면서 생육이 시작되었나요?`,
+                            startedLabel: '네, 생육이 시작되었습니다.',
+                            notYetLabel: '아직 생육이 시작되지 않았습니다.',
+                            unknownLabel: '잘 모르겠습니다.',
+                            dateLabel: '실제 생육 시작일',
+                            defaultYmd: addDaysToYmd(
+                              activeCropItem.basePlantingYmd,
+                              14
+                            ),
+                            targetItemId: 'SCH-09',
+                          },
+                          {
+                            idx: 2 as const,
+                            title: '결구 시작일 확인',
+                            prompt: `${activeCropItem.shortName}의 안쪽 잎이 모이면서 결구가 시작되었나요?`,
+                            startedLabel: '네, 결구가 시작되었습니다.',
+                            notYetLabel: '아직 결구가 시작되지 않았습니다.',
+                            unknownLabel: '잘 모르겠습니다.',
+                            dateLabel: '실제 결구 시작일',
+                            defaultYmd: addDaysToYmd(
+                              activeCropItem.basePlantingYmd,
+                              30
+                            ),
+                            targetItemId: 'SCH-12',
+                          },
+                          {
+                            idx: 3 as const,
+                            title: '수확 시작일 확인',
+                            prompt: `${activeCropItem.shortName}의 안쪽 잎이 단단히 차서 수확이 시작되었나요?`,
+                            startedLabel: '네, 수확이 시작되었습니다.',
+                            notYetLabel: '아직 수확이 시작되지 않았습니다.',
+                            unknownLabel: '잘 모르겠습니다.',
+                            dateLabel: '실제 수확 시작일',
+                            defaultYmd: activeCropItem.expectedHarvestYmd,
+                            targetItemId: 'SCH-15',
+                          },
+                        ];
+                        const spec = confirmSpecs[stepIdx] || confirmSpecs[2];
+                        const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
+                        const effYmd =
+                          growthConfirmDateInput &&
+                          /^\d{4}-\d{2}-\d{2}$/.test(growthConfirmDateInput)
+                            ? growthConfirmDateInput
+                            : stageGrowthConfirmDates[confirmKey] ||
+                              spec.defaultYmd;
+
+                        return (
+                          <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                            <div className="space-y-5">
+                              <div className="flex items-center justify-between gap-2">
+                                <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
+                                  {spec.title}
+                                </h1>
+                                <span className="px-3 py-1 rounded-full bg-[#EFF8F1] text-[#0E712F] text-[13px] font-extrabold">
+                                  생육 확인
+                                </span>
+                              </div>
+
+                              <p className="text-[16px] font-semibold text-[#374151] leading-snug">
+                                {spec.prompt}
+                              </p>
+
+                              <div className="space-y-3.5 pt-1">
+                                {(
+                                  [
+                                    { key: 'STARTED', label: spec.startedLabel },
+                                    { key: 'NOT_YET', label: spec.notYetLabel },
+                                    { key: 'UNKNOWN', label: spec.unknownLabel },
+                                  ] as const
+                                ).map((opt) => {
+                                  const isSel =
+                                    growthConfirmRadioChoice === opt.key;
+                                  return (
+                                    <button
+                                      key={opt.key}
+                                      type="button"
+                                      onClick={() =>
+                                        setGrowthConfirmRadioChoice(opt.key)
+                                      }
+                                      className="w-full flex items-center gap-3 text-left cursor-pointer"
+                                    >
+                                      <span
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                          isSel
+                                            ? 'border-[2.2px] border-[#0E712F] bg-white'
+                                            : 'border-[1.8px] border-[#D1D5DB] bg-white'
+                                        }`}
+                                      >
+                                        {isSel && (
+                                          <span className="w-3 h-3 rounded-full bg-[#0E712F]" />
+                                        )}
+                                      </span>
+                                      <span className="text-[17px] font-bold text-[#111827]">
+                                        {opt.label}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              <div className="space-y-2 pt-2">
+                                <label className="block text-[15px] font-bold text-[#374151]">
+                                  {spec.dateLabel}
+                                </label>
+                                <label className="relative h-[52px] rounded-[14px] border border-[#D1D5DB] bg-white px-4 flex items-center gap-3 cursor-pointer">
+                                  <Calendar className="w-5 h-5 text-[#0E712F]" />
+                                  <span className="text-[17px] font-bold text-[#111827]">
+                                    {formatYmdToKoreanFull(effYmd)}
+                                  </span>
+                                  <input
+                                    type="date"
+                                    value={effYmd}
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        setGrowthConfirmDateInput(
+                                          e.target.value
+                                        );
+                                      }
+                                    }}
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            <div className="pt-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStageGrowthConfirmStatuses((prev) => {
+                                    const next = {
+                                      ...prev,
+                                      [confirmKey]: growthConfirmRadioChoice,
+                                    };
+                                    try {
+                                      localStorage.setItem(
+                                        'hanfarm_stage_growth_confirm_statuses_v1',
+                                        JSON.stringify(next)
+                                      );
+                                    } catch {
+                                      // ignore
+                                    }
+                                    fetch('/api/client-sync-state', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        email:
+                                          loggedInUser.email ||
+                                          'CloudBae@naver.com',
+                                        state_key:
+                                          'stage_growth_confirm_statuses_v1',
+                                        state_value: next,
+                                      }),
+                                    }).catch(() => {});
+                                    return next;
+                                  });
+                                  if (
+                                    growthConfirmRadioChoice === 'STARTED' &&
+                                    effYmd
+                                  ) {
+                                    setStageGrowthConfirmDates((prev) => {
+                                      const next = {
+                                        ...prev,
+                                        [confirmKey]: effYmd,
+                                      };
+                                      try {
+                                        localStorage.setItem(
+                                          'hanfarm_stage_growth_confirm_dates_v1',
+                                          JSON.stringify(next)
+                                        );
+                                      } catch {
+                                        // ignore
+                                      }
+                                      return next;
+                                    });
+                                  }
+                                  setGrowthConfirmModalTarget(null);
+                                  goToScheduleStep('detail');
+                                }}
+                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[17.5px] flex items-center justify-center shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                              >
+                                확인 결과 저장
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                   </div>
                 </div>
               );
             })()}
 
-            {/* ==================== 데스크톱(PC) 전용 재배일정 확인 뷰 (hidden lg:block) ==================== */}
-            <div className="hidden lg:block space-y-4 sm:space-y-6">
+            {/* ==================== 데스크톱(PC) 구버전 재배일정 확인 뷰 비활성화 (5단계 개별 페이지 뷰로 통합) ==================== */}
+            <div className="hidden">
               {renderScheduleNavigationTabs()}
 
               {/* ---------- 1단계: CloudBae 님의 작물재배 리스트 (항목 클릭 시 바로 아래 아코디언 형태로 48주 타임라인 & 추천 농자재 구매 영역 열림/닫힘) ---------- */}
@@ -28040,18 +29043,18 @@ export default function UserIntroPage() {
           );
         })()}
 
-      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 3단계 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 1:1 스타일) ==================== */}
+      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 5개 탭 1:1 스타일) ==================== */}
       {activeMenu !== '홈' && activeMenu !== '재배일정 요청' && (
         <nav
           aria-label="모바일 하단 주 메뉴"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white rounded-t-[24px] border-t border-slate-200/80 shadow-[0_-6px_24px_rgba(15,23,42,0.06)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200/90 shadow-[0_-4px_16px_rgba(15,23,42,0.04)]"
           style={{
             paddingBottom: isLegacyAndroidWebView
               ? 'max(14px, env(safe-area-inset-bottom, 14px))'
               : 'env(safe-area-inset-bottom, 0px)',
           }}
         >
-          <div className="grid grid-cols-4 h-[68px] max-w-lg mx-auto px-2 items-center">
+          <div className="grid grid-cols-5 h-[66px] max-w-lg mx-auto px-1 items-center">
             {/* 1. 홈 */}
             {(() => {
               const isHomeActive = activeMenu === '홈';
@@ -28064,15 +29067,17 @@ export default function UserIntroPage() {
                   }}
                   className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
                     <path
                       d="M4.5 12.2L14 4.5L23.5 12.2V22.5C23.5 23.3 22.8 24 22 24H17V17.5C17 16.7 16.3 16 15.5 16H12.5C11.7 16 11 16.7 11 17.5V24H6C5.2 24 4.5 23.3 4.5 22.5V12.2Z"
-                      fill="#15803D"
+                      stroke={isHomeActive ? '#0E712F' : '#6B7280'}
+                      strokeWidth="1.9"
+                      strokeLinejoin="round"
                     />
                   </svg>
                   <span
-                    className={`text-[12px] tracking-[-0.02em] leading-none ${
-                      isHomeActive ? 'font-black text-[#0E712F]' : 'font-bold text-[#0E712F]'
+                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
+                      isHomeActive ? 'font-extrabold text-[#0E712F]' : 'font-medium text-[#4B5563]'
                     }`}
                   >
                     홈
@@ -28081,10 +29086,9 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* 2. 재배관리 (재배일정 확인 / 요청) */}
+            {/* 2. 재배관리 (재배일정 확인) */}
             {(() => {
-              const isScheduleActive =
-                activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청';
+              const isScheduleActive = activeMenu === '재배일정 확인';
               return (
                 <button
                   type="button"
@@ -28095,17 +29099,17 @@ export default function UserIntroPage() {
                   }}
                   className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
                     <path
                       d="M14 23.5V11.5M14 16C14 11.5 10.5 8.5 6 8.5C6 13 9.5 16 14 16ZM14 14C14 9.5 17.5 6.5 22 6.5C22 11 18.5 14 14 14Z"
-                      stroke={isScheduleActive ? '#0E712F' : '#4B5563'}
-                      strokeWidth="2"
+                      stroke={isScheduleActive ? '#0E712F' : '#6B7280'}
+                      strokeWidth="2.1"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                   </svg>
                   <span
-                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
                       isScheduleActive
                         ? 'font-extrabold text-[#0E712F]'
                         : 'font-medium text-[#4B5563]'
@@ -28138,10 +29142,10 @@ export default function UserIntroPage() {
                   }}
                   className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
                     <path
                       d="M4.5 6.5H8L10.4 17.5H21L23.2 9.5H9"
-                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
                       strokeWidth="1.9"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -28150,19 +29154,19 @@ export default function UserIntroPage() {
                       cx="11.5"
                       cy="22"
                       r="1.7"
-                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
                       strokeWidth="1.8"
                     />
                     <circle
                       cx="19.5"
                       cy="22"
                       r="1.7"
-                      stroke={isAgroActive ? '#0E712F' : '#4B5563'}
+                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
                       strokeWidth="1.8"
                     />
                   </svg>
                   <span
-                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
                       isAgroActive ? 'font-extrabold text-[#0E712F]' : 'font-medium text-[#4B5563]'
                     }`}
                   >
@@ -28172,7 +29176,58 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* 4. MY (마이페이지) */}
+            {/* 4. 영농일지 (작업 기록 페이지) */}
+            {(() => {
+              const isWorkLogActive =
+                activeMenu === '재배일정 확인' && mobileScheduleStep === 'work_log';
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveMenu('재배일정 확인');
+                    setMobileScheduleStep('work_log');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                >
+                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                    <rect
+                      x="6.5"
+                      y="5.5"
+                      width="15"
+                      height="18"
+                      rx="2.5"
+                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      strokeWidth="1.9"
+                    />
+                    <path
+                      d="M10.5 4.2H17.5V7.2H10.5V4.2Z"
+                      fill="#FFFFFF"
+                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      strokeWidth="1.7"
+                    />
+                    <path
+                      d="M11 15L13.2 17.2L17.5 12.8"
+                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span
+                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
+                      isWorkLogActive
+                        ? 'font-extrabold text-[#0E712F]'
+                        : 'font-medium text-[#4B5563]'
+                    }`}
+                  >
+                    영농일지
+                  </span>
+                </button>
+              );
+            })()}
+
+            {/* 5. MY (마이페이지) */}
             {(() => {
               const isMyPageActive = activeMenu === '마이페이지';
               return (
@@ -28185,23 +29240,23 @@ export default function UserIntroPage() {
                   }}
                   className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
                 >
-                  <svg viewBox="0 0 28 28" className="w-[26px] h-[26px]" fill="none">
+                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
                     <circle
                       cx="14"
                       cy="9.5"
                       r="4.2"
-                      stroke={isMyPageActive ? '#0E712F' : '#4B5563'}
+                      stroke={isMyPageActive ? '#0E712F' : '#6B7280'}
                       strokeWidth="1.9"
                     />
                     <path
                       d="M6.5 22.5C6.5 18.6 9.8 16 14 16C18.2 16 21.5 18.6 21.5 22.5"
-                      stroke={isMyPageActive ? '#0E712F' : '#4B5563'}
+                      stroke={isMyPageActive ? '#0E712F' : '#6B7280'}
                       strokeWidth="1.9"
                       strokeLinecap="round"
                     />
                   </svg>
                   <span
-                    className={`text-[12px] tracking-[-0.02em] leading-none ${
+                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
                       isMyPageActive
                         ? 'font-extrabold text-[#0E712F]'
                         : 'font-medium text-[#4B5563]'
