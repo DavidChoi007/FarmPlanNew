@@ -6112,11 +6112,14 @@ const server = http.createServer(async (req, res) => {
             inputDetailAddr
           ) as any);
 
+      const customFarmlandTitle = String(body.farmland_title || '').trim();
       if (!resolvedFarmland) {
         const autoLandId = `LAND-${Date.now()}`;
-        const autoLandTitle = `${rowData.sigungu} ${rowData.eupmyeondong}${
-          inputDetailAddr ? ` (${inputDetailAddr})` : ''
-        } 농장`;
+        const autoLandTitle =
+          customFarmlandTitle ||
+          `${rowData.sigungu} ${rowData.eupmyeondong}${
+            inputDetailAddr ? ` (${inputDetailAddr})` : ''
+          } 농장`;
         db.prepare(`
           INSERT INTO member_farmland (
             farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
@@ -6134,6 +6137,17 @@ const server = http.createServer(async (req, res) => {
           rowData.area_pyeong
         );
         resolvedFarmland = db.prepare('SELECT * FROM member_farmland WHERE farmland_id = ?').get(autoLandId) as any;
+        if (resolvedFarmland) {
+          await supabaseRestUpsert('member_farmland', resolvedFarmland, 'farmland_id');
+        }
+      } else if (customFarmlandTitle && resolvedFarmland.farmland_title !== customFarmlandTitle) {
+        db.prepare('UPDATE member_farmland SET farmland_title = ? WHERE farmland_id = ?').run(
+          customFarmlandTitle,
+          resolvedFarmland.farmland_id
+        );
+        resolvedFarmland = db
+          .prepare('SELECT * FROM member_farmland WHERE farmland_id = ?')
+          .get(resolvedFarmland.farmland_id) as any;
         if (resolvedFarmland) {
           await supabaseRestUpsert('member_farmland', resolvedFarmland, 'farmland_id');
         }
@@ -11239,11 +11253,14 @@ const server = http.createServer(async (req, res) => {
       } else {
         farmlandId = '';
       }
+      const customCropLandTitle = String(body.farmland_title || '').trim();
       if (!farmlandId) {
         const autoLandId = `LAND-${Date.now()}`;
-        const autoLandTitle = `${sigungu} ${eupmyeondong}${
-          detailAddress ? ` (${detailAddress})` : ''
-        } 농장`;
+        const autoLandTitle =
+          customCropLandTitle ||
+          `${sigungu} ${eupmyeondong}${
+            detailAddress ? ` (${detailAddress})` : ''
+          } 농장`;
         db.prepare(`
           INSERT OR REPLACE INTO member_farmland (
             farmland_id, email, farmland_title, bjd_code, sido, sigungu, eupmyeondong,
@@ -11265,6 +11282,17 @@ const server = http.createServer(async (req, res) => {
           await supabaseRestUpsert('member_farmland', savedAutoLand, 'farmland_id');
         }
         farmlandId = autoLandId;
+      } else if (customCropLandTitle) {
+        db.prepare('UPDATE member_farmland SET farmland_title = ? WHERE farmland_id = ?').run(
+          customCropLandTitle,
+          farmlandId
+        );
+        const updatedLand = db
+          .prepare('SELECT * FROM member_farmland WHERE farmland_id = ?')
+          .get(farmlandId) as Record<string, any> | undefined;
+        if (updatedLand) {
+          await supabaseRestUpsert('member_farmland', updatedLand, 'farmland_id');
+        }
       }
       const cropName = String(body.crop_name || '가을배추').trim();
       const cultivarName = String(body.cultivar_name || '불암3호').trim();
