@@ -538,6 +538,7 @@ export default function UserIntroPage() {
   const [taskDetailActualAmount, setTaskDetailActualAmount] = useState<string>('40');
   const [taskDetailMemo, setTaskDetailMemo] = useState<string>('');
   const [taskDetailPhotoName, setTaskDetailPhotoName] = useState<string>('');
+  const [taskDetailPhotoDataUrl, setTaskDetailPhotoDataUrl] = useState<string>('');
   const [isTaskCompletionRecordOpen, setIsTaskCompletionRecordOpen] = useState<boolean>(true);
   const [mobileStageOverviewReqNo, setMobileStageOverviewReqNo] = useState<string | null>(null);
   const [fullScheduleOpenStepMap, setFullScheduleOpenStepMap] = useState<Record<number, boolean>>({});
@@ -638,10 +639,17 @@ export default function UserIntroPage() {
       string,
       Array<{
         id: string;
+        itemId?: string;
         workDate: string;
         stageLabel: string;
         taskTitle: string;
+        materialName?: string;
+        materialThumb?: string;
+        actualAmount?: string;
+        unit?: string;
         memo: string;
+        photoDataUrl?: string;
+        photoName?: string;
         createdAt: string;
       }>
     >
@@ -9700,6 +9708,7 @@ export default function UserIntroPage() {
                 );
                 setTaskDetailMemo('');
                 setTaskDetailPhotoName('');
+                setTaskDetailPhotoDataUrl('');
               };
 
               const renderTaskCategoryIcon = (
@@ -10392,6 +10401,125 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
+                            {/* 사용방법 항목 밑: 해당 농작업의 저장된 [작업기록] 리스트 (사진 + 내용) */}
+                            {(() => {
+                              const allCropLogs = Array.isArray(
+                                cropWorkLogs[activeCropItem.request_no]
+                              )
+                                ? cropWorkLogs[activeCropItem.request_no]
+                                : [];
+                              const matchedTaskLogs = allCropLogs.filter(
+                                (lg) =>
+                                  (lg.itemId &&
+                                    lg.itemId === selectedTaskItem.itemId) ||
+                                  (!lg.itemId &&
+                                    String(lg.taskTitle || '').includes(
+                                      selectedTaskItem.shortTitle
+                                    ))
+                              );
+
+                              return (
+                                <div className="space-y-2.5 pt-2 border-t border-[#F1F5F9]">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
+                                        <svg
+                                          viewBox="0 0 16 16"
+                                          className="w-3 h-3"
+                                          fill="none"
+                                        >
+                                          <path
+                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                            stroke="#FFFFFF"
+                                            strokeWidth="2.3"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      </span>
+                                      <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                                        작업기록
+                                      </span>
+                                      {matchedTaskLogs.length > 0 && (
+                                        <span className="px-2 py-0.5 rounded-full bg-[#EFF8F1] text-[#0E712F] text-[12.5px] font-extrabold">
+                                          {matchedTaskLogs.length}건
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {matchedTaskLogs.length === 0 ? (
+                                    <div className="rounded-[14px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-4 py-3 text-[13.5px] font-medium text-[#6B7280]">
+                                      등록된 작업기록이 없습니다. 아래{' '}
+                                      <strong className="text-[#0E712F]">
+                                        [작업 완료하기]
+                                      </strong>
+                                      를 눌러 작업 사진과 내용을 기록해 보세요.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2.5">
+                                      {matchedTaskLogs.map((logItem) => {
+                                        const thumbSrc =
+                                          logItem.photoDataUrl ||
+                                          logItem.materialThumb ||
+                                          selectedTaskItem.materialThumb ||
+                                          activeCropItem.thumbUrl;
+                                        const cleanMemo = String(
+                                          logItem.memo || ''
+                                        )
+                                          .replace(/\[첨부사진:[^\]]*\]/g, '')
+                                          .trim();
+                                        const matSummary = logItem.materialName
+                                          ? `${logItem.materialName} · ${
+                                              logItem.actualAmount ||
+                                              selectedTaskItem.usageAmountNum
+                                            }${
+                                              logItem.unit ||
+                                              selectedTaskItem.usageUnit
+                                            }`
+                                          : logItem.taskTitle;
+
+                                        return (
+                                          <div
+                                            key={logItem.id}
+                                            className="rounded-[16px] border border-[#E5E7EB] bg-[#F9FBF9] p-3 flex items-start gap-3 shadow-2xs"
+                                          >
+                                            <div className="w-[64px] h-[64px] rounded-[12px] overflow-hidden bg-white border border-[#E5E7EB] shrink-0 flex items-center justify-center">
+                                              <img
+                                                src={thumbSrc}
+                                                alt="작업 기록 사진"
+                                                className="w-full h-full object-cover block"
+                                              />
+                                            </div>
+
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                              <div className="flex items-center justify-between gap-2">
+                                                <span className="text-[14px] font-extrabold text-[#0E712F] tracking-[-0.02em]">
+                                                  {formatYmdToKoreanFull(
+                                                    logItem.workDate
+                                                  )}
+                                                </span>
+                                                <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[11px] font-extrabold shrink-0">
+                                                  기록완료
+                                                </span>
+                                              </div>
+                                              <div className="text-[15px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                                {matSummary}
+                                              </div>
+                                              <p className="text-[14px] font-medium text-[#374151] leading-snug break-keep">
+                                                {cleanMemo ||
+                                                  `${selectedTaskItem.shortTitle} 작업 완료`}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
                             {/* 연기하기 인라인 날짜 선택 패널 (팝업이 아닌 인라인 표시) */}
                             {isPostponeDatePickerOpen && (
                               <div className="rounded-[14px] border border-[#0E712F] bg-[#F4F8F5] p-3.5 space-y-2">
@@ -10636,34 +10764,77 @@ export default function UserIntroPage() {
                           {/* 5) 사진 추가 */}
                           <div>
                             <label className="w-[112px] h-[94px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition relative overflow-hidden">
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="w-7 h-7 text-[#111827]"
-                                fill="none"
-                              >
-                                <path
-                                  d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                  strokeLinejoin="round"
+                              {taskDetailPhotoDataUrl ? (
+                                <img
+                                  src={taskDetailPhotoDataUrl}
+                                  alt={taskDetailPhotoName || '첨부 사진'}
+                                  className="w-full h-full object-cover block"
                                 />
-                                <circle
-                                  cx="12"
-                                  cy="13"
-                                  r="3.2"
-                                  stroke="currentColor"
-                                  strokeWidth="1.8"
-                                />
-                              </svg>
-                              <span className="text-[13.5px] font-medium text-[#111827] truncate max-w-[96px]">
-                                {taskDetailPhotoName ? '사진 첨부됨' : '사진 추가'}
-                              </span>
+                              ) : (
+                                <>
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    className="w-7 h-7 text-[#111827]"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                      strokeLinejoin="round"
+                                    />
+                                    <circle
+                                      cx="12"
+                                      cy="13"
+                                      r="3.2"
+                                      stroke="currentColor"
+                                      strokeWidth="1.8"
+                                    />
+                                  </svg>
+                                  <span className="text-[13.5px] font-medium text-[#111827] truncate max-w-[96px]">
+                                    {taskDetailPhotoName ? '사진 첨부됨' : '사진 추가'}
+                                  </span>
+                                </>
+                              )}
                               <input
                                 type="file"
                                 accept="image/*"
                                 onChange={(e) => {
                                   const f = e.target.files?.[0];
-                                  if (f) setTaskDetailPhotoName(f.name);
+                                  if (!f) return;
+                                  setTaskDetailPhotoName(f.name);
+                                  const reader = new FileReader();
+                                  reader.onload = () => {
+                                    const rawUrl = String(reader.result || '');
+                                    if (!rawUrl) return;
+                                    const img = new Image();
+                                    img.onload = () => {
+                                      try {
+                                        const maxDim = 480;
+                                        const scale = Math.min(
+                                          1,
+                                          maxDim / Math.max(img.width || 1, img.height || 1)
+                                        );
+                                        const canvas = document.createElement('canvas');
+                                        canvas.width = Math.max(1, Math.round(img.width * scale));
+                                        canvas.height = Math.max(1, Math.round(img.height * scale));
+                                        const ctx = canvas.getContext('2d');
+                                        if (ctx) {
+                                          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                          setTaskDetailPhotoDataUrl(
+                                            canvas.toDataURL('image/jpeg', 0.78)
+                                          );
+                                          return;
+                                        }
+                                      } catch {
+                                        // fallback to rawUrl
+                                      }
+                                      setTaskDetailPhotoDataUrl(rawUrl);
+                                    };
+                                    img.onerror = () => setTaskDetailPhotoDataUrl(rawUrl);
+                                    img.src = rawUrl;
+                                  };
+                                  reader.readAsDataURL(f);
                                 }}
                                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
                               />
@@ -10702,6 +10873,7 @@ export default function UserIntroPage() {
 
                               const newLogEntry = {
                                 id: `WLOG-${Date.now()}`,
+                                itemId: selectedTaskItem?.itemId || '',
                                 workDate: finalYmd,
                                 stageLabel:
                                   selectedTaskItem?.stageGroupName ||
@@ -10711,14 +10883,13 @@ export default function UserIntroPage() {
                                 } · ${workLogSelectedMaterialName} (${
                                   taskDetailActualAmount || '50'
                                 }${workLogUnit})`,
-                                memo: [
-                                  taskDetailMemo.trim(),
-                                  taskDetailPhotoName
-                                    ? `[첨부사진: ${taskDetailPhotoName}]`
-                                    : '',
-                                ]
-                                  .filter(Boolean)
-                                  .join(' '),
+                                materialName: workLogSelectedMaterialName,
+                                materialThumb: workLogSelectedMaterialThumb,
+                                actualAmount: taskDetailActualAmount || '50',
+                                unit: workLogUnit || 'kg',
+                                memo: taskDetailMemo.trim(),
+                                photoDataUrl: taskDetailPhotoDataUrl || '',
+                                photoName: taskDetailPhotoName || '',
                                 createdAt: new Date().toISOString(),
                               };
 
@@ -10756,8 +10927,28 @@ export default function UserIntroPage() {
                                 return next;
                               });
 
-                              setMobileScheduleTaskTab('done');
-                              goToScheduleStep('tasks');
+                              // 작업 기록 페이지 닫고 이전 페이지인 '{작업명} (실행하기)' 페이지로 돌아가 리스트 리프레시
+                              loadScheduleProvision(activeCropItem.request_no, {
+                                gdd_mode: patentGddMode,
+                              }).catch(() => {});
+
+                              if (typeof window !== 'undefined') {
+                                const curIdx = navIndexRef.current;
+                                const prevSnap =
+                                  curIdx > 0
+                                    ? navStackRef.current[curIdx - 1]
+                                    : null;
+                                if (
+                                  prevSnap &&
+                                  prevSnap.activeMenu === '재배일정 확인' &&
+                                  prevSnap.mobileScheduleStep === 'task_exec'
+                                ) {
+                                  window.history.back();
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  return;
+                                }
+                              }
+                              goToScheduleStep('task_exec');
                             }}
                             className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
                           >
