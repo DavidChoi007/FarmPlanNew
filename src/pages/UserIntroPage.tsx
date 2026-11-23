@@ -9396,13 +9396,16 @@ export default function UserIntroPage() {
                     nextStage.workContent,
                     nextStage.itemId
                   );
-                  if (normalizedWorkContent) {
-                    nextTaskDesc = normalizedWorkContent;
+                  const strippedWorkContent = String(normalizedWorkContent || '')
+                    .replace(/\[[^\]]*\]\s*/g, '')
+                    .trim();
+                  if (strippedWorkContent) {
+                    nextTaskDesc = strippedWorkContent;
                   } else {
                     const descByItemId: Record<string, string> = {
-                      'SCH-01': `[${regionText} · ${fullCropName}${cultivarName ? `(${cultivarName})` : ''} ${areaPyeongVal.toLocaleString()}평] 전작물 잔재물 제거 및 포장 배수로 정비`,
-                      'SCH-02': `[${regionText} · ${fullCropName}${cultivarName ? `(${cultivarName})` : ''}] 토양검정 맞춤 밑거름 시비 및 경운 작업`,
-                      'SCH-03': `[${regionText}] 배수·통기성 확보를 위한 두둑 및 멀칭 조성`,
+                      'SCH-01': '전작물 잔재물 제거 및 포장 배수로 정비',
+                      'SCH-02': '토양검정 맞춤 밑거름 시비 및 경운 작업',
+                      'SCH-03': '배수·통기성 확보를 위한 두둑 및 멀칭 조성',
                       'SCH-04': '우량 코팅종자 준비 및 육묘 트레이 파종',
                       'SCH-05': '육묘상 적정 온도·수분 유지 및 본엽 관리',
                       'SCH-06': '정식 전 외기 순화 및 육묘기 병해충 예방',
@@ -9419,7 +9422,7 @@ export default function UserIntroPage() {
                     };
                     nextTaskDesc =
                       descByItemId[nextStage.itemId] ||
-                      `[${regionText}] ${nextStage.stageGroupName} · 현재 시점 맞춤 농작업 진행`;
+                      `${nextStage.stageGroupName} · 현재 시점 맞춤 농작업 진행`;
                   }
                   nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
                 }
@@ -23579,12 +23582,15 @@ export default function UserIntroPage() {
               String(it.work_content || it.work_description || '').trim(),
               itemIdStr
             );
+            const strippedWC = String(normalizedWC || '')
+              .replace(/\[[^\]]*\]\s*/g, '')
+              .trim();
             return {
-              raw: { ...it, work_content: normalizedWC || it.work_content },
+              raw: { ...it, work_content: strippedWC || normalizedWC || it.work_content },
               itemId: itemIdStr,
               stepOrder: Number(it.step_order || idx + 1),
               subItemName: cleanTitle || `농작업 #${idx + 1}`,
-              workContent: normalizedWC,
+              workContent: strippedWC || normalizedWC,
               effDate,
               isCompleted: comp.isRecognized,
             };
