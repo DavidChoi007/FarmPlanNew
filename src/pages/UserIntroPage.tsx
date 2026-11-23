@@ -21608,36 +21608,34 @@ export default function UserIntroPage() {
               }}
             >
               <div className="px-5 pt-4 pb-6 space-y-4">
-                {/* 1. 공통 상단 네비게이션 바 (좌측 뒤로가기 ← + 중앙 한팜 FarmPlan 로고) */}
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthNoticeMsg(null);
-                      if (signupStep === 2) {
-                        setSignupStep(1);
-                      } else if (signupStep === 3) {
-                        setIsAuthModalOpen(false);
-                        setSignupStep(1);
-                        setActiveMenuState('홈');
-                      } else {
-                        setIsAuthModalOpen(false);
-                        setSignupStep(1);
-                      }
-                    }}
-                    aria-label="이전 또는 닫기"
-                    className="w-9 h-9 -ml-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111111] cursor-pointer transition shrink-0"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
-                      <path
-                        d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
-                        stroke="#111111"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
+                {/* 1. 공통 상단 네비게이션 바 (STEP 3에서는 중앙 한팜 FarmPlan 로고만 표시, STEP 1·2에서는 좌측 뒤로가기 ← 포함) */}
+                <div className={`flex items-center ${signupStep === 3 ? 'justify-center pt-1' : 'justify-between'}`}>
+                  {signupStep !== 3 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthNoticeMsg(null);
+                        if (signupStep === 2) {
+                          setSignupStep(1);
+                        } else {
+                          setIsAuthModalOpen(false);
+                          setSignupStep(1);
+                        }
+                      }}
+                      aria-label="이전 또는 닫기"
+                      className="w-9 h-9 -ml-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-[#111111] cursor-pointer transition shrink-0"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
+                        <path
+                          d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
+                          stroke="#111111"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  )}
 
                   {/* 중앙 한팜 FarmPlan 브랜드 로고 */}
                   <div className="flex items-center gap-2">
@@ -21687,141 +21685,146 @@ export default function UserIntroPage() {
                     </div>
                   </div>
 
-                  {/* 우측 균형 여백 (PC에서는 닫기 X 아이콘) */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAuthModalOpen(false);
-                      setSignupStep(1);
-                    }}
-                    aria-label="닫기"
-                    className="w-9 h-9 -mr-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer transition shrink-0"
-                  >
-                    <X className="w-5 h-5 hidden sm:block" />
-                  </button>
+                  {/* 우측 균형 여백 (STEP 1·2에서만 표시) */}
+                  {signupStep !== 3 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAuthModalOpen(false);
+                        setSignupStep(1);
+                      }}
+                      aria-label="닫기"
+                      className="w-9 h-9 -mr-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer transition shrink-0"
+                    >
+                      <X className="w-5 h-5 hidden sm:block" />
+                    </button>
+                  )}
                 </div>
 
-                {/* 2. 단계별 타이틀 & 서브타이틀 */}
-                <div className="pt-1">
-                  <h2 className="text-[26px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
-                    {signupStep === 3 ? '회원가입 완료' : '회원가입'}
-                  </h2>
-                  <p className="mt-1.5 text-[14px] font-medium text-[#4B5563] tracking-[-0.02em]">
-                    {signupStep === 1 && '한팜과 함께 더 쉽고, 더 정확한 농사를 시작하세요.'}
-                    {signupStep === 2 && '서비스 이용을 위한 기본정보를 입력해주세요.'}
-                    {signupStep === 3 && '한팜 회원이 되신 것을 환영합니다!'}
-                  </p>
-                </div>
-
-                {/* 3. 3단계 수평 스텝 인디케이터 (1 계정정보 ── 2 기본정보 ── 3 가입완료) */}
-                <div className="pt-1 pb-1 px-6">
-                  <div className="relative flex items-center justify-between">
-                    {/* 연결 라인 1 -> 2 */}
-                    <div
-                      className={`absolute left-[18px] right-1/2 top-[15px] h-[2px] transition-colors ${
-                        signupStep >= 2 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    {/* 연결 라인 2 -> 3 */}
-                    <div
-                      className={`absolute left-1/2 right-[18px] top-[15px] h-[2px] transition-colors ${
-                        signupStep >= 3 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
-                      }`}
-                      aria-hidden="true"
-                    />
-
-                    {/* STEP 1: 계정정보 */}
-                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
-                      <div
-                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
-                          signupStep >= 1
-                            ? 'bg-[#0E712F] text-white'
-                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
-                        }`}
-                      >
-                        {signupStep > 1 ? (
-                          <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
-                            <path
-                              d="M4.5 10.5L8.2 14.2L15.5 6.5"
-                              stroke="#FFFFFF"
-                              strokeWidth="2.3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : (
-                          '1'
-                        )}
-                      </div>
-                      <span
-                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
-                          signupStep >= 1
-                            ? 'font-bold text-[#0E712F]'
-                            : 'font-medium text-[#6B7280]'
-                        }`}
-                      >
-                        계정정보
-                      </span>
+                {/* 2. 단계별 타이틀 & 서브타이틀 (STEP 1·2에서만 표시) */}
+                {signupStep !== 3 && (
+                  <>
+                    <div className="pt-1">
+                      <h2 className="text-[26px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
+                        회원가입
+                      </h2>
+                      <p className="mt-1.5 text-[14px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                        {signupStep === 1 && '한팜과 함께 더 쉽고, 더 정확한 농사를 시작하세요.'}
+                        {signupStep === 2 && '서비스 이용을 위한 기본정보를 입력해주세요.'}
+                      </p>
                     </div>
 
-                    {/* STEP 2: 기본정보 */}
-                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
-                      <div
-                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
-                          signupStep >= 2
-                            ? 'bg-[#0E712F] text-white'
-                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
-                        }`}
-                      >
-                        {signupStep > 2 ? (
-                          <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
-                            <path
-                              d="M4.5 10.5L8.2 14.2L15.5 6.5"
-                              stroke="#FFFFFF"
-                              strokeWidth="2.3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : (
-                          '2'
-                        )}
-                      </div>
-                      <span
-                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
-                          signupStep >= 2
-                            ? 'font-bold text-[#0E712F]'
-                            : 'font-medium text-[#6B7280]'
-                        }`}
-                      >
-                        기본정보
-                      </span>
-                    </div>
+                    {/* 3. 3단계 수평 스텝 인디케이터 (1 계정정보 ── 2 기본정보 ── 3 가입완료) */}
+                    <div className="pt-1 pb-1 px-6">
+                      <div className="relative flex items-center justify-between">
+                        {/* 연결 라인 1 -> 2 */}
+                        <div
+                          className={`absolute left-[18px] right-1/2 top-[15px] h-[2px] transition-colors ${
+                            signupStep >= 2 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        {/* 연결 라인 2 -> 3 */}
+                        <div
+                          className={`absolute left-1/2 right-[18px] top-[15px] h-[2px] transition-colors ${
+                            signupStep >= 3 ? 'bg-[#0E712F]' : 'bg-[#D1D5DB]'
+                          }`}
+                          aria-hidden="true"
+                        />
 
-                    {/* STEP 3: 가입완료 */}
-                    <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
-                      <div
-                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
-                          signupStep >= 3
-                            ? 'bg-[#0E712F] text-white'
-                            : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
-                        }`}
-                      >
-                        3
+                        {/* STEP 1: 계정정보 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                              signupStep >= 1
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            {signupStep > 1 ? (
+                              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                                <path
+                                  d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              '1'
+                            )}
+                          </div>
+                          <span
+                            className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                              signupStep >= 1
+                                ? 'font-bold text-[#0E712F]'
+                                : 'font-medium text-[#6B7280]'
+                            }`}
+                          >
+                            계정정보
+                          </span>
+                        </div>
+
+                        {/* STEP 2: 기본정보 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                              signupStep >= 2
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            {signupStep > 2 ? (
+                              <svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
+                                <path
+                                  d="M4.5 10.5L8.2 14.2L15.5 6.5"
+                                  stroke="#FFFFFF"
+                                  strokeWidth="2.3"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              '2'
+                            )}
+                          </div>
+                          <span
+                            className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                              signupStep >= 2
+                                ? 'font-bold text-[#0E712F]'
+                                : 'font-medium text-[#6B7280]'
+                            }`}
+                          >
+                            기본정보
+                          </span>
+                        </div>
+
+                        {/* STEP 3: 가입완료 */}
+                        <div className="relative z-10 flex flex-col items-center gap-1.5 bg-white px-1.5">
+                          <div
+                            className={`w-[30px] h-[30px] rounded-full flex items-center justify-center text-[14px] font-bold transition ${
+                              signupStep >= 3
+                                ? 'bg-[#0E712F] text-white'
+                                : 'bg-white border border-[#D1D5DB] text-[#6B7280]'
+                            }`}
+                          >
+                            3
+                          </div>
+                          <span
+                            className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
+                              signupStep >= 3
+                                ? 'font-bold text-[#0E712F]'
+                                : 'font-medium text-[#6B7280]'
+                            }`}
+                          >
+                            가입완료
+                          </span>
+                        </div>
                       </div>
-                      <span
-                        className={`text-[13px] tracking-[-0.02em] whitespace-nowrap ${
-                          signupStep >= 3
-                            ? 'font-bold text-[#0E712F]'
-                            : 'font-medium text-[#6B7280]'
-                        }`}
-                      >
-                        가입완료
-                      </span>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
 
                 {/* 에러/성공 알림 배너 */}
                 {authNoticeMsg && (
@@ -22653,208 +22656,176 @@ export default function UserIntroPage() {
                   </form>
                 )}
 
-                {/* ==================== [STEP 3: 가입완료 화면 (축하 일러스트 · 3단계 안내 · 맞춤 재배일정 요청하기)] ==================== */}
+                {/* ==================== [STEP 3: 가입완료 화면 (첨부 이미지 1:1 구성: 체크 배지 · 배추밭 일출 풍경 · 재배작물 등록하기 / 홈으로 이동 · 4대 관리 안내)] ==================== */}
                 {signupStep === 3 && (
-                  <div className="pt-2 space-y-6 text-center">
-                    {/* 중앙 새싹 + 토양 + 체크 배지 일러스트 */}
-                    <div className="flex justify-center pt-1">
-                      <svg viewBox="0 0 220 135" className="w-[210px] h-[128px]" fill="none">
-                        {/* 연녹색 구름 배경 */}
-                        <path
-                          d="M52 112C35 112 24 100 24 85C24 72 33 61 46 59C51 36 72 20 98 20C122 20 142 34 148 54C165 55 178 69 178 86C178 101 166 112 150 112H52Z"
-                          fill="#E6F4EA"
+                  <div className="pt-1 flex flex-col items-center text-center select-none">
+                    {/* 1. 상단 체크 아이콘 & 방사형 폭죽(Confetti) 일러스트 */}
+                    <div className="flex justify-center">
+                      <svg viewBox="0 0 180 80" className="w-[164px] h-[74px]" fill="none">
+                        <defs>
+                          <linearGradient
+                            id="signupCompleteCheckGrad"
+                            x1="90"
+                            y1="10"
+                            x2="90"
+                            y2="70"
+                            gradientUnits="userSpaceOnUse"
+                          >
+                            <stop offset="0%" stopColor="#62C738" />
+                            <stop offset="100%" stopColor="#2DA41E" />
+                          </linearGradient>
+                        </defs>
+                        {/* 좌측 폭죽 */}
+                        <rect
+                          x="45"
+                          y="10"
+                          width="5"
+                          height="10"
+                          rx="2"
+                          transform="rotate(-28 45 10)"
+                          fill="#F5C33B"
                         />
-                        {/* 좌측 반짝이 광선 3개 */}
-                        <path d="M18 68L28 71" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M14 80L25 80" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M19 92L28 88" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                        {/* 우측 반짝이 광선 3개 */}
-                        <path d="M162 24L158 33" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M174 30L166 37" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M179 42L169 44" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-
-                        {/* 흙 언덕 */}
-                        <path
-                          d="M66 105C73 91 88 84 104 84C120 84 134 91 141 105H66Z"
-                          fill="#7C4D25"
+                        <rect
+                          x="30"
+                          y="31"
+                          width="5"
+                          height="10"
+                          rx="2"
+                          transform="rotate(-68 30 31)"
+                          fill="#9AC73B"
                         />
-                        {/* 새싹 줄기 */}
-                        <path
-                          d="M104 86V54"
-                          stroke="#2E9E3C"
-                          strokeWidth="4.5"
-                          strokeLinecap="round"
+                        <rect
+                          x="44"
+                          y="56"
+                          width="5"
+                          height="9"
+                          rx="2"
+                          transform="rotate(-132 44 56)"
+                          fill="#E9A39A"
                         />
-                        {/* 좌측 잎 */}
-                        <path
-                          d="M104 66C104 49 88 41 69 43C71 61 86 69 104 66Z"
-                          fill="#4DBB3E"
+                        {/* 우측 폭죽 */}
+                        <rect
+                          x="130"
+                          y="9"
+                          width="5"
+                          height="10"
+                          rx="2"
+                          transform="rotate(34 130 9)"
+                          fill="#1B6EC2"
                         />
-                        <path
-                          d="M82 52C90 56 97 60 103 65"
-                          stroke="#257D2F"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
+                        <rect
+                          x="145"
+                          y="20"
+                          width="5"
+                          height="10"
+                          rx="2"
+                          transform="rotate(64 145 20)"
+                          fill="#F3B72B"
                         />
-                        {/* 우측 잎 */}
-                        <path
-                          d="M104 62C104 44 120 36 139 38C137 56 122 65 104 62Z"
-                          fill="#4DBB3E"
+                        <rect
+                          x="134"
+                          y="45"
+                          width="5"
+                          height="10"
+                          rx="2"
+                          transform="rotate(124 134 45)"
+                          fill="#389E34"
                         />
+                        {/* 중앙 그린 원형 배지 */}
+                        <circle cx="90" cy="40" r="28" fill="url(#signupCompleteCheckGrad)" />
+                        {/* 중앙 화이트 체크마크 */}
                         <path
-                          d="M126 47C118 51 111 55 105 61"
-                          stroke="#257D2F"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        />
-
-                        {/* 우측 하단 녹색 체크 원형 배지 */}
-                        <circle
-                          cx="138"
-                          cy="96"
-                          r="21"
-                          fill="#2EAE44"
+                          d="M78 40.5L86.5 49L103.5 32"
                           stroke="#FFFFFF"
-                          strokeWidth="3.5"
-                        />
-                        <path
-                          d="M129 96.5L135.2 102.5L147.5 90"
-                          stroke="#FFFFFF"
-                          strokeWidth="3.5"
+                          strokeWidth="5.2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </svg>
                     </div>
 
-                    {/* 메인 축하 문구 & 서브 문구 */}
-                    <div className="space-y-2.5">
-                      <h3 className="text-[24px] min-[390px]:text-[26px] font-black tracking-[-0.03em] leading-tight">
-                        <span className="text-[#0E712F]">회원가입</span>
-                        <span className="text-[#111111]">이 완료되었습니다.</span>
-                      </h3>
-                      <p className="text-[14.5px] min-[390px]:text-[15px] font-medium text-[#4B5563] leading-[1.5] tracking-[-0.02em]">
-                        <span className="block">이제 맞춤 재배일정을 만들어</span>
-                        <span className="block">나만의 재배관리를 시작해 보세요.</span>
+                    {/* 2. 메인 축하 타이틀 & 환영 서브 문구 */}
+                    <div className="mt-1 space-y-2">
+                      <h2 className="text-[25px] min-[390px]:text-[26.5px] font-black text-[#111111] tracking-[-0.03em] leading-tight">
+                        회원가입이 완료되었습니다!
+                      </h2>
+                      <p className="text-[16px] min-[390px]:text-[16.5px] font-medium text-[#222222] tracking-[-0.02em] leading-snug">
+                        한팜에 오신 것을 환영합니다.
+                      </p>
+                      <p className="pt-1 text-[14.5px] min-[390px]:text-[15px] font-medium text-[#374151] leading-[1.45] tracking-[-0.02em]">
+                        <span className="block">지금 재배작물을 등록하고</span>
+                        <span className="block">나만의 맞춤 재배일정을 만들어보세요.</span>
                       </p>
                     </div>
 
-                    {/* 3단계 프로세스 요약 박스 */}
-                    <div className="rounded-[20px] bg-[#EFF5F1] px-2.5 py-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-1">
-                      {/* 1. 재배정보 입력 */}
-                      <div className="flex flex-col items-center text-center">
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <rect
-                            x="8"
-                            y="7"
-                            width="20"
-                            height="24"
-                            rx="3"
-                            stroke="#0E712F"
-                            strokeWidth="2.1"
-                          />
-                          <path
-                            d="M14 5.5H22V8.5H14V5.5Z"
-                            fill="#EFF5F1"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                          />
-                          <path
-                            d="M12.5 15L14.2 16.7L17.2 13.5M19.5 15.5H23.5M12.5 21.5L14.2 23.2L17.2 20M19.5 22H23.5"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          재배정보 입력
-                        </div>
-                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
-                          (작물·면적·지역·시작일)
-                        </div>
-                      </div>
-
-                      <ChevronRight className="w-4 h-4 text-[#0E712F] stroke-[2.5] -mt-4 shrink-0" />
-
-                      {/* 2. 맞춤 재배일정 생성 */}
-                      <div className="flex flex-col items-center text-center">
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <rect
-                            x="6.5"
-                            y="8"
-                            width="23"
-                            height="22"
-                            rx="3.5"
-                            stroke="#0E712F"
-                            strokeWidth="2.1"
-                          />
-                          <path
-                            d="M12 5.5V9.5M24 5.5V9.5M6.5 14H29.5"
-                            stroke="#0E712F"
-                            strokeWidth="2.1"
-                            strokeLinecap="round"
-                          />
-                          <path
-                            d="M18 26V19.5M18 22C18 19.5 15.8 18 13.2 18C13.2 20.5 15.4 22 18 22ZM18 21C18 18.5 20.2 17 22.8 17C22.8 19.5 20.6 21 18 21Z"
-                            stroke="#0E712F"
-                            strokeWidth="1.9"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          맞춤 재배일정 생성
-                        </div>
-                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
-                          (기상·생육단계 반영)
-                        </div>
-                      </div>
-
-                      <ChevronRight className="w-4 h-4 text-[#0E712F] stroke-[2.5] -mt-4 shrink-0" />
-
-                      {/* 3. 재배관리 시작 */}
-                      <div className="flex flex-col items-center text-center">
-                        <svg viewBox="0 0 36 36" className="w-9 h-9" fill="none">
-                          <path
-                            d="M20 20V11M20 14.5C20 11.5 17.2 9.5 14 9.5C14 12.5 16.8 14.5 20 14.5ZM20 13.5C20 10.5 22.8 8.5 26 8.5C26 11.5 23.2 13.5 20 13.5Z"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M7 24.5H13.5L17.5 26H25.5C27 26 28.5 24.8 28.5 23.2C28.5 22 27.3 21.2 25.8 21.2H19.5L16.5 19.5H11V24.5"
-                            stroke="#0E712F"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        <div className="mt-2 text-[13px] min-[390px]:text-[13.5px] font-black text-[#111827] tracking-[-0.03em] whitespace-nowrap">
-                          재배관리 시작
-                        </div>
-                        <div className="mt-0.5 text-[10.5px] min-[390px]:text-[11px] font-medium text-[#4B5563] tracking-[-0.03em] whitespace-nowrap">
-                          (농작업·농자재·기록)
-                        </div>
-                      </div>
+                    {/* 3. 아침 햇살이 비치는 푸른 농경지와 산 풍경 와이드 일러스트 배너 (-mx-5로 좌우 꽉 차게 배치) */}
+                    <div className="w-[calc(100%+2.5rem)] -mx-5 mt-2 relative overflow-hidden">
+                      <div
+                        className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-white to-transparent z-10"
+                        aria-hidden="true"
+                      />
+                      <img
+                        src="/images/mobile-home-bottom-landscape.jpg"
+                        alt="아침 햇살이 비치는 푸른 농경지와 산 풍경"
+                        className="w-full h-[118px] min-[390px]:h-[126px] object-cover object-center block pointer-events-none"
+                      />
                     </div>
 
-                    {/* 하단 액션 버튼 2종 (맞춤 재배일정 요청하기 > / 나중에 할게요 (홈으로 이동)) */}
-                    <div className="pt-1 space-y-2.5">
+                    {/* 4. 풍경 이미지 하단 위로 살짝 겹쳐 올라오는 화이트 라운드 액션 섹션 */}
+                    <div className="w-[calc(100%+2.5rem)] -mx-5 -mt-5 relative z-20 rounded-t-[26px] bg-white px-5 pt-4 space-y-3">
+                      {/* 버튼 1: 재배작물 등록하기 */}
                       <button
                         type="button"
                         onClick={() => {
                           setIsAuthModalOpen(false);
                           setSignupStep(1);
+                          setMobileReqStep(1);
                           setActiveMenu('재배일정 요청');
+                          if (typeof window !== 'undefined') {
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }
                         }}
-                        className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                        className="w-full rounded-[18px] bg-gradient-to-r from-[#0E7A2B] to-[#138A33] hover:from-[#0B6623] hover:to-[#0E7328] active:scale-[0.99] px-4 py-3.5 text-white flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,122,43,0.24)] cursor-pointer transition text-left"
                       >
-                        <span>맞춤 재배일정 요청하기</span>
-                        <ChevronRight className="w-5 h-5 stroke-[2.4] -mr-1" />
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 flex items-center justify-center shrink-0">
+                            <svg viewBox="0 0 40 40" className="w-10 h-10" fill="none">
+                              <path
+                                d="M20 33V19"
+                                stroke="#FFFFFF"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M20 24C13 24 8.5 19.5 8.5 14C14.5 14 19 17.5 20 24Z"
+                                stroke="#FFFFFF"
+                                strokeWidth="2.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M20 21.5C20.8 14.5 25.8 10.5 32 10.5C32 16.5 27.5 21 20 21.5Z"
+                                stroke="#FFFFFF"
+                                strokeWidth="2.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[18.5px] min-[390px]:text-[19.5px] font-black text-white tracking-[-0.03em] leading-snug">
+                              재배작물 등록하기
+                            </div>
+                            <div className="mt-0.5 text-[12.5px] min-[390px]:text-[13px] font-medium text-white/95 leading-[1.38] tracking-[-0.02em]">
+                              <span className="block">작물, 재배지, 재배조건을 입력하고</span>
+                              <span className="block">맞춤 재배일정을 받아보세요.</span>
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-6 h-6 text-white stroke-[2.3] shrink-0" />
                       </button>
 
+                      {/* 버튼 2: 홈으로 이동 */}
                       <button
                         type="button"
                         onClick={() => {
@@ -22876,10 +22847,158 @@ export default function UserIntroPage() {
                             }
                           }
                         }}
-                        className="w-full h-[52px] rounded-full bg-white hover:bg-[#F4F9F5] active:scale-[0.99] text-[#111827] border-[1.5px] border-[#2E7D47] font-bold text-[16.5px] tracking-[-0.02em] flex items-center justify-center cursor-pointer transition"
+                        className="w-full rounded-[18px] bg-white hover:bg-[#F7FAF8] active:scale-[0.99] border-[1.5px] border-[#C5C9C6] px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer transition text-left"
                       >
-                        <span>나중에 할게요 (홈으로 이동)</span>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 flex items-center justify-center shrink-0">
+                            <svg viewBox="0 0 36 36" className="w-8 h-8" fill="none">
+                              <path
+                                d="M6.5 16.5L18 7L29.5 16.5"
+                                stroke="#15803D"
+                                strokeWidth="2.4"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M9.5 14.5V27.5C9.5 28.3 10.2 29 11 29H15.5V21.5H20.5V29H25C25.8 29 26.5 28.3 26.5 27.5V14.5"
+                                stroke="#15803D"
+                                strokeWidth="2.4"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-[18px] min-[390px]:text-[19px] font-black text-[#111827] tracking-[-0.03em] leading-snug">
+                              홈으로 이동
+                            </div>
+                            <div className="mt-0.5 text-[12.5px] min-[390px]:text-[13px] font-medium text-[#4B5563] tracking-[-0.02em]">
+                              작물 등록은 나중에도 할 수 있어요.
+                            </div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-6 h-6 text-[#15803D] stroke-[2.3] shrink-0" />
                       </button>
+
+                      {/* 5. 하단 안내 카드: "한팜으로 이런 관리를 할 수 있어요!" */}
+                      <div className="mt-1 rounded-[20px] bg-[#F1F8F3] px-3 py-4 space-y-3.5">
+                        <div className="text-[15px] min-[390px]:text-[15.5px] font-black text-[#111827] tracking-[-0.03em] text-center">
+                          한팜으로 이런 관리를 할 수 있어요!
+                        </div>
+
+                        <div className="grid grid-cols-4 divide-x divide-[#D5E5DA] items-start">
+                          {/* 항목 1: 맞춤 재배일정 */}
+                          <div className="flex flex-col items-center text-center px-1">
+                            <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                              <rect
+                                x="5.5"
+                                y="7.5"
+                                width="21"
+                                height="19"
+                                rx="3"
+                                stroke="#15803D"
+                                strokeWidth="2.1"
+                              />
+                              <path
+                                d="M10.5 5V9M21.5 5V9M5.5 13H26.5"
+                                stroke="#15803D"
+                                strokeWidth="2.1"
+                                strokeLinecap="round"
+                              />
+                              <circle cx="11" cy="17.5" r="1.2" fill="#15803D" />
+                              <circle cx="16" cy="17.5" r="1.2" fill="#15803D" />
+                              <circle cx="21" cy="17.5" r="1.2" fill="#15803D" />
+                              <circle cx="11" cy="21.5" r="1.2" fill="#15803D" />
+                              <circle cx="16" cy="21.5" r="1.2" fill="#15803D" />
+                            </svg>
+                            <div className="mt-2 text-[12px] min-[390px]:text-[12.5px] font-extrabold text-[#1F2937] leading-[1.3] tracking-[-0.03em] whitespace-nowrap">
+                              <span className="block">맞춤</span>
+                              <span className="block">재배일정</span>
+                            </div>
+                          </div>
+
+                          {/* 항목 2: 농작업 안내 및 기록 */}
+                          <div className="flex flex-col items-center text-center px-1">
+                            <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                              <rect
+                                x="7"
+                                y="6.5"
+                                width="18"
+                                height="20.5"
+                                rx="2.8"
+                                stroke="#15803D"
+                                strokeWidth="2.1"
+                              />
+                              <path
+                                d="M12 5H20V8H12V5Z"
+                                fill="#F1F8F3"
+                                stroke="#15803D"
+                                strokeWidth="2"
+                              />
+                              <path
+                                d="M11.8 17.2L14.6 20L20.5 14"
+                                stroke="#15803D"
+                                strokeWidth="2.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <div className="mt-2 text-[12px] min-[390px]:text-[12.5px] font-extrabold text-[#1F2937] leading-[1.3] tracking-[-0.03em] whitespace-nowrap">
+                              <span className="block">농작업 안내</span>
+                              <span className="block">및 기록</span>
+                            </div>
+                          </div>
+
+                          {/* 항목 3: 농자재 추천·구매 */}
+                          <div className="flex flex-col items-center text-center px-1">
+                            <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                              <path
+                                d="M5 7.5H8.5L11.2 19.5H23.5L26.2 10.5H9.5"
+                                stroke="#15803D"
+                                strokeWidth="2.1"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                              <circle cx="12.5" cy="24" r="2" fill="#15803D" />
+                              <circle cx="22" cy="24" r="2" fill="#15803D" />
+                            </svg>
+                            <div className="mt-2 text-[12px] min-[390px]:text-[12.5px] font-extrabold text-[#1F2937] leading-[1.3] tracking-[-0.03em] whitespace-nowrap">
+                              <span className="block">농자재</span>
+                              <span className="block">추천·구매</span>
+                            </div>
+                          </div>
+
+                          {/* 항목 4: 병해충 진단 및 관리 */}
+                          <div className="flex flex-col items-center text-center px-1">
+                            <svg viewBox="0 0 32 32" className="w-7 h-7" fill="none">
+                              <circle
+                                cx="14.5"
+                                cy="14.5"
+                                r="7.5"
+                                stroke="#15803D"
+                                strokeWidth="2.1"
+                              />
+                              <path
+                                d="M20 20L25.5 25.5"
+                                stroke="#15803D"
+                                strokeWidth="2.3"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M12 16.5C12 13 14.5 11 17.5 11C17.5 14 15.5 16.5 12 16.5Z"
+                                stroke="#15803D"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <div className="mt-2 text-[12px] min-[390px]:text-[12.5px] font-extrabold text-[#1F2937] leading-[1.3] tracking-[-0.03em] whitespace-nowrap">
+                              <span className="block">병해충 진단</span>
+                              <span className="block">및 관리</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
