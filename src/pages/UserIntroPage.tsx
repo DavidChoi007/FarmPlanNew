@@ -5516,9 +5516,206 @@ export default function UserIntroPage() {
     });
   };
 
+  // 토양성분정보(pH, EC, 유기물 OM, 유효인산, 칼륨 K, 칼슘 Ca, 토성) + 재배지 면적(평수) + 제품 포장규격(unit_spec) 통합 수량·중량 산출기
+  const computeSoilAndAreaAdjustedDosage = (
+    mat: any,
+    areaPyeong = 300,
+    soilCtx?: {
+      soil_ph?: number;
+      soil_ec?: number;
+      organic_matter_g_kg?: number;
+      avail_p2o5_mg_kg?: number;
+      exch_k_cmol?: number;
+      exch_ca_cmol?: number;
+      soil_texture?: string;
+    }
+  ): {
+    recommendedPackQty: number;
+    packUnitLabel: string;
+    dosageRangeLabel: string;
+    soilFactor: number;
+    soilReasonShort: string;
+  } => {
+    const safeArea = Math.max(10, Number(areaPyeong || 300));
+    const areaRatio100 = Math.max(0.1, Number((safeArea / 100).toFixed(2)));
+    const activeReq = provisionData?.activeRequest || {};
+    const matchedLand =
+      myFarmlands.find(
+        (fl: any) =>
+          fl.farmland_id === activeReq.farmland_id ||
+          (fl.sido === activeReq.sido &&
+            fl.sigungu === activeReq.sigungu &&
+            fl.eupmyeondong === activeReq.eupmyeondong)
+      ) || myFarmlands[0];
+
+    const soilPh = Number(
+      soilCtx?.soil_ph ?? activeReq.soil_ph ?? matchedLand?.soil_ph ?? reqForm.soil_ph ?? 6.2
+    );
+    const soilEc = Number(
+      soilCtx?.soil_ec ?? activeReq.soil_ec ?? matchedLand?.soil_ec ?? reqForm.soil_ec ?? 1.1
+    );
+    const soilOm = Number(
+      soilCtx?.organic_matter_g_kg ?? activeReq.organic_matter_g_kg ?? 24
+    );
+    const soilK = Number(soilCtx?.exch_k_cmol ?? activeReq.exch_k_cmol ?? 0.68);
+    const soilCa = Number(soilCtx?.exch_ca_cmol ?? activeReq.exch_ca_cmol ?? 5.4);
+    const soilTexture = String(
+      soilCtx?.soil_texture ||
+        activeReq.soil_condition ||
+        activeReq.soil_texture ||
+        reqForm.soil_condition ||
+        '사양토'
+    );
+
+    const cat = String(mat?.material_category || 'FERTILIZER').toUpperCase();
+    const subAndName = `${mat?.sub_type || ''} ${mat?.product_name || ''} ${mat?.material_id || ''}`;
+    const rawUnitSpec = String(
+      mat?.unit_spec || (cat === 'FERTILIZER' ? '20kg / 포' : '500ml / 병')
+    );
+    const unitMatch = rawUnitSpec.match(/(포|병|봉|통|팩|판|박스|개)/);
+    const packUnitLabel = unitMatch
+      ? unitMatch[1]
+      : cat === 'FERTILIZER'
+      ? '포'
+      : cat === 'SEED'
+      ? '봉'
+      : '병';
+
+    // 1. 토양검정 화학성 기반 보정계수(soilFactor) 산출
+    let soilFactor = 1.0;
+    let soilReasonShort = `pH ${soilPh}·EC ${soilEc} 적정`;
+    if (/석회|토양개량|FERT-PRD-04|FERT-PRD-16|FERT-PRD-22/.test(subAndName)) {
+      if (soilPh < 6.0) {
+        soilFactor = 1.25;
+        soilReasonShort = `산성토(pH ${soilPh}) 교정 +25%`;
+      } else if (soilPh < 6.4 || soilCa < 5.5) {
+        soilFactor = 1.15;
+        soilReasonShort = `약산성(pH ${soilPh})·Ca 보충 +15%`;
+      } else if (soilPh > 6.8) {
+        soilFactor = 0.8;
+        soilReasonShort = `알칼리토(pH ${soilPh}) -20%`;
+      }
+    } else if (/유기질|퇴비|유박|FERT-PRD-05|FERT-PRD-17|FERT-PRD-23/.test(subAndName)) {
+      if (soilOm < 25) {
+        soilFactor = 1.2;
+        soilReasonShort = `유기물(${soilOm}g/kg) 부족 +20%`;
+      } else if (soilOm > 35) {
+        soilFactor = 0.85;
+        soilReasonShort = `유기물(${soilOm}g/kg) 풍부 -15%`;
+      }
+    } else if (cat === 'FERTILIZER') {
+      if (soilEc > 1.8) {
+        soilFactor = 0.85;
+        soilReasonShort = `염류(EC ${soilEc}) 과잉 -15%`;
+      } else if (soilTexture.includes('사양토') || soilK < 0.7) {
+        soilFactor = 1.1;
+        soilReasonShort = `${soilTexture}·K(${soilK}) 보완 +10%`;
+      }
+    } else if (cat === 'NUTRIENT') {
+      if (/칼슘|튼튼칼슘|칼보론/.test(subAndName) && (soilPh < 6.3 || soilCa < 5.5)) {
+        soilFactor = 1.15;
+        soilReasonShort = `pH ${soilPh} 칼슘흡수 보강 +15%`;
+      } else if (soilTexture.includes('사양토') && /미량요소|만능이|미리근|발근|아미노|루트/.test(subAndName)) {
+        soilFactor = 1.1;
+        soilReasonShort = `${soilTexture} 양분보강 +10%`;
+      }
+    } else if (
+      cat === 'PESTICIDE' &&
+      /토양|뿌리혹병|후론사이드|사라져|포스|프리엔/.test(subAndName) &&
+      soilPh < 6.3
+    ) {
+      soilFactor = 1.15;
+      soilReasonShort = `pH ${soilPh} 토양병해 방제 +15%`;
+    }
+
+    // 2. 1포·1병·1봉 포장단위 용량(g, ml, 립) 파싱
+    let packCapInBase = cat === 'FERTILIZER' ? 20000 : cat === 'SEED' ? 2000 : 500;
+    const kgSpec = rawUnitSpec.match(/(\d+(?:\.\d+)?)\s*(?:kg|Kg|KG)/);
+    const lSpec = rawUnitSpec.match(/(\d+(?:\.\d+)?)\s*(?:L|리터)/);
+    const mlSpec = rawUnitSpec.match(/(\d+(?:,\d+)?)\s*(?:ml|mL)/);
+    const gSpec = rawUnitSpec.match(/(\d+(?:,\d+)?)\s*(?:g|G)/);
+    const seedSpec = rawUnitSpec.match(/(\d+(?:,\d+)?)\s*립/);
+    if (kgSpec) {
+      packCapInBase = Number(kgSpec[1]) * 1000; // g 기준
+    } else if (lSpec) {
+      packCapInBase = Number(lSpec[1]) * 1000; // ml 기준
+    } else if (mlSpec) {
+      packCapInBase = Number(mlSpec[1].replace(/,/g, ''));
+    } else if (gSpec) {
+      packCapInBase = Number(gSpec[1].replace(/,/g, ''));
+    } else if (seedSpec) {
+      packCapInBase = Number(seedSpec[1].replace(/,/g, ''));
+    }
+
+    // 3. 100평당 기준 권장 중량·용량 파싱 후 면적비율(areaRatio100) × 토양보정계수(soilFactor) 곱셈
+    const dosageRaw = String(mat?.dosage_per_100pyeong || '');
+    const rangeMatch = dosageRaw.match(/(\d+(?:\.\d+)?)\s*~\s*(\d+(?:\.\d+)?)\s*(kg|Kg|ml|mL|g|립|봉)/);
+    const singleMatch = dosageRaw.match(
+      /100평(?:\([^)]*\))?당\s*(?:관주\s*)?(\d+(?:\.\d+)?)\s*(kg|Kg|ml|mL|g|립|봉)/
+    );
+
+    if (rangeMatch) {
+      const low100 = Number(rangeMatch[1]);
+      const high100 = Number(rangeMatch[2]);
+      const u = rangeMatch[3];
+      if (u === '봉') {
+        const minPacks = Math.max(1, Math.round(low100 * areaRatio100 * soilFactor));
+        const maxPacks = Math.max(minPacks, Math.ceil(high100 * areaRatio100 * soilFactor));
+        const avgPacks = Math.max(1, Math.ceil(((low100 + high100) / 2) * areaRatio100 * soilFactor));
+        return {
+          recommendedPackQty: avgPacks,
+          packUnitLabel,
+          dosageRangeLabel: `${minPacks}~${maxPacks} ${packUnitLabel} / ${safeArea.toLocaleString()}평`,
+          soilFactor,
+          soilReasonShort,
+        };
+      }
+      const minScaled = Math.max(1, Math.round(low100 * areaRatio100 * soilFactor));
+      const maxScaled = Math.max(minScaled, Math.round(high100 * areaRatio100 * soilFactor));
+      const avgScaled = ((low100 + high100) / 2) * areaRatio100 * soilFactor;
+      const avgInBase = u.toLowerCase() === 'kg' ? avgScaled * 1000 : avgScaled;
+      const recommendedPackQty = Math.max(1, Math.ceil(avgInBase / Math.max(1, packCapInBase)));
+      return {
+        recommendedPackQty,
+        packUnitLabel,
+        dosageRangeLabel: `${minScaled.toLocaleString()}~${maxScaled.toLocaleString()} ${u} / ${safeArea.toLocaleString()}평`,
+        soilFactor,
+        soilReasonShort,
+      };
+    }
+
+    if (singleMatch) {
+      const val100 = Number(singleMatch[1]);
+      const u = singleMatch[2];
+      const valScaled = Math.max(1, Math.round(val100 * areaRatio100 * soilFactor));
+      const valInBase = u.toLowerCase() === 'kg' ? valScaled * 1000 : valScaled;
+      const recommendedPackQty = Math.max(1, Math.ceil(valInBase / Math.max(1, packCapInBase)));
+      return {
+        recommendedPackQty,
+        packUnitLabel,
+        dosageRangeLabel: `약 ${valScaled.toLocaleString()} ${u} / ${safeArea.toLocaleString()}평`,
+        soilFactor,
+        soilReasonShort,
+      };
+    }
+
+    const fallbackRate = cat === 'FERTILIZER' ? 1.5 : 0.5;
+    const fallbackQty = Math.max(1, Math.ceil(areaRatio100 * fallbackRate * soilFactor));
+    return {
+      recommendedPackQty: fallbackQty,
+      packUnitLabel,
+      dosageRangeLabel: `${fallbackQty}${packUnitLabel} / ${safeArea.toLocaleString()}평`,
+      soilFactor,
+      soilReasonShort,
+    };
+  };
+
   const parseRecommendedQuantity = (matOrText?: any, areaPyeong = 300): number => {
     const safeArea = Math.max(10, Number(areaPyeong || 300));
     if (matOrText && typeof matOrText === 'object') {
+      if (matOrText.dosage_per_100pyeong || matOrText.unit_spec) {
+        return computeSoilAndAreaAdjustedDosage(matOrText, safeArea).recommendedPackQty;
+      }
       if (
         Number(matOrText.recommended_qty) > 0 &&
         (!matOrText.area_pyeong || Number(matOrText.area_pyeong) === safeArea)
@@ -5533,15 +5730,6 @@ export default function UserIntroPage() {
       }
       const cat = String(matOrText.material_category || '').toUpperCase();
       const fallbackRate = cat === 'FERTILIZER' ? 1.5 : 0.5;
-      if (matOrText.recommended_for_area) {
-        const text = String(matOrText.recommended_for_area);
-        const totalMatch =
-          text.match(/총\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/) ||
-          text.match(/권장(?:\s*구매)?\s*(\d+)\s*(포|병|봉|판|통|박스|개|롤|팩)/);
-        if (totalMatch && Number(totalMatch[1]) > 0) {
-          return Number(totalMatch[1]);
-        }
-      }
       return Math.max(1, Math.ceil((safeArea / 100) * fallbackRate));
     }
     if (matOrText) {
@@ -7633,14 +7821,21 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* 4. 메인 액션 풀와이드 캡슐 버튼 (지금 무료로 시작하기 > / 비로그인 시에만 로그인 표시) */}
+                {/* 4. 메인 액션 풀와이드 캡슐 버튼 (로그인 상태: 재배일정 확인 > / 비로그인 상태: 지금 무료로 시작하기 > + 로그인) */}
                 <div className="px-4 mt-3 space-y-2.5">
                   <button
                     type="button"
-                    onClick={() => setActiveMenu('재배일정 요청')}
+                    onClick={() => {
+                      if (loggedInUser.isLoggedIn) {
+                        setActiveMenu('재배일정 확인');
+                        setMobileScheduleStep('list');
+                      } else {
+                        setActiveMenu('재배일정 요청');
+                      }
+                    }}
                     className="w-full h-[52px] min-[390px]:h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] min-[390px]:text-[18.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] transition cursor-pointer"
                   >
-                    <span>지금 무료로 시작하기</span>
+                    <span>{loggedInUser.isLoggedIn ? '재배일정 확인' : '지금 무료로 시작하기'}</span>
                     <ChevronRight className="w-5 h-5 stroke-[2.5] -mr-1" />
                   </button>
 
@@ -25908,25 +26103,19 @@ export default function UserIntroPage() {
                 mat.unit_spec || (isBag ? '20kg / 포' : '500ml / 병')
               );
               const unitSpecStr = stripParenText(rawUnitSpecStr) || rawUnitSpecStr;
-              const unitMatch = unitSpecStr.match(/(포|병|봉|통|팩|판|박스|개)/);
-              const packUnitLabel = unitMatch ? unitMatch[1] : isBag ? '포' : '병';
 
-              // 농장 평수(pyeong) 기준 권장 구매 수량(포/병) 및 권장 사용량 텍스트 산출
-              const recommendedPackQty = Math.max(1, parseRecommendedQuantity(mat, pyeong));
-              const dosageRaw = String(mat.dosage_per_100pyeong || '');
-              let dosageRangeLabel = `${recommendedPackQty}${packUnitLabel} / ${pyeong.toLocaleString()}평`;
-              const rangeKgMatch = dosageRaw.match(/(\d+)\s*~\s*(\d+)\s*(kg|Kg|ml|mL|g)/);
-              const singleKgMatch = dosageRaw.match(/100평당\s*(?:관주\s*)?(\d+)\s*(kg|Kg|ml|mL|g)/);
-              if (rangeKgMatch) {
-                const minScaled = Math.round(Number(rangeKgMatch[1]) * areaRatio100);
-                const maxScaled = Math.round(Number(rangeKgMatch[2]) * areaRatio100);
-                const u = rangeKgMatch[3];
-                dosageRangeLabel = `${minScaled.toLocaleString()}~${maxScaled.toLocaleString()} ${u} / ${pyeong.toLocaleString()}평`;
-              } else if (singleKgMatch) {
-                const valScaled = Math.round(Number(singleKgMatch[1]) * areaRatio100);
-                const u = singleKgMatch[2];
-                dosageRangeLabel = `약 ${valScaled.toLocaleString()} ${u} / ${pyeong.toLocaleString()}평`;
-              }
+              // 토양성분정보(pH, EC, 유기물 OM, 칼륨 K, 칼슘 Ca, 토성) + 재배지 면적(pyeong) + 포장용량 기반 권장 중량·용량 및 추천 구매 갯수 통합 산출
+              const soilAreaCalc = computeSoilAndAreaAdjustedDosage(mat, pyeong, {
+                soil_ph: modalCrop?.soil_ph,
+                soil_ec: modalCrop?.soil_ec,
+                organic_matter_g_kg: modalCrop?.organic_matter_g_kg,
+                exch_k_cmol: modalCrop?.exch_k_cmol,
+                exch_ca_cmol: modalCrop?.exch_ca_cmol,
+                soil_texture: modalCrop?.soil_condition || modalCrop?.soil_texture,
+              });
+              const packUnitLabel = soilAreaCalc.packUnitLabel;
+              const recommendedPackQty = soilAreaCalc.recommendedPackQty;
+              const dosageRangeLabel = soilAreaCalc.dosageRangeLabel;
 
               return {
                 id: `${itemId}-${String(mat.material_id || `rec-mat-${idx + 1}`)}`,
