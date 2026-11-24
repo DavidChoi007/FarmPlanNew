@@ -1006,13 +1006,12 @@ if (typeof window !== 'undefined') {
           }
           ensureCompleteCropsAndCultivars(ov);
           if (Array.isArray(sbCultStageCodes) && sbCultStageCodes.length > 0) {
-            const localCultCodes = loadStoredCultivationStageCodes();
             const mergedByCode = new Map<string, any>();
+            for (const d of DEFAULT_CULTIVATION_STAGE_BASIC_CODES) {
+              mergedByCode.set(String(d.stage_code), d);
+            }
             for (const r of sbCultStageCodes) {
               if (r?.stage_code) mergedByCode.set(String(r.stage_code), r);
-            }
-            for (const l of localCultCodes) {
-              if (l?.stage_code) mergedByCode.set(String(l.stage_code), l);
             }
             ov.cultivationStageCodes = saveStoredCultivationStageCodes(Array.from(mergedByCode.values()));
           }
@@ -1408,7 +1407,25 @@ if (typeof window !== 'undefined') {
 
     if (p === '/api/cultivation-stage-codes' && method === 'GET') {
       const ov = (snap.overview = snap.overview || {});
-      const list = loadStoredCultivationStageCodes();
+      let list = loadStoredCultivationStageCodes();
+      try {
+        const sbRows = await sbSelect(
+          'cultivation_stage_basic_code',
+          'select=*&order=crop_id.asc,stage_order.asc'
+        );
+        if (Array.isArray(sbRows) && sbRows.length > 0) {
+          const mergedByCode = new Map<string, any>();
+          for (const d of DEFAULT_CULTIVATION_STAGE_BASIC_CODES) {
+            mergedByCode.set(String(d.stage_code), d);
+          }
+          for (const r of sbRows) {
+            if (r?.stage_code) mergedByCode.set(String(r.stage_code), r);
+          }
+          list = saveStoredCultivationStageCodes(Array.from(mergedByCode.values()));
+        }
+      } catch {
+        // ignore network errors
+      }
       ov.cultivationStageCodes = list;
       persistOverview(ov);
       return jsonResponse({ ok: true, items: list });

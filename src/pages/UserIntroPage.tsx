@@ -375,6 +375,9 @@ export default function UserIntroPage() {
     'ALL' | 'WORK' | 'FERTILIZER' | 'PEST'
   >('ALL');
   const [isMobileScheduleEditMode, setIsMobileScheduleEditMode] = useState<boolean>(false);
+  const [mobileSelectedEditTaskId, setMobileSelectedEditTaskId] = useState<string>('');
+  const [mobileEditTargetDateYmd, setMobileEditTargetDateYmd] = useState<string>('');
+  const [mobileScheduleRecalcNotice, setMobileScheduleRecalcNotice] = useState<string>('');
   const [selectedScheduleTaskId, setSelectedScheduleTaskId] = useState<string>('');
   const [workLogSelectedMaterialName, setWorkLogSelectedMaterialName] = useState<string>('복합비료 15-15-15');
   const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/fertilizers/FERT-PRD-01-thumb.png');
@@ -964,8 +967,42 @@ export default function UserIntroPage() {
     return defaultStageItemCompletions;
   });
 
-  // 각 생육관리 항목의 인라인 날짜 수정 드래프트 상태 (수정 후 [완료] 버튼을 눌러야 해당 날짜에 시작 인정)
-  const [inlineStageDateDrafts, setInlineStageDateDrafts] = useState<Record<string, string>>({});
+  // 각 생육관리 항목의 인라인 날짜 수정 드래프트 상태 (DB 동기화 + localStorage 백업)
+  const [inlineStageDateDrafts, setInlineStageDateDrafts] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem('hanfarm_inline_stage_date_drafts_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return {};
+  });
+
+  const saveInlineStageDateDrafts = (
+    updater: (prev: Record<string, string>) => Record<string, string>
+  ) => {
+    setInlineStageDateDrafts((prev) => {
+      const next = updater(prev);
+      try {
+        localStorage.setItem('hanfarm_inline_stage_date_drafts_v1', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      fetch('/api/client-sync-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loggedInUser.email || 'CloudBae@naver.com',
+          state_key: 'inline_stage_date_drafts_v1',
+          state_value: next,
+        }),
+      }).catch(() => {});
+      return next;
+    });
+  };
 
   const saveStageItemCompletions = (
     updater: (prev: typeof stageItemCompletions) => typeof stageItemCompletions
@@ -3159,6 +3196,22 @@ export default function UserIntroPage() {
           }
         } else if (!isCloudBaeTarget) {
           setCropWorkLogs({});
+        }
+        if (
+          states.inline_stage_date_drafts_v1 &&
+          typeof states.inline_stage_date_drafts_v1 === 'object'
+        ) {
+          setInlineStageDateDrafts(states.inline_stage_date_drafts_v1);
+          try {
+            localStorage.setItem(
+              'hanfarm_inline_stage_date_drafts_v1',
+              JSON.stringify(states.inline_stage_date_drafts_v1)
+            );
+          } catch {
+            // ignore
+          }
+        } else if (!isCloudBaeTarget) {
+          setInlineStageDateDrafts({});
         }
       }
       return { res, states: syncData?.states || {} };
@@ -9381,19 +9434,28 @@ export default function UserIntroPage() {
                 for (const d of DEFAULT_CULT_STAGE_CODES_FALLBACK) {
                   mergedMap.set(d.stage_code, d);
                 }
-                if (Array.isArray(data?.cultivationStageCodes)) {
+                // 1순위: 서버/DB(/api/overview)에서 조회된 최신 재배 과정 기초 코드
+                if (
+                  Array.isArray(data?.cultivationStageCodes) &&
+                  data.cultivationStageCodes.length > 0
+                ) {
+                  mergedMap.clear();
+                  for (const d of DEFAULT_CULT_STAGE_CODES_FALLBACK) {
+                    mergedMap.set(d.stage_code, d);
+                  }
                   for (const item of data.cultivationStageCodes) {
                     if (item?.stage_code) {
                       mergedMap.set(String(item.stage_code), item);
                     }
                   }
+                  return Array.from(mergedMap.values());
                 }
+                // 2순위(DB 응답 대기 중일 때만): localStorage 백업 참조
                 try {
                   const localRaw = localStorage.getItem('hanfarm_cultivation_stage_basic_codes_v1');
                   if (localRaw) {
                     const parsed = JSON.parse(localRaw);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                      mergedMap.clear();
                       for (const item of parsed) {
                         if (item?.stage_code) {
                           mergedMap.set(String(item.stage_code), item);
@@ -9870,6 +9932,220 @@ export default function UserIntroPage() {
                 return `${y}년 ${m}월 ${d}일`;
               };
 
+              // 선택된 1개 생육과정 일정이 변경되었을 때, 그 이후의 모든 후속 일정을 초기 산출 규칙(작년기후+올해기후예측, PGDD 적산온도, 강우량 회피, 토양 특성 보정) 그대로 최적 일정으로 연쇄 재계산 후 DB에 영구 저장하는 함수
+              const applySingleTaskDateChangeWithClimateRecalc = async (
+                reqNo: string,
+                targetTask: any,
+                newStartYmd: string
+              ) => {
+                if (!reqNo || !targetTask || !/^\d{4}-\d{2}-\d{2}$/.test(newStartYmd)) return;
+                const allCropTasks = activeCropItem?.allTasks || [];
+                const targetStepOrder = Number(targetTask.stepOrder || targetTask.step_order || 1);
+                const oldStartYmd = String(targetTask.effDate || targetTask.start_date || newStartYmd);
+                const deltaDays = diffDaysBetweenYmd(oldStartYmd, newStartYmd);
+
+                const genModConfig = loadScheduleGenerationModuleFromStorage();
+                const modFlags = getEnabledModuleFlags(genModConfig);
+
+                // 토양 성질(토성·배수·유기물·미기후) 보정 오프셋
+                const soilCond = String(
+                  provisionData?.activeRequest?.soil_condition ||
+                    activeCropCard?.soil_condition ||
+                    '사양토'
+                );
+                const soilMicroShift =
+                  modFlags.soil_topo_microclimate_offset !== false && soilCond.includes('점질')
+                    ? 1
+                    : 0;
+
+                const rawScheduleItems: any[] =
+                  Array.isArray(provisionData?.scheduleItems) &&
+                  provisionData.scheduleItems.length > 0 &&
+                  provisionData?.activeRequest?.request_no === reqNo
+                    ? provisionData.scheduleItems
+                    : allCropTasks.map((t: any) => ({
+                        item_id: t.itemId,
+                        step_order: t.stepOrder,
+                        stage_group_name: t.stageGroupName,
+                        sub_item_name: t.subItemName,
+                        start_date: t.effDate,
+                        end_date: t.effDate,
+                        work_content: t.workContent || '',
+                      }));
+
+                const matchedRawTarget =
+                  rawScheduleItems.find(
+                    (si: any) =>
+                      resolveStageItemId(si) === targetTask.itemId ||
+                      Number(si.step_order) === targetStepOrder
+                  ) || {
+                    item_id: targetTask.itemId,
+                    step_order: targetStepOrder,
+                    stage_group_name: targetTask.stageGroupName,
+                    sub_item_name: targetTask.subItemName,
+                    start_date: oldStartYmd,
+                    end_date: oldStartYmd,
+                  };
+
+                const targetOrigSpan = Math.max(
+                  0,
+                  diffDaysBetweenYmd(
+                    matchedRawTarget.start_date || oldStartYmd,
+                    matchedRawTarget.end_date || matchedRawTarget.start_date || oldStartYmd
+                  )
+                );
+                const updatedTargetObj = {
+                  ...matchedRawTarget,
+                  item_id: targetTask.itemId,
+                  step_order: targetStepOrder,
+                  start_date: newStartYmd,
+                  end_date: addDaysToYmd(newStartYmd, targetOrigSpan),
+                  recommended_date: newStartYmd,
+                  recommended_date_with_weekday: formatYmdWithWeekday(newStartYmd),
+                };
+
+                // 이후 모든 후속 일정(step_order > targetStepOrder)을 기후(작년+올해예측)·PGDD·강우량·토양성질 기반으로 최적 재산출
+                const subsequentTasks = allCropTasks
+                  .filter((t: any) => Number(t.stepOrder) > targetStepOrder)
+                  .sort((a: any, b: any) => Number(a.stepOrder) - Number(b.stepOrder));
+
+                let prevRecYmd = newStartYmd;
+                const cascadedItems: any[] = [];
+                const nextDraftEntries: Record<string, string> = {
+                  [`${reqNo}__${targetTask.itemId}`]: newStartYmd,
+                };
+
+                for (const subTask of subsequentTasks) {
+                  const rawSub =
+                    rawScheduleItems.find(
+                      (si: any) =>
+                        resolveStageItemId(si) === subTask.itemId ||
+                        Number(si.step_order) === Number(subTask.stepOrder)
+                    ) || {
+                      item_id: subTask.itemId,
+                      step_order: subTask.stepOrder,
+                      stage_group_name: subTask.stageGroupName,
+                      sub_item_name: subTask.subItemName,
+                      start_date: subTask.effDate,
+                      end_date: subTask.effDate,
+                    };
+
+                  const curSubYmd = String(subTask.effDate || rawSub.start_date || prevRecYmd);
+                  const subOrigSpan = Math.max(
+                    0,
+                    diffDaysBetweenYmd(
+                      rawSub.start_date || curSubYmd,
+                      rawSub.end_date || rawSub.start_date || curSubYmd
+                    )
+                  );
+
+                  // 1) 기준 이동일 + 토양 미기후 보정
+                  const candidateBaseYmd = addDaysToYmd(curSubYmd, deltaDays + soilMicroShift);
+                  // 2) 공정 순서 역전 방지 최소 허용일
+                  const minAllowedYmd = addDaysToYmd(prevRecYmd, 1);
+                  const slotKey =
+                    subTask.iconType === 'PEST'
+                      ? 'STG-PEST'
+                      : Number(subTask.stepOrder) >= 15
+                      ? 'STG-HARVEST'
+                      : rawSub.stage_slot_key || rawSub.stage_group_id || 'STG-GROWTH';
+
+                  // 3) 작년기후 + 올해기후(예측 포함) + 강우량 회피 + 한계/적정온도(PGDD) 최적일 탐색
+                  const climateRec =
+                    modFlags.ai_work_date_optimizer !== false
+                      ? findClimateRecommendedSingleDate(candidateBaseYmd, minAllowedYmd, slotKey)
+                      : {
+                          recommendedDate:
+                            candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd,
+                          recommendedWithWeekday: formatYmdWithWeekday(
+                            candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd
+                          ),
+                          climateBadge: '기후·적산온도 연동 산출',
+                          climateDetailText: '',
+                        };
+
+                  const finalSubStartYmd = climateRec.recommendedDate;
+                  const finalSubEndYmd = addDaysToYmd(finalSubStartYmd, subOrigSpan);
+                  prevRecYmd = finalSubStartYmd;
+
+                  nextDraftEntries[`${reqNo}__${subTask.itemId}`] = finalSubStartYmd;
+                  cascadedItems.push({
+                    ...rawSub,
+                    item_id: subTask.itemId,
+                    step_order: subTask.stepOrder,
+                    start_date: finalSubStartYmd,
+                    end_date: finalSubEndYmd,
+                    recommended_date: finalSubStartYmd,
+                    recommended_date_with_weekday: climateRec.recommendedWithWeekday,
+                    climate_rule: climateRec.climateBadge || rawSub.climate_rule || '',
+                  });
+                }
+
+                // 1) 프론트엔드 드래프트 상태 및 DB(client-sync-state) 즉시 저장
+                saveInlineStageDateDrafts((prev) => ({
+                  ...prev,
+                  ...nextDraftEntries,
+                }));
+
+                // 2) provisionData 메모리 상태도 즉시 업데이트하여 화면 즉시 반영
+                const allUpdatedById = new Map<string, any>();
+                allUpdatedById.set(targetTask.itemId, updatedTargetObj);
+                cascadedItems.forEach((ci) => allUpdatedById.set(ci.item_id, ci));
+
+                setProvisionData((prev: any) => {
+                  if (!prev || prev?.activeRequest?.request_no !== reqNo) return prev;
+                  const nextScheduleItems = (prev.scheduleItems || []).map((si: any) => {
+                    const sid = resolveStageItemId(si);
+                    const upd = allUpdatedById.get(sid);
+                    return upd ? { ...si, ...upd } : si;
+                  });
+                  const nextStageGroups = (prev.stageGroups || []).map((grp: any) => ({
+                    ...grp,
+                    items: (grp.items || []).map((gi: any) => {
+                      const gid = resolveStageItemId(gi);
+                      const upd = allUpdatedById.get(gid);
+                      return upd ? { ...gi, ...upd } : gi;
+                    }),
+                  }));
+                  return {
+                    ...prev,
+                    scheduleItems: nextScheduleItems,
+                    stageGroups: nextStageGroups,
+                  };
+                });
+
+                // 3) 백엔드 & Supabase DB(schedule_provision_custom_item) 영구 저장
+                const itemsToSave = [updatedTargetObj, ...cascadedItems];
+                try {
+                  await fetch('/api/schedule-provision/update-item', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      request_no: reqNo,
+                      cultivar_id: provisionData?.activeRequest?.cultivar_id || 'CV-BRM3',
+                      updated_item: updatedTargetObj,
+                      cascaded_items: cascadedItems,
+                      items_to_save: itemsToSave,
+                    }),
+                  });
+                } catch {
+                  // ignore network error
+                }
+
+                // 만약 정식(SCH-07) 또는 수확(SCH-15/16) 날짜가 바뀌었다면 작물 카드 기간도 동기화
+                const cleanTitle =
+                  String(targetTask.shortTitle || '')
+                    .replace(/\s*\([^)]*\)/g, '')
+                    .trim() || targetTask.shortTitle;
+                setMobileScheduleRecalcNotice(
+                  `[${cleanTitle}] 일정이 ${formatYmdToKoreanFull(
+                    newStartYmd
+                  )}로 변경되어, 이후 후속 일정 ${
+                    cascadedItems.length
+                  }건이 기후(작년+올해예측)·적산온도(PGDD)·강우량·토양 조건에 맞춰 최적 일정으로 자동 재계산 및 DB 저장되었습니다.`
+                );
+              };
+
               const goToScheduleStep = (
                 nextStep:
                   | 'list'
@@ -10320,6 +10596,9 @@ export default function UserIntroPage() {
                             onClick={() => {
                               setMobileFullScheduleFilterTab('ALL');
                               setIsMobileScheduleEditMode(false);
+                              setMobileSelectedEditTaskId('');
+                              setMobileEditTargetDateYmd('');
+                              setMobileScheduleRecalcNotice('');
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
                             }}
@@ -10419,6 +10698,11 @@ export default function UserIntroPage() {
                           filteredScheduleTasks.find((t) => !t.isRecognized) ||
                           null;
 
+                        const selectedEditTaskObj =
+                          activeCropItem.allTasks.find(
+                            (t) => t.itemId === mobileSelectedEditTaskId
+                          ) || null;
+
                         const filterTabs: Array<{
                           key: 'ALL' | 'WORK' | 'FERTILIZER' | 'PEST';
                           label: string;
@@ -10487,21 +10771,48 @@ export default function UserIntroPage() {
                                 })}
                               </div>
 
-                              {/* 일정 수정 모드 안내 배너 */}
-                              {isMobileScheduleEditMode && (
-                                <div className="rounded-[12px] border border-[#16A34A]/40 bg-[#EFF8F1] px-3.5 py-2.5 flex items-center justify-between gap-2">
-                                  <span className="text-[13px] font-bold text-[#0E712F] tracking-[-0.02em]">
-                                    각 생육과정의 예정일을 터치하여 바로 수정할 수 있습니다.
+                              {/* 후속 일정 기후 연동 재계산 완료 알림 또는 선택 안내 배너 */}
+                              {mobileScheduleRecalcNotice && (
+                                <div className="rounded-[12px] border border-[#16A34A]/45 bg-[#EFF8F1] px-3.5 py-2.5 flex items-start justify-between gap-2">
+                                  <span className="text-[12.5px] font-bold text-[#0E712F] leading-snug break-keep">
+                                    {mobileScheduleRecalcNotice}
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      setIsMobileScheduleEditMode(false)
+                                      setMobileScheduleRecalcNotice('')
                                     }
-                                    className="px-2.5 py-1 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold shrink-0 cursor-pointer"
+                                    className="text-[12px] font-extrabold text-[#0E712F] shrink-0 px-1.5"
                                   >
-                                    완료
+                                    ✕
                                   </button>
+                                </div>
+                              )}
+
+                              {isMobileScheduleEditMode && selectedEditTaskObj && (
+                                <div className="rounded-[12px] border border-[#0E712F] bg-[#EFF8F1] px-3.5 py-2.5 space-y-1.5">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[13px] font-extrabold text-[#0E712F] tracking-[-0.02em]">
+                                      [
+                                      {String(selectedEditTaskObj.shortTitle || '')
+                                        .replace(/\s*\([^)]*\)/g, '')
+                                        .trim() || selectedEditTaskObj.shortTitle}
+                                      ] 날짜 수정 중 (선택된 1개 항목)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setIsMobileScheduleEditMode(false);
+                                        setMobileEditTargetDateYmd('');
+                                      }}
+                                      className="px-2 py-0.5 rounded-full bg-white border border-[#16A34A] text-[#0E712F] text-[11px] font-extrabold shrink-0 cursor-pointer"
+                                    >
+                                      취소
+                                    </button>
+                                  </div>
+                                  <p className="text-[11.5px] font-medium text-[#374151] leading-snug break-keep">
+                                    날짜를 변경하고 하단 <strong>[일정 수정 완료]</strong>를 누르면 이후 모든 후속 일정이 기후(작년+올해예측)·적산온도(PGDD)·강우량·토양 조건으로 다시 계산되어 적용됩니다.
+                                  </p>
                                 </div>
                               )}
 
@@ -10526,6 +10837,11 @@ export default function UserIntroPage() {
                                         !isDone &&
                                         firstUpcomingInFiltered?.itemId ===
                                           task.itemId;
+                                      const isRadioSelected =
+                                        mobileSelectedEditTaskId === task.itemId;
+                                      const isEditingThisItem =
+                                        isMobileScheduleEditMode &&
+                                        isRadioSelected;
                                       const cleanShortTitle =
                                         String(task.shortTitle || '')
                                           .replace(/\s*\([^)]*\)/g, '')
@@ -10535,55 +10851,92 @@ export default function UserIntroPage() {
                                         <div
                                           key={task.itemId}
                                           onClick={() => {
-                                            if (isMobileScheduleEditMode) return;
+                                            if (isEditingThisItem) return;
                                             prepareTaskForExecAndLog(task);
                                             goToScheduleStep('task_exec');
                                           }}
                                           className={`relative z-10 w-full rounded-[16px] px-2.5 py-3 flex items-center justify-between gap-2 transition ${
-                                            isMobileScheduleEditMode
-                                              ? 'cursor-default'
-                                              : 'cursor-pointer'
-                                          } ${
-                                            isNextTarget
-                                              ? 'bg-[#EFF8F1] border border-[#DCFCE7] shadow-2xs'
-                                              : 'bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
+                                            isEditingThisItem
+                                              ? 'cursor-default bg-[#EFF8F1] border-2 border-[#0E712F] shadow-xs'
+                                              : isRadioSelected
+                                              ? 'cursor-pointer bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs'
+                                              : isNextTarget
+                                              ? 'cursor-pointer bg-[#EFF8F1]/80 border border-[#DCFCE7] shadow-2xs'
+                                              : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
                                           }`}
                                         >
-                                          {/* 좌측 아이콘 + 생육과정명 */}
+                                          {/* 좌측 라디오 선택 버튼 (클릭 시 세부정보 이동 없이 해당 1개 항목만 선택) + 생육과정명 */}
                                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            {isDone ? (
-                                              <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                                                <svg
-                                                  viewBox="0 0 16 16"
-                                                  className="w-3 h-3"
-                                                  fill="none"
-                                                >
-                                                  <path
-                                                    d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                                    stroke="#FFFFFF"
-                                                    strokeWidth="2.4"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                  />
-                                                </svg>
-                                              </span>
-                                            ) : isNextTarget ? (
-                                              <span className="w-[22px] h-[22px] rounded-full border-[2.4px] border-[#16A34A] bg-white shrink-0 shadow-2xs" />
-                                            ) : (
-                                              <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
-                                            )}
+                                            <button
+                                              type="button"
+                                              aria-label={`${cleanShortTitle} 일정 수정 대상 선택`}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMobileScheduleRecalcNotice('');
+                                                if (
+                                                  mobileSelectedEditTaskId ===
+                                                    task.itemId &&
+                                                  !isMobileScheduleEditMode
+                                                ) {
+                                                  setMobileSelectedEditTaskId('');
+                                                  setMobileEditTargetDateYmd('');
+                                                } else {
+                                                  setMobileSelectedEditTaskId(
+                                                    task.itemId
+                                                  );
+                                                  setMobileEditTargetDateYmd(
+                                                    task.effDate
+                                                  );
+                                                  if (isMobileScheduleEditMode) {
+                                                    setIsMobileScheduleEditMode(
+                                                      false
+                                                    );
+                                                  }
+                                                }
+                                              }}
+                                              className="p-1 -m-1 flex items-center justify-center shrink-0 cursor-pointer focus:outline-none"
+                                            >
+                                              {isRadioSelected ? (
+                                                <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
+                                                  <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
+                                                </span>
+                                              ) : isDone ? (
+                                                <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                                  <svg
+                                                    viewBox="0 0 16 16"
+                                                    className="w-3 h-3"
+                                                    fill="none"
+                                                  >
+                                                    <path
+                                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                      stroke="#FFFFFF"
+                                                      strokeWidth="2.4"
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                    />
+                                                  </svg>
+                                                </span>
+                                              ) : isNextTarget ? (
+                                                <span className="w-[22px] h-[22px] rounded-full border-[2.4px] border-[#16A34A] bg-white shrink-0 shadow-2xs" />
+                                              ) : (
+                                                <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
+                                              )}
+                                            </button>
 
                                             <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
                                               {cleanShortTitle}
                                             </span>
                                           </div>
 
-                                          {/* 우측 날짜 + 상태 배지 (완료 / 예정) + 화살표 */}
+                                          {/* 우측 날짜(선택된 1개 항목만 수정 가능) + 상태 배지 (완료 / 예정) + 화살표 */}
                                           <div className="flex items-center gap-2 shrink-0">
-                                            {isMobileScheduleEditMode ? (
+                                            {isEditingThisItem ? (
                                               <input
                                                 type="date"
-                                                value={task.effDate}
+                                                value={
+                                                  mobileEditTargetDateYmd ||
+                                                  task.effDate
+                                                }
                                                 onClick={(e) =>
                                                   e.stopPropagation()
                                                 }
@@ -10591,15 +10944,16 @@ export default function UserIntroPage() {
                                                   const nextYmd =
                                                     e.target.value;
                                                   if (!nextYmd) return;
-                                                  const draftKey = `${activeCropItem.request_no}__${task.itemId}`;
-                                                  setInlineStageDateDrafts(
-                                                    (prev) => ({
-                                                      ...prev,
-                                                      [draftKey]: nextYmd,
-                                                    })
+                                                  setMobileEditTargetDateYmd(
+                                                    nextYmd
+                                                  );
+                                                  applySingleTaskDateChangeWithClimateRecalc(
+                                                    activeCropItem.request_no,
+                                                    task,
+                                                    nextYmd
                                                   );
                                                 }}
-                                                className="h-[32px] px-2 rounded-lg border border-[#16A34A] bg-white text-[13px] font-bold text-[#111827]"
+                                                className="h-[34px] px-2.5 rounded-lg border-2 border-[#0E712F] bg-white text-[13.5px] font-extrabold text-[#111827] shadow-2xs"
                                               />
                                             ) : (
                                               <span className="text-[14.5px] font-medium text-[#1F2937] tracking-[-0.02em] whitespace-nowrap">
@@ -10631,13 +10985,39 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 4) 하단 [📅 일정 수정하기] 아웃라인 캡슐 버튼 */}
+                            {/* 4) 하단 [📅 일정 수정하기] 아웃라인 캡슐 버튼 (선택된 1개 항목만 수정 활성화 및 기후 연동 후속 일정 재계산) */}
                             <div className="pt-3">
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setIsMobileScheduleEditMode((prev) => !prev)
-                                }
+                                onClick={async () => {
+                                  if (!isMobileScheduleEditMode) {
+                                    if (!selectedEditTaskObj) {
+                                      setMobileScheduleRecalcNotice(
+                                        '일정을 수정할 항목의 왼쪽 원형(라디오) 버튼을 먼저 1개 선택해 주세요.'
+                                      );
+                                      return;
+                                    }
+                                    setMobileEditTargetDateYmd(
+                                      selectedEditTaskObj.effDate
+                                    );
+                                    setMobileScheduleRecalcNotice('');
+                                    setIsMobileScheduleEditMode(true);
+                                  } else {
+                                    if (
+                                      selectedEditTaskObj &&
+                                      mobileEditTargetDateYmd &&
+                                      mobileEditTargetDateYmd !==
+                                        selectedEditTaskObj.effDate
+                                    ) {
+                                      await applySingleTaskDateChangeWithClimateRecalc(
+                                        activeCropItem.request_no,
+                                        selectedEditTaskObj,
+                                        mobileEditTargetDateYmd
+                                      );
+                                    }
+                                    setIsMobileScheduleEditMode(false);
+                                  }
+                                }}
                                 className={`w-full h-[52px] rounded-full border-[1.6px] border-[#16A34A] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs ${
                                   isMobileScheduleEditMode
                                     ? 'bg-[#0E712F] text-white'
@@ -10653,7 +11033,16 @@ export default function UserIntroPage() {
                                 />
                                 <span>
                                   {isMobileScheduleEditMode
-                                    ? '일정 수정 완료'
+                                    ? '일정 수정 완료 (후속 일정 기후 재계산 적용)'
+                                    : selectedEditTaskObj
+                                    ? `[${
+                                        String(
+                                          selectedEditTaskObj.shortTitle || ''
+                                        )
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim() ||
+                                        selectedEditTaskObj.shortTitle
+                                      }] 일정 수정하기`
                                     : '일정 수정하기'}
                                 </span>
                               </button>
@@ -10939,11 +11328,11 @@ export default function UserIntroPage() {
                               );
                             })()}
 
-                            {/* 연기하기 인라인 날짜 선택 패널 (팝업이 아닌 인라인 표시) */}
+                            {/* 연기하기 인라인 날짜 선택 패널 (팝업이 아닌 인라인 표시 + 기후 연동 후속 일정 자동 재계산 및 DB 저장) */}
                             {isPostponeDatePickerOpen && (
                               <div className="rounded-[14px] border border-[#0E712F] bg-[#F4F8F5] p-3.5 space-y-2">
                                 <div className="text-[14px] font-extrabold text-[#0E712F]">
-                                  변경할 예정일을 선택하세요
+                                  변경할 예정일을 선택하세요 (이후 일정이 기후 기반으로 자동 재계산됩니다)
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <input
@@ -10952,11 +11341,11 @@ export default function UserIntroPage() {
                                     onChange={(e) => {
                                       const nextYmd = e.target.value;
                                       if (!nextYmd) return;
-                                      const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
-                                      setInlineStageDateDrafts((prev) => ({
-                                        ...prev,
-                                        [draftKey]: nextYmd,
-                                      }));
+                                      applySingleTaskDateChangeWithClimateRecalc(
+                                        activeCropItem.request_no,
+                                        selectedTaskItem,
+                                        nextYmd
+                                      );
                                       setTaskDetailActualDate(nextYmd);
                                       setIsPostponeDatePickerOpen(false);
                                     }}
@@ -10969,11 +11358,11 @@ export default function UserIntroPage() {
                                         selectedTaskItem.effDate,
                                         3
                                       );
-                                      const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
-                                      setInlineStageDateDrafts((prev) => ({
-                                        ...prev,
-                                        [draftKey]: nextYmd,
-                                      }));
+                                      applySingleTaskDateChangeWithClimateRecalc(
+                                        activeCropItem.request_no,
+                                        selectedTaskItem,
+                                        nextYmd
+                                      );
                                       setTaskDetailActualDate(nextYmd);
                                       setIsPostponeDatePickerOpen(false);
                                     }}
@@ -11276,7 +11665,7 @@ export default function UserIntroPage() {
                                 todayKstYmd;
                               if (selectedTaskItem) {
                                 const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
-                                setInlineStageDateDrafts((prev) => ({
+                                saveInlineStageDateDrafts((prev) => ({
                                   ...prev,
                                   [draftKey]: finalYmd,
                                 }));
@@ -11561,8 +11950,34 @@ export default function UserIntroPage() {
                                       } catch {
                                         // ignore
                                       }
+                                      fetch('/api/client-sync-state', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          email:
+                                            loggedInUser.email ||
+                                            'CloudBae@naver.com',
+                                          state_key:
+                                            'stage_growth_confirm_dates_v1',
+                                          state_value: next,
+                                        }),
+                                      }).catch(() => {});
                                       return next;
                                     });
+
+                                    const matchedTargetTask =
+                                      activeCropItem.allTasks.find(
+                                        (t) => t.itemId === spec.targetItemId
+                                      ) || null;
+                                    if (matchedTargetTask) {
+                                      applySingleTaskDateChangeWithClimateRecalc(
+                                        activeCropItem.request_no,
+                                        matchedTargetTask,
+                                        effYmd
+                                      );
+                                    }
                                   }
                                   setGrowthConfirmModalTarget(null);
                                   goToScheduleStep('detail');
@@ -30186,7 +30601,7 @@ export default function UserIntroPage() {
               });
 
               const draftKey = `${gcReqNo}__${confirmSpec.targetItemId}`;
-              setInlineStageDateDrafts((prev) => ({
+              saveInlineStageDateDrafts((prev) => ({
                 ...prev,
                 [draftKey]: effectiveConfirmYmd,
               }));
