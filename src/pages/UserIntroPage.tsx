@@ -7250,7 +7250,7 @@ export default function UserIntroPage() {
       {/* ==================== MODULE 1: 상단 와이드 GNB 헤더 바 ==================== */}
       <header
         className={`${
-          activeMenu === '홈' || activeMenu === '재배일정 요청' || activeMenu === '재배일정 확인'
+          activeMenu === '홈'
             ? 'hidden lg:block'
             : 'block'
         } bg-white/95 backdrop-blur-md border-b border-emerald-100 sticky top-0 z-30 shadow-[0_4px_20px_-4px_rgba(16,185,129,0.08)]`}
@@ -9805,41 +9805,7 @@ export default function UserIntroPage() {
 
               return (
                 <div className="w-full min-h-screen bg-white lg:bg-transparent lg:py-6 flex justify-center select-none pb-24">
-                  <div className="w-full max-w-[460px] min-h-screen lg:min-h-[720px] bg-white lg:rounded-[28px] lg:border lg:border-[#E5E7EB] lg:shadow-[0_12px_40px_rgba(15,23,42,0.06)] flex flex-col px-5 pt-4 pb-10">
-                    {/* ==================== [공통 상단 헤더: 좌측 ← 뒤로가기 + 중앙 한팜 FarmPlan 로고] ==================== */}
-                    <div className="relative h-12 flex items-center justify-center shrink-0">
-                      <button
-                        type="button"
-                        onClick={goBackScheduleStep}
-                        aria-label="이전 페이지로 뒤로 가기"
-                        className="absolute left-0 w-10 h-10 -ml-1.5 rounded-full hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center text-[#111827] cursor-pointer transition"
-                      >
-                        <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
-                          <path
-                            d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
-                            stroke="currentColor"
-                            strokeWidth="2.2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-
-                      <div className="inline-flex items-center gap-2">
-                        <div className="w-[30px] h-[30px] rounded-[8px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs shrink-0">
-                          <Sprout className="w-4 h-4 stroke-[2.3]" />
-                        </div>
-                        <div className="flex items-baseline gap-1 tracking-[-0.03em]">
-                          <span className="text-[19px] font-black text-[#0E712F]">
-                            한팜
-                          </span>
-                          <span className="text-[17px] font-bold text-[#111827]">
-                            FarmPlan
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
+                  <div className="w-full max-w-[460px] min-h-screen lg:min-h-[720px] bg-white lg:rounded-[28px] lg:border lg:border-[#E5E7EB] lg:shadow-[0_12px_40px_rgba(15,23,42,0.06)] flex flex-col px-5 pt-2 pb-10">
                     {/* ==================== [페이지 1: 재배작물 목록 페이지 (첨부 이미지 1번)] ==================== */}
                     {mobileScheduleStep === 'list' && (
                       <div className="mt-4 flex-1">
@@ -16634,46 +16600,12 @@ export default function UserIntroPage() {
               return (
                 <div className="w-full min-h-screen bg-white lg:bg-transparent lg:py-6 flex justify-center select-none">
                   <div className="w-full max-w-[460px] min-h-screen lg:min-h-[720px] bg-white lg:rounded-[28px] lg:border lg:border-[#E5E7EB] lg:shadow-[0_12px_40px_rgba(15,23,42,0.06)] flex flex-col justify-between px-5 pt-4 pb-8">
-                    {/* ==================== [페이지 1~3 공통 상단 헤더 & 3단계 스텝 인디케이터] ==================== */}
+                    {/* ==================== [페이지 1~3 공통 3단계 스텝 인디케이터] ==================== */}
                     {mobileReqStep !== 4 ? (
                       <>
                         <div>
-                          {/* 1. 상단 바: 좌측 뒤로가기 화살표(←) + 중앙 [한팜 FarmPlan] 로고 */}
-                          <div className="relative h-12 flex items-center justify-center">
-                            <button
-                              type="button"
-                              onClick={() => goToPrevReqStep()}
-                              aria-label="이전 페이지로 뒤로 가기"
-                              className="absolute left-0 w-10 h-10 -ml-1.5 rounded-full hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center text-[#111827] cursor-pointer transition"
-                            >
-                              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
-                                <path
-                                  d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
-                                  stroke="currentColor"
-                                  strokeWidth="2.2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-
-                            <div className="inline-flex items-center gap-2">
-                              <div className="w-[30px] h-[30px] rounded-[8px] bg-[#0E712F] flex items-center justify-center text-white shadow-2xs shrink-0">
-                                <Sprout className="w-4 h-4 stroke-[2.3]" />
-                              </div>
-                              <div className="flex items-baseline gap-1 tracking-[-0.03em]">
-                                <span className="text-[19px] font-black text-[#0E712F]">
-                                  한팜
-                                </span>
-                                <span className="text-[17px] font-bold text-[#111827]">
-                                  FarmPlan
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 2. 3단계 수평 스텝 인디케이터 (1 작물·품종 ── 2 재배지·면적 ── 3 재배조건) */}
-                          <div className="mt-3 px-6">
+                          {/* 1. 3단계 수평 스텝 인디케이터 (1 작물·품종 ── 2 재배지·면적 ── 3 재배조건) */}
+                          <div className="mt-1 px-6">
                             <div className="relative flex items-start justify-between">
                               {/* 연결선 1 -> 2 */}
                               <div
@@ -17358,26 +17290,6 @@ export default function UserIntroPage() {
                       /* ==================== [개별 페이지 4: ④ 등록 완료 (모달이 아닌 독립 페이지)] ==================== */
                       <div className="flex-1 flex flex-col justify-between pt-2">
                         <div>
-                          {/* 상단 뒤로가기(←) 버튼 (브라우저 뒤로가기 및 화면 내 뒤로가기 모두 지원) */}
-                          <div className="h-10 flex items-center">
-                            <button
-                              type="button"
-                              onClick={() => goToPrevReqStep(3)}
-                              aria-label="이전 단계로 뒤로 가기"
-                              className="w-10 h-10 -ml-1.5 rounded-full hover:bg-slate-100 active:bg-slate-200 flex items-center justify-center text-[#111827] cursor-pointer transition"
-                            >
-                              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none">
-                                <path
-                                  d="M19 12H5M5 12L11.5 5.5M5 12L11.5 18.5"
-                                  stroke="currentColor"
-                                  strokeWidth="2.2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            </button>
-                          </div>
-
                           {/* 1. 상단 체크 아이콘 & 폭죽(Confetti) 일러스트 */}
                           <div className="mt-2 relative flex items-center justify-center">
                             <svg
