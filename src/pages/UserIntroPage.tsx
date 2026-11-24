@@ -372,7 +372,7 @@ export default function UserIntroPage() {
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
   const [selectedScheduleTaskId, setSelectedScheduleTaskId] = useState<string>('');
   const [workLogSelectedMaterialName, setWorkLogSelectedMaterialName] = useState<string>('복합비료 15-15-15');
-  const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/products/fertilizer-npk-21.jpg');
+  const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/fertilizers/FERT-PRD-01-thumb.png');
   const [workLogUnit, setWorkLogUnit] = useState<string>('kg');
   const [isPostponeDatePickerOpen, setIsPostponeDatePickerOpen] = useState<boolean>(false);
 
@@ -9531,8 +9531,8 @@ export default function UserIntroPage() {
                     ? '친환경 살균·살충 방제제'
                     : '복합비료 15-15-15';
                   const materialThumb = isPest
-                    ? '/images/products/pesticide-organic-neem.jpg'
-                    : '/images/products/fertilizer-npk-21.jpg';
+                    ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+                    : '/images/fertilizers/FERT-PRD-01-thumb.png';
                   const usageMethod = isPest
                     ? '작물 잎 앞뒷면에 골고루 분무 살포'
                     : '밭에 골고루 살포 후 관수';
@@ -9694,6 +9694,16 @@ export default function UserIntroPage() {
                 setActiveMenu('홈');
               };
 
+              const normalizeAgroThumbPath = (rawUrl?: string, isPest?: boolean) => {
+                const u = String(rawUrl || '').trim();
+                if (!u || u.startsWith('/images/products/')) {
+                  return isPest
+                    ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+                    : '/images/fertilizers/FERT-PRD-01-thumb.png';
+                }
+                return u;
+              };
+
               const prepareTaskForExecAndLog = (task: any) => {
                 if (!task) return;
                 setSelectedScheduleTaskId(task.itemId);
@@ -9704,7 +9714,7 @@ export default function UserIntroPage() {
                   task.materialName || '복합비료 15-15-15'
                 );
                 setWorkLogSelectedMaterialThumb(
-                  task.materialThumb || '/images/products/fertilizer-npk-21.jpg'
+                  normalizeAgroThumbPath(task.materialThumb, task.iconType === 'PEST')
                 );
                 setTaskDetailMemo('');
                 setTaskDetailPhotoName('');
@@ -9769,25 +9779,25 @@ export default function UserIntroPage() {
               const availableWorkLogMaterials = [
                 {
                   name: '복합비료 15-15-15',
-                  thumb: '/images/products/fertilizer-npk-21.jpg',
+                  thumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
                   unit: 'kg',
                   defaultAmt: '50',
                 },
                 {
                   name: 'NK 마그네슘 추비특호 (18-0-16)',
-                  thumb: '/images/products/fertilizer-nk-top.jpg',
+                  thumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
                   unit: 'kg',
                   defaultAmt: '40',
                 },
                 {
                   name: '완숙 유박 비료 (4-2-1)',
-                  thumb: '/images/products/fertilizer-organic-pellet.jpg',
+                  thumb: '/images/fertilizers/FERT-PRD-05-thumb.jpg',
                   unit: 'kg',
                   defaultAmt: '100',
                 },
                 {
                   name: '친환경 살균·살충 방제제',
-                  thumb: '/images/products/pesticide-organic-neem.jpg',
+                  thumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
                   unit: 'L',
                   defaultAmt: '2',
                 },
@@ -10318,8 +10328,17 @@ export default function UserIntroPage() {
                                 <div className="flex items-center gap-3.5 min-w-0">
                                   <div className="w-[52px] h-[52px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
                                     <img
-                                      src={selectedTaskItem.materialThumb}
+                                      src={normalizeAgroThumbPath(
+                                        selectedTaskItem.materialThumb,
+                                        selectedTaskItem.iconType === 'PEST'
+                                      )}
                                       alt={selectedTaskItem.materialName}
+                                      onError={(e) => {
+                                        e.currentTarget.src =
+                                          selectedTaskItem.iconType === 'PEST'
+                                            ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+                                            : '/images/fertilizers/FERT-PRD-01-thumb.png';
+                                      }}
                                       className="w-full h-full object-contain block"
                                     />
                                   </div>
@@ -10461,8 +10480,11 @@ export default function UserIntroPage() {
                                       {matchedTaskLogs.map((logItem) => {
                                         const thumbSrc =
                                           logItem.photoDataUrl ||
-                                          logItem.materialThumb ||
-                                          selectedTaskItem.materialThumb ||
+                                          normalizeAgroThumbPath(
+                                            logItem.materialThumb ||
+                                              selectedTaskItem.materialThumb,
+                                            selectedTaskItem.iconType === 'PEST'
+                                          ) ||
                                           activeCropItem.thumbUrl;
                                         const cleanMemo = String(
                                           logItem.memo || ''
@@ -10488,6 +10510,10 @@ export default function UserIntroPage() {
                                               <img
                                                 src={thumbSrc}
                                                 alt="작업 기록 사진"
+                                                onError={(e) => {
+                                                  e.currentTarget.src =
+                                                    '/images/fertilizers/FERT-PRD-01-thumb.png';
+                                                }}
                                                 className="w-full h-full object-cover block"
                                               />
                                             </div>
@@ -10671,8 +10697,12 @@ export default function UserIntroPage() {
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
                                   <img
-                                    src={workLogSelectedMaterialThumb}
+                                    src={normalizeAgroThumbPath(workLogSelectedMaterialThumb)}
                                     alt={workLogSelectedMaterialName}
+                                    onError={(e) => {
+                                      e.currentTarget.src =
+                                        '/images/fertilizers/FERT-PRD-01-thumb.png';
+                                    }}
                                     className="w-full h-full object-contain block"
                                   />
                                 </div>
@@ -27794,8 +27824,8 @@ export default function UserIntroPage() {
           const productThumbUrl = topMat
             ? resolveAgroProductThumbUrl(topMat)
             : categoryKey === 'PEST_CONTROL'
-            ? '/images/products/pesticide-organic-neem.jpg'
-            : '/images/products/fertilizer-npk-21.jpg';
+            ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+            : '/images/fertilizers/FERT-PRD-01-thumb.png';
 
           const purchasedInfo = topMat
             ? getPurchasedStageProductInfo(detailReqNo, liveStageItem, topMat)
