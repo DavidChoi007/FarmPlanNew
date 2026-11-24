@@ -151,6 +151,311 @@ if (typeof window !== 'undefined') {
     },
   ];
 
+  const DEFAULT_STANDARD_CROPS = [
+    {
+      crop_id: 'CRP-POTATO',
+      group_id: 'GRP-FOOD',
+      crop_name: '감자',
+      scientific_name: 'Solanum tuberosum',
+      description: '특허 대표 예시 작물 (필요유효적산온도 1,000℃, 생육적온 14~23℃)',
+      min_temp: 5,
+      max_temp: 25,
+      opt_temp: '15~20',
+      planting_type: '씨',
+      germination_temp: '15~20',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-SWEETPOTATO',
+      group_id: 'GRP-FOOD',
+      crop_name: '고구마',
+      scientific_name: 'Ipomoea batatas',
+      description: '고온성 구황·식량작물 (생육적온 20~28℃, 배수 양호 토양 적합)',
+      min_temp: 12,
+      max_temp: 35,
+      opt_temp: '20~28',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-BEAN',
+      group_id: 'GRP-FOOD',
+      crop_name: '콩',
+      scientific_name: 'Glycine max',
+      description: '두류 대표 식량작물 (생육적온 20~25℃, 적정발아 20~25℃)',
+      min_temp: 10,
+      max_temp: 32,
+      opt_temp: '20~25',
+      planting_type: '씨',
+      germination_temp: '20~25',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-CABBAGE',
+      group_id: 'GRP-LEAF',
+      crop_name: '배추',
+      scientific_name: 'Brassica rapa subsp. pekinensis',
+      description: '첨부 설계도(도1~도4) 대표 작물 (정식→활착→결구→수확 단계별 PGDD 관리)',
+      min_temp: 5,
+      max_temp: 25,
+      opt_temp: '15~20',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-SPR-CABBAGE',
+      group_id: 'GRP-LEAF',
+      crop_name: '봄배추',
+      scientific_name: 'Brassica rapa subsp. pekinensis',
+      description: '봄 노지 및 터널재배용 내추대성 배추 (생육적온 15~20℃)',
+      min_temp: 5,
+      max_temp: 25,
+      opt_temp: '15~20',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-WIN-CABBAGE',
+      group_id: 'GRP-LEAF',
+      crop_name: '월동배추',
+      scientific_name: 'Brassica rapa subsp. pekinensis',
+      description: '난지형 노지 월동배추 (내한성·구비대 우수)',
+      min_temp: 2,
+      max_temp: 24,
+      opt_temp: '15~20',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-LETTUCE',
+      group_id: 'GRP-LEAF',
+      crop_name: '상추',
+      scientific_name: 'Lactuca sativa',
+      description: '엽채류 대표 단기 수확 작물 (생육적온 15~20℃, 고온기 추대 주의)',
+      min_temp: 5,
+      max_temp: 25,
+      opt_temp: '15~20',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-SPINACH',
+      group_id: 'GRP-LEAF',
+      crop_name: '시금치',
+      scientific_name: 'Spinacia oleracea',
+      description: '저온성 엽채류 대표 작물 (생육적온 15~20℃, 내한성 강함)',
+      min_temp: 4,
+      max_temp: 25,
+      opt_temp: '15~20',
+      planting_type: '씨',
+      germination_temp: '15~20',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-GARLIC',
+      group_id: 'GRP-SPICE',
+      crop_name: '마늘',
+      scientific_name: 'Allium sativum',
+      description: '특허 [0100] 대표 월동작물 (가을 파종 후 겨울 월동, 봄 수확)',
+      min_temp: 3,
+      max_temp: 25,
+      opt_temp: '18~20',
+      planting_type: '씨',
+      germination_temp: '15~20',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-ONION',
+      group_id: 'GRP-SPICE',
+      crop_name: '양파',
+      scientific_name: 'Allium cepa',
+      description: '특허 [0100] 노지 월동작물 (저온장해 예외/조절 파라미터 적용)',
+      min_temp: 4,
+      max_temp: 26,
+      opt_temp: '15~20',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-PEPPER',
+      group_id: 'GRP-SPICE',
+      crop_name: '고추',
+      scientific_name: 'Capsicum annuum',
+      description: '노지 조숙/보통재배 및 병해충(탄저병·역병) 기후예측 방제 핵심 작물',
+      min_temp: 13,
+      max_temp: 32,
+      opt_temp: '23~28',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-GREENONION',
+      group_id: 'GRP-SPICE',
+      crop_name: '대파',
+      scientific_name: 'Allium fistulosum',
+      description: '연중 수요가 높은 양념채소 (생육적온 15~22℃, 북주기 및 배수 관리 핵심)',
+      min_temp: 5,
+      max_temp: 28,
+      opt_temp: '15~22',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-RADISH',
+      group_id: 'GRP-ROOT',
+      crop_name: '무',
+      scientific_name: 'Raphanus sativus',
+      description: '특허 [0046] 최저한계온도 8℃ 적용 대표 근채류',
+      min_temp: 8,
+      max_temp: 26,
+      opt_temp: '17~20',
+      planting_type: '씨',
+      germination_temp: '15~25',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-CARROT',
+      group_id: 'GRP-ROOT',
+      crop_name: '당근',
+      scientific_name: 'Daucus carota',
+      description: '심경 및 균일 수분 관리가 중요한 근채류 (생육적온 18~21℃)',
+      min_temp: 7,
+      max_temp: 27,
+      opt_temp: '18~21',
+      planting_type: '씨',
+      germination_temp: '15~25',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-CUCUMBER',
+      group_id: 'GRP-FRUIT',
+      crop_name: '오이',
+      scientific_name: 'Cucumis sativus',
+      description: '덩굴성 과채류 대표 작물 (생육적온 20~26℃, 연속 착과·추비 관리)',
+      min_temp: 12,
+      max_temp: 32,
+      opt_temp: '20~26',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-TOMATO',
+      group_id: 'GRP-FRUIT',
+      crop_name: '토마토',
+      scientific_name: 'Solanum lycopersicum',
+      description: '광합성 및 칼슘·붕소 관리가 중요한 과채류 (생육적온 20~27℃)',
+      min_temp: 10,
+      max_temp: 32,
+      opt_temp: '20~27',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-WATERMELON',
+      group_id: 'GRP-FRUIT',
+      crop_name: '수박',
+      scientific_name: 'Citrullus lanatus',
+      description: '고온·강광성 과채류 (생육적온 23~28℃, 당도·착과 관리 핵심)',
+      min_temp: 13,
+      max_temp: 35,
+      opt_temp: '23~28',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+    {
+      crop_id: 'CRP-MELON',
+      group_id: 'GRP-FRUIT',
+      crop_name: '참외',
+      scientific_name: 'Cucumis melo var. makuwa',
+      description: '고당도 포복성 과채류 (생육적온 22~28℃, 환기·흰가루병 관리)',
+      min_temp: 13,
+      max_temp: 35,
+      opt_temp: '22~28',
+      planting_type: '모종',
+      germination_temp: '',
+      is_active: 1,
+    },
+  ];
+
+  const DEFAULT_STANDARD_CULTIVARS = [
+    { cultivar_id: 'CV-BRM3', crop_id: 'CRP-CABBAGE', cultivar_name: '불암3호', maturity_type: '중생종', avg_growth_days: 77, characteristics: '결구력이 우수하고 재배 안정성이 뛰어난 가을배추 표준 품종' },
+    { cultivar_id: 'CV-BRMP', crop_id: 'CRP-CABBAGE', cultivar_name: '불암플러스', maturity_type: '중만생종', avg_growth_days: 80, characteristics: '구형과 결구 충실도가 강화된 가을 김장배추 품종' },
+    { cultivar_id: 'CV-HPRG', crop_id: 'CRP-CABBAGE', cultivar_name: '휘파람골드', maturity_type: '중생종', avg_growth_days: 78, characteristics: '뿌리혹병 내병성 및 고소한 맛이 우수한 가을배추 품종' },
+    { cultivar_id: 'CV-CMGA', crop_id: 'CRP-CABBAGE', cultivar_name: '청명가을', maturity_type: '중생종', avg_growth_days: 76, characteristics: '가을 직파 및 정식 겸용 내병성 배추 품종' },
+    { cultivar_id: 'CV-CHUNGWANG', crop_id: 'CRP-CABBAGE', cultivar_name: '춘광', maturity_type: '조생종', avg_growth_days: 65, characteristics: '봄재배 및 터널재배용 내추대성 배추 품종' },
+    { cultivar_id: 'CV-SPR-CG', crop_id: 'CRP-SPR-CABBAGE', cultivar_name: '춘광', maturity_type: '조생종', avg_growth_days: 65, characteristics: '저온기 추대에 강하고 결구가 빠른 봄배추 대표 품종' },
+    { cultivar_id: 'CV-HAENAM1', crop_id: 'CRP-WIN-CABBAGE', cultivar_name: '해남1호', maturity_type: '만생종', avg_growth_days: 110, characteristics: '내한성과 월동 저장성이 뛰어난 월동배추 대표 품종' },
+    { cultivar_id: 'CV-DONGPUNG', crop_id: 'CRP-WIN-CABBAGE', cultivar_name: '동풍', maturity_type: '만생종', avg_growth_days: 115, characteristics: '저온 구비대력과 내한성이 우수한 월동배추 품종' },
+    { cultivar_id: 'CV-CHEONGCHIMA', crop_id: 'CRP-LETTUCE', cultivar_name: '청치마상추', maturity_type: '조생종', avg_growth_days: 45, characteristics: '잎이 부드럽고 수확 기간이 긴 대표 잎상추 품종' },
+    { cultivar_id: 'CV-JEOKCHIMA', crop_id: 'CRP-LETTUCE', cultivar_name: '적치마상추', maturity_type: '조생종', avg_growth_days: 45, characteristics: '안토시아닌 색소 발현과 감칠맛이 뛰어난 적상추 품종' },
+    { cultivar_id: 'CV-POHANGCHO', crop_id: 'CRP-SPINACH', cultivar_name: '포항초 (재래종)', maturity_type: '중생종', avg_growth_days: 60, characteristics: '노지 월동 및 가을재배용 내한성·당도 우수 품종' },
+    { cultivar_id: 'CV-ALLSEASON-SP', crop_id: 'CRP-SPINACH', cultivar_name: '사계절시금치', maturity_type: '조생종', avg_growth_days: 48, characteristics: '봄·가을 내추대성이 우수하고 생육이 빠른 시금치 품종' },
+    { cultivar_id: 'CV-NAMDO', crop_id: 'CRP-GARLIC', cultivar_name: '남도마늘', maturity_type: '조생종', avg_growth_days: 210, characteristics: '난지형 월동 대표 품종, 구비대 빠름' },
+    { cultivar_id: 'CV-DAESEO', crop_id: 'CRP-GARLIC', cultivar_name: '대서마늘', maturity_type: '중만생종', avg_growth_days: 225, characteristics: '다수확 대과종 난지형 마늘' },
+    { cultivar_id: 'CV-HONGSAN', crop_id: 'CRP-GARLIC', cultivar_name: '홍산마늘', maturity_type: '중생종', avg_growth_days: 215, characteristics: '전국(한지·난지 겸용) 재배 가능한 농촌진흥청 육성 기능성 마늘 품종' },
+    { cultivar_id: 'CV-PRK', crop_id: 'CRP-PEPPER', cultivar_name: 'PR탄탄대군', maturity_type: '중생종', avg_growth_days: 140, characteristics: '복합 내병성 노지 고추 품종' },
+    { cultivar_id: 'CV-KALATAN', crop_id: 'CRP-PEPPER', cultivar_name: '칼라탄', maturity_type: '중생종', avg_growth_days: 135, characteristics: '칼라병(TSWV)·탄저병 복합내병성 다수확 고추 품종' },
+    { cultivar_id: 'CV-K1-ONION', crop_id: 'CRP-ONION', cultivar_name: '케이원', maturity_type: '중만생종', avg_growth_days: 220, characteristics: '구형이 균일하고 장기 저장성이 우수한 중만생 양파 품종' },
+    { cultivar_id: 'CV-SINGIRU', crop_id: 'CRP-ONION', cultivar_name: '신기루', maturity_type: '조생종', avg_growth_days: 195, characteristics: '비대 속도가 빠르고 추대에 안정적인 조생종 양파 품종' },
+    { cultivar_id: 'CV-KKAMANBOSEOK', crop_id: 'CRP-GREENONION', cultivar_name: '까만보석', maturity_type: '중생종', avg_growth_days: 120, characteristics: '연백부가 길고 내서·내한성이 우수한 외대파 대표 품종' },
+    { cultivar_id: 'CV-SUMI', crop_id: 'CRP-POTATO', cultivar_name: '수미 (Superior)', maturity_type: '중생종', avg_growth_days: 100, characteristics: '특허 도 7 대표 품종, 생육일수 95~110일, 고온·집중호우 민감' },
+    { cultivar_id: 'CV-DUBAEK', crop_id: 'CRP-POTATO', cultivar_name: '두백', maturity_type: '만생종', avg_growth_days: 115, characteristics: '전분 함량 우수, 생육일수 110일 이상 만생종' },
+    { cultivar_id: 'CV-SEOLBONG', crop_id: 'CRP-POTATO', cultivar_name: '설봉', maturity_type: '조생종', avg_growth_days: 88, characteristics: '조기 수확 가능 조생종 (80~95일), 고온 적응성 개선' },
+    { cultivar_id: 'CV-BENIHARUKA', crop_id: 'CRP-SWEETPOTATO', cultivar_name: '베니하루카 (꿀고구마)', maturity_type: '중생종', avg_growth_days: 125, characteristics: '저장 후 당도가 매우 높고 상품성이 뛰어난 꿀고구마 품종' },
+    { cultivar_id: 'CV-HOPUNGMI', crop_id: 'CRP-SWEETPOTATO', cultivar_name: '호풍미', maturity_type: '중생종', avg_growth_days: 120, characteristics: '덩굴쪼김병 저항성과 다수확성을 갖춘 국산 호박고구마 품종' },
+    { cultivar_id: 'CV-DAEWON', crop_id: 'CRP-BEAN', cultivar_name: '대원콩', maturity_type: '중만생종', avg_growth_days: 115, characteristics: '알이 굵고 기계수확에 적합한 장류·두부용 대표 콩 품종' },
+    { cultivar_id: 'CV-SEONYU', crop_id: 'CRP-BEAN', cultivar_name: '선유콩', maturity_type: '중생종', avg_growth_days: 105, characteristics: '내도복성과 수량성이 우수한 다수확 콩 품종' },
+    { cultivar_id: 'CV-CHEONGA', crop_id: 'CRP-RADISH', cultivar_name: '청아무', maturity_type: '중생종', avg_growth_days: 70, characteristics: '가을 김장용 대표 무 품종, 기준온도 8℃ 적용' },
+    { cultivar_id: 'CV-GWANDONG', crop_id: 'CRP-RADISH', cultivar_name: '관동여름무', maturity_type: '조생종', avg_growth_days: 62, characteristics: '고온기 내서성과 근형 균일도가 뛰어난 여름·초가을 무 품종' },
+    { cultivar_id: 'CV-SINHEUKJEON', crop_id: 'CRP-CARROT', cultivar_name: '신흑전5촌', maturity_type: '중생종', avg_growth_days: 95, characteristics: '근색이 선명하고 열근이 적은 봄·가을 당근 대표 품종' },
+    { cultivar_id: 'CV-BAEKDADAGI', crop_id: 'CRP-CUCUMBER', cultivar_name: '백다다기오이', maturity_type: '조생종', avg_growth_days: 75, characteristics: '마디성 착과력이 뛰어나고 수량성이 높은 대표 백다다기 오이 품종' },
+    { cultivar_id: 'CV-CHWICHEONG', crop_id: 'CRP-CUCUMBER', cultivar_name: '취청오이', maturity_type: '중생종', avg_growth_days: 80, characteristics: '과육이 아삭하고 향이 진한 청오이 품종' },
+    { cultivar_id: 'CV-DOTAERANG', crop_id: 'CRP-TOMATO', cultivar_name: '도태랑토마토', maturity_type: '중생종', avg_growth_days: 95, characteristics: '과육이 단단하고 당산비가 조화로운 완숙토마토 대표 품종' },
+    { cultivar_id: 'CV-DAECHU-TOM', crop_id: 'CRP-TOMATO', cultivar_name: '대추방울토마토', maturity_type: '조생종', avg_growth_days: 85, characteristics: '고당도·내열과성이 우수한 다수확 대추형 방울토마토 품종' },
+    { cultivar_id: 'CV-SPEED-WM', crop_id: 'CRP-WATERMELON', cultivar_name: '스피드꿀수박', maturity_type: '중생종', avg_growth_days: 95, characteristics: '착과력이 안정적이고 당도가 높은 고품질 수박 품종' },
+    { cultivar_id: 'CV-OBOK-MELON', crop_id: 'CRP-MELON', cultivar_name: '오복꿀참외', maturity_type: '중생종', avg_growth_days: 90, characteristics: '과피색이 선명하고 아삭한 식감과 당도가 우수한 참외 품종' },
+  ];
+
+  const ensureCompleteCropsAndCultivars = (ov: any) => {
+    if (!ov) return;
+    const cropMap = new Map<string, any>();
+    for (const defC of DEFAULT_STANDARD_CROPS) {
+      cropMap.set(defC.crop_id, { ...defC });
+    }
+    if (Array.isArray(ov.crops)) {
+      for (const curC of ov.crops) {
+        if (!curC?.crop_id) continue;
+        const base = cropMap.get(curC.crop_id) || {};
+        cropMap.set(curC.crop_id, { ...base, ...curC });
+      }
+    }
+    ov.crops = Array.from(cropMap.values());
+
+    const cvMap = new Map<string, any>();
+    for (const defCv of DEFAULT_STANDARD_CULTIVARS) {
+      cvMap.set(defCv.cultivar_id, { ...defCv });
+    }
+    if (Array.isArray(ov.cultivars)) {
+      for (const curCv of ov.cultivars) {
+        if (!curCv?.cultivar_id) continue;
+        const base = cvMap.get(curCv.cultivar_id) || {};
+        cvMap.set(curCv.cultivar_id, { ...base, ...curCv });
+      }
+    }
+    ov.cultivars = Array.from(cvMap.values());
+  };
+
   const loadStoredCultivationStageCodes = (): any[] => {
     try {
       const raw = localStorage.getItem(CULT_STAGE_CODES_STORAGE_KEY);
@@ -669,17 +974,37 @@ if (typeof window !== 'undefined') {
       ov.nutrientCategoryCodes = filterOutDeletedCodes('nutrient_category_code', ov.nutrientCategoryCodes || snap.nutrient?.nutrientCategories || []);
       ov.pesticideCategoryCodes = filterOutDeletedCodes('pesticide_category_code', ov.pesticideCategoryCodes || snap.pesticide?.pesticideCategories || []);
       ov.cultivationStageCodes = loadStoredCultivationStageCodes();
+      ensureCompleteCropsAndCultivars(ov);
 
       if (pullFromSupabase) {
         try {
-          const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats, sbCultStageCodes] = await Promise.all([
+          const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats, sbCultStageCodes, sbCrops, sbCultivars] = await Promise.all([
             sbSelect('seed_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('seedling_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('fertilizer_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('nutrient_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('pesticide_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('cultivation_stage_basic_code', 'select=*&order=crop_id.asc,stage_order.asc'),
+            sbSelect('crop', 'select=*'),
+            sbSelect('cultivar', 'select=*'),
           ]);
+          if (Array.isArray(sbCrops) && sbCrops.length > 0) {
+            const cMap = new Map<string, any>();
+            for (const c of ov.crops || []) cMap.set(c.crop_id, c);
+            for (const rc of sbCrops) {
+              if (rc?.crop_id) cMap.set(rc.crop_id, { ...(cMap.get(rc.crop_id) || {}), ...rc });
+            }
+            ov.crops = Array.from(cMap.values());
+          }
+          if (Array.isArray(sbCultivars) && sbCultivars.length > 0) {
+            const cvMap = new Map<string, any>();
+            for (const cv of ov.cultivars || []) cvMap.set(cv.cultivar_id, cv);
+            for (const rcv of sbCultivars) {
+              if (rcv?.cultivar_id) cvMap.set(rcv.cultivar_id, { ...(cvMap.get(rcv.cultivar_id) || {}), ...rcv });
+            }
+            ov.cultivars = Array.from(cvMap.values());
+          }
+          ensureCompleteCropsAndCultivars(ov);
           if (Array.isArray(sbCultStageCodes) && sbCultStageCodes.length > 0) {
             const localCultCodes = loadStoredCultivationStageCodes();
             const mergedByCode = new Map<string, any>();

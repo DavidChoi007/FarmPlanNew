@@ -822,6 +822,27 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToastMsg(null), 3500);
   };
 
+  const STANDARD_18_CROPS_FALLBACK = [
+    { crop_id: 'CRP-POTATO', group_id: 'GRP-FOOD', crop_name: '감자', scientific_name: 'Solanum tuberosum', description: '특허 대표 예시 작물 (필요유효적산온도 1,000℃, 생육적온 14~23℃)', min_temp: 5, max_temp: 25, opt_temp: '15~20', planting_type: '씨', germination_temp: '15~20', is_active: 1 },
+    { crop_id: 'CRP-SWEETPOTATO', group_id: 'GRP-FOOD', crop_name: '고구마', scientific_name: 'Ipomoea batatas', description: '고온성 구황·식량작물 (생육적온 20~28℃, 배수 양호 토양 적합)', min_temp: 12, max_temp: 35, opt_temp: '20~28', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-BEAN', group_id: 'GRP-FOOD', crop_name: '콩', scientific_name: 'Glycine max', description: '두류 대표 식량작물 (생육적온 20~25℃, 적정발아 20~25℃)', min_temp: 10, max_temp: 32, opt_temp: '20~25', planting_type: '씨', germination_temp: '20~25', is_active: 1 },
+    { crop_id: 'CRP-CABBAGE', group_id: 'GRP-LEAF', crop_name: '배추', scientific_name: 'Brassica rapa subsp. pekinensis', description: '첨부 설계도(도1~도4) 대표 작물 (정식→활착→결구→수확 단계별 PGDD 관리)', min_temp: 5, max_temp: 25, opt_temp: '15~20', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-SPR-CABBAGE', group_id: 'GRP-LEAF', crop_name: '봄배추', scientific_name: 'Brassica rapa subsp. pekinensis', description: '봄 노지 및 터널재배용 내추대성 배추 (생육적온 15~20℃)', min_temp: 5, max_temp: 25, opt_temp: '15~20', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-WIN-CABBAGE', group_id: 'GRP-LEAF', crop_name: '월동배추', scientific_name: 'Brassica rapa subsp. pekinensis', description: '난지형 노지 월동배추 (내한성·구비대 우수)', min_temp: 2, max_temp: 24, opt_temp: '15~20', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-LETTUCE', group_id: 'GRP-LEAF', crop_name: '상추', scientific_name: 'Lactuca sativa', description: '엽채류 대표 단기 수확 작물 (생육적온 15~20℃, 고온기 추대 주의)', min_temp: 5, max_temp: 25, opt_temp: '15~20', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-SPINACH', group_id: 'GRP-LEAF', crop_name: '시금치', scientific_name: 'Spinacia oleracea', description: '저온성 엽채류 대표 작물 (생육적온 15~20℃, 내한성 강함)', min_temp: 4, max_temp: 25, opt_temp: '15~20', planting_type: '씨', germination_temp: '15~20', is_active: 1 },
+    { crop_id: 'CRP-GARLIC', group_id: 'GRP-SPICE', crop_name: '마늘', scientific_name: 'Allium sativum', description: '특허 [0100] 대표 월동작물 (가을 파종 후 겨울 월동, 봄 수확)', min_temp: 3, max_temp: 25, opt_temp: '18~20', planting_type: '씨', germination_temp: '15~20', is_active: 1 },
+    { crop_id: 'CRP-ONION', group_id: 'GRP-SPICE', crop_name: '양파', scientific_name: 'Allium cepa', description: '특허 [0100] 노지 월동작물 (저온장해 예외/조절 파라미터 적용)', min_temp: 4, max_temp: 26, opt_temp: '15~20', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-PEPPER', group_id: 'GRP-SPICE', crop_name: '고추', scientific_name: 'Capsicum annuum', description: '노지 조숙/보통재배 및 병해충(탄저병·역병) 기후예측 방제 핵심 작물', min_temp: 13, max_temp: 32, opt_temp: '23~28', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-GREENONION', group_id: 'GRP-SPICE', crop_name: '대파', scientific_name: 'Allium fistulosum', description: '연중 수요가 높은 양념채소 (생육적온 15~22℃, 북주기 및 배수 관리 핵심)', min_temp: 5, max_temp: 28, opt_temp: '15~22', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-RADISH', group_id: 'GRP-ROOT', crop_name: '무', scientific_name: 'Raphanus sativus', description: '특허 [0046] 최저한계온도 8℃ 적용 대표 근채류', min_temp: 8, max_temp: 26, opt_temp: '17~20', planting_type: '씨', germination_temp: '15~25', is_active: 1 },
+    { crop_id: 'CRP-CARROT', group_id: 'GRP-ROOT', crop_name: '당근', scientific_name: 'Daucus carota', description: '심경 및 균일 수분 관리가 중요한 근채류 (생육적온 18~21℃)', min_temp: 7, max_temp: 27, opt_temp: '18~21', planting_type: '씨', germination_temp: '15~25', is_active: 1 },
+    { crop_id: 'CRP-CUCUMBER', group_id: 'GRP-FRUIT', crop_name: '오이', scientific_name: 'Cucumis sativus', description: '덩굴성 과채류 대표 작물 (생육적온 20~26℃, 연속 착과·추비 관리)', min_temp: 12, max_temp: 32, opt_temp: '20~26', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-TOMATO', group_id: 'GRP-FRUIT', crop_name: '토마토', scientific_name: 'Solanum lycopersicum', description: '광합성 및 칼슘·붕소 관리가 중요한 과채류 (생육적온 20~27℃)', min_temp: 10, max_temp: 32, opt_temp: '20~27', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-WATERMELON', group_id: 'GRP-FRUIT', crop_name: '수박', scientific_name: 'Citrullus lanatus', description: '고온·강광성 과채류 (생육적온 23~28℃, 당도·착과 관리 핵심)', min_temp: 13, max_temp: 35, opt_temp: '23~28', planting_type: '모종', germination_temp: '', is_active: 1 },
+    { crop_id: 'CRP-MELON', group_id: 'GRP-FRUIT', crop_name: '참외', scientific_name: 'Cucumis melo var. makuwa', description: '고당도 포복성 과채류 (생육적온 22~28℃, 환기·흰가루병 관리)', min_temp: 13, max_temp: 35, opt_temp: '22~28', planting_type: '모종', germination_temp: '', is_active: 1 },
+  ];
+
   const loadAllData = async () => {
     try {
       const [ovRes, tplRes, preRes, histRes, wRes, addrMetaRes] = await Promise.all([
@@ -832,6 +853,20 @@ export default function AdminDashboardPage() {
         fetch(`/api/weather?station_id=${selectedStation}`).then((r) => r.json()),
         fetch('/api/addresses/meta').then((r) => r.json()).catch(() => ({ totalCount: 0, sidos: [], sigungusBySido: {} })),
       ]);
+      if (ovRes && typeof ovRes === 'object') {
+        const mergedCropsMap = new Map<string, any>();
+        for (const fc of STANDARD_18_CROPS_FALLBACK) {
+          mergedCropsMap.set(fc.crop_id, { ...fc });
+        }
+        if (Array.isArray(ovRes.crops)) {
+          for (const rc of ovRes.crops) {
+            if (rc?.crop_id) {
+              mergedCropsMap.set(rc.crop_id, { ...(mergedCropsMap.get(rc.crop_id) || {}), ...rc });
+            }
+          }
+        }
+        ovRes.crops = Array.from(mergedCropsMap.values());
+      }
       setOverview(ovRes);
       if (Array.isArray(ovRes?.cultivationStageCodes) && ovRes.cultivationStageCodes.length > 0) {
         setCultStageCodesList(ovRes.cultivationStageCodes);
