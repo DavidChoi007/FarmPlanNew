@@ -9805,12 +9805,12 @@ export default function UserIntroPage() {
 
               return (
                 <div className="lg:hidden w-full min-h-screen bg-white flex justify-center select-none pb-24">
-                  <div className="w-full max-w-[460px] min-h-screen bg-white flex flex-col px-5 pt-2 pb-10">
+                  <div className="w-full max-w-[460px] min-h-screen bg-white flex flex-col px-5 pt-0 pb-10">
                     {/* ==================== [페이지 1: 재배작물 목록 페이지 (첨부 이미지 1번)] ==================== */}
                     {mobileScheduleStep === 'list' && (
-                      <div className="mt-4 flex-1">
+                      <div className="mt-1 flex-1">
                         {combinedMobileCrops.length === 0 ? (
-                          <div className="mt-6 rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
+                          <div className="mt-4 rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
                             <div className="text-[17px] font-black text-[#111827]">
                               등록된 재배작물이 없습니다
                             </div>
@@ -9851,7 +9851,7 @@ export default function UserIntroPage() {
                                   }
                                   goToScheduleStep('detail');
                                 }}
-                                className="w-full py-4 flex items-center gap-4 text-left hover:bg-slate-50/70 active:bg-slate-100/70 cursor-pointer transition"
+                                className="w-full py-3.5 first:pt-2 flex items-center gap-4 text-left hover:bg-slate-50/70 active:bg-slate-100/70 cursor-pointer transition"
                               >
                                 <div className="w-[78px] h-[78px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/70 shadow-2xs">
                                   <img
@@ -9887,7 +9887,7 @@ export default function UserIntroPage() {
 
                     {/* ==================== [페이지 2: 선택 작물 재배관리 대시보드 페이지 (첨부 이미지 2번)] ==================== */}
                     {mobileScheduleStep === 'detail' && activeCropItem && (
-                      <div className="mt-4 space-y-5 flex-1">
+                      <div className="mt-2.5 space-y-5 flex-1">
                         {/* 1) 상단 작물 기본 정보 */}
                         <div className="flex items-center gap-4">
                           <div className="w-[78px] h-[78px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/70 shadow-2xs">
@@ -10160,7 +10160,7 @@ export default function UserIntroPage() {
 
                     {/* ==================== [페이지 3: 농작업 목록 페이지 (첨부 이미지 3번)] ==================== */}
                     {mobileScheduleStep === 'tasks' && activeCropItem && (
-                      <div className="mt-5 space-y-5 flex-1">
+                      <div className="mt-3 space-y-5 flex-1">
                         <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
                           농작업 목록
                         </h1>
@@ -10239,7 +10239,7 @@ export default function UserIntroPage() {
                     {mobileScheduleStep === 'task_exec' &&
                       activeCropItem &&
                       selectedTaskItem && (
-                        <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                        <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
                           <div className="space-y-5">
                             <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
                               {selectedTaskItem.shortTitle} (실행하기)
@@ -10611,7 +10611,7 @@ export default function UserIntroPage() {
 
                     {/* ==================== [페이지 5: 작업 기록 페이지 (첨부 이미지 5번)] ==================== */}
                     {mobileScheduleStep === 'work_log' && activeCropItem && (
-                      <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                      <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
                         <div className="space-y-4">
                           <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
                             작업 기록
@@ -11025,7 +11025,7 @@ export default function UserIntroPage() {
                               spec.defaultYmd;
 
                         return (
-                          <div className="mt-5 flex-1 flex flex-col justify-between space-y-6">
+                          <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
                             <div className="space-y-5">
                               <div className="flex items-center justify-between gap-2">
                                 <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
