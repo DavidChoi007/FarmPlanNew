@@ -372,8 +372,8 @@ export default function UserIntroPage() {
   >('list');
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
   const [mobileFullScheduleFilterTab, setMobileFullScheduleFilterTab] = useState<
-    'ALL' | 'WORK' | 'FERTILIZER' | 'PEST'
-  >('ALL');
+    'WORK' | 'FERTILIZER' | 'PEST' | 'ALL'
+  >('WORK');
   const [isMobileScheduleEditMode, setIsMobileScheduleEditMode] = useState<boolean>(false);
   const [mobileSelectedEditTaskId, setMobileSelectedEditTaskId] = useState<string>('');
   const [mobileEditTargetDateYmd, setMobileEditTargetDateYmd] = useState<string>('');
@@ -10594,7 +10594,13 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setMobileFullScheduleFilterTab('ALL');
+                              const currentTaskCat =
+                                (activeCropItem.primaryNextTask?.iconType as
+                                  | 'WORK'
+                                  | 'FERTILIZER'
+                                  | 'PEST'
+                                  | undefined) || 'WORK';
+                              setMobileFullScheduleFilterTab(currentTaskCat);
                               setIsMobileScheduleEditMode(false);
                               setMobileSelectedEditTaskId('');
                               setMobileEditTargetDateYmd('');
@@ -10695,13 +10701,13 @@ export default function UserIntroPage() {
                           ) || null;
 
                         const filterTabs: Array<{
-                          key: 'ALL' | 'WORK' | 'FERTILIZER' | 'PEST';
+                          key: 'WORK' | 'FERTILIZER' | 'PEST' | 'ALL';
                           label: string;
                         }> = [
-                          { key: 'ALL', label: '전체일정' },
                           { key: 'WORK', label: '농작업' },
                           { key: 'FERTILIZER', label: '시비관리' },
                           { key: 'PEST', label: '병해충' },
+                          { key: 'ALL', label: '전체일정' },
                         ];
 
                         return (
