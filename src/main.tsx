@@ -46,10 +46,140 @@ if (typeof window !== 'undefined') {
   let cachedImageMap: Record<string, string> = {};
 
   const OVERVIEW_STORAGE_KEY = 'hanfarm_static_overview_v1';
+  const CULT_STAGE_CODES_STORAGE_KEY = 'hanfarm_cultivation_stage_basic_codes_v1';
   const MYPAGE_STORAGE_KEY = 'hanfarm_static_mypage_v1';
   const MEMBERS_STORAGE_KEY = 'hanfarm_static_members_v1';
   const DELETED_CAT_CODES_KEY = 'hanfarm_deleted_category_codes_v1';
   const CAT_PURGE_MIGRATION_KEY = 'hanfarm_cat_test_purged_v2';
+
+  const DEFAULT_CULTIVATION_STAGE_BASIC_CODES = [
+    {
+      stage_code: 'CSTG-CABBAGE-01',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '본밭 정식 및 새 뿌리가 토양에 내려 초기 뿌리내림·활착이 이루어지는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-02',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 2,
+      stage_name: '외엽 신장기',
+      description: '1차 웃거름 시비 및 바깥잎(외엽) 수와 엽면적이 왕성하게 확장되는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-03',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 3,
+      stage_name: '결구기',
+      description: '속잎이 포개지며 배추 통(결구)이 차오르고 2차 추비·칼슘 및 병해충 방제가 집중되는 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-04',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 4,
+      stage_name: '수확적기',
+      description: '목표 적산온도(PGDD) 도달 및 결구 충실도 확인 후 본 수확·예건·저장을 수행하는 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-01',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '오이 모종 본밭 정식 후 초기 뿌리 활착 및 주지(원줄기) 생장이 시작되는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-02',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 2,
+      stage_name: '영양생장기',
+      description: '덩굴 유인 줄매기, 하엽·곁순(측지) 정리 및 1차 추비로 초세를 확보하는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-03',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 3,
+      stage_name: '개화/결실기',
+      description: '마디별 암꽃 개화·수정·착과 및 과실 비대, 노균병·흰가루병 집중 방제 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+      updated_at: '2026-11-25 00:00:00',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-04',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 4,
+      stage_name: '수확기',
+      description: '출하 규격에 도달한 오이 과실의 연속 적기 수확 및 선별·포장 출하 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+      updated_at: '2026-11-25 00:00:00',
+    },
+  ];
+
+  const loadStoredCultivationStageCodes = (): any[] => {
+    try {
+      const raw = localStorage.getItem(CULT_STAGE_CODES_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [...DEFAULT_CULTIVATION_STAGE_BASIC_CODES];
+  };
+
+  const saveStoredCultivationStageCodes = (list: any[]) => {
+    try {
+      const sorted = [...list].sort(
+        (a: any, b: any) =>
+          String(a.crop_id || '').localeCompare(String(b.crop_id || '')) ||
+          Number(a.stage_order || 1) - Number(b.stage_order || 1) ||
+          String(a.stage_code || '').localeCompare(String(b.stage_code || ''))
+      );
+      localStorage.setItem(CULT_STAGE_CODES_STORAGE_KEY, JSON.stringify(sorted));
+      return sorted;
+    } catch {
+      return list;
+    }
+  };
 
   const getDeletedCatCodeSet = (): Set<string> => {
     try {
@@ -538,16 +668,29 @@ if (typeof window !== 'undefined') {
       ov.fertilizerCategoryCodes = filterOutDeletedCodes('fertilizer_category_code', ov.fertilizerCategoryCodes || snap.fertilizer?.fertilizerCategories || []);
       ov.nutrientCategoryCodes = filterOutDeletedCodes('nutrient_category_code', ov.nutrientCategoryCodes || snap.nutrient?.nutrientCategories || []);
       ov.pesticideCategoryCodes = filterOutDeletedCodes('pesticide_category_code', ov.pesticideCategoryCodes || snap.pesticide?.pesticideCategories || []);
+      ov.cultivationStageCodes = loadStoredCultivationStageCodes();
 
       if (pullFromSupabase) {
         try {
-          const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats] = await Promise.all([
+          const [sbSeedCats, sbSeedlingCats, sbFertCats, sbNutrCats, sbPestCats, sbCultStageCodes] = await Promise.all([
             sbSelect('seed_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('seedling_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('fertilizer_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('nutrient_category_code', 'select=*&order=sort_order.asc'),
             sbSelect('pesticide_category_code', 'select=*&order=sort_order.asc'),
+            sbSelect('cultivation_stage_basic_code', 'select=*&order=crop_id.asc,stage_order.asc'),
           ]);
+          if (Array.isArray(sbCultStageCodes) && sbCultStageCodes.length > 0) {
+            const localCultCodes = loadStoredCultivationStageCodes();
+            const mergedByCode = new Map<string, any>();
+            for (const r of sbCultStageCodes) {
+              if (r?.stage_code) mergedByCode.set(String(r.stage_code), r);
+            }
+            for (const l of localCultCodes) {
+              if (l?.stage_code) mergedByCode.set(String(l.stage_code), l);
+            }
+            ov.cultivationStageCodes = saveStoredCultivationStageCodes(Array.from(mergedByCode.values()));
+          }
           ov.seedCategoryCodes = await mergeCategoryCodeSources(
             'seed_category_code',
             ov.seedCategoryCodes || snap.seed?.seedCategories || [],
@@ -936,6 +1079,160 @@ if (typeof window !== 'undefined') {
       ov.growthTypeCodes = (ov.growthTypeCodes || []).filter((gt: any) => gt.type_code !== type_code);
       persistOverview(ov);
       return jsonResponse({ ok: true });
+    }
+
+    if (p === '/api/cultivation-stage-codes' && method === 'GET') {
+      const ov = (snap.overview = snap.overview || {});
+      const list = loadStoredCultivationStageCodes();
+      ov.cultivationStageCodes = list;
+      persistOverview(ov);
+      return jsonResponse({ ok: true, items: list });
+    }
+
+    if (p === '/api/cultivation-stage-codes' && method === 'POST') {
+      const body = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      const list = [...loadStoredCultivationStageCodes()];
+      const resolvedCropId = String(body.crop_id || 'CRP-CABBAGE').trim();
+      const cropObj = (ov.crops || []).find((c: any) => c.crop_id === resolvedCropId);
+      const resolvedGroupId = String(body.group_id || cropObj?.group_id || 'GRP-LEAF').trim();
+      const groupObj = (ov.groups || []).find((g: any) => g.group_id === resolvedGroupId);
+      const resolvedGroupName = String(body.group_name || groupObj?.group_name || '엽채류 (잎채소)').trim();
+      const resolvedCropName = String(body.crop_name || cropObj?.crop_name || '배추').trim();
+
+      const existingForCrop = list.filter((r: any) => r.crop_id === resolvedCropId);
+      const resolvedOrder =
+        body.stage_order !== undefined && Number(body.stage_order) > 0
+          ? Number(body.stage_order)
+          : (existingForCrop.reduce((max: number, r: any) => Math.max(max, Number(r.stage_order) || 0), 0) || 0) + 1;
+
+      const shortCropToken = resolvedCropId.replace(/^CRP-/, '').toUpperCase() || 'CROP';
+      let resolvedStageCode = String(body.stage_code || '').trim();
+      if (!resolvedStageCode || resolvedStageCode === 'AUTO') {
+        let seq = resolvedOrder;
+        let cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+        const codeSet = new Set(list.map((r: any) => String(r.stage_code || '').toUpperCase()));
+        while (codeSet.has(cand.toUpperCase())) {
+          seq++;
+          cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+        }
+        resolvedStageCode = cand;
+      }
+
+      const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38', '#2563eb', '#7c3aed'];
+      const resolvedColor =
+        String(body.stage_color || '').trim() || defaultColors[(Math.max(1, resolvedOrder) - 1) % defaultColors.length];
+
+      const rowData = {
+        stage_code: resolvedStageCode,
+        group_id: resolvedGroupId,
+        group_name: resolvedGroupName,
+        crop_id: resolvedCropId,
+        crop_name: resolvedCropName,
+        stage_order: resolvedOrder,
+        stage_name: String(body.stage_name || '').trim(),
+        description:
+          String(body.description || '').trim() ||
+          `${resolvedCropName} ${resolvedOrder}단계 (${String(body.stage_name || '').trim()}) 재배 과정 구분 기간`,
+        stage_color: resolvedColor,
+        updated_at: getKstNowStr(),
+      };
+
+      const idx = list.findIndex((r: any) => r.stage_code === rowData.stage_code);
+      if (idx >= 0) list[idx] = { ...list[idx], ...rowData };
+      else list.push(rowData);
+
+      const savedList = saveStoredCultivationStageCodes(list);
+      ov.cultivationStageCodes = savedList;
+      persistOverview(ov);
+      await sbUpsert('cultivation_stage_basic_code', rowData, 'stage_code').catch(() => {});
+      return jsonResponse({ ok: true, saved: rowData, items: savedList });
+    }
+
+    if (p === '/api/cultivation-stage-codes/batch' && method === 'POST') {
+      const body = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      let list = [...loadStoredCultivationStageCodes()];
+      const resolvedCropId = String(body.crop_id || 'CRP-CABBAGE').trim();
+      const cropObj = (ov.crops || []).find((c: any) => c.crop_id === resolvedCropId);
+      const resolvedGroupId = String(body.group_id || cropObj?.group_id || 'GRP-LEAF').trim();
+      const groupObj = (ov.groups || []).find((g: any) => g.group_id === resolvedGroupId);
+      const resolvedGroupName = String(groupObj?.group_name || '엽채류 (잎채소)').trim();
+      const resolvedCropName = String(cropObj?.crop_name || '배추').trim();
+
+      if (body.replace_crop_stages) {
+        list = list.filter((r: any) => r.crop_id !== resolvedCropId);
+      }
+
+      const codeSet = new Set(list.map((r: any) => String(r.stage_code || '').toUpperCase()));
+      const shortCropToken = resolvedCropId.replace(/^CRP-/, '').toUpperCase() || 'CROP';
+      const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38', '#2563eb', '#7c3aed'];
+      const nowKst = getKstNowStr();
+
+      const savedRows: any[] = [];
+      const stageList = Array.isArray(body.stages) ? body.stages : [];
+      for (let i = 0; i < stageList.length; i++) {
+        const s = stageList[i];
+        const sName = String(s?.stage_name || '').trim();
+        if (!sName) continue;
+        const sOrder = Number(s?.stage_order) > 0 ? Number(s.stage_order) : i + 1;
+        let sCode = String(s?.stage_code || '').trim();
+        if (!sCode || sCode === 'AUTO') {
+          let seq = sOrder;
+          let cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+          while (codeSet.has(cand.toUpperCase())) {
+            seq++;
+            cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+          }
+          sCode = cand;
+        }
+        codeSet.add(sCode.toUpperCase());
+        const sColor =
+          String(s?.stage_color || '').trim() || defaultColors[(Math.max(1, sOrder) - 1) % defaultColors.length];
+        const sDesc =
+          String(s?.description || '').trim() ||
+          `${resolvedCropName} ${sOrder}단계 (${sName}) 재배 과정 구분 기간`;
+        const rowData = {
+          stage_code: sCode,
+          group_id: resolvedGroupId,
+          group_name: resolvedGroupName,
+          crop_id: resolvedCropId,
+          crop_name: resolvedCropName,
+          stage_order: sOrder,
+          stage_name: sName,
+          description: sDesc,
+          stage_color: sColor,
+          updated_at: nowKst,
+        };
+        const existingIdx = list.findIndex((r: any) => r.stage_code === rowData.stage_code);
+        if (existingIdx >= 0) list[existingIdx] = rowData;
+        else list.push(rowData);
+        savedRows.push(rowData);
+      }
+
+      const savedList = saveStoredCultivationStageCodes(list);
+      ov.cultivationStageCodes = savedList;
+      persistOverview(ov);
+      if (savedRows.length > 0) {
+        await sbUpsert('cultivation_stage_basic_code', savedRows, 'stage_code').catch(() => {});
+      }
+      return jsonResponse({ ok: true, savedRows, items: savedList });
+    }
+
+    if (p === '/api/cultivation-stage-codes/delete' && method === 'POST') {
+      const { stage_code } = parseBody(init);
+      const ov = (snap.overview = snap.overview || {});
+      const list = loadStoredCultivationStageCodes().filter((r: any) => r.stage_code !== stage_code);
+      const savedList = saveStoredCultivationStageCodes(list);
+      ov.cultivationStageCodes = savedList;
+      persistOverview(ov);
+      if (stage_code) {
+        await sbDelete(
+          'cultivation_stage_basic_code',
+          `stage_code=eq.${encodeURIComponent(String(stage_code))}`
+        ).catch(() => {});
+      }
+      return jsonResponse({ ok: true, items: savedList });
     }
 
     if (p === '/api/growth-codes' && method === 'POST') {

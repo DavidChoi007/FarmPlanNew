@@ -1023,6 +1023,18 @@ async function syncAgroMaterialSchemaToSupabase() {
         state_json TEXT NOT NULL DEFAULT '{}',
         updated_at TEXT DEFAULT ''
       );
+      CREATE TABLE IF NOT EXISTS public.cultivation_stage_basic_code (
+        stage_code TEXT PRIMARY KEY,
+        group_id TEXT NOT NULL,
+        group_name TEXT NOT NULL,
+        crop_id TEXT NOT NULL,
+        crop_name TEXT NOT NULL,
+        stage_order INTEGER NOT NULL DEFAULT 1,
+        stage_name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        stage_color TEXT DEFAULT '#16a34a',
+        updated_at TEXT DEFAULT ''
+      );
       ALTER TABLE public.growth_type_code
         ADD COLUMN IF NOT EXISTS stage_color TEXT DEFAULT '#22a559',
         ADD COLUMN IF NOT EXISTS icon_type TEXT DEFAULT 'leaf';
@@ -1102,6 +1114,7 @@ async function syncAgroMaterialSchemaToSupabase() {
     await syncTableToSupabase('cultivar', 'cultivar_id');
     await syncTableToSupabase('cropping_system', 'system_id');
     await syncTableToSupabase('growth_type_code', 'type_code');
+    await syncTableToSupabase('cultivation_stage_basic_code', 'stage_code');
     await syncTableToSupabase('growth_process_code', 'process_code');
     await syncTableToSupabase('fertilizer_category_code', 'category_code');
     await syncTableToSupabase('nutrient_category_code', 'category_code');

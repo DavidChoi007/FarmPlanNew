@@ -286,6 +286,108 @@ export default function AdminDashboardPage() {
   });
 
   // 재배 과정 기초 코드 (기초 코드 관리 > 재배 과정 기초 코드) 상태 및 등록/수정 폼
+  const DEFAULT_CULT_STAGE_BASIC_CODES = [
+    {
+      stage_code: 'CSTG-CABBAGE-01',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '본밭 정식 및 새 뿌리가 토양에 내려 초기 뿌리내림·활착이 이루어지는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-02',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 2,
+      stage_name: '외엽 신장기',
+      description: '1차 웃거름 시비 및 바깥잎(외엽) 수와 엽면적이 왕성하게 확장되는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-03',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 3,
+      stage_name: '결구기',
+      description: '속잎이 포개지며 배추 통(결구)이 차오르고 2차 추비·칼슘 및 병해충 방제가 집중되는 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-04',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 4,
+      stage_name: '수확적기',
+      description: '목표 적산온도(PGDD) 도달 및 결구 충실도 확인 후 본 수확·예건·저장을 수행하는 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-01',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '오이 모종 본밭 정식 후 초기 뿌리 활착 및 주지(원줄기) 생장이 시작되는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-02',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 2,
+      stage_name: '영양생장기',
+      description: '덩굴 유인 줄매기, 하엽·곁순(측지) 정리 및 1차 추비로 초세를 확보하는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-03',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 3,
+      stage_name: '개화/결실기',
+      description: '마디별 암꽃 개화·수정·착과 및 과실 비대, 노균병·흰가루병 집중 방제 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-04',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 4,
+      stage_name: '수확기',
+      description: '출하 규격에 도달한 오이 과실의 연속 적기 수확 및 선별·포장 출하 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+    },
+  ];
+  const [cultStageCodesList, setCultStageCodesList] = useState<any[]>(() => {
+    try {
+      const raw = localStorage.getItem('hanfarm_cultivation_stage_basic_codes_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_CULT_STAGE_BASIC_CODES;
+  });
   const [cultStageSearch, setCultStageSearch] = useState<string>('');
   const [cultStageGroupFilter, setCultStageGroupFilter] = useState<string>('ALL');
   const [cultStageCropFilter, setCultStageCropFilter] = useState<string>('ALL');
@@ -731,6 +833,17 @@ export default function AdminDashboardPage() {
         fetch('/api/addresses/meta').then((r) => r.json()).catch(() => ({ totalCount: 0, sidos: [], sigungusBySido: {} })),
       ]);
       setOverview(ovRes);
+      if (Array.isArray(ovRes?.cultivationStageCodes) && ovRes.cultivationStageCodes.length > 0) {
+        setCultStageCodesList(ovRes.cultivationStageCodes);
+        try {
+          localStorage.setItem(
+            'hanfarm_cultivation_stage_basic_codes_v1',
+            JSON.stringify(ovRes.cultivationStageCodes)
+          );
+        } catch {
+          // ignore
+        }
+      }
       setTemplates(tplRes.items || []);
       setPrescriptions(preRes);
       setHistories(histRes);
@@ -3871,6 +3984,7 @@ export default function AdminDashboardPage() {
     } else if (activeTab === 'schedule_generation_module') {
       loadScheduleGenModuleConfig();
     } else if (
+      activeTab === 'basic_cultivation_stage_codes' ||
       activeTab === 'basic_growth_types' ||
       activeTab === 'basic_growth_codes' ||
       activeTab === 'basic_fertilizer_codes' ||
@@ -4526,11 +4640,23 @@ export default function AdminDashboardPage() {
         window.alert('재배 과정 구분명(예: 활착기, 외엽 신장기)을 입력해 주세요.');
         return;
       }
-      await fetch('/api/cultivation-stage-codes', {
+      const res = await fetch('/api/cultivation-stage-codes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cultStageForm),
-      });
+      })
+        .then((r) => r.json())
+        .catch(() => null);
+      if (Array.isArray(res?.items)) {
+        setCultStageCodesList(res.items);
+        setOverview((prev: any) => (prev ? { ...prev, cultivationStageCodes: res.items } : prev));
+      } else {
+        setCultStageCodesList((prev) =>
+          prev.map((it: any) =>
+            it.stage_code === cultStageForm.stage_code ? { ...it, ...cultStageForm } : it
+          )
+        );
+      }
       showToast(`재배 과정 기초 코드 [${cultStageForm.stage_name} (${cultStageForm.stage_code})] 수정 완료`);
       setIsCultStageModalOpen(false);
       await loadAllData();
@@ -4551,8 +4677,14 @@ export default function AdminDashboardPage() {
         stages: validItems,
         replace_crop_stages: false,
       }),
-    }).then((r) => r.json());
+    })
+      .then((r) => r.json())
+      .catch(() => null);
 
+    if (Array.isArray(res?.items)) {
+      setCultStageCodesList(res.items);
+      setOverview((prev: any) => (prev ? { ...prev, cultivationStageCodes: res.items } : prev));
+    }
     const savedCount = Array.isArray(res?.savedRows) ? res.savedRows.length : validItems.length;
     showToast(`재배 과정 기초 코드 ${savedCount}건이 자동 코드 생성과 함께 등록되었습니다.`);
     setIsCultStageModalOpen(false);
@@ -4561,11 +4693,19 @@ export default function AdminDashboardPage() {
 
   const handleDeleteCultivationStageCode = async (stageCode: string, stageName: string, cropName: string) => {
     if (!window.confirm(`[${cropName}] 재배 과정 기초 코드 [${stageName} (${stageCode})] 항목을 삭제하시겠습니까?`)) return;
-    await fetch('/api/cultivation-stage-codes/delete', {
+    const res = await fetch('/api/cultivation-stage-codes/delete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ stage_code: stageCode }),
-    });
+    })
+      .then((r) => r.json())
+      .catch(() => null);
+    if (Array.isArray(res?.items)) {
+      setCultStageCodesList(res.items);
+      setOverview((prev: any) => (prev ? { ...prev, cultivationStageCodes: res.items } : prev));
+    } else {
+      setCultStageCodesList((prev) => prev.filter((it: any) => it.stage_code !== stageCode));
+    }
     showToast(`[${cropName}] 재배 과정 기초 코드 [${stageName}] 삭제 완료`);
     await loadAllData();
   };
@@ -12727,9 +12867,13 @@ export default function AdminDashboardPage() {
 
           {/* ==================== 기초 코드 관리 > 재배 과정 기초 코드 (작물별 재배 과정 구분 코드 자동생성 · 등록 · 수정 · 삭제) ==================== */}
           {activeTab === 'basic_cultivation_stage_codes' && overview && (() => {
-            const allStageCodes: any[] = Array.isArray(overview.cultivationStageCodes)
-              ? overview.cultivationStageCodes
-              : [];
+            const allStageCodes: any[] =
+              Array.isArray(cultStageCodesList) && cultStageCodesList.length > 0
+                ? cultStageCodesList
+                : Array.isArray(overview.cultivationStageCodes) &&
+                  overview.cultivationStageCodes.length > 0
+                ? overview.cultivationStageCodes
+                : DEFAULT_CULT_STAGE_BASIC_CODES;
 
             const filteredStageCodes = allStageCodes.filter((item: any) => {
               if (cultStageGroupFilter !== 'ALL' && item.group_id !== cultStageGroupFilter) return false;
