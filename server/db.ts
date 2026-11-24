@@ -108,6 +108,20 @@ export function initDatabase() {
       sort_order INTEGER DEFAULT 1
     );
 
+    -- 4-00-B. 작물별 재배 과정 기초 코드 테이블 (cultivation_stage_basic_code)
+    CREATE TABLE IF NOT EXISTS cultivation_stage_basic_code (
+      stage_code TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      group_name TEXT NOT NULL,
+      crop_id TEXT NOT NULL,
+      crop_name TEXT NOT NULL,
+      stage_order INTEGER NOT NULL DEFAULT 1,
+      stage_name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      stage_color TEXT DEFAULT '#16a34a',
+      updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
+
     -- 4-0. 생육과정 기초 코드 테이블 (growth_process_code)
     CREATE TABLE IF NOT EXISTS growth_process_code (
       process_code TEXT PRIMARY KEY,
@@ -568,6 +582,7 @@ export function initDatabase() {
   ensureAdditionalLeafCrops();
   ensureCropAndCultivarExtraColumns();
   ensureGrowthTypeCodes();
+  ensureCultivationStageBasicCodes();
   ensureGrowthProcessCodes();
   ensureStandardTemplateTaxonomyColumns();
   ensureCultivationAddresses();
@@ -2639,6 +2654,152 @@ function ensureGrowthTypeCodes() {
 
   for (const [code, name, color, icon, desc, order] of initialTypes) {
     insType.run(code, name, color, icon, desc, order);
+  }
+}
+
+function ensureCultivationStageBasicCodes() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cultivation_stage_basic_code (
+      stage_code TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      group_name TEXT NOT NULL,
+      crop_id TEXT NOT NULL,
+      crop_name TEXT NOT NULL,
+      stage_order INTEGER NOT NULL DEFAULT 1,
+      stage_name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      stage_color TEXT DEFAULT '#16a34a',
+      updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+    );
+  `);
+
+  const existingCnt = (
+    db.prepare('SELECT COUNT(*) as cnt FROM cultivation_stage_basic_code').get() as { cnt: number }
+  ).cnt;
+  if (existingCnt > 0) return;
+
+  const insStmt = db.prepare(`
+    INSERT OR IGNORE INTO cultivation_stage_basic_code (
+      stage_code, group_id, group_name, crop_id, crop_name,
+      stage_order, stage_name, description, stage_color, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+  `);
+
+  const initialStageRows: Array<{
+    stage_code: string;
+    group_id: string;
+    group_name: string;
+    crop_id: string;
+    crop_name: string;
+    stage_order: number;
+    stage_name: string;
+    description: string;
+    stage_color: string;
+  }> = [
+    // 배추 (CRP-CABBAGE): 활착기, 외엽 신장기, 결구기, 수확적기
+    {
+      stage_code: 'CSTG-CABBAGE-01',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '본밭 정식 및 새 뿌리가 토양에 내려 초기 뿌리내림·활착이 이루어지는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-02',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 2,
+      stage_name: '외엽 신장기',
+      description: '1차 웃거름 시비 및 바깥잎(외엽) 수와 엽면적이 왕성하게 확장되는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-03',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 3,
+      stage_name: '결구기',
+      description: '속잎이 포개지며 배추 통(결구)이 차오르고 2차 추비·칼슘 및 병해충 방제가 집중되는 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+    },
+    {
+      stage_code: 'CSTG-CABBAGE-04',
+      group_id: 'GRP-LEAF',
+      group_name: '엽채류 (잎채소)',
+      crop_id: 'CRP-CABBAGE',
+      crop_name: '배추',
+      stage_order: 4,
+      stage_name: '수확적기',
+      description: '목표 적산온도(PGDD) 도달 및 결구 충실도 확인 후 본 수확·예건·저장을 수행하는 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+    },
+    // 오이 (CRP-CUCUMBER): 활착기, 영양생장기, 개화/결실기, 수확기
+    {
+      stage_code: 'CSTG-CUCUMBER-01',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 1,
+      stage_name: '활착기',
+      description: '오이 모종 본밭 정식 후 초기 뿌리 활착 및 주지(원줄기) 생장이 시작되는 기간 (SCH-01~08 연동)',
+      stage_color: '#0d9488',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-02',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 2,
+      stage_name: '영양생장기',
+      description: '덩굴 유인 줄매기, 하엽·곁순(측지) 정리 및 1차 추비로 초세를 확보하는 기간 (SCH-09~10 연동)',
+      stage_color: '#22a559',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-03',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 3,
+      stage_name: '개화/결실기',
+      description: '마디별 암꽃 개화·수정·착과 및 과실 비대, 노균병·흰가루병 집중 방제 기간 (SCH-11~14 연동)',
+      stage_color: '#16a34a',
+    },
+    {
+      stage_code: 'CSTG-CUCUMBER-04',
+      group_id: 'GRP-FRUIT',
+      group_name: '과채류 (열매채소)',
+      crop_id: 'CRP-CUCUMBER',
+      crop_name: '오이',
+      stage_order: 4,
+      stage_name: '수확기',
+      description: '출하 규격에 도달한 오이 과실의 연속 적기 수확 및 선별·포장 출하 기간 (SCH-15~16 연동)',
+      stage_color: '#d96b38',
+    },
+  ];
+
+  for (const r of initialStageRows) {
+    insStmt.run(
+      r.stage_code,
+      r.group_id,
+      r.group_name,
+      r.crop_id,
+      r.crop_name,
+      r.stage_order,
+      r.stage_name,
+      r.description,
+      r.stage_color
+    );
   }
 }
 

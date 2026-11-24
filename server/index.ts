@@ -1361,6 +1361,9 @@ const server = http.createServer(async (req, res) => {
       const cultivars = db.prepare('SELECT * FROM cultivar').all();
       const systems = db.prepare('SELECT * FROM cropping_system').all();
       const growthTypeCodes = db.prepare('SELECT * FROM growth_type_code ORDER BY sort_order ASC, type_code ASC').all();
+      const cultivationStageCodes = db
+        .prepare('SELECT * FROM cultivation_stage_basic_code ORDER BY crop_id ASC, stage_order ASC, stage_code ASC')
+        .all();
       const growthProcessCodes = db.prepare('SELECT * FROM growth_process_code ORDER BY sort_order ASC, process_code ASC').all();
       const fertilizerCategoryCodes = db.prepare(`
         SELECT fc.*,
@@ -1486,6 +1489,7 @@ const server = http.createServer(async (req, res) => {
         basicCodes: {
           cropGroupsCount: groups.length,
           cropsCount: crops.length,
+          cultivationStageCodesCount: cultivationStageCodes.length,
           growthProcessCodesCount: growthProcessCodes.length,
           growthTypeCodesCount: growthTypeCodes.length,
           fertilizerCategoryCodesCount: fertilizerCategoryCodes.length,
@@ -1496,6 +1500,7 @@ const server = http.createServer(async (req, res) => {
           totalBasicCodesCount:
             groups.length +
             crops.length +
+            cultivationStageCodes.length +
             growthProcessCodes.length +
             growthTypeCodes.length +
             fertilizerCategoryCodes.length +
@@ -1590,6 +1595,7 @@ const server = http.createServer(async (req, res) => {
         cultivars,
         systems,
         growthTypeCodes,
+        cultivationStageCodes,
         growthProcessCodes,
         fertilizerCategoryCodes,
         nutrientCategoryCodes,
@@ -1902,6 +1908,234 @@ const server = http.createServer(async (req, res) => {
       db.prepare('DELETE FROM growth_type_code WHERE type_code = ?').run(type_code);
       await supabaseRestDelete('growth_type_code', `type_code=eq.${encodeURIComponent(type_code)}`);
       sendJson(res, { ok: true });
+      return;
+    }
+
+    // 2-3-B. 작물별 재배 과정 기초 코드 (cultivation_stage_basic_code) 조회·자동코드생성 등록·수정·삭제 API
+    if (pathname === '/api/cultivation-stage-codes' && req.method === 'GET') {
+      const cropIdParam = (parsedUrl.searchParams.get('crop_id') || '').trim();
+      const groupIdParam = (parsedUrl.searchParams.get('group_id') || '').trim();
+      const conditions: string[] = [];
+      const params: any[] = [];
+      if (groupIdParam && groupIdParam !== 'ALL') {
+        conditions.push('group_id = ?');
+        params.push(groupIdParam);
+      }
+      if (cropIdParam && cropIdParam !== 'ALL') {
+        conditions.push('crop_id = ?');
+        params.push(cropIdParam);
+      }
+      const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const items = db
+        .prepare(
+          `SELECT * FROM cultivation_stage_basic_code ${whereSql} ORDER BY crop_id ASC, stage_order ASC, stage_code ASC`
+        )
+        .all(...params);
+      sendJson(res, { ok: true, items });
+      return;
+    }
+
+    if (pathname === '/api/cultivation-stage-codes' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const {
+        stage_code,
+        group_id,
+        group_name,
+        crop_id,
+        crop_name,
+        stage_order,
+        stage_name,
+        description,
+        stage_color,
+      } = body;
+
+      const resolvedCropId = String(crop_id || 'CRP-CABBAGE').trim();
+      const cropRow = db
+        .prepare('SELECT c.crop_id, c.crop_name, c.group_id, g.group_name FROM crop c LEFT JOIN crop_group g ON c.group_id = g.group_id WHERE c.crop_id = ? LIMIT 1')
+        .get(resolvedCropId) as
+        | { crop_id: string; crop_name: string; group_id: string; group_name: string }
+        | undefined;
+
+      const resolvedGroupId = String(group_id || cropRow?.group_id || 'GRP-LEAF').trim();
+      const resolvedGroupName = String(group_name || cropRow?.group_name || '엽채류 (잎채소)').trim();
+      const resolvedCropName = String(crop_name || cropRow?.crop_name || '배추').trim();
+
+      const existingForCrop = db
+        .prepare('SELECT stage_code, stage_order FROM cultivation_stage_basic_code WHERE crop_id = ? ORDER BY stage_order ASC')
+        .all(resolvedCropId) as Array<{ stage_code: string; stage_order: number }>;
+
+      const resolvedOrder =
+        stage_order !== undefined && Number(stage_order) > 0
+          ? Number(stage_order)
+          : (existingForCrop.reduce((max, r) => Math.max(max, Number(r.stage_order) || 0), 0) || 0) + 1;
+
+      const shortCropToken = resolvedCropId.replace(/^CRP-/, '').toUpperCase() || 'CROP';
+      let resolvedStageCode = String(stage_code || '').trim();
+      if (!resolvedStageCode || resolvedStageCode === 'AUTO') {
+        let seq = resolvedOrder;
+        let candidate = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+        const existingCodeSet = new Set(
+          (db.prepare('SELECT stage_code FROM cultivation_stage_basic_code').all() as Array<{ stage_code: string }>).map(
+            (r) => String(r.stage_code || '').toUpperCase()
+          )
+        );
+        while (existingCodeSet.has(candidate.toUpperCase())) {
+          seq++;
+          candidate = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+        }
+        resolvedStageCode = candidate;
+      }
+
+      const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38', '#2563eb', '#7c3aed'];
+      const resolvedColor =
+        String(stage_color || '').trim() || defaultColors[(Math.max(1, resolvedOrder) - 1) % defaultColors.length];
+
+      const rowData = {
+        stage_code: resolvedStageCode,
+        group_id: resolvedGroupId,
+        group_name: resolvedGroupName,
+        crop_id: resolvedCropId,
+        crop_name: resolvedCropName,
+        stage_order: resolvedOrder,
+        stage_name: String(stage_name || '').trim(),
+        description: String(description || '').trim(),
+        stage_color: resolvedColor,
+        updated_at: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      };
+
+      db.prepare(`
+        INSERT OR REPLACE INTO cultivation_stage_basic_code (
+          stage_code, group_id, group_name, crop_id, crop_name,
+          stage_order, stage_name, description, stage_color, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        rowData.stage_code,
+        rowData.group_id,
+        rowData.group_name,
+        rowData.crop_id,
+        rowData.crop_name,
+        rowData.stage_order,
+        rowData.stage_name,
+        rowData.description,
+        rowData.stage_color,
+        rowData.updated_at
+      );
+      await supabaseRestUpsert('cultivation_stage_basic_code', rowData, 'stage_code');
+      const items = db
+        .prepare('SELECT * FROM cultivation_stage_basic_code ORDER BY crop_id ASC, stage_order ASC, stage_code ASC')
+        .all();
+      sendJson(res, { ok: true, saved: rowData, items });
+      return;
+    }
+
+    if (pathname === '/api/cultivation-stage-codes/batch' && req.method === 'POST') {
+      const body = await readJsonBody(req);
+      const { group_id, crop_id, stages, replace_crop_stages } = body;
+      const resolvedCropId = String(crop_id || 'CRP-CABBAGE').trim();
+      const cropRow = db
+        .prepare('SELECT c.crop_id, c.crop_name, c.group_id, g.group_name FROM crop c LEFT JOIN crop_group g ON c.group_id = g.group_id WHERE c.crop_id = ? LIMIT 1')
+        .get(resolvedCropId) as
+        | { crop_id: string; crop_name: string; group_id: string; group_name: string }
+        | undefined;
+      const resolvedGroupId = String(group_id || cropRow?.group_id || 'GRP-LEAF').trim();
+      const resolvedGroupName = String(cropRow?.group_name || '엽채류 (잎채소)').trim();
+      const resolvedCropName = String(cropRow?.crop_name || '배추').trim();
+
+      if (replace_crop_stages) {
+        db.prepare('DELETE FROM cultivation_stage_basic_code WHERE crop_id = ?').run(resolvedCropId);
+        await supabaseRestDelete(
+          'cultivation_stage_basic_code',
+          `crop_id=eq.${encodeURIComponent(resolvedCropId)}`
+        );
+      }
+
+      const existingCodeSet = new Set(
+        (db.prepare('SELECT stage_code FROM cultivation_stage_basic_code').all() as Array<{ stage_code: string }>).map(
+          (r) => String(r.stage_code || '').toUpperCase()
+        )
+      );
+      const shortCropToken = resolvedCropId.replace(/^CRP-/, '').toUpperCase() || 'CROP';
+      const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38', '#2563eb', '#7c3aed'];
+      const nowKst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+
+      const insStmt = db.prepare(`
+        INSERT OR REPLACE INTO cultivation_stage_basic_code (
+          stage_code, group_id, group_name, crop_id, crop_name,
+          stage_order, stage_name, description, stage_color, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const savedRows: any[] = [];
+      const stageList = Array.isArray(stages) ? stages : [];
+      for (let i = 0; i < stageList.length; i++) {
+        const s = stageList[i];
+        const sName = String(s?.stage_name || '').trim();
+        if (!sName) continue;
+        const sOrder = Number(s?.stage_order) > 0 ? Number(s.stage_order) : i + 1;
+        let sCode = String(s?.stage_code || '').trim();
+        if (!sCode || sCode === 'AUTO') {
+          let seq = sOrder;
+          let cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+          while (existingCodeSet.has(cand.toUpperCase())) {
+            seq++;
+            cand = `CSTG-${shortCropToken}-${String(seq).padStart(2, '0')}`;
+          }
+          sCode = cand;
+        }
+        existingCodeSet.add(sCode.toUpperCase());
+        const sColor =
+          String(s?.stage_color || '').trim() || defaultColors[(Math.max(1, sOrder) - 1) % defaultColors.length];
+        const sDesc =
+          String(s?.description || '').trim() ||
+          `${resolvedCropName} ${sOrder}단계 (${sName}) 재배 과정 구분 기간`;
+        const rowData = {
+          stage_code: sCode,
+          group_id: resolvedGroupId,
+          group_name: resolvedGroupName,
+          crop_id: resolvedCropId,
+          crop_name: resolvedCropName,
+          stage_order: sOrder,
+          stage_name: sName,
+          description: sDesc,
+          stage_color: sColor,
+          updated_at: nowKst,
+        };
+        insStmt.run(
+          rowData.stage_code,
+          rowData.group_id,
+          rowData.group_name,
+          rowData.crop_id,
+          rowData.crop_name,
+          rowData.stage_order,
+          rowData.stage_name,
+          rowData.description,
+          rowData.stage_color,
+          rowData.updated_at
+        );
+        savedRows.push(rowData);
+      }
+
+      if (savedRows.length > 0) {
+        await supabaseRestUpsert('cultivation_stage_basic_code', savedRows, 'stage_code');
+      }
+      const items = db
+        .prepare('SELECT * FROM cultivation_stage_basic_code ORDER BY crop_id ASC, stage_order ASC, stage_code ASC')
+        .all();
+      sendJson(res, { ok: true, savedRows, items });
+      return;
+    }
+
+    if (pathname === '/api/cultivation-stage-codes/delete' && req.method === 'POST') {
+      const { stage_code } = await readJsonBody(req);
+      db.prepare('DELETE FROM cultivation_stage_basic_code WHERE stage_code = ?').run(stage_code);
+      await supabaseRestDelete(
+        'cultivation_stage_basic_code',
+        `stage_code=eq.${encodeURIComponent(stage_code)}`
+      );
+      const items = db
+        .prepare('SELECT * FROM cultivation_stage_basic_code ORDER BY crop_id ASC, stage_order ASC, stage_code ASC')
+        .all();
+      sendJson(res, { ok: true, items });
       return;
     }
 

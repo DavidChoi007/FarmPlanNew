@@ -50,6 +50,7 @@ type AdminTab =
   | 'schedule_provision'
   | 'schedule_generation_module'
   | 'basic_crop_codes'
+  | 'basic_cultivation_stage_codes'
   | 'basic_growth_codes'
   | 'basic_growth_types'
   | 'basic_fertilizer_codes'
@@ -102,6 +103,7 @@ export default function AdminDashboardPage() {
     );
     setIsBasicCodeOpen(
       activeTab === 'basic_crop_codes' ||
+        activeTab === 'basic_cultivation_stage_codes' ||
         activeTab === 'basic_growth_codes' ||
         activeTab === 'basic_growth_types' ||
         activeTab === 'basic_fertilizer_codes' ||
@@ -282,6 +284,39 @@ export default function AdminDashboardPage() {
     description: '',
     sort_order: 7,
   });
+
+  // 재배 과정 기초 코드 (기초 코드 관리 > 재배 과정 기초 코드) 상태 및 등록/수정 폼
+  const [cultStageSearch, setCultStageSearch] = useState<string>('');
+  const [cultStageGroupFilter, setCultStageGroupFilter] = useState<string>('ALL');
+  const [cultStageCropFilter, setCultStageCropFilter] = useState<string>('ALL');
+  const [isCultStageModalOpen, setIsCultStageModalOpen] = useState<boolean>(false);
+  const [cultStageModalMode, setCultStageModalMode] = useState<'create' | 'edit'>('create');
+  const [cultStageForm, setCultStageForm] = useState({
+    stage_code: 'AUTO',
+    group_id: 'GRP-LEAF',
+    crop_id: 'CRP-CABBAGE',
+    stage_order: 1,
+    stage_name: '',
+    description: '',
+    stage_color: '#16a34a',
+  });
+  const [cultStageBatchItems, setCultStageBatchItems] = useState<
+    Array<{
+      stage_code: string;
+      stage_order: number;
+      stage_name: string;
+      description: string;
+      stage_color: string;
+    }>
+  >([
+    {
+      stage_code: 'AUTO',
+      stage_order: 1,
+      stage_name: '',
+      description: '',
+      stage_color: '#0d9488',
+    },
+  ]);
 
   // 비료 분류 기초 코드 (기초 코드 관리 > 비료 분류 기초 코드) 상태 및 모달
   const [fertilizerCatSearch, setFertilizerCatSearch] = useState<string>('');
@@ -4475,6 +4510,66 @@ export default function AdminDashboardPage() {
     loadScheduleProvisionData(provisionRequestNo);
   };
 
+  // 재배 과정 기초 코드 자동 생성 프리뷰 헬퍼
+  const previewAutoCultStageCode = (cropId: string, orderNum: number) => {
+    const shortToken = String(cropId || 'CRP-CABBAGE')
+      .replace(/^CRP-/, '')
+      .toUpperCase() || 'CROP';
+    return `CSTG-${shortToken}-${String(Math.max(1, orderNum)).padStart(2, '0')}`;
+  };
+
+  // 재배 과정 기초 코드 등록(복수 항목 동시 추가 가능 / 내부 자동 코드 생성) 및 수정 핸들러
+  const handleSaveCultivationStageCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cultStageModalMode === 'edit') {
+      if (!cultStageForm.stage_name.trim()) {
+        window.alert('재배 과정 구분명(예: 활착기, 외엽 신장기)을 입력해 주세요.');
+        return;
+      }
+      await fetch('/api/cultivation-stage-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cultStageForm),
+      });
+      showToast(`재배 과정 기초 코드 [${cultStageForm.stage_name} (${cultStageForm.stage_code})] 수정 완료`);
+      setIsCultStageModalOpen(false);
+      await loadAllData();
+      return;
+    }
+
+    const validItems = cultStageBatchItems.filter((it) => String(it.stage_name || '').trim().length > 0);
+    if (validItems.length === 0) {
+      window.alert('최소 1개 이상의 재배 과정 항목명을 입력해 주세요.');
+      return;
+    }
+    const res = await fetch('/api/cultivation-stage-codes/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        group_id: cultStageForm.group_id,
+        crop_id: cultStageForm.crop_id,
+        stages: validItems,
+        replace_crop_stages: false,
+      }),
+    }).then((r) => r.json());
+
+    const savedCount = Array.isArray(res?.savedRows) ? res.savedRows.length : validItems.length;
+    showToast(`재배 과정 기초 코드 ${savedCount}건이 자동 코드 생성과 함께 등록되었습니다.`);
+    setIsCultStageModalOpen(false);
+    await loadAllData();
+  };
+
+  const handleDeleteCultivationStageCode = async (stageCode: string, stageName: string, cropName: string) => {
+    if (!window.confirm(`[${cropName}] 재배 과정 기초 코드 [${stageName} (${stageCode})] 항목을 삭제하시겠습니까?`)) return;
+    await fetch('/api/cultivation-stage-codes/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stage_code: stageCode }),
+    });
+    showToast(`[${cropName}] 재배 과정 기초 코드 [${stageName}] 삭제 완료`);
+    await loadAllData();
+  };
+
   // 비료 분류 기초 코드 등록/수정 및 삭제 핸들러
   const handleSaveFertilizerCategoryCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -5460,6 +5555,7 @@ export default function AdminDashboardPage() {
   const navItems: { id: AdminTab; label: string; sub: string; icon: any }[] = [
     { id: 'dashboard', label: '1. 통합 대시보드', sub: '운영 현황 · 모델 KPI', icon: LayoutDashboard },
     { id: 'basic_crop_codes', label: '2. 기초 코드 관리 > 농작물 기초 코드', sub: '1단계 작물군 · 2단계 작물 기초 코드 관리', icon: Database },
+    { id: 'basic_cultivation_stage_codes', label: '2. 기초 코드 관리 > 재배 과정 기초 코드', sub: '작물별 재배 과정 구분 코드(배추: 활착기~수확적기 / 오이: 활착기~수확기 등) 자동생성 및 관리', icon: Layers },
     { id: 'basic_growth_codes', label: '2. 기초 코드 관리 > 생육과정 기초 코드', sub: '생육과정 기초 코드 · 코드명 · 기타설명 관리', icon: ListChecks },
     { id: 'basic_growth_types', label: '2. 기초 코드 관리 > 생육 구분 기초 코드', sub: '생육 구분 기초 코드 · 코드명 · 기타설명 관리', icon: Layers },
     { id: 'basic_fertilizer_codes', label: '2. 기초 코드 관리 > 비료 분류 기초 코드', sub: '비료 분류 기초 코드 · 카테고리명 · 설명 관리', icon: FlaskConical },
@@ -6232,6 +6328,7 @@ export default function AdminDashboardPage() {
               item.id === 'schedule_provision' ||
               item.id === 'schedule_generation_module' ||
               item.id === 'histories' ||
+              item.id === 'basic_cultivation_stage_codes' ||
               item.id === 'basic_growth_codes' ||
               item.id === 'basic_growth_types' ||
               item.id === 'basic_fertilizer_codes' ||
@@ -7107,6 +7204,7 @@ export default function AdminDashboardPage() {
             }
             if (item.id === 'basic_crop_codes') {
               const isCropSubActive = activeTab === 'basic_crop_codes';
+              const isCultStageSubActive = activeTab === 'basic_cultivation_stage_codes';
               const isGrowthSubActive = activeTab === 'basic_growth_codes';
               const isGrowthTypeSubActive = activeTab === 'basic_growth_types';
               const isFertCatSubActive = activeTab === 'basic_fertilizer_codes';
@@ -7116,6 +7214,7 @@ export default function AdminDashboardPage() {
               const isSeedlingCatSubActive = activeTab === 'basic_seedling_codes';
               const isAnyBasicActive =
                 isCropSubActive ||
+                isCultStageSubActive ||
                 isGrowthSubActive ||
                 isGrowthTypeSubActive ||
                 isFertCatSubActive ||
@@ -7146,7 +7245,7 @@ export default function AdminDashboardPage() {
                       <Database className="w-5 h-5 mt-0.5 shrink-0 text-emerald-600" />
                       <div className="min-w-0">
                         <div className="text-xs font-bold leading-tight truncate">2. 기초 코드 관리</div>
-                        <div className="text-[10px] font-normal mt-0.5 truncate text-slate-500">농작물 · 생육 · 비료 · 영양제 · 병해충 · 씨 · 모종 코드</div>
+                        <div className="text-[10px] font-normal mt-0.5 truncate text-slate-500">농작물 · 재배과정 · 생육 · 비료 · 영양제 · 병해충 · 씨 · 모종 코드</div>
                       </div>
                     </div>
                     {isBasicCodeOpen ? (
@@ -7173,6 +7272,24 @@ export default function AdminDashboardPage() {
                           <div className="text-xs font-semibold leading-tight truncate">└ 농작물 기초 코드</div>
                           <div className={`text-[10px] font-normal mt-0.5 truncate ${isCropSubActive ? 'text-emerald-50' : 'text-slate-500'}`}>
                             1단계 작물군 · 2단계 작물/품종
+                          </div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('basic_cultivation_stage_codes')}
+                        className={`w-full text-left px-3 py-2 rounded-lg flex items-start gap-2.5 font-normal transition ${
+                          isCultStageSubActive
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'text-slate-700 bg-white hover:bg-emerald-50 hover:text-emerald-800 border border-slate-200/70'
+                        }`}
+                      >
+                        <Layers className={`w-4 h-4 mt-0.5 shrink-0 ${isCultStageSubActive ? 'text-white' : 'text-emerald-600'}`} />
+                        <div className="min-w-0 font-normal">
+                          <div className="text-xs font-semibold leading-tight truncate">└ 재배 과정 기초 코드</div>
+                          <div className={`text-[10px] font-normal mt-0.5 truncate ${isCultStageSubActive ? 'text-emerald-50' : 'text-slate-500'}`}>
+                            작물별 재배 과정 구분 (배추·오이 등)
                           </div>
                         </div>
                       </button>
@@ -12607,6 +12724,859 @@ export default function AdminDashboardPage() {
               {renderStage1And2Manager(true)}
             </div>
           )}
+
+          {/* ==================== 기초 코드 관리 > 재배 과정 기초 코드 (작물별 재배 과정 구분 코드 자동생성 · 등록 · 수정 · 삭제) ==================== */}
+          {activeTab === 'basic_cultivation_stage_codes' && overview && (() => {
+            const allStageCodes: any[] = Array.isArray(overview.cultivationStageCodes)
+              ? overview.cultivationStageCodes
+              : [];
+
+            const filteredStageCodes = allStageCodes.filter((item: any) => {
+              if (cultStageGroupFilter !== 'ALL' && item.group_id !== cultStageGroupFilter) return false;
+              if (cultStageCropFilter !== 'ALL' && item.crop_id !== cultStageCropFilter) return false;
+              if (!cultStageSearch) return true;
+              const q = cultStageSearch.toLowerCase();
+              return (
+                String(item.stage_code || '').toLowerCase().includes(q) ||
+                String(item.stage_name || '').toLowerCase().includes(q) ||
+                String(item.crop_name || '').toLowerCase().includes(q) ||
+                String(item.group_name || '').toLowerCase().includes(q) ||
+                String(item.description || '').toLowerCase().includes(q)
+              );
+            });
+
+            // 작물별 그룹화 요약 (배추: 활착기 ➔ 외엽 신장기 ➔ 결구기 ➔ 수확적기 / 오이: 활착기 ➔ 영양생장기 ➔ 개화/결실기 ➔ 수확기 등)
+            const groupedByCropMap = new Map<
+              string,
+              {
+                crop_id: string;
+                crop_name: string;
+                group_id: string;
+                group_name: string;
+                stages: any[];
+              }
+            >();
+            for (const row of allStageCodes) {
+              const cid = String(row.crop_id || 'CRP-CABBAGE');
+              if (!groupedByCropMap.has(cid)) {
+                groupedByCropMap.set(cid, {
+                  crop_id: cid,
+                  crop_name: row.crop_name || cid,
+                  group_id: row.group_id || 'GRP-LEAF',
+                  group_name: row.group_name || '',
+                  stages: [],
+                });
+              }
+              groupedByCropMap.get(cid)!.stages.push(row);
+            }
+            const groupedCropStageList = Array.from(groupedByCropMap.values()).map((g) => ({
+              ...g,
+              stages: [...g.stages].sort((a, b) => Number(a.stage_order) - Number(b.stage_order)),
+            }));
+
+            const openCreateCultStageModal = (targetCropId?: string) => {
+              const targetCrop =
+                (targetCropId
+                  ? (overview.crops || []).find((c: any) => c.crop_id === targetCropId)
+                  : null) ||
+                (cultStageCropFilter !== 'ALL'
+                  ? (overview.crops || []).find((c: any) => c.crop_id === cultStageCropFilter)
+                  : null) ||
+                (overview.crops || []).find((c: any) => c.crop_id === 'CRP-CABBAGE') ||
+                (overview.crops || [])[0] || {
+                  crop_id: 'CRP-CABBAGE',
+                  crop_name: '배추',
+                  group_id: 'GRP-LEAF',
+                };
+
+              const existingForTarget = allStageCodes.filter(
+                (r: any) => r.crop_id === targetCrop.crop_id
+              );
+              const nextOrder =
+                (existingForTarget.reduce(
+                  (max: number, r: any) => Math.max(max, Number(r.stage_order) || 0),
+                  0
+                ) || 0) + 1;
+
+              setCultStageForm({
+                stage_code: 'AUTO',
+                group_id: targetCrop.group_id || 'GRP-LEAF',
+                crop_id: targetCrop.crop_id || 'CRP-CABBAGE',
+                stage_order: nextOrder,
+                stage_name: '',
+                description: '',
+                stage_color: '#16a34a',
+              });
+              setCultStageBatchItems([
+                {
+                  stage_code: 'AUTO',
+                  stage_order: nextOrder,
+                  stage_name: '',
+                  description: '',
+                  stage_color: '#16a34a',
+                },
+              ]);
+              setCultStageModalMode('create');
+              setIsCultStageModalOpen(true);
+            };
+
+            return (
+              <div className="space-y-6">
+                {/* 1. 상단 헤더 배너 */}
+                <div className="bg-emerald-950 text-white p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      Basic Crop Cultivation Stage Code Manager
+                    </span>
+                    <h2 className="text-lg font-bold mt-0.5">
+                      기초 코드 관리 &gt; 재배 과정 기초 코드 — 작물별 재배 과정 구분 코드 자동생성 · 등록 · 수정 · 삭제
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      재배작물마다 적용되는 재배일정 진행 구분(예: <strong>배추</strong> — 활착기 · 외엽 신장기 · 결구기 · 수확적기 / <strong>오이</strong> — 활착기 · 영양생장기 · 개화/결실기 · 수확기)을 관리합니다. 항목을 추가하면 내부적으로 <strong>고유 기초 코드(CSTG-작물코드-순번)</strong>가 자동 생성됩니다.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openCreateCultStageModal()}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-extrabold text-white shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      재배 과정 기초 코드 등록
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. 작물별 재배 과정 구분 파이프라인 카드 요약 (배추 / 오이 등 작물별 한눈에 보기 + 즉시 항목 추가) */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs">
+                        작물별 재배 과정 구분 구성 현황
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        총 <strong>{groupedCropStageList.length}개 작물</strong> · <strong>{allStageCodes.length}개 재배 과정 기초 코드</strong> 등록됨 (각 작물 카드에서 [+ 단계 항목 추가] 클릭 시 해당 작물에 즉시 추가 가능)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {groupedCropStageList.map((cg) => (
+                      <div
+                        key={cg.crop_id}
+                        className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3 hover:border-emerald-300 transition"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-0.5 rounded-md bg-emerald-600 text-white font-extrabold text-xs">
+                              {cg.crop_name}
+                            </span>
+                            <span className="text-[11px] font-mono font-bold text-slate-500">
+                              ({cg.crop_id})
+                            </span>
+                            <span className="text-[11px] text-slate-500 font-semibold">
+                              {cg.group_name} · 총 {cg.stages.length}단계 구분
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => openCreateCultStageModal(cg.crop_id)}
+                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold text-xs flex items-center gap-1 transition cursor-pointer shrink-0"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            단계 항목 추가
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {cg.stages.map((st: any) => (
+                            <div
+                              key={st.stage_code}
+                              onClick={() => {
+                                setCultStageForm({
+                                  stage_code: st.stage_code,
+                                  group_id: st.group_id,
+                                  crop_id: st.crop_id,
+                                  stage_order: Number(st.stage_order) || 1,
+                                  stage_name: st.stage_name,
+                                  description: st.description || '',
+                                  stage_color: st.stage_color || '#16a34a',
+                                });
+                                setCultStageModalMode('edit');
+                                setIsCultStageModalOpen(true);
+                              }}
+                              title="클릭하여 해당 재배 과정 항목 수정"
+                              className="cursor-pointer rounded-xl bg-white border border-slate-200 hover:border-emerald-500 p-2.5 shadow-2xs flex flex-col justify-between gap-1.5 transition group"
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span
+                                  style={{ backgroundColor: st.stage_color || '#16a34a' }}
+                                  className="px-1.5 py-0.5 rounded text-[10px] font-extrabold text-white"
+                                >
+                                  {st.stage_order}단계
+                                </span>
+                                <span className="text-[10px] font-mono font-bold text-slate-400 group-hover:text-emerald-700 truncate">
+                                  {st.stage_code}
+                                </span>
+                              </div>
+                              <div className="font-extrabold text-slate-900 text-sm tracking-tight truncate">
+                                {st.stage_name}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. 검색 및 필터 바 */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center gap-1">
+                        <Search className="w-3.5 h-3.5" />
+                        재배 과정 기초 코드 검색 및 작물 필터
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        1단계 작물군 · 2단계 작물(배추, 오이 등) 또는 자동 생성 코드·단계명(활착기, 외엽 신장기, 영양생장기, 개화/결실기 등)으로 조회합니다.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid sm:grid-cols-12 gap-3 pt-1 text-xs">
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] text-emerald-800 font-bold mb-1">
+                        1단계 작물군 필터
+                      </label>
+                      <select
+                        value={cultStageGroupFilter}
+                        onChange={(e) => {
+                          setCultStageGroupFilter(e.target.value);
+                          setCultStageCropFilter('ALL');
+                        }}
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="ALL">전체 작물군 보기</option>
+                        {(overview.groups || []).map((g: any) => (
+                          <option key={g.group_id} value={g.group_id}>
+                            {g.group_name} ({g.group_id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-[11px] text-emerald-800 font-bold mb-1">
+                        2단계 작물 필터
+                      </label>
+                      <select
+                        value={cultStageCropFilter}
+                        onChange={(e) => setCultStageCropFilter(e.target.value)}
+                        className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="ALL">전체 작물 보기</option>
+                        {(overview.crops || [])
+                          .filter(
+                            (c: any) =>
+                              cultStageGroupFilter === 'ALL' || c.group_id === cultStageGroupFilter
+                          )
+                          .map((c: any) => (
+                            <option key={c.crop_id} value={c.crop_id}>
+                              {c.crop_name} ({c.crop_id})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <label className="block text-[11px] text-slate-700 font-bold mb-1">
+                        코드 · 작물명 · 재배 과정명 검색
+                      </label>
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                        <input
+                          type="text"
+                          value={cultStageSearch}
+                          onChange={(e) => setCultStageSearch(e.target.value)}
+                          placeholder="예: 배추, 오이, 활착기, 외엽 신장기, 개화/결실기, CSTG-..."
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2 flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCultStageGroupFilter('ALL');
+                          setCultStageCropFilter('ALL');
+                          setCultStageSearch('');
+                        }}
+                        className="w-full py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        검색 초기화
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. 하단: 재배 과정 기초 코드 리스트 및 등록/수정/삭제 테이블 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-teal-100 text-teal-800 font-bold text-xs">
+                          재배 과정 기초 코드 목록
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">
+                          조회 {filteredStageCodes.length}건 / 전체 {allStageCodes.length}건
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 mt-1.5">
+                        작물별 재배 과정 구분 코드(내부 자동 생성) · 단계 순서 · 재배 과정명 · 기타설명 조회, 추가 등록, 수정 및 삭제
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openCreateCultStageModal()}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      재배 과정 기초 코드 등록
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                          <th className="py-3.5 px-4 font-bold w-28 whitespace-nowrap">작물명</th>
+                          <th className="py-3.5 px-4 font-bold w-20 whitespace-nowrap">단계 순서</th>
+                          <th className="py-3.5 px-4 font-bold w-44 whitespace-nowrap">기초 코드 (자동생성)</th>
+                          <th className="py-3.5 px-4 font-bold w-48 whitespace-nowrap">재배 과정 구분명</th>
+                          <th className="py-3.5 px-4 font-bold">설명 (해당 기간 생육과정 및 적용 기준)</th>
+                          <th className="py-3.5 px-4 font-bold text-right w-40 whitespace-nowrap">관리 (수정 / 삭제)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {filteredStageCodes.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-10 text-center text-slate-400 font-semibold">
+                              조건에 해당하는 재배 과정 기초 코드가 없습니다. 우측 상단 [재배 과정 기초 코드 등록] 버튼으로 추가해 주세요.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStageCodes.map((row: any) => (
+                            <tr key={row.stage_code} className="hover:bg-slate-50 transition">
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  <span className="font-extrabold text-slate-900 text-sm">
+                                    {row.crop_name}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    {row.crop_id} · {row.group_name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 font-bold text-slate-700 whitespace-nowrap">
+                                <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-800 font-extrabold text-xs">
+                                  {row.stage_order}단계
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 font-mono font-bold text-teal-700 whitespace-nowrap">
+                                <span className="px-2.5 py-1 rounded-lg bg-teal-50 border border-teal-200 text-teal-800">
+                                  {row.stage_code}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <span
+                                  style={{ backgroundColor: row.stage_color || '#16a34a' }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-extrabold text-xs text-white shadow-2xs"
+                                >
+                                  {row.stage_name}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600 max-w-xl leading-relaxed">
+                                {row.description || <span className="text-slate-400">-</span>}
+                              </td>
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                                <div className="inline-flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCultStageForm({
+                                        stage_code: row.stage_code,
+                                        group_id: row.group_id || 'GRP-LEAF',
+                                        crop_id: row.crop_id || 'CRP-CABBAGE',
+                                        stage_order: Number(row.stage_order) || 1,
+                                        stage_name: row.stage_name || '',
+                                        description: row.description || '',
+                                        stage_color: row.stage_color || '#16a34a',
+                                      });
+                                      setCultStageModalMode('edit');
+                                      setIsCultStageModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    수정
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleDeleteCultivationStageCode(
+                                        row.stage_code,
+                                        row.stage_name,
+                                        row.crop_name
+                                      )
+                                    }
+                                    className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold flex items-center gap-1 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    삭제
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 5. 재배 과정 기초 코드 등록 / 수정 모달리스 창 (내부 코드 자동생성 + 항목 동적 추가 지원) */}
+                {isCultStageModalOpen && (
+                  <div className="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4">
+                    <div className="pointer-events-auto bg-white rounded-2xl border-2 border-emerald-700/40 shadow-2xl ring-1 ring-slate-900/10 max-w-2xl w-full overflow-hidden max-h-[90vh] flex flex-col">
+                      <div className="bg-emerald-950 text-white px-6 py-4 flex items-center justify-between shrink-0">
+                        <div>
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+                            {cultStageModalMode === 'create'
+                              ? 'New Crop Cultivation Stage Basic Code (Auto-Code Generation)'
+                              : 'Edit Crop Cultivation Stage Basic Code'}
+                          </span>
+                          <h3 className="text-base font-extrabold mt-0.5">
+                            {cultStageModalMode === 'create'
+                              ? '재배 과정 기초 코드 신규 등록 (항목 추가 가능 · 기초 코드 자동 생성)'
+                              : `재배 과정 기초 코드 수정 (${cultStageForm.stage_name} · ${cultStageForm.stage_code})`}
+                          </h3>
+                        </div>
+                        <span className="px-2.5 py-1 rounded-lg bg-white/10 text-[11px] text-emerald-200 font-semibold">
+                          코드 자동 생성
+                        </span>
+                      </div>
+
+                      <form
+                        onSubmit={handleSaveCultivationStageCode}
+                        className="p-6 space-y-4 text-xs overflow-y-auto flex-1"
+                      >
+                        {/* ① 대상 작물군 및 작물 선택 */}
+                        <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-200 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <label className="font-bold text-emerald-900">
+                              ① 적용 대상 작물 선택 (1단계 작물군 → 2단계 작물)
+                            </label>
+                            <span className="text-[11px] text-emerald-700 font-semibold">
+                              선택한 작물 코드 기준으로 기초 코드가 자동 생성됩니다
+                            </span>
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                1단계 작물군
+                              </label>
+                              <select
+                                value={cultStageForm.group_id}
+                                onChange={(e) => {
+                                  const nextGroupId = e.target.value;
+                                  const firstCrop = (overview.crops || []).find(
+                                    (c: any) => c.group_id === nextGroupId
+                                  );
+                                  const nextCropId = firstCrop?.crop_id || '';
+                                  const existingCnt = allStageCodes.filter(
+                                    (r: any) => r.crop_id === nextCropId
+                                  ).length;
+                                  setCultStageForm((prev) => ({
+                                    ...prev,
+                                    group_id: nextGroupId,
+                                    crop_id: nextCropId,
+                                    stage_order:
+                                      cultStageModalMode === 'create'
+                                        ? existingCnt + 1
+                                        : prev.stage_order,
+                                  }));
+                                  if (cultStageModalMode === 'create') {
+                                    setCultStageBatchItems((prev) =>
+                                      prev.map((it, idx) => ({
+                                        ...it,
+                                        stage_order: existingCnt + idx + 1,
+                                      }))
+                                    );
+                                  }
+                                }}
+                                className="w-full px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold text-slate-900"
+                              >
+                                {(overview.groups || []).map((g: any) => (
+                                  <option key={g.group_id} value={g.group_id}>
+                                    [{g.group_id}] {g.group_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                2단계 작물
+                              </label>
+                              <select
+                                value={cultStageForm.crop_id}
+                                onChange={(e) => {
+                                  const nextCropId = e.target.value;
+                                  const existingCnt = allStageCodes.filter(
+                                    (r: any) => r.crop_id === nextCropId
+                                  ).length;
+                                  setCultStageForm((prev) => ({
+                                    ...prev,
+                                    crop_id: nextCropId,
+                                    stage_order:
+                                      cultStageModalMode === 'create'
+                                        ? existingCnt + 1
+                                        : prev.stage_order,
+                                  }));
+                                  if (cultStageModalMode === 'create') {
+                                    setCultStageBatchItems((prev) =>
+                                      prev.map((it, idx) => ({
+                                        ...it,
+                                        stage_order: existingCnt + idx + 1,
+                                      }))
+                                    );
+                                  }
+                                }}
+                                className="w-full px-3 py-2.5 rounded-xl bg-white border border-emerald-300 font-bold text-slate-900"
+                              >
+                                {(overview.crops || [])
+                                  .filter((c: any) => c.group_id === cultStageForm.group_id)
+                                  .map((c: any) => (
+                                    <option key={c.crop_id} value={c.crop_id}>
+                                      [{c.crop_id}] {c.crop_name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {cultStageModalMode === 'create' ? (
+                          <div className="space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div>
+                                <div className="font-bold text-slate-900">
+                                  ② 재배 과정 구분 항목 입력 (코드는 내부적으로 자동 생성 · [+ 항목 더 추가]로 연속 등록 가능)
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  예: 배추(활착기, 외엽 신장기, 결구기, 수확적기) / 오이(활착기, 영양생장기, 개화/결실기, 수확기)
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const defaultColors = [
+                                    '#0d9488',
+                                    '#22a559',
+                                    '#16a34a',
+                                    '#d96b38',
+                                    '#2563eb',
+                                    '#7c3aed',
+                                  ];
+                                  setCultStageBatchItems((prev) => {
+                                    const maxOrd = prev.reduce(
+                                      (m, it) => Math.max(m, Number(it.stage_order) || 0),
+                                      0
+                                    );
+                                    const nextOrd = maxOrd + 1;
+                                    return [
+                                      ...prev,
+                                      {
+                                        stage_code: 'AUTO',
+                                        stage_order: nextOrd,
+                                        stage_name: '',
+                                        description: '',
+                                        stage_color:
+                                          defaultColors[(nextOrd - 1) % defaultColors.length],
+                                      },
+                                    ];
+                                  });
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold text-xs flex items-center gap-1 transition cursor-pointer shrink-0"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                항목 더 추가
+                              </button>
+                            </div>
+
+                            <div className="space-y-2.5">
+                              {cultStageBatchItems.map((batchItem, bIdx) => {
+                                const autoCodePreview = previewAutoCultStageCode(
+                                  cultStageForm.crop_id,
+                                  batchItem.stage_order
+                                );
+                                return (
+                                  <div
+                                    key={bIdx}
+                                    className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5"
+                                  >
+                                    <div className="grid sm:grid-cols-12 gap-2.5 items-end">
+                                      <div className="sm:col-span-3">
+                                        <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                                          자동 생성 코드 (내부 부여)
+                                        </label>
+                                        <input
+                                          type="text"
+                                          readOnly
+                                          value={`${autoCodePreview} (자동)`}
+                                          className="w-full px-2.5 py-2 rounded-lg bg-slate-100 border border-slate-300 font-mono font-bold text-teal-800 text-[11px]"
+                                        />
+                                      </div>
+
+                                      <div className="sm:col-span-2">
+                                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                          단계 순서
+                                        </label>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          value={batchItem.stage_order}
+                                          onChange={(e) => {
+                                            const val = Number(e.target.value) || 1;
+                                            setCultStageBatchItems((prev) =>
+                                              prev.map((it, i) =>
+                                                i === bIdx ? { ...it, stage_order: val } : it
+                                              )
+                                            );
+                                          }}
+                                          className="w-full px-2.5 py-2 rounded-lg bg-white border border-slate-300 font-bold text-slate-900"
+                                        />
+                                      </div>
+
+                                      <div className="sm:col-span-4">
+                                        <label className="block text-[11px] font-bold text-emerald-800 mb-1">
+                                          재배 과정 구분명 *
+                                        </label>
+                                        <input
+                                          type="text"
+                                          placeholder="예: 활착기, 외엽 신장기, 개화/결실기"
+                                          value={batchItem.stage_name}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setCultStageBatchItems((prev) =>
+                                              prev.map((it, i) =>
+                                                i === bIdx ? { ...it, stage_name: val } : it
+                                              )
+                                            );
+                                          }}
+                                          className="w-full px-3 py-2 rounded-lg bg-white border border-emerald-400 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                          required
+                                        />
+                                      </div>
+
+                                      <div className="sm:col-span-2">
+                                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                                          배지 색상
+                                        </label>
+                                        <div className="flex items-center gap-1.5">
+                                          <input
+                                            type="color"
+                                            value={batchItem.stage_color || '#16a34a'}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              setCultStageBatchItems((prev) =>
+                                                prev.map((it, i) =>
+                                                  i === bIdx ? { ...it, stage_color: val } : it
+                                                )
+                                              );
+                                            }}
+                                            className="w-8 h-8 rounded border border-slate-300 cursor-pointer shrink-0"
+                                          />
+                                          <span className="text-[10px] font-mono text-slate-500">
+                                            {batchItem.stage_color}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      <div className="sm:col-span-1 flex justify-end">
+                                        {cultStageBatchItems.length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setCultStageBatchItems((prev) =>
+                                                prev.filter((_, i) => i !== bIdx)
+                                              )
+                                            }
+                                            className="px-2 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold transition cursor-pointer"
+                                            title="이 입력 행 제거"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <input
+                                        type="text"
+                                        placeholder="기타설명 (선택): 해당 재배 과정 기간의 생육 특성이나 연동 생육과정 설명 입력"
+                                        value={batchItem.description}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setCultStageBatchItems((prev) =>
+                                            prev.map((it, i) =>
+                                              i === bIdx ? { ...it, description: val } : it
+                                            )
+                                          );
+                                        }}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          /* 수정 모드 폼 */
+                          <div className="space-y-4">
+                            <div className="grid sm:grid-cols-3 gap-4">
+                              <div>
+                                <label className="block font-bold text-slate-700 mb-1.5">
+                                  ② 기초 코드 (자동 생성됨)
+                                </label>
+                                <input
+                                  type="text"
+                                  readOnly
+                                  value={cultStageForm.stage_code}
+                                  className="w-full px-3 py-2.5 rounded-xl bg-slate-100 border border-slate-300 font-mono font-bold text-teal-800"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-800 mb-1.5">
+                                  ③ 단계 순서
+                                </label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={cultStageForm.stage_order}
+                                  onChange={(e) =>
+                                    setCultStageForm({
+                                      ...cultStageForm,
+                                      stage_order: Number(e.target.value) || 1,
+                                    })
+                                  }
+                                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-300 font-bold text-slate-900"
+                                  required
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block font-bold text-slate-800 mb-1.5">
+                                  ④ 배지 색상
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={cultStageForm.stage_color || '#16a34a'}
+                                    onChange={(e) =>
+                                      setCultStageForm({
+                                        ...cultStageForm,
+                                        stage_color: e.target.value,
+                                      })
+                                    }
+                                    className="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={cultStageForm.stage_color || '#16a34a'}
+                                    onChange={(e) =>
+                                      setCultStageForm({
+                                        ...cultStageForm,
+                                        stage_color: e.target.value,
+                                      })
+                                    }
+                                    className="flex-1 px-3 py-2.5 rounded-xl bg-white border border-slate-300 font-mono font-bold text-slate-900"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block font-bold text-emerald-800 mb-1.5">
+                                ⑤ 재배 과정 구분명 *
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="예: 활착기, 외엽 신장기, 결구기, 수확적기"
+                                value={cultStageForm.stage_name}
+                                onChange={(e) =>
+                                  setCultStageForm({
+                                    ...cultStageForm,
+                                    stage_name: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-emerald-400 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block font-bold text-slate-800 mb-1.5">
+                                ⑥ 기타설명
+                              </label>
+                              <textarea
+                                rows={3}
+                                placeholder="해당 재배 과정 기간의 생육 특성 및 적용 설명"
+                                value={cultStageForm.description}
+                                onChange={(e) =>
+                                  setCultStageForm({
+                                    ...cultStageForm,
+                                    description: e.target.value,
+                                  })
+                                }
+                                className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsCultStageModalOpen(false)}
+                            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer"
+                          >
+                            취소 (닫기)
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Check className="w-4 h-4" />
+                            {cultStageModalMode === 'create'
+                              ? '재배 과정 기초 코드 자동생성 및 등록 저장'
+                              : '재배 과정 기초 코드 수정 저장'}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ==================== 기초 코드 관리 > 생육과정 기초 코드 (기초 코드 · 코드명 · 기타설명 목록/등록/수정/삭제) ==================== */}
           {activeTab === 'basic_growth_codes' && overview && (
