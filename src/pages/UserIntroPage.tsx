@@ -66,6 +66,7 @@ interface OverviewData {
   pesticideCategoryCodes?: any[];
   seedCategoryCodes?: any[];
   seedlingCategoryCodes?: any[];
+  cultivationStageCodes?: any[];
 }
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
@@ -546,7 +547,7 @@ export default function UserIntroPage() {
   const [growthConfirmDateInput, setGrowthConfirmDateInput] = useState<string>('');
   const [growthConfirmModalTarget, setGrowthConfirmModalTarget] = useState<{
     reqNo: string;
-    stepIdx?: 0 | 1 | 2 | 3;
+    stepIdx?: number;
   } | null>(null);
   const [growthConfirmRadioChoice, setGrowthConfirmRadioChoice] = useState<
     'STARTED' | 'NOT_YET' | 'UNKNOWN'
@@ -1134,10 +1135,10 @@ export default function UserIntroPage() {
 
   const openGrowthConfirmModal = (
     reqNo: string,
-    stepIdx?: 0 | 1 | 2 | 3,
+    stepIdx?: number,
     defaultDateYmd?: string
   ) => {
-    const resolvedStepIdx: 0 | 1 | 2 | 3 = stepIdx !== undefined ? stepIdx : 2;
+    const resolvedStepIdx: number = stepIdx !== undefined ? stepIdx : 2;
     const confirmKey = `${reqNo}__STEP_${resolvedStepIdx}`;
     const savedDate = stageGrowthConfirmDates[confirmKey] || defaultDateYmd || '';
     const savedStatus = stageGrowthConfirmStatuses[confirmKey] || 'STARTED';
@@ -9267,6 +9268,213 @@ export default function UserIntroPage() {
             {(() => {
               const todayKstYmd = getTodayKstYmd();
 
+              // 관리자 페이지 [기초 코드 관리 > 재배 과정 기초 코드] 연동 목록 조회
+              type CultStageCodeItem = {
+                stage_code: string;
+                group_id: string;
+                group_name: string;
+                crop_id: string;
+                crop_name: string;
+                stage_order: number;
+                stage_name: string;
+                description: string;
+                stage_color: string;
+              };
+
+              const DEFAULT_CULT_STAGE_CODES_FALLBACK: CultStageCodeItem[] = [
+                {
+                  stage_code: 'CSTG-CABBAGE-01',
+                  group_id: 'GRP-LEAF',
+                  group_name: '엽채류 (잎채소)',
+                  crop_id: 'CRP-CABBAGE',
+                  crop_name: '배추',
+                  stage_order: 1,
+                  stage_name: '활착기',
+                  description: '본밭 정식 후 뿌리 활착 및 초기 수분·차광 관리를 수행하는 기간 (SCH-01~08 연동)',
+                  stage_color: '#0d9488',
+                },
+                {
+                  stage_code: 'CSTG-CABBAGE-02',
+                  group_id: 'GRP-LEAF',
+                  group_name: '엽채류 (잎채소)',
+                  crop_id: 'CRP-CABBAGE',
+                  crop_name: '배추',
+                  stage_order: 2,
+                  stage_name: '외엽 신장기',
+                  description: '바깥잎(외엽)을 충분히 확보하고 1·2차 웃거름(추비)으로 생장량을 키우는 기간 (SCH-09~10 연동)',
+                  stage_color: '#22a559',
+                },
+                {
+                  stage_code: 'CSTG-CABBAGE-03',
+                  group_id: 'GRP-LEAF',
+                  group_name: '엽채류 (잎채소)',
+                  crop_id: 'CRP-CABBAGE',
+                  crop_name: '배추',
+                  stage_order: 3,
+                  stage_name: '결구기',
+                  description: '안쪽 잎이 포개지며 속이 차오르는 결구 비대 및 칼슘·붕소·무름병 집중 관리 기간 (SCH-11~14 연동)',
+                  stage_color: '#16a34a',
+                },
+                {
+                  stage_code: 'CSTG-CABBAGE-04',
+                  group_id: 'GRP-LEAF',
+                  group_name: '엽채류 (잎채소)',
+                  crop_id: 'CRP-CABBAGE',
+                  crop_name: '배추',
+                  stage_order: 4,
+                  stage_name: '수확적기',
+                  description: '목표 적산온도(PGDD) 도달 및 결구 충실도 확인 후 본 수확·예건·저장을 수행하는 기간 (SCH-15~16 연동)',
+                  stage_color: '#d96b38',
+                },
+                {
+                  stage_code: 'CSTG-CUCUMBER-01',
+                  group_id: 'GRP-FRUIT',
+                  group_name: '과채류 (열매채소)',
+                  crop_id: 'CRP-CUCUMBER',
+                  crop_name: '오이',
+                  stage_order: 1,
+                  stage_name: '활착기',
+                  description: '오이 모종 본밭 정식 후 초기 뿌리 활착 및 주지(원줄기) 생장이 시작되는 기간 (SCH-01~08 연동)',
+                  stage_color: '#0d9488',
+                },
+                {
+                  stage_code: 'CSTG-CUCUMBER-02',
+                  group_id: 'GRP-FRUIT',
+                  group_name: '과채류 (열매채소)',
+                  crop_id: 'CRP-CUCUMBER',
+                  crop_name: '오이',
+                  stage_order: 2,
+                  stage_name: '영양생장기',
+                  description: '덩굴 유인 줄매기, 하엽·곁순(측지) 정리 및 1차 추비로 초세를 확보하는 기간 (SCH-09~10 연동)',
+                  stage_color: '#22a559',
+                },
+                {
+                  stage_code: 'CSTG-CUCUMBER-03',
+                  group_id: 'GRP-FRUIT',
+                  group_name: '과채류 (열매채소)',
+                  crop_id: 'CRP-CUCUMBER',
+                  crop_name: '오이',
+                  stage_order: 3,
+                  stage_name: '개화/결실기',
+                  description: '마디별 암꽃 개화·수정·착과 및 과실 비대, 노균병·흰가루병 집중 방제 기간 (SCH-11~14 연동)',
+                  stage_color: '#16a34a',
+                },
+                {
+                  stage_code: 'CSTG-CUCUMBER-04',
+                  group_id: 'GRP-FRUIT',
+                  group_name: '과채류 (열매채소)',
+                  crop_id: 'CRP-CUCUMBER',
+                  crop_name: '오이',
+                  stage_order: 4,
+                  stage_name: '수확기',
+                  description: '출하 규격에 도달한 오이 과실의 연속 적기 수확 및 선별·포장 출하 기간 (SCH-15~16 연동)',
+                  stage_color: '#d96b38',
+                },
+              ];
+
+              const allCultStageCodes: CultStageCodeItem[] = (() => {
+                const mergedMap = new Map<string, CultStageCodeItem>();
+                for (const d of DEFAULT_CULT_STAGE_CODES_FALLBACK) {
+                  mergedMap.set(d.stage_code, d);
+                }
+                if (Array.isArray(data?.cultivationStageCodes)) {
+                  for (const item of data.cultivationStageCodes) {
+                    if (item?.stage_code) {
+                      mergedMap.set(String(item.stage_code), item);
+                    }
+                  }
+                }
+                try {
+                  const localRaw = localStorage.getItem('hanfarm_cultivation_stage_basic_codes_v1');
+                  if (localRaw) {
+                    const parsed = JSON.parse(localRaw);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      mergedMap.clear();
+                      for (const item of parsed) {
+                        if (item?.stage_code) {
+                          mergedMap.set(String(item.stage_code), item);
+                        }
+                      }
+                    }
+                  }
+                } catch {
+                  // ignore
+                }
+                return Array.from(mergedMap.values());
+              })();
+
+              const resolveCropIdByShortName = (nameInput: string, rawCropId?: string): string => {
+                if (rawCropId && String(rawCropId).startsWith('CRP-')) {
+                  const cid = String(rawCropId).trim();
+                  if (cid === 'CRP-SPR-CABBAGE' || cid === 'CRP-WIN-CABBAGE') {
+                    const exactHas = allCultStageCodes.some((r) => r.crop_id === cid);
+                    if (!exactHas) return 'CRP-CABBAGE';
+                  }
+                  return cid;
+                }
+                const n = String(nameInput || '').trim();
+                if (n.includes('오이')) return 'CRP-CUCUMBER';
+                if (n.includes('토마토')) return 'CRP-TOMATO';
+                if (n.includes('수박')) return 'CRP-WATERMELON';
+                if (n.includes('참외')) return 'CRP-MELON';
+                if (n.includes('고추')) return 'CRP-PEPPER';
+                if (n.includes('마늘')) return 'CRP-GARLIC';
+                if (n.includes('양파')) return 'CRP-ONION';
+                if (n.includes('대파')) return 'CRP-GREENONION';
+                if (n.includes('시금치')) return 'CRP-SPINACH';
+                if (n.includes('상추')) return 'CRP-LETTUCE';
+                if (n.includes('무')) return 'CRP-RADISH';
+                if (n.includes('당근')) return 'CRP-CARROT';
+                if (n.includes('감자')) return 'CRP-POTATO';
+                if (n.includes('고구마')) return 'CRP-SWEETPOTATO';
+                if (n.includes('콩')) return 'CRP-BEAN';
+                return 'CRP-CABBAGE';
+              };
+
+              const resolveCultStagesForCrop = (
+                shortNameInput: string,
+                rawCropNameInput?: string,
+                rawCropId?: string
+              ): CultStageCodeItem[] => {
+                const targetCropId = resolveCropIdByShortName(
+                  rawCropNameInput || shortNameInput,
+                  rawCropId
+                );
+                const matched = allCultStageCodes
+                  .filter(
+                    (r) =>
+                      r.crop_id === targetCropId ||
+                      r.crop_name === shortNameInput ||
+                      r.crop_name === rawCropNameInput
+                  )
+                  .sort((a, b) => Number(a.stage_order || 0) - Number(b.stage_order || 0));
+
+                if (matched.length > 0) return matched;
+
+                // 등록된 기초 코드가 아직 없는 타 작물일 경우 작물 특성에 맞는 기본 4단계 반환
+                const n = String(shortNameInput || '');
+                const fallbackNames =
+                  /오이|토마토|수박|참외|고추/.test(n)
+                    ? ['활착기', '영양생장기', '개화/결실기', '수확기']
+                    : /무|당근|감자|고구마|마늘|양파/.test(n)
+                    ? ['활착기', '경엽신장기', '구비대기', '수확기']
+                    : /시금치|상추|대파/.test(n)
+                    ? ['발아/활착기', '초기생육기', '엽신장기', '수확적기']
+                    : ['활착기', '외엽 신장기', '결구기', '수확적기'];
+                const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38'];
+                return fallbackNames.map((sName, i) => ({
+                  stage_code: `CSTG-${targetCropId.replace(/^CRP-/, '')}-0${i + 1}`,
+                  group_id: 'GRP-LEAF',
+                  group_name: '작물군',
+                  crop_id: targetCropId,
+                  crop_name: shortNameInput || '배추',
+                  stage_order: i + 1,
+                  stage_name: sName,
+                  description: `${shortNameInput} ${i + 1}단계 (${sName})`,
+                  stage_color: defaultColors[i % defaultColors.length],
+                }));
+              };
+
               // 특정 작물(request_no)의 16개 생육과정을 실제 현재 날짜(todayKstYmd)와 비교하여 현재 생육단계 및 다음 농작업을 정확히 산출
               const buildRealTimeCropScheduleCard = (crop: any, idx: number) => {
                 const reqNo = crop.request_no || `REQ-MOB-${idx + 1}`;
@@ -9366,34 +9574,47 @@ export default function UserIntroPage() {
                   completedStages[completedStages.length - 1] || null;
                 const isAllCompleted = uncompletedStages.length === 0 && evaluatedStages.length > 0;
 
+                // 해당 작물의 [기초 코드 관리 > 재배 과정 기초 코드] 단계 목록 조회
+                const cropCultStages = resolveCultStagesForCrop(
+                  shortName,
+                  rawShort,
+                  crop.crop_id
+                );
+                const stageCount = Math.max(1, cropCultStages.length);
+
                 // 현재 시점(todayKstYmd) 기준 진행 중인 단계 판정 (nextStage.stepOrder 기준)
-                let stageBadge = '재배준비';
-                let activeStepIdx: 0 | 1 | 2 | 3 = 0;
+                let stageBadge = cropCultStages[0]?.stage_name || '활착기';
+                let activeStepIdx = 0;
 
                 if (isAllCompleted) {
-                  stageBadge = '수확완료';
-                  activeStepIdx = 3;
+                  activeStepIdx = stageCount - 1;
+                  stageBadge = cropCultStages[activeStepIdx]?.stage_name || '수확기';
                 } else if (nextStage) {
                   const ord = nextStage.stepOrder;
-                  if (ord <= 3) {
-                    stageBadge = '재배준비';
-                    activeStepIdx = 0;
-                  } else if (ord <= 6) {
-                    stageBadge = '파종·육묘';
-                    activeStepIdx = 0;
-                  } else if (ord <= 8) {
-                    stageBadge = ord === 7 ? '정식기' : '활착기';
-                    activeStepIdx = 0;
-                  } else if (ord <= 11) {
-                    stageBadge = '생육기';
-                    activeStepIdx = 1;
-                  } else if (ord <= 14) {
-                    stageBadge = '결구기(병해충)';
-                    activeStepIdx = 2;
+                  if (stageCount === 4) {
+                    // 4단계 기본 매핑: 1단계(SCH-01~08), 2단계(SCH-09~10), 3단계(SCH-11~14), 4단계(SCH-15~16)
+                    if (ord <= 8) activeStepIdx = 0;
+                    else if (ord <= 10) activeStepIdx = 1;
+                    else if (ord <= 14) activeStepIdx = 2;
+                    else activeStepIdx = 3;
                   } else {
-                    stageBadge = '수확기';
-                    activeStepIdx = 3;
+                    // N단계 동적 매핑: 정식 이후(stepOrder 7~16) 비율에 따라 단계 배분
+                    if (ord <= 8) {
+                      activeStepIdx = 0;
+                    } else if (ord >= 15) {
+                      activeStepIdx = stageCount - 1;
+                    } else {
+                      const ratio = (ord - 8) / 8; // 0.125 ~ 0.875
+                      activeStepIdx = Math.min(
+                        stageCount - 1,
+                        Math.max(0, Math.floor(ratio * stageCount))
+                      );
+                    }
                   }
+                  stageBadge =
+                    cropCultStages[activeStepIdx]?.stage_name ||
+                    cropCultStages[0]?.stage_name ||
+                    '활착기';
                 }
 
                 const cultivarName = String(
@@ -9588,6 +9809,7 @@ export default function UserIntroPage() {
                   periodDotLabel,
                   elapsedDays,
                   activeStepIdx,
+                  cropCultStages,
                   nextTaskTitle,
                   nextTaskDesc,
                   nextTaskDateLabel,
@@ -9611,11 +9833,13 @@ export default function UserIntroPage() {
                 combinedMobileCrops[0] ||
                 null;
 
-              const fourStepShortLabels = ['정식', '생육', '결구', '수확'] as const;
-              const fourStepFullTitles = ['정식기', '생육기', '결구기', '수확기'] as const;
-              const currentStageTitle = activeCropItem
-                ? fourStepFullTitles[activeCropItem.activeStepIdx] || '결구기'
-                : '결구기';
+              const activeCropCultStages = activeCropItem?.cropCultStages || [];
+              const currentStageObj =
+                activeCropCultStages[activeCropItem?.activeStepIdx ?? 0] ||
+                activeCropCultStages[0] ||
+                null;
+              const currentStageTitle =
+                currentStageObj?.stage_name || activeCropItem?.stageBadge || '활착기';
 
               const selectedTaskItem =
                 activeCropItem?.allTasks.find(
@@ -9917,88 +10141,85 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 2) 4단계 생육 진행 바 (정식 ── 생육 ── 결구(현재) ── 수확) */}
-                        <div className="px-2 pt-2 pb-1">
-                          <div className="relative flex items-center justify-between">
-                            {/* 연결선 0 -> 1 */}
-                            <div
-                              className={`absolute left-[18px] w-[calc(33.333%-18px)] top-[12px] h-[2.5px] ${
-                                activeCropItem.activeStepIdx >= 1
-                                  ? 'bg-[#0E712F]'
-                                  : 'bg-[#D1D5DB]'
-                              }`}
-                              aria-hidden="true"
-                            />
-                            {/* 연결선 1 -> 2 */}
-                            <div
-                              className={`absolute left-[33.333%] w-[33.333%] top-[12px] h-[2.5px] ${
-                                activeCropItem.activeStepIdx >= 2
-                                  ? 'bg-[#0E712F]'
-                                  : 'bg-[#D1D5DB]'
-                              }`}
-                              aria-hidden="true"
-                            />
-                            {/* 연결선 2 -> 3 */}
-                            <div
-                              className={`absolute left-[66.666%] right-[18px] top-[12px] h-[2.5px] ${
-                                activeCropItem.activeStepIdx >= 3
-                                  ? 'bg-[#0E712F]'
-                                  : 'bg-[#D1D5DB]'
-                              }`}
-                              aria-hidden="true"
-                            />
-
-                            {fourStepShortLabels.map((stepLabel, sIdx) => {
+                        {/* 2) 작물별 재배 과정 기초 코드 기반 단계 영역 표시 (현재 해당 단계 영역 배경색 강조 구분) */}
+                        <div className="pt-1 pb-0.5">
+                          <div
+                            className="grid gap-2"
+                            style={{
+                              gridTemplateColumns: `repeat(${Math.min(
+                                4,
+                                Math.max(1, activeCropCultStages.length)
+                              )}, minmax(0, 1fr))`,
+                            }}
+                          >
+                            {activeCropCultStages.map((stg, sIdx) => {
                               const isDone = sIdx < activeCropItem.activeStepIdx;
                               const isCurrent = sIdx === activeCropItem.activeStepIdx;
-                              const labelText = isCurrent
-                                ? `${stepLabel}(현재)`
-                                : stepLabel;
+                              const customColor = stg.stage_color || '#0E712F';
                               return (
                                 <button
-                                  key={stepLabel}
+                                  key={stg.stage_code || `${stg.stage_name}-${sIdx}`}
                                   type="button"
                                   onClick={() => {
                                     setGrowthConfirmModalTarget({
                                       reqNo: activeCropItem.request_no,
-                                      stepIdx: sIdx as 0 | 1 | 2 | 3,
+                                      stepIdx: sIdx,
                                     });
                                     goToScheduleStep('growth_check');
                                   }}
-                                  className="relative z-10 flex flex-col items-center gap-2 bg-white px-1.5 cursor-pointer"
+                                  className={`relative rounded-[14px] px-1.5 py-2.5 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer border ${
+                                    isCurrent
+                                      ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-[0_6px_16px_rgba(14,113,47,0.28)] ring-2 ring-[#22C55E]/40'
+                                      : isDone
+                                      ? 'bg-[#EAF6ED] border-[#A7F3D0] text-[#0E712F] hover:bg-[#DCFCE7]'
+                                      : 'bg-[#F3F4F6] border-[#E5E7EB] text-[#6B7280] hover:bg-[#E5E7EB]/60'
+                                  }`}
+                                  style={
+                                    isCurrent && customColor
+                                      ? {
+                                          backgroundColor: '#0E712F',
+                                          borderColor: '#0E712F',
+                                        }
+                                      : undefined
+                                  }
                                 >
-                                  {isDone ? (
-                                    <div className="w-[24px] h-[24px] rounded-full bg-[#0E712F] text-white flex items-center justify-center">
-                                      <svg
-                                        viewBox="0 0 16 16"
-                                        className="w-3.5 h-3.5"
-                                        fill="none"
-                                      >
-                                        <path
-                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                          stroke="#FFFFFF"
-                                          strokeWidth="2.2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                      </svg>
-                                    </div>
-                                  ) : isCurrent ? (
-                                    <div className="w-[26px] h-[26px] rounded-full border-[2.5px] border-[#22C55E] bg-white flex items-center justify-center shadow-2xs">
-                                      <span className="w-[14px] h-[14px] rounded-full bg-[#22C55E]" />
-                                    </div>
-                                  ) : (
-                                    <div className="w-[24px] h-[24px] rounded-full border-[2px] border-[#D1D5DB] bg-white" />
-                                  )}
-
+                                  <div className="flex items-center justify-center gap-1">
+                                    {isDone ? (
+                                      <span className="w-4 h-4 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center shrink-0">
+                                        <svg
+                                          viewBox="0 0 16 16"
+                                          className="w-2.5 h-2.5"
+                                          fill="none"
+                                        >
+                                          <path
+                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                            stroke="#FFFFFF"
+                                            strokeWidth="2.4"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      </span>
+                                    ) : isCurrent ? (
+                                      <span className="px-1.5 py-0.5 rounded-full bg-white text-[#0E712F] text-[10.5px] font-black leading-none tracking-[-0.02em]">
+                                        현재
+                                      </span>
+                                    ) : (
+                                      <span className="text-[11px] font-bold text-[#9CA3AF] leading-none">
+                                        {stg.stage_order || sIdx + 1}단계
+                                      </span>
+                                    )}
+                                  </div>
                                   <span
-                                    className={`text-[14px] tracking-[-0.03em] whitespace-nowrap ${
+                                    className={`text-[13.5px] leading-tight tracking-[-0.03em] break-keep ${
                                       isCurrent
+                                        ? 'font-black text-white'
+                                        : isDone
                                         ? 'font-extrabold text-[#0E712F]'
-                                        : 'font-medium text-[#374151]'
+                                        : 'font-bold text-[#6B7280]'
                                     }`}
                                   >
-                                    {labelText}
+                                    {stg.stage_name}
                                   </span>
                                 </button>
                               );
@@ -10959,63 +11180,44 @@ export default function UserIntroPage() {
                     {mobileScheduleStep === 'growth_check' &&
                       activeCropItem &&
                       (() => {
-                        const stepIdx: 0 | 1 | 2 | 3 =
+                        const stepIdx: number =
                           growthConfirmModalTarget?.stepIdx !== undefined
                             ? growthConfirmModalTarget.stepIdx
                             : activeCropItem.activeStepIdx;
-                        const confirmSpecs = [
-                          {
-                            idx: 0 as const,
-                            title: '정식 시작일 확인',
-                            prompt: `${activeCropItem.shortName} 모종을 본밭에 심는 정식이 시작되었나요?`,
-                            startedLabel: '네, 정식이 시작되었습니다.',
-                            notYetLabel: '아직 정식이 시작되지 않았습니다.',
-                            unknownLabel: '잘 모르겠습니다.',
-                            dateLabel: '실제 정식 시작일',
-                            defaultYmd: activeCropItem.basePlantingYmd,
-                            targetItemId: 'SCH-07',
-                          },
-                          {
-                            idx: 1 as const,
-                            title: '생육 시작일 확인',
-                            prompt: `${activeCropItem.shortName}의 본엽이 자라면서 생육이 시작되었나요?`,
-                            startedLabel: '네, 생육이 시작되었습니다.',
-                            notYetLabel: '아직 생육이 시작되지 않았습니다.',
-                            unknownLabel: '잘 모르겠습니다.',
-                            dateLabel: '실제 생육 시작일',
-                            defaultYmd: addDaysToYmd(
-                              activeCropItem.basePlantingYmd,
-                              14
-                            ),
-                            targetItemId: 'SCH-09',
-                          },
-                          {
-                            idx: 2 as const,
-                            title: '결구 시작일 확인',
-                            prompt: `${activeCropItem.shortName}의 안쪽 잎이 모이면서 결구가 시작되었나요?`,
-                            startedLabel: '네, 결구가 시작되었습니다.',
-                            notYetLabel: '아직 결구가 시작되지 않았습니다.',
-                            unknownLabel: '잘 모르겠습니다.',
-                            dateLabel: '실제 결구 시작일',
-                            defaultYmd: addDaysToYmd(
-                              activeCropItem.basePlantingYmd,
-                              30
-                            ),
-                            targetItemId: 'SCH-12',
-                          },
-                          {
-                            idx: 3 as const,
-                            title: '수확 시작일 확인',
-                            prompt: `${activeCropItem.shortName}의 안쪽 잎이 단단히 차서 수확이 시작되었나요?`,
-                            startedLabel: '네, 수확이 시작되었습니다.',
-                            notYetLabel: '아직 수확이 시작되지 않았습니다.',
-                            unknownLabel: '잘 모르겠습니다.',
-                            dateLabel: '실제 수확 시작일',
-                            defaultYmd: activeCropItem.expectedHarvestYmd,
-                            targetItemId: 'SCH-15',
-                          },
-                        ];
-                        const spec = confirmSpecs[stepIdx] || confirmSpecs[2];
+                        const targetStageObj =
+                          activeCropCultStages[stepIdx] ||
+                          activeCropCultStages[0] || {
+                            stage_code: 'CSTG-DEFAULT-01',
+                            stage_order: stepIdx + 1,
+                            stage_name: '생육',
+                            description: '',
+                          };
+                        const stgName = targetStageObj.stage_name || '생육';
+                        const totalStgs = Math.max(1, activeCropCultStages.length);
+                        const defaultOffsets = [0, 14, 30, 60, 75, 85];
+                        const computedDefaultYmd =
+                          stepIdx === 0
+                            ? activeCropItem.basePlantingYmd
+                            : stepIdx >= totalStgs - 1
+                            ? activeCropItem.expectedHarvestYmd
+                            : addDaysToYmd(
+                                activeCropItem.basePlantingYmd,
+                                defaultOffsets[stepIdx] ?? stepIdx * 15
+                              );
+                        const targetItemIds = ['SCH-07', 'SCH-09', 'SCH-12', 'SCH-15'];
+                        const spec = {
+                          idx: stepIdx,
+                          title: `${stgName} 시작일 확인`,
+                          prompt: `${activeCropItem.shortName}의 [${stgName}] 단계가 시작되었나요?`,
+                          startedLabel: `네, ${stgName} 단계가 시작되었습니다.`,
+                          notYetLabel: `아직 ${stgName} 단계가 시작되지 않았습니다.`,
+                          unknownLabel: '잘 모르겠습니다.',
+                          dateLabel: `실제 ${stgName} 시작일`,
+                          defaultYmd: computedDefaultYmd,
+                          targetItemId:
+                            targetItemIds[Math.min(targetItemIds.length - 1, stepIdx)] ||
+                            'SCH-09',
+                        };
                         const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
                         const effYmd =
                           growthConfirmDateInput &&
@@ -29635,7 +29837,7 @@ export default function UserIntroPage() {
           const nextStage = uncompleted[0] || evaluated[evaluated.length - 1] || null;
           const isAllDone = uncompleted.length === 0 && evaluated.length > 0;
 
-          let computedActiveIdx: 0 | 1 | 2 | 3 = 2;
+          let computedActiveIdx = 2;
           if (isAllDone) {
             computedActiveIdx = 3;
           } else if (nextStage) {
@@ -29646,7 +29848,7 @@ export default function UserIntroPage() {
             else computedActiveIdx = 3;
           }
 
-          const stepIdx: 0 | 1 | 2 | 3 =
+          const stepIdx =
             growthConfirmModalTarget.stepIdx !== undefined
               ? growthConfirmModalTarget.stepIdx
               : computedActiveIdx;
