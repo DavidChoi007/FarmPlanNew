@@ -10608,15 +10608,15 @@ export default function UserIntroPage() {
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
                             }}
-                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                            className="w-full h-[90px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
                           >
                             <div className="flex items-center gap-3.5">
-                              <Calendar className="w-6 h-6 text-[#16A34A] stroke-[2.1]" />
-                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                              <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
+                              <span className="text-[20px] font-black text-white tracking-[-0.03em]">
                                 재배일정 전체보기
                               </span>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                            <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
                           </button>
 
                           <button
