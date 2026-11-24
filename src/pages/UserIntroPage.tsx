@@ -10615,38 +10615,29 @@ export default function UserIntroPage() {
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setGrowthConfirmModalTarget({
-                                reqNo: activeCropItem.request_no,
-                                stepIdx: activeCropItem.activeStepIdx,
-                              });
-                              goToScheduleStep('growth_check');
-                            }}
-                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                            disabled
+                            aria-disabled="true"
+                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 flex items-center justify-between gap-3 opacity-50 cursor-not-allowed select-none"
                           >
                             <div className="flex items-center gap-3.5">
-                              <Sprout className="w-6 h-6 text-[#16A34A] stroke-[2.1]" />
-                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                              <Sprout className="w-6 h-6 text-[#9CA3AF] stroke-[2.1]" />
+                              <span className="text-[18px] font-extrabold text-[#9CA3AF] tracking-[-0.03em]">
                                 생육단계 확인
                               </span>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                            <ChevronRight className="w-5 h-5 text-[#9CA3AF] stroke-[2.2]" />
                           </button>
 
                           <button
                             type="button"
-                            onClick={() => {
-                              if (activeCropItem.primaryNextTask) {
-                                prepareTaskForExecAndLog(activeCropItem.primaryNextTask);
-                              }
-                              goToScheduleStep('work_log');
-                            }}
-                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 flex items-center justify-between gap-3 shadow-[0_2px_8px_rgba(15,23,42,0.02)] cursor-pointer transition"
+                            disabled
+                            aria-disabled="true"
+                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 flex items-center justify-between gap-3 opacity-50 cursor-not-allowed select-none"
                           >
                             <div className="flex items-center gap-3.5">
                               <svg
                                 viewBox="0 0 24 24"
-                                className="w-6 h-6 text-[#16A34A]"
+                                className="w-6 h-6 text-[#9CA3AF]"
                                 fill="none"
                               >
                                 <rect
@@ -10665,11 +10656,11 @@ export default function UserIntroPage() {
                                   strokeLinecap="round"
                                 />
                               </svg>
-                              <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
+                              <span className="text-[18px] font-extrabold text-[#9CA3AF] tracking-[-0.03em]">
                                 작업기록
                               </span>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2]" />
+                            <ChevronRight className="w-5 h-5 text-[#9CA3AF] stroke-[2.2]" />
                           </button>
                         </div>
                       </div>
