@@ -371,6 +371,10 @@ export default function UserIntroPage() {
     'list' | 'detail' | 'tasks' | 'task_exec' | 'work_log' | 'growth_check'
   >('list');
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
+  const [mobileFullScheduleFilterTab, setMobileFullScheduleFilterTab] = useState<
+    'ALL' | 'WORK' | 'FERTILIZER' | 'PEST'
+  >('ALL');
+  const [isMobileScheduleEditMode, setIsMobileScheduleEditMode] = useState<boolean>(false);
   const [selectedScheduleTaskId, setSelectedScheduleTaskId] = useState<string>('');
   const [workLogSelectedMaterialName, setWorkLogSelectedMaterialName] = useState<string>('복합비료 15-15-15');
   const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/fertilizers/FERT-PRD-01-thumb.png');
@@ -9730,10 +9734,21 @@ export default function UserIntroPage() {
 
                 const enrichTaskItem = (stg: EvalStage, sIdx: number) => {
                   const combinedTitle = `${stg.stageGroupName} ${stg.subItemName}`;
-                  const isPest = /병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle);
-                  const isFert = /시비|밑거름|추비|웃거름|비료|토양개량|생육 촉진/.test(
-                    combinedTitle
-                  );
+                  const ord = Number(stg.stepOrder || 0);
+                  const isPest =
+                    /병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle) ||
+                    ord === 6 ||
+                    ord === 12 ||
+                    ord === 13 ||
+                    ord === 14;
+                  const isFert =
+                    !isPest &&
+                    (/시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*점검|생육\s*촉진/.test(
+                      combinedTitle
+                    ) ||
+                      ord === 2 ||
+                      ord === 9 ||
+                      ord === 11);
                   const iconType: 'FERTILIZER' | 'PEST' | 'WORK' = isPest
                     ? 'PEST'
                     : isFert
@@ -10303,6 +10318,8 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
+                              setMobileFullScheduleFilterTab('ALL');
+                              setIsMobileScheduleEditMode(false);
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
                             }}
@@ -10379,82 +10396,271 @@ export default function UserIntroPage() {
                       </div>
                     )}
 
-                    {/* ==================== [페이지 3: 농작업 목록 페이지 (첨부 이미지 3번)] ==================== */}
-                    {mobileScheduleStep === 'tasks' && activeCropItem && (
-                      <div className="mt-3 space-y-5 flex-1">
-                        <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
-                          농작업 목록
-                        </h1>
+                    {/* ==================== [페이지 3: 전체 재배일정 보기 페이지 (첨부 이미지 1:1 구성: 전체일정 / 농작업 / 시비관리 / 병해충 탭)] ==================== */}
+                    {mobileScheduleStep === 'tasks' &&
+                      activeCropItem &&
+                      (() => {
+                        const filteredScheduleTasks = activeCropItem.allTasks.filter(
+                          (t) => {
+                            if (mobileFullScheduleFilterTab === 'WORK') {
+                              return t.iconType === 'WORK';
+                            }
+                            if (mobileFullScheduleFilterTab === 'FERTILIZER') {
+                              return t.iconType === 'FERTILIZER';
+                            }
+                            if (mobileFullScheduleFilterTab === 'PEST') {
+                              return t.iconType === 'PEST';
+                            }
+                            return true;
+                          }
+                        );
 
-                        {/* 할 일 (N) / 완료 (N) 캡슐 탭 */}
-                        <div className="rounded-full bg-[#F3F4F6] p-1 grid grid-cols-2">
-                          <button
-                            type="button"
-                            onClick={() => setMobileScheduleTaskTab('todo')}
-                            className={`h-[44px] rounded-full text-[16.5px] tracking-[-0.02em] cursor-pointer transition ${
-                              mobileScheduleTaskTab === 'todo'
-                                ? 'bg-[#0E712F] text-white font-extrabold shadow-xs'
-                                : 'bg-transparent text-[#111827] font-bold'
-                            }`}
-                          >
-                            할 일 ({activeCropItem.todoTasks.length})
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setMobileScheduleTaskTab('done')}
-                            className={`h-[44px] rounded-full text-[16.5px] tracking-[-0.02em] cursor-pointer transition ${
-                              mobileScheduleTaskTab === 'done'
-                                ? 'bg-[#0E712F] text-white font-extrabold shadow-xs'
-                                : 'bg-transparent text-[#111827] font-bold'
-                            }`}
-                          >
-                            완료 ({activeCropItem.doneTasks.length})
-                          </button>
-                        </div>
+                        const firstUpcomingInFiltered =
+                          filteredScheduleTasks.find((t) => !t.isRecognized) ||
+                          null;
 
-                        {/* 농작업 카드 리스트 */}
-                        <div className="space-y-3">
-                          {(mobileScheduleTaskTab === 'todo'
-                            ? activeCropItem.todoTasks
-                            : activeCropItem.doneTasks
-                          ).map((task, idx) => {
-                            const isHighlightCard =
-                              mobileScheduleTaskTab === 'todo' && idx === 0;
-                            return (
+                        const filterTabs: Array<{
+                          key: 'ALL' | 'WORK' | 'FERTILIZER' | 'PEST';
+                          label: string;
+                        }> = [
+                          { key: 'ALL', label: '전체일정' },
+                          { key: 'WORK', label: '농작업' },
+                          { key: 'FERTILIZER', label: '시비관리' },
+                          { key: 'PEST', label: '병해충' },
+                        ];
+
+                        return (
+                          <div className="mt-3 flex-1 flex flex-col justify-between space-y-5">
+                            <div className="space-y-4">
+                              {/* 1) 상단 타이틀 ({작물명} 재배일정) + 우측 [↓ 일정표(PDF)] 버튼 */}
+                              <div className="flex items-center justify-between gap-2">
+                                <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                  {activeCropItem.shortName} 재배일정
+                                </h1>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (typeof window !== 'undefined') {
+                                      window.print();
+                                    }
+                                  }}
+                                  className="h-[34px] px-3 rounded-full border border-[#16A34A] bg-white hover:bg-[#EFF8F1] text-[#0E712F] text-[13px] font-extrabold flex items-center gap-1.5 shrink-0 cursor-pointer transition shadow-2xs"
+                                >
+                                  <svg
+                                    viewBox="0 0 18 18"
+                                    className="w-3.5 h-3.5 text-[#0E712F] shrink-0"
+                                    fill="none"
+                                  >
+                                    <path
+                                      d="M9 3V11.5M9 11.5L5.8 8.3M9 11.5L12.2 8.3M3.5 13.5V14.2C3.5 14.7 3.9 15 4.4 15H13.6C14.1 15 14.5 14.7 14.5 14.2V13.5"
+                                      stroke="currentColor"
+                                      strokeWidth="1.9"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                  <span>일정표(PDF)</span>
+                                </button>
+                              </div>
+
+                              {/* 2) 4개 카테고리 캡슐 탭 (전체일정 / 농작업 / 시비관리 / 병해충) */}
+                              <div className="rounded-full bg-[#F3F4F6] border border-[#E5E7EB] p-1 grid grid-cols-4 gap-0.5">
+                                {filterTabs.map((tab) => {
+                                  const isSelected =
+                                    mobileFullScheduleFilterTab === tab.key;
+                                  return (
+                                    <button
+                                      key={tab.key}
+                                      type="button"
+                                      onClick={() =>
+                                        setMobileFullScheduleFilterTab(tab.key)
+                                      }
+                                      className={`h-[38px] rounded-full text-[13.5px] tracking-[-0.03em] flex items-center justify-center cursor-pointer transition whitespace-nowrap ${
+                                        isSelected
+                                          ? 'bg-[#0E712F] text-white font-extrabold shadow-2xs'
+                                          : 'bg-transparent text-[#374151] font-bold hover:text-[#111827]'
+                                      }`}
+                                    >
+                                      {tab.label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* 일정 수정 모드 안내 배너 */}
+                              {isMobileScheduleEditMode && (
+                                <div className="rounded-[12px] border border-[#16A34A]/40 bg-[#EFF8F1] px-3.5 py-2.5 flex items-center justify-between gap-2">
+                                  <span className="text-[13px] font-bold text-[#0E712F] tracking-[-0.02em]">
+                                    각 생육과정의 예정일을 터치하여 바로 수정할 수 있습니다.
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setIsMobileScheduleEditMode(false)
+                                    }
+                                    className="px-2.5 py-1 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold shrink-0 cursor-pointer"
+                                  >
+                                    완료
+                                  </button>
+                                </div>
+                              )}
+
+                              {/* 3) 타임라인 생육과정 리스트 */}
+                              <div className="relative pt-1">
+                                {filteredScheduleTasks.length > 1 && (
+                                  <div
+                                    className="absolute left-[18px] top-[24px] bottom-[24px] w-[1.5px] bg-[#E5E7EB]"
+                                    aria-hidden="true"
+                                  />
+                                )}
+
+                                {filteredScheduleTasks.length === 0 ? (
+                                  <div className="rounded-[16px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center text-[14px] font-semibold text-[#6B7280]">
+                                    해당 분류의 생육과정 일정이 없습니다.
+                                  </div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    {filteredScheduleTasks.map((task) => {
+                                      const isDone = Boolean(task.isRecognized);
+                                      const isNextTarget =
+                                        !isDone &&
+                                        firstUpcomingInFiltered?.itemId ===
+                                          task.itemId;
+                                      const cleanShortTitle =
+                                        String(task.shortTitle || '')
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim() || task.shortTitle;
+
+                                      return (
+                                        <div
+                                          key={task.itemId}
+                                          onClick={() => {
+                                            if (isMobileScheduleEditMode) return;
+                                            prepareTaskForExecAndLog(task);
+                                            goToScheduleStep('task_exec');
+                                          }}
+                                          className={`relative z-10 w-full rounded-[16px] px-2.5 py-3 flex items-center justify-between gap-2 transition ${
+                                            isMobileScheduleEditMode
+                                              ? 'cursor-default'
+                                              : 'cursor-pointer'
+                                          } ${
+                                            isNextTarget
+                                              ? 'bg-[#EFF8F1] border border-[#DCFCE7] shadow-2xs'
+                                              : 'bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
+                                          }`}
+                                        >
+                                          {/* 좌측 아이콘 + 생육과정명 */}
+                                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            {isDone ? (
+                                              <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                                <svg
+                                                  viewBox="0 0 16 16"
+                                                  className="w-3 h-3"
+                                                  fill="none"
+                                                >
+                                                  <path
+                                                    d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                    stroke="#FFFFFF"
+                                                    strokeWidth="2.4"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                </svg>
+                                              </span>
+                                            ) : isNextTarget ? (
+                                              <span className="w-[22px] h-[22px] rounded-full border-[2.4px] border-[#16A34A] bg-white shrink-0 shadow-2xs" />
+                                            ) : (
+                                              <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
+                                            )}
+
+                                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                              {cleanShortTitle}
+                                            </span>
+                                          </div>
+
+                                          {/* 우측 날짜 + 상태 배지 (완료 / 예정) + 화살표 */}
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            {isMobileScheduleEditMode ? (
+                                              <input
+                                                type="date"
+                                                value={task.effDate}
+                                                onClick={(e) =>
+                                                  e.stopPropagation()
+                                                }
+                                                onChange={(e) => {
+                                                  const nextYmd =
+                                                    e.target.value;
+                                                  if (!nextYmd) return;
+                                                  const draftKey = `${activeCropItem.request_no}__${task.itemId}`;
+                                                  setInlineStageDateDrafts(
+                                                    (prev) => ({
+                                                      ...prev,
+                                                      [draftKey]: nextYmd,
+                                                    })
+                                                  );
+                                                }}
+                                                className="h-[32px] px-2 rounded-lg border border-[#16A34A] bg-white text-[13px] font-bold text-[#111827]"
+                                              />
+                                            ) : (
+                                              <span className="text-[14.5px] font-medium text-[#1F2937] tracking-[-0.02em] whitespace-nowrap">
+                                                {task.dateLabel}
+                                              </span>
+                                            )}
+
+                                            {isDone ? (
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[12.5px] font-extrabold whitespace-nowrap">
+                                                완료
+                                              </span>
+                                            ) : isNextTarget ? (
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#FEF08A] text-[#111827] text-[12.5px] font-extrabold whitespace-nowrap">
+                                                예정
+                                              </span>
+                                            ) : (
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#374151] text-[12.5px] font-bold whitespace-nowrap">
+                                                예정
+                                              </span>
+                                            )}
+
+                                            <ChevronRight className="w-4 h-4 text-[#111827] stroke-[2.3] shrink-0" />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* 4) 하단 [📅 일정 수정하기] 아웃라인 캡슐 버튼 */}
+                            <div className="pt-3">
                               <button
-                                key={task.itemId}
                                 type="button"
-                                onClick={() => {
-                                  prepareTaskForExecAndLog(task);
-                                  goToScheduleStep('task_exec');
-                                }}
-                                className={`w-full rounded-[18px] p-4 flex items-center justify-between gap-3 text-left cursor-pointer transition ${
-                                  isHighlightCard
-                                    ? 'bg-[#EFF8F1] border border-[#DCFCE7]'
-                                    : 'bg-white border border-[#E5E7EB] hover:border-[#0E712F]'
+                                onClick={() =>
+                                  setIsMobileScheduleEditMode((prev) => !prev)
+                                }
+                                className={`w-full h-[52px] rounded-full border-[1.6px] border-[#16A34A] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs ${
+                                  isMobileScheduleEditMode
+                                    ? 'bg-[#0E712F] text-white'
+                                    : 'bg-white hover:bg-[#EFF8F1] text-[#0E712F]'
                                 }`}
                               >
-                                <div className="flex items-center gap-3.5 min-w-0">
-                                  {renderTaskCategoryIcon(task.iconType)}
-                                  <div className="min-w-0 space-y-1">
-                                    <div className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
-                                      {task.shortTitle}
-                                    </div>
-                                    <div className="text-[16px] font-medium text-[#111827] tracking-[-0.02em] flex items-center gap-3">
-                                      <span>{task.dateLabel}</span>
-                                      <span className="font-semibold text-[#374151]">
-                                        {task.ddayLabel}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
+                                <Calendar
+                                  className={`w-5 h-5 stroke-[2.2] ${
+                                    isMobileScheduleEditMode
+                                      ? 'text-white'
+                                      : 'text-[#0E712F]'
+                                  }`}
+                                />
+                                <span>
+                                  {isMobileScheduleEditMode
+                                    ? '일정 수정 완료'
+                                    : '일정 수정하기'}
+                                </span>
                               </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                     {/* ==================== [페이지 4: 농작업 실행하기 페이지 (첨부 이미지 4번)] ==================== */}
                     {mobileScheduleStep === 'task_exec' &&
