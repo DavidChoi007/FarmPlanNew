@@ -10830,8 +10830,16 @@ export default function UserIntroPage() {
                                   <div className="space-y-1">
                                     {filteredScheduleTasks.map((task) => {
                                       const isDone = Boolean(task.isRecognized);
+                                      const isPastDate = Boolean(
+                                        task.effDate &&
+                                          /^\d{4}-\d{2}-\d{2}$/.test(
+                                            task.effDate
+                                          ) &&
+                                          task.effDate < todayKstYmd
+                                      );
                                       const isNextTarget =
                                         !isDone &&
+                                        !isPastDate &&
                                         firstUpcomingInFiltered?.itemId ===
                                           task.itemId;
                                       const isRadioSelected =
@@ -10839,6 +10847,8 @@ export default function UserIntroPage() {
                                       const isEditingThisItem =
                                         isMobileScheduleEditMode &&
                                         isRadioSelected;
+                                      const isDimmedPast =
+                                        isPastDate && !isRadioSelected;
                                       const cleanShortTitle =
                                         String(task.shortTitle || '')
                                           .replace(/\s*\([^)]*\)/g, '')
@@ -10859,6 +10869,8 @@ export default function UserIntroPage() {
                                               ? 'cursor-pointer bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs'
                                               : isNextTarget
                                               ? 'cursor-pointer bg-[#EFF8F1]/80 border border-[#DCFCE7] shadow-2xs'
+                                              : isDimmedPast
+                                              ? 'cursor-pointer bg-transparent border border-transparent border-b-[#F3F4F6] opacity-55'
                                               : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
                                           }`}
                                         >
@@ -10897,6 +10909,26 @@ export default function UserIntroPage() {
                                                 <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
                                                   <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
                                                 </span>
+                                              ) : isDimmedPast ? (
+                                                isDone ? (
+                                                  <span className="w-[22px] h-[22px] rounded-full bg-[#D1D5DB] text-white flex items-center justify-center shrink-0">
+                                                    <svg
+                                                      viewBox="0 0 16 16"
+                                                      className="w-3 h-3"
+                                                      fill="none"
+                                                    >
+                                                      <path
+                                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                        stroke="#FFFFFF"
+                                                        strokeWidth="2.4"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                      />
+                                                    </svg>
+                                                  </span>
+                                                ) : (
+                                                  <span className="w-[22px] h-[22px] rounded-full border-[2px] border-[#D1D5DB] bg-[#F9FAFB] shrink-0" />
+                                                )
                                               ) : isDone ? (
                                                 <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
                                                   <svg
@@ -10920,7 +10952,13 @@ export default function UserIntroPage() {
                                               )}
                                             </button>
 
-                                            <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                            <span
+                                              className={`text-[16.5px] tracking-[-0.03em] truncate ${
+                                                isDimmedPast
+                                                  ? 'font-bold text-[#9CA3AF]'
+                                                  : 'font-black text-[#111827]'
+                                              }`}
+                                            >
                                               {cleanShortTitle}
                                             </span>
                                           </div>
@@ -10953,12 +10991,22 @@ export default function UserIntroPage() {
                                                 className="h-[34px] px-2.5 rounded-lg border-2 border-[#0E712F] bg-white text-[13.5px] font-extrabold text-[#111827] shadow-2xs"
                                               />
                                             ) : (
-                                              <span className="text-[14.5px] font-medium text-[#1F2937] tracking-[-0.02em] whitespace-nowrap">
+                                              <span
+                                                className={`text-[14.5px] font-medium tracking-[-0.02em] whitespace-nowrap ${
+                                                  isDimmedPast
+                                                    ? 'text-[#9CA3AF]'
+                                                    : 'text-[#1F2937]'
+                                                }`}
+                                              >
                                                 {task.dateLabel}
                                               </span>
                                             )}
 
-                                            {isDone ? (
+                                            {isDimmedPast ? (
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF] text-[12.5px] font-bold whitespace-nowrap">
+                                                {isDone ? '완료' : '예정'}
+                                              </span>
+                                            ) : isDone ? (
                                               <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[12.5px] font-extrabold whitespace-nowrap">
                                                 완료
                                               </span>
@@ -10972,7 +11020,13 @@ export default function UserIntroPage() {
                                               </span>
                                             )}
 
-                                            <ChevronRight className="w-4 h-4 text-[#111827] stroke-[2.3] shrink-0" />
+                                            <ChevronRight
+                                              className={`w-4 h-4 stroke-[2.3] shrink-0 ${
+                                                isDimmedPast
+                                                  ? 'text-[#D1D5DB]'
+                                                  : 'text-[#111827]'
+                                              }`}
+                                            />
                                           </div>
                                         </div>
                                       );
