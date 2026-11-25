@@ -1236,13 +1236,12 @@ export default function UserIntroPage() {
 
     // 2. 시비 판정
     if (
-      /시비|추비|웃거름|밑거름|비료|퇴비|엽면|토양\s*개량|생장\s*관리|생육\s*점검|영양/.test(
+      /시비|추비|웃거름|밑거름|비료|퇴비|엽면|토양\s*개량|생장\s*관리|영양/.test(
         combined
       ) ||
       /웃거름|밑거름|추비|복합비료|시비/.test(rawContent) ||
       stepOrd === 2 ||
-      stepOrd === 9 ||
-      stepOrd === 11
+      stepOrd === 9
     ) {
       return { categoryKey: 'FERTILIZER', categorySuffix: '(시비)' };
     }
@@ -9820,12 +9819,11 @@ export default function UserIntroPage() {
                     ord === 14;
                   const isFert =
                     !isPest &&
-                    (/시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*점검|생육\s*촉진/.test(
+                    (/시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*촉진/.test(
                       combinedTitle
                     ) ||
                       ord === 2 ||
-                      ord === 9 ||
-                      ord === 11);
+                      ord === 9);
                   const iconType: 'FERTILIZER' | 'PEST' | 'WORK' = isPest
                     ? 'PEST'
                     : isFert
