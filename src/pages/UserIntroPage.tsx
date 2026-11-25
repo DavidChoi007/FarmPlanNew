@@ -10807,7 +10807,7 @@ export default function UserIntroPage() {
                           </button>
                         </div>
 
-                        {/* 5) 하단 3개 메뉴 버튼 (재배일정 전체보기 / 생육단계 확인 / 작업기록) */}
+                        {/* 5) 하단 메뉴 버튼 (재배일정 (농작업별) / 재배일정 (생육단계별) / 생육단계 확인 / 작업기록) */}
                         <div className="space-y-2.5 pt-1">
                           <button
                             type="button"
@@ -10832,7 +10832,21 @@ export default function UserIntroPage() {
                             <div className="flex items-center gap-3.5">
                               <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
                               <span className="text-[20px] font-black text-white tracking-[-0.03em]">
-                                재배일정 전체보기
+                                재배일정 (농작업별)
+                              </span>
+                            </div>
+                            <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {}}
+                            className="w-full h-[72px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
+                              <span className="text-[20px] font-black text-white tracking-[-0.03em]">
+                                재배일정 (생육단계별)
                               </span>
                             </div>
                             <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
