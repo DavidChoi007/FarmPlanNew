@@ -10999,10 +10999,11 @@ export default function UserIntroPage() {
                           const stgName =
                             cStages[bIdx - 1]?.stage_name || `${bIdx}단계`;
                           let mLabel = `${stgName} 진입`;
-                          if (bIdx === 1 || /활착|정식/.test(stgName)) mLabel = '정식';
-                          else if (/외엽|신장|영양|초기|줄기/.test(stgName))
+                          if (bIdx === 1 || /활착|정식|발아/.test(stgName)) {
+                            mLabel = stgName.includes('발아') ? '발아·활착' : '정식';
+                          } else if (bIdx === 2) {
                             mLabel = '새잎 생장';
-                          else if (/결구|비대|개화|착과|성숙/.test(stgName)) {
+                          } else if (/결구|비대|개화|착과|성숙/.test(stgName)) {
                             if (stgName.includes('결구')) mLabel = '결구 시작';
                             else if (stgName.includes('비대')) mLabel = '비대 시작';
                             else if (
@@ -11010,7 +11011,11 @@ export default function UserIntroPage() {
                               stgName.includes('개화')
                             )
                               mLabel = '개화·착과';
-                          } else if (/수확/.test(stgName)) mLabel = '수확 적기 도달';
+                          } else if (/엽신장|신장/.test(stgName)) {
+                            mLabel = '본격 잎 신장';
+                          } else if (/수확/.test(stgName)) {
+                            mLabel = '수확 적기 도달';
+                          }
                           return {
                             bucketIdx: bIdx,
                             milestoneId: `MILESTONE_${bIdx}`,
@@ -11075,8 +11080,12 @@ export default function UserIntroPage() {
                           cIdx: number
                         ): string => {
                           const sName = String(stageName || '');
-                          if (cIdx === 0 || /활착|정식/.test(sName)) return '정식';
-                          if (/외엽|신장|영양|초기|줄기/.test(sName)) return '새잎 생장';
+                          if (cIdx === 0 || /활착|정식|발아/.test(sName)) {
+                            return sName.includes('발아') ? '발아·활착' : '정식';
+                          }
+                          if (cIdx === 1) {
+                            return '새잎 생장';
+                          }
                           if (/결구|비대|개화|착과|성숙/.test(sName)) {
                             if (sName.includes('결구')) return '결구 시작';
                             if (sName.includes('비대')) return '비대 시작';
@@ -11084,6 +11093,7 @@ export default function UserIntroPage() {
                               return '개화·착과';
                             return `${sName} 진입`;
                           }
+                          if (/엽신장|신장/.test(sName)) return '본격 잎 신장';
                           if (/수확/.test(sName)) return '수확 적기 도달';
                           return `${sName} 진입`;
                         };
@@ -11338,8 +11348,10 @@ export default function UserIntroPage() {
                                         key={`phase-sec-${section.bucketIdx}`}
                                         className="space-y-2"
                                       >
-                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 오늘 날짜 기준으로 기본 저장일이 지난 경우 오렌지색 "확인요망", 재배자가 확인하여 날짜 재저장 시 "확인완료") */}
+                                        {/* 생육단계 전환 마일스톤 라인 (농작업 탭과 전체일정 탭에서만 표시하여 탭 간 중복 제거 + 오늘 기준 기본 저장일이 지난 경우 오렌지색 "확인요망", 날짜 재저장 시 "확인완료") */}
                                         {section.milestoneLabel &&
+                                          (mobileFullScheduleFilterTab === 'WORK' ||
+                                            mobileFullScheduleFilterTab === 'ALL') &&
                                           (() => {
                                             const stepIdxVal = Math.max(
                                               0,
