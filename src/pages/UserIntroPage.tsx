@@ -11047,8 +11047,8 @@ export default function UserIntroPage() {
                                 onClick={async () => {
                                   if (!isMobileScheduleEditMode) {
                                     if (!selectedEditTaskObj) {
-                                      setMobileScheduleRecalcNotice(
-                                        '오늘 이후 일정 중 수정할 항목의 왼쪽 원형(라디오) 버튼을 먼저 1개 선택해 주세요.'
+                                      window.alert(
+                                        '수정하고자 하는 항목을 선택해 주세요'
                                       );
                                       return;
                                     }
@@ -11061,7 +11061,7 @@ export default function UserIntroPage() {
                                     ) {
                                       setMobileSelectedEditTaskId('');
                                       setMobileEditTargetDateYmd('');
-                                      setMobileScheduleRecalcNotice(
+                                      window.alert(
                                         '현재 날짜 기준으로 지난 일정은 수정할 수 없습니다.'
                                       );
                                       return;
