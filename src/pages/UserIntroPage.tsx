@@ -10843,12 +10843,13 @@ export default function UserIntroPage() {
                                         firstUpcomingInFiltered?.itemId ===
                                           task.itemId;
                                       const isRadioSelected =
+                                        !isPastDate &&
                                         mobileSelectedEditTaskId === task.itemId;
                                       const isEditingThisItem =
+                                        !isPastDate &&
                                         isMobileScheduleEditMode &&
                                         isRadioSelected;
-                                      const isDimmedPast =
-                                        isPastDate && !isRadioSelected;
+                                      const isDimmedPast = isPastDate;
                                       const cleanShortTitle =
                                         String(task.shortTitle || '')
                                           .replace(/\s*\([^)]*\)/g, '')
@@ -10874,13 +10875,16 @@ export default function UserIntroPage() {
                                               : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
                                           }`}
                                         >
-                                          {/* 좌측 라디오 선택 버튼 (클릭 시 세부정보 이동 없이 해당 1개 항목만 선택) + 생육과정명 */}
+                                          {/* 좌측 라디오 선택 버튼 (지난 날짜는 선택/수정 불가, 오늘 이후 항목만 1개 선택 가능) + 생육과정명 */}
                                           <div className="flex items-center gap-3 min-w-0 flex-1">
                                             <button
                                               type="button"
+                                              disabled={isPastDate}
+                                              aria-disabled={isPastDate}
                                               aria-label={`${cleanShortTitle} 일정 수정 대상 선택`}
                                               onClick={(e) => {
                                                 e.stopPropagation();
+                                                if (isPastDate) return;
                                                 setMobileScheduleRecalcNotice('');
                                                 if (
                                                   mobileSelectedEditTaskId ===
@@ -10903,7 +10907,11 @@ export default function UserIntroPage() {
                                                   }
                                                 }
                                               }}
-                                              className="p-1 -m-1 flex items-center justify-center shrink-0 cursor-pointer focus:outline-none"
+                                              className={`p-1 -m-1 flex items-center justify-center shrink-0 focus:outline-none ${
+                                                isPastDate
+                                                  ? 'cursor-not-allowed'
+                                                  : 'cursor-pointer'
+                                              }`}
                                             >
                                               {isRadioSelected ? (
                                                 <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
@@ -10963,11 +10971,12 @@ export default function UserIntroPage() {
                                             </span>
                                           </div>
 
-                                          {/* 우측 날짜(선택된 1개 항목만 수정 가능) + 상태 배지 (완료 / 예정) + 화살표 */}
+                                          {/* 우측 날짜(선택된 1개 항목만 수정 가능, 확인 버튼 클릭 시 컨펌 후 반영) + 상태 배지 (완료 / 예정) + 화살표 */}
                                           <div className="flex items-center gap-2 shrink-0">
                                             {isEditingThisItem ? (
                                               <input
                                                 type="date"
+                                                min={todayKstYmd}
                                                 value={
                                                   mobileEditTargetDateYmd ||
                                                   task.effDate
@@ -10980,11 +10989,6 @@ export default function UserIntroPage() {
                                                     e.target.value;
                                                   if (!nextYmd) return;
                                                   setMobileEditTargetDateYmd(
-                                                    nextYmd
-                                                  );
-                                                  applySingleTaskDateChangeWithClimateRecalc(
-                                                    activeCropItem.request_no,
-                                                    task,
                                                     nextYmd
                                                   );
                                                 }}
@@ -11036,7 +11040,7 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 4) 하단 [📅 일정 수정하기] 아웃라인 캡슐 버튼 (선택된 1개 항목만 수정 활성화 및 기후 연동 후속 일정 재계산) */}
+                            {/* 4) 하단 [📅 일정 수정하기 / 일정 수정 완료] 아웃라인 캡슐 버튼 */}
                             <div className="pt-3">
                               <button
                                 type="button"
@@ -11044,7 +11048,21 @@ export default function UserIntroPage() {
                                   if (!isMobileScheduleEditMode) {
                                     if (!selectedEditTaskObj) {
                                       setMobileScheduleRecalcNotice(
-                                        '일정을 수정할 항목의 왼쪽 원형(라디오) 버튼을 먼저 1개 선택해 주세요.'
+                                        '오늘 이후 일정 중 수정할 항목의 왼쪽 원형(라디오) 버튼을 먼저 1개 선택해 주세요.'
+                                      );
+                                      return;
+                                    }
+                                    if (
+                                      selectedEditTaskObj.effDate &&
+                                      /^\d{4}-\d{2}-\d{2}$/.test(
+                                        selectedEditTaskObj.effDate
+                                      ) &&
+                                      selectedEditTaskObj.effDate < todayKstYmd
+                                    ) {
+                                      setMobileSelectedEditTaskId('');
+                                      setMobileEditTargetDateYmd('');
+                                      setMobileScheduleRecalcNotice(
+                                        '현재 날짜 기준으로 지난 일정은 수정할 수 없습니다.'
                                       );
                                       return;
                                     }
@@ -11054,11 +11072,26 @@ export default function UserIntroPage() {
                                     setMobileScheduleRecalcNotice('');
                                     setIsMobileScheduleEditMode(true);
                                   } else {
+                                    const confirmed = window.confirm(
+                                      '이 작업은 향후 모든 작업의 일정을 변경시키게 됩니다. 그래도 계속 진행하시겠습니까?'
+                                    );
+                                    if (!confirmed) {
+                                      // 취소 시: 수정 사항을 적용하지 않고 현재 선택작물의 재배일정 전체 페이지로 다시 리로드
+                                      setIsMobileScheduleEditMode(false);
+                                      setMobileSelectedEditTaskId('');
+                                      setMobileEditTargetDateYmd('');
+                                      setMobileScheduleRecalcNotice('');
+                                      loadScheduleProvision(
+                                        activeCropItem.request_no,
+                                        { gdd_mode: patentGddMode }
+                                      ).catch(() => {});
+                                      goToScheduleStep('tasks');
+                                      return;
+                                    }
+
                                     if (
                                       selectedEditTaskObj &&
-                                      mobileEditTargetDateYmd &&
-                                      mobileEditTargetDateYmd !==
-                                        selectedEditTaskObj.effDate
+                                      mobileEditTargetDateYmd
                                     ) {
                                       await applySingleTaskDateChangeWithClimateRecalc(
                                         activeCropItem.request_no,
@@ -11084,7 +11117,7 @@ export default function UserIntroPage() {
                                 />
                                 <span>
                                   {isMobileScheduleEditMode
-                                    ? '일정 수정 완료 (후속 일정 기후 재계산 적용)'
+                                    ? '일정 수정 완료'
                                     : selectedEditTaskObj
                                     ? `[${
                                         String(
