@@ -1091,6 +1091,10 @@ export default function UserIntroPage() {
   const getSavedStageItemDate = (reqNo: string, item: any): string => {
     const rNo = reqNo || provisionData?.activeRequest?.request_no || selectedRequestNo || 'REQ-20261106-009';
     const itemId = resolveStageItemId(item);
+    const draftKey = `${rNo}__${itemId}`;
+    if (inlineStageDateDrafts[draftKey] && /^\d{4}-\d{2}-\d{2}$/.test(inlineStageDateDrafts[draftKey])) {
+      return inlineStageDateDrafts[draftKey];
+    }
     if (rNo === 'REQ-20261106-009') {
       if (itemId === 'SCH-13' && item?.start_date === '2026-09-02') return '2026-10-28';
       if (itemId === 'SCH-14' && item?.start_date === '2026-09-28') return '2026-11-15';
@@ -1396,11 +1400,11 @@ export default function UserIntroPage() {
 
     const isDraftModified = Boolean(effectiveDate && savedStartDate && effectiveDate !== savedStartDate);
 
-    // 작업완료 버튼 클릭이 없어도 해당 날짜에서 하루(1일) 이상 경과하면 자동으로 클릭한 것으로 인정
+    // 작업완료 버튼 클릭이 없어도 해당 날짜가 오늘이거나 이미 경과(elapsedDaysFromTask >= 0)하면 자동으로 완료 인정
     const isAutoCompletedByElapsedDay = Boolean(
       !isManuallyUncompletedForDate &&
         !isDraftModified &&
-        elapsedDaysFromTask >= 1
+        elapsedDaysFromTask >= 0
     );
 
     const isRecognized = Boolean(isExplicitlyCompleted || isAutoCompletedByElapsedDay);
@@ -1543,7 +1547,7 @@ export default function UserIntroPage() {
         return false;
       }
       if (e?.completed) return true;
-      return diffDaysBetweenYmd(effDate, todayKstYmd) >= 1;
+      return diffDaysBetweenYmd(effDate, todayKstYmd) >= 0;
     };
 
     const recognizedMetas = STANDARD_16_STAGE_META.filter((m) => isMetaRecognized(m));
@@ -9621,7 +9625,7 @@ export default function UserIntroPage() {
                     } else if (e?.completed) {
                       isRecognized = true;
                     } else {
-                      isRecognized = diffDaysBetweenYmd(effDate, todayKstYmd) >= 1;
+                      isRecognized = diffDaysBetweenYmd(effDate, todayKstYmd) >= 0;
                     }
                     return {
                       itemId: m.itemId,
@@ -10214,6 +10218,26 @@ export default function UserIntroPage() {
                   ...prev,
                   ...nextDraftEntries,
                 }));
+
+                // 1-2) 수정된 항목의 날짜가 오늘(todayKstYmd) 또는 그 이전이면 오늘 진행한 것이므로 즉시 완료(completed: true) 상태로 기록
+                saveStageItemCompletions((prev) => {
+                  const curReqMap = { ...(prev[reqNo] || {}) };
+                  const isDoneNow = newStartYmd <= todayKstYmd;
+                  curReqMap[targetTask.itemId] = {
+                    itemId: targetTask.itemId,
+                    stepOrder: targetStepOrder,
+                    stageGroupName: targetTask.stageGroupName || '생육 관리',
+                    subItemName: targetTask.subItemName || targetTask.shortTitle || '농작업',
+                    completed: isDoneNow,
+                    confirmedDate: newStartYmd,
+                    completedAt: isDoneNow ? new Date().toISOString() : '',
+                    isSeeded: false,
+                  };
+                  return {
+                    ...prev,
+                    [reqNo]: curReqMap,
+                  };
+                });
 
                 // 2) provisionData 메모리 상태도 즉시 업데이트하여 화면 즉시 반영
                 const allUpdatedById = new Map<string, any>();
@@ -11284,13 +11308,20 @@ export default function UserIntroPage() {
                                             />
                                           )}
                                           {section.tasks.map((task) => {
-                                            const isDone = Boolean(task.isRecognized);
                                             const isPastDate = Boolean(
                                               task.effDate &&
                                                 /^\d{4}-\d{2}-\d{2}$/.test(
                                                   task.effDate
                                                 ) &&
                                                 task.effDate < todayKstYmd
+                                            );
+                                            const isDone = Boolean(
+                                              task.isRecognized ||
+                                                (task.effDate &&
+                                                  /^\d{4}-\d{2}-\d{2}$/.test(
+                                                    task.effDate
+                                                  ) &&
+                                                  task.effDate <= todayKstYmd)
                                             );
                                             const isNextTarget =
                                               !isDone &&
@@ -11584,6 +11615,7 @@ export default function UserIntroPage() {
                                       }
                                     }
                                     setIsMobileScheduleEditMode(false);
+                                    setMobileSelectedEditTaskId('');
                                   }
                                 }}
                                 className={`w-full h-[52px] rounded-full border-[1.6px] border-[#16A34A] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs ${
@@ -11679,15 +11711,26 @@ export default function UserIntroPage() {
 
                         const recordTaskStartCompletion = (targetDateYmd: string) => {
                           const rNo = activeCropItem.request_no;
-                          const compKey = `${rNo}__${selectedTaskItem.itemId}`;
-                          saveStageItemCompletions((prev) => ({
-                            ...prev,
-                            [compKey]: {
+                          saveStageItemCompletions((prev) => {
+                            const curReqMap = { ...(prev[rNo] || {}) };
+                            curReqMap[selectedTaskItem.itemId] = {
+                              itemId: selectedTaskItem.itemId,
+                              stepOrder: Number(selectedTaskItem.stepOrder || 1),
+                              stageGroupName: selectedTaskItem.stageGroupName || '생육 관리',
+                              subItemName:
+                                selectedTaskItem.subItemName ||
+                                selectedTaskItem.shortTitle ||
+                                '농작업',
                               completed: true,
                               confirmedDate: targetDateYmd,
-                              confirmedAt: new Date().toISOString(),
-                            },
-                          }));
+                              completedAt: new Date().toISOString(),
+                              isSeeded: false,
+                            };
+                            return {
+                              ...prev,
+                              [rNo]: curReqMap,
+                            };
+                          });
                           setTaskDetailActualDate(targetDateYmd);
                         };
 
