@@ -12530,7 +12530,7 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 4) 생육단계 시작일 수정 폼 (단일 1개 날짜 선택) */}
+                              {/* 4) 생육단계 시작일 수정 폼 (달력에서 날짜 선택 시 즉시 저장 후 창 닫기) */}
                               <div className="rounded-[14px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-2 shadow-2xs">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-[14px] font-extrabold text-[#0E712F]">
@@ -12541,26 +12541,11 @@ export default function UserIntroPage() {
                                 <input
                                   type="date"
                                   value={effStartYmd}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    if (!v) return;
-                                    setGrowthConfirmDateInput(v);
-                                    setGrowthConfirmEndDateInput(v);
-                                  }}
-                                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827]"
-                                />
-                              </div>
-
-                              {/* 7) 하단 [변경 사항 저장] 버튼 ("수정하시겠습니까?" 컨펌 승인 후 모달리스 폼만 닫고 상세페이지 리로드) */}
-                              <div className="pt-1">
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    const finalStartYmd = effStartYmd;
-
-                                    const confirmed =
-                                      window.confirm('수정하시겠습니까?');
-                                    if (!confirmed) return;
+                                  onChange={async (e) => {
+                                    const finalStartYmd = e.target.value;
+                                    if (!finalStartYmd) return;
+                                    setGrowthConfirmDateInput(finalStartYmd);
+                                    setGrowthConfirmEndDateInput(finalStartYmd);
 
                                     // 1) 생육단계 확인 상태 저장
                                     setStageGrowthConfirmStatuses((prev) => {
@@ -12593,7 +12578,7 @@ export default function UserIntroPage() {
                                       return next;
                                     });
 
-                                    // 2) 생육단계 시작일 저장 (기존 커스텀 종료일 오버라이드가 있었다면 제거하여 새 시작일 기준으로 자동 산출되게 함)
+                                    // 2) 생육단계 시작일 저장
                                     const bucketIdxForRange =
                                       growthConfirmModalTarget.phaseTitle ===
                                       '정식 준비'
@@ -12664,21 +12649,18 @@ export default function UserIntroPage() {
                                       );
                                     }
 
-                                    // 4) 다른 알림 폼을 띄우지 않고 모달리스 폼만 즉시 삭제
+                                    // 4) 정보변경 팝업 창 즉시 닫기
                                     setMobileScheduleRecalcNotice('');
                                     setGrowthConfirmModalTarget(null);
 
-                                    // 5) 상세페이지(현재 재배일정 페이지) 데이터 리로드
+                                    // 5) 상세페이지 리로드
                                     await loadScheduleProvision(
                                       activeCropItem.request_no,
                                       { gdd_mode: patentGddMode }
                                     ).catch(() => {});
                                   }}
-                                  className="w-full h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[17.5px] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.26)] cursor-pointer transition"
-                                >
-                                  <Check className="w-5 h-5 stroke-[2.8]" />
-                                  <span>변경 사항 저장</span>
-                                </button>
+                                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827] cursor-pointer"
+                                />
                               </div>
                             </div>
                           </div>
