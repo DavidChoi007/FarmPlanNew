@@ -385,6 +385,7 @@ export default function UserIntroPage() {
   const [isPostponeDatePickerOpen, setIsPostponeDatePickerOpen] = useState<boolean>(false);
   const [isTaskExecDateChangeOpen, setIsTaskExecDateChangeOpen] = useState<boolean>(false);
   const [taskExecDraftDateYmd, setTaskExecDraftDateYmd] = useState<string>('');
+  const [mobileHighlightedTaskId, setMobileHighlightedTaskId] = useState<string>('');
 
   // 3가지 일정 보기 탭: 'timeline' (타임라인) | 'calendar' (달력) | 'stages' (생육단계)
   const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'calendar' | 'stages'>('timeline');
@@ -10660,8 +10661,50 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 3) 현재 생육단계 카드 */}
-                        <div className="rounded-[18px] bg-[#EFF8F1] p-4 flex items-center justify-between gap-3">
+                        {/* 3) 현재 생육단계 카드 (클릭 시 전체 재배일정 페이지의 해당 탭 및 생육과정 위치로 이동·강조) */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targetTask =
+                              activeCropItem.primaryNextTask ||
+                              activeCropItem.allTasks[0] ||
+                              null;
+                            const targetCat =
+                              (targetTask?.iconType as
+                                | 'WORK'
+                                | 'FERTILIZER'
+                                | 'PEST'
+                                | undefined) || 'WORK';
+                            const targetId = targetTask?.itemId || '';
+                            setMobileFullScheduleFilterTab(targetCat);
+                            setIsMobileScheduleEditMode(false);
+                            setMobileSelectedEditTaskId(
+                              targetTask &&
+                                targetTask.effDate &&
+                                targetTask.effDate >= todayKstYmd
+                                ? targetId
+                                : ''
+                            );
+                            setMobileEditTargetDateYmd(targetTask?.effDate || '');
+                            setMobileScheduleRecalcNotice('');
+                            setMobileHighlightedTaskId(targetId);
+                            setMobileScheduleStep('tasks');
+                            if (typeof window !== 'undefined' && targetId) {
+                              setTimeout(() => {
+                                const el = document.getElementById(
+                                  `mobile-task-row-${targetId}`
+                                );
+                                if (el) {
+                                  el.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                  });
+                                }
+                              }, 120);
+                            }
+                          }}
+                          className="w-full rounded-[18px] bg-[#EFF8F1] hover:bg-[#E3F3E7] active:scale-[0.99] border border-transparent hover:border-[#16A34A]/40 p-4 flex items-center justify-between gap-3 text-left cursor-pointer transition"
+                        >
                           <div className="space-y-1.5 min-w-0">
                             <div className="flex items-center gap-2">
                               <Sprout className="w-5 h-5 text-[#16A34A] stroke-[2.2] shrink-0" />
@@ -10680,9 +10723,9 @@ export default function UserIntroPage() {
                               className="w-full h-full object-cover block"
                             />
                           </div>
-                        </div>
+                        </button>
 
-                        {/* 4) 다음 농작업 섹션 */}
+                        {/* 4) 다음 농작업 섹션 (클릭 시 전체 재배일정 페이지의 해당 탭 및 생육과정 위치로 이동·강조) */}
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
@@ -10704,10 +10747,43 @@ export default function UserIntroPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (activeCropItem.primaryNextTask) {
-                                prepareTaskForExecAndLog(activeCropItem.primaryNextTask);
+                              const targetTask =
+                                activeCropItem.primaryNextTask ||
+                                activeCropItem.allTasks[0] ||
+                                null;
+                              const targetCat =
+                                (targetTask?.iconType as
+                                  | 'WORK'
+                                  | 'FERTILIZER'
+                                  | 'PEST'
+                                  | undefined) || 'WORK';
+                              const targetId = targetTask?.itemId || '';
+                              setMobileFullScheduleFilterTab(targetCat);
+                              setIsMobileScheduleEditMode(false);
+                              setMobileSelectedEditTaskId(
+                                targetTask &&
+                                  targetTask.effDate &&
+                                  targetTask.effDate >= todayKstYmd
+                                  ? targetId
+                                  : ''
+                              );
+                              setMobileEditTargetDateYmd(targetTask?.effDate || '');
+                              setMobileScheduleRecalcNotice('');
+                              setMobileHighlightedTaskId(targetId);
+                              setMobileScheduleStep('tasks');
+                              if (typeof window !== 'undefined' && targetId) {
+                                setTimeout(() => {
+                                  const el = document.getElementById(
+                                    `mobile-task-row-${targetId}`
+                                  );
+                                  if (el) {
+                                    el.scrollIntoView({
+                                      behavior: 'smooth',
+                                      block: 'center',
+                                    });
+                                  }
+                                }, 120);
                               }
-                              goToScheduleStep('task_exec');
                             }}
                             className="w-full rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white px-4 py-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.03)] flex items-center justify-between gap-2 cursor-pointer transition"
                           >
@@ -10747,6 +10823,7 @@ export default function UserIntroPage() {
                               setMobileSelectedEditTaskId('');
                               setMobileEditTargetDateYmd('');
                               setMobileScheduleRecalcNotice('');
+                              setMobileHighlightedTaskId('');
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
                             }}
@@ -10991,6 +11068,8 @@ export default function UserIntroPage() {
                                         !isPastDate &&
                                         isMobileScheduleEditMode &&
                                         isRadioSelected;
+                                      const isHighlightedTarget =
+                                        mobileHighlightedTaskId === task.itemId;
                                       const isDimmedPast = isPastDate;
                                       const cleanShortTitle =
                                         String(task.shortTitle || '')
@@ -11000,14 +11079,18 @@ export default function UserIntroPage() {
                                       return (
                                         <div
                                           key={task.itemId}
+                                          id={`mobile-task-row-${task.itemId}`}
                                           onClick={() => {
                                             if (isEditingThisItem) return;
+                                            setMobileHighlightedTaskId(task.itemId);
                                             prepareTaskForExecAndLog(task);
                                             goToScheduleStep('task_exec');
                                           }}
                                           className={`relative z-10 w-full rounded-[16px] px-2.5 py-3 flex items-center justify-between gap-2 transition ${
                                             isEditingThisItem
                                               ? 'cursor-default bg-[#EFF8F1] border-2 border-[#0E712F] shadow-xs'
+                                              : isHighlightedTarget
+                                              ? 'cursor-pointer bg-[#EAF6ED] border-2 border-[#0E712F] ring-2 ring-[#22C55E]/35 shadow-sm'
                                               : isRadioSelected
                                               ? 'cursor-pointer bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs'
                                               : isNextTarget
@@ -11028,6 +11111,7 @@ export default function UserIntroPage() {
                                                 e.stopPropagation();
                                                 if (isPastDate) return;
                                                 setMobileScheduleRecalcNotice('');
+                                                setMobileHighlightedTaskId(task.itemId);
                                                 if (
                                                   mobileSelectedEditTaskId ===
                                                     task.itemId &&
