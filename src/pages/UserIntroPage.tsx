@@ -10608,7 +10608,7 @@ export default function UserIntroPage() {
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
                             }}
-                            className="w-full h-[90px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
+                            className="w-full h-[72px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
                           >
                             <div className="flex items-center gap-3.5">
                               <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
