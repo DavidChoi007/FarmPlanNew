@@ -12622,10 +12622,6 @@ export default function UserIntroPage() {
                                     const finalStartYmd = effStartYmd;
                                     if (!finalStartYmd) return;
 
-                                    const confirmed =
-                                      window.confirm('수정하시겠습니까?');
-                                    if (!confirmed) return;
-
                                     // 1) 생육단계 확인 상태 저장
                                     setStageGrowthConfirmStatuses((prev) => {
                                       const next = {
