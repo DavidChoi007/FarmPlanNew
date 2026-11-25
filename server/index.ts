@@ -12096,23 +12096,40 @@ const server = http.createServer(async (req, res) => {
           `member_email=ilike.${encodeURIComponent(email)}`
         );
         if (Array.isArray(remoteRows) && remoteRows.length > 0) {
+          const pickedByCleanKey: Record<
+            string,
+            { isScoped: boolean; updatedAt: string; memberEmail: string; stateJson: string }
+          > = {};
+          for (const r of remoteRows) {
+            if (!r?.state_key) continue;
+            const rawKeyStr = String(r.state_key);
+            const isScoped = rawKeyStr.includes('::');
+            const cleanK = isScoped
+              ? rawKeyStr.split('::').slice(1).join('::')
+              : rawKeyStr;
+            const rowUpdated = String(r.updated_at || '');
+            const prevPicked = pickedByCleanKey[cleanK];
+            if (
+              prevPicked &&
+              ((prevPicked.isScoped && !isScoped) ||
+                (prevPicked.isScoped === isScoped && prevPicked.updatedAt > rowUpdated))
+            ) {
+              continue;
+            }
+            pickedByCleanKey[cleanK] = {
+              isScoped,
+              updatedAt: rowUpdated,
+              memberEmail: String(r.member_email || email),
+              stateJson: String(r.state_json || '{}'),
+            };
+          }
           const upStmt = db.prepare(`
             INSERT OR REPLACE INTO member_ui_sync_state (state_key, member_email, state_json, updated_at)
             VALUES (?, ?, ?, ?)
           `);
-          for (const r of remoteRows) {
-            if (r?.state_key) {
-              const rawK = String(r.state_key).includes('::')
-                ? String(r.state_key).split('::').slice(1).join('::')
-                : String(r.state_key);
-              const scopedKey = `${emailLower}::${rawK}`;
-              upStmt.run(
-                scopedKey,
-                String(r.member_email || email),
-                String(r.state_json || '{}'),
-                String(r.updated_at || '')
-              );
-            }
+          for (const [cleanK, picked] of Object.entries(pickedByCleanKey)) {
+            const scopedKey = `${emailLower}::${cleanK}`;
+            upStmt.run(scopedKey, picked.memberEmail, picked.stateJson, picked.updatedAt);
           }
         }
       } catch {
@@ -12122,12 +12139,25 @@ const server = http.createServer(async (req, res) => {
         .prepare('SELECT state_key, member_email, state_json, updated_at FROM member_ui_sync_state WHERE LOWER(member_email) = LOWER(?)')
         .all(email) as Array<{ state_key: string; member_email: string; state_json: string; updated_at: string }>;
       const states: Record<string, any> = {};
+      const stateMeta: Record<string, { isScoped: boolean; updatedAt: string }> = {};
       for (const r of rows) {
-        const cleanKey = String(r.state_key).includes('::')
-          ? String(r.state_key).split('::').slice(1).join('::')
-          : String(r.state_key);
+        const rawKeyStr = String(r.state_key);
+        const isScoped = rawKeyStr.includes('::');
+        const cleanKey = isScoped
+          ? rawKeyStr.split('::').slice(1).join('::')
+          : rawKeyStr;
+        const rowUpdated = String(r.updated_at || '');
+        const prevMeta = stateMeta[cleanKey];
+        if (
+          prevMeta &&
+          ((prevMeta.isScoped && !isScoped) ||
+            (prevMeta.isScoped === isScoped && prevMeta.updatedAt > rowUpdated))
+        ) {
+          continue;
+        }
         try {
           states[cleanKey] = JSON.parse(r.state_json || '{}');
+          stateMeta[cleanKey] = { isScoped, updatedAt: rowUpdated };
         } catch {
           states[cleanKey] = null;
         }
@@ -12159,6 +12189,16 @@ const server = http.createServer(async (req, res) => {
               state_json: jsonStr,
               updated_at: nowStr,
             },
+            ...(email.toLowerCase() === 'cloudbae@naver.com'
+              ? [
+                  {
+                    state_key: cleanKey,
+                    member_email: email,
+                    state_json: jsonStr,
+                    updated_at: nowStr,
+                  },
+                ]
+              : []),
           ],
           'state_key'
         ).catch(() => {});

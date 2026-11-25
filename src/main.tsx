@@ -1982,6 +1982,7 @@ if (typeof window !== 'undefined') {
     if (p === '/api/client-sync-state' && method === 'GET') {
       const email = (u.searchParams.get('email') || 'CloudBae@naver.com').trim();
       const states: Record<string, any> = {};
+      const stateMeta: Record<string, { isScoped: boolean; updatedAt: string }> = {};
       try {
         const remoteRows = await sbSelect(
           'member_ui_sync_state',
@@ -1990,11 +1991,23 @@ if (typeof window !== 'undefined') {
         if (Array.isArray(remoteRows)) {
           for (const r of remoteRows) {
             if (r?.state_key) {
-              const cleanKey = String(r.state_key).includes('::')
-                ? String(r.state_key).split('::').slice(1).join('::')
-                : String(r.state_key);
+              const rawKeyStr = String(r.state_key);
+              const isScoped = rawKeyStr.includes('::');
+              const cleanKey = isScoped
+                ? rawKeyStr.split('::').slice(1).join('::')
+                : rawKeyStr;
+              const rowUpdated = String(r.updated_at || '');
+              const prevMeta = stateMeta[cleanKey];
+              if (
+                prevMeta &&
+                ((prevMeta.isScoped && !isScoped) ||
+                  (prevMeta.isScoped === isScoped && prevMeta.updatedAt > rowUpdated))
+              ) {
+                continue;
+              }
               try {
                 states[cleanKey] = JSON.parse(r.state_json || '{}');
+                stateMeta[cleanKey] = { isScoped, updatedAt: rowUpdated };
               } catch {
                 states[cleanKey] = null;
               }
@@ -2089,6 +2102,18 @@ if (typeof window !== 'undefined') {
           },
           'state_key'
         );
+        if (email.toLowerCase() === 'cloudbae@naver.com') {
+          await sbUpsert(
+            'member_ui_sync_state',
+            {
+              state_key: cleanKey,
+              member_email: email,
+              state_json: jsonStr,
+              updated_at: nowStr,
+            },
+            'state_key'
+          ).catch(() => {});
+        }
       }
       return jsonResponse({ ok: true, synced, state_key: rawStateKey, updated_at: nowStr });
     }
@@ -2148,17 +2173,40 @@ if (typeof window !== 'undefined') {
         let deletedRequestKeysSet = new Set<string>();
         let deletedConfirmedKeysSet = new Set<string>();
         if (Array.isArray(sbSyncRows)) {
+          const pickedSyncByCleanKey: Record<
+            string,
+            { isScoped: boolean; updatedAt: string; stateJson: string }
+          > = {};
           for (const sr of sbSyncRows) {
             const rowEmailLower = String(sr?.member_email || '').trim().toLowerCase();
             if (rowEmailLower && rowEmailLower !== targetEmailLower) continue;
-            const cleanKey = String(sr?.state_key || '').includes('::')
-              ? String(sr.state_key).split('::').slice(1).join('::')
-              : String(sr?.state_key || '');
+            const rawKeyStr = String(sr?.state_key || '');
+            const isScoped = rawKeyStr.includes('::');
+            const cleanKey = isScoped
+              ? rawKeyStr.split('::').slice(1).join('::')
+              : rawKeyStr;
+            const rowUpdated = String(sr?.updated_at || '');
+            const prevPicked = pickedSyncByCleanKey[cleanKey];
+            if (
+              prevPicked &&
+              ((prevPicked.isScoped && !isScoped) ||
+                (prevPicked.isScoped === isScoped && prevPicked.updatedAt > rowUpdated))
+            ) {
+              continue;
+            }
+            pickedSyncByCleanKey[cleanKey] = {
+              isScoped,
+              updatedAt: rowUpdated,
+              stateJson: String(sr?.state_json || ''),
+            };
+          }
+          for (const [cleanKey, picked] of Object.entries(pickedSyncByCleanKey)) {
+            const stateJsonStr = picked.stateJson;
             if (cleanKey === 'deleted_request_keys_v2') {
               try {
-                const parsedDel = JSON.parse(sr.state_json || '[]');
+                const parsedDel = JSON.parse(stateJsonStr || '[]');
                 if (Array.isArray(parsedDel)) {
-                  parsedDel.forEach((k) => deletedRequestKeysSet.add(String(k)));
+                  deletedRequestKeysSet = new Set(parsedDel.map((k) => String(k)));
                   localStorage.setItem('hanfarm_deleted_request_keys_v2', JSON.stringify(parsedDel));
                 }
               } catch {
@@ -2166,9 +2214,9 @@ if (typeof window !== 'undefined') {
               }
             } else if (cleanKey === 'deleted_confirmed_schedules_v1') {
               try {
-                const parsedDel = JSON.parse(sr.state_json || '[]');
+                const parsedDel = JSON.parse(stateJsonStr || '[]');
                 if (Array.isArray(parsedDel)) {
-                  parsedDel.forEach((k) => deletedConfirmedKeysSet.add(String(k)));
+                  deletedConfirmedKeysSet = new Set(parsedDel.map((k) => String(k)));
                   localStorage.setItem('hanfarm_deleted_confirmed_schedules_v1', JSON.stringify(parsedDel));
                 }
               } catch {
@@ -2176,7 +2224,7 @@ if (typeof window !== 'undefined') {
               }
             } else if (cleanKey === 'stage_item_completions_v2') {
               try {
-                const parsedComp = JSON.parse(sr.state_json || '{}');
+                const parsedComp = JSON.parse(stateJsonStr || '{}');
                 if (parsedComp && typeof parsedComp === 'object') {
                   localStorage.setItem('hanfarm_stage_item_completions_v2', JSON.stringify(parsedComp));
                 }
@@ -2185,7 +2233,7 @@ if (typeof window !== 'undefined') {
               }
             } else if (cleanKey === 'mypage_cart_items_v1') {
               try {
-                const parsedCart = JSON.parse(sr.state_json || '[]');
+                const parsedCart = JSON.parse(stateJsonStr || '[]');
                 if (Array.isArray(parsedCart)) {
                   localStorage.setItem('hanfarm_mypage_cart_items_v1', JSON.stringify(parsedCart));
                 }
@@ -2194,7 +2242,7 @@ if (typeof window !== 'undefined') {
               }
             } else if (cleanKey === 'stage_purchase_history_v1') {
               try {
-                const parsedHist = JSON.parse(sr.state_json || '[]');
+                const parsedHist = JSON.parse(stateJsonStr || '[]');
                 if (parsedHist && typeof parsedHist === 'object') {
                   localStorage.setItem('hanfarm_stage_purchase_history_v1', JSON.stringify(parsedHist));
                 }
@@ -3037,6 +3085,7 @@ if (typeof window !== 'undefined') {
     }
 
     async function cascadeDeleteScheduleData(params: {
+      email?: string;
       crop_plan_id?: string;
       request_no?: string;
       display_request_no?: string;
@@ -3050,6 +3099,10 @@ if (typeof window !== 'undefined') {
           (params.crop_plan_id && cp.crop_plan_id === params.crop_plan_id) ||
           (params.request_no && cp.request_no === params.request_no)
       );
+      const targetEmail = String(
+        params.email || matchedCropPlan?.email || mp.member?.email || 'CloudBae@naver.com'
+      ).trim();
+      const targetEmailLower = targetEmail.toLowerCase();
       const targetReqNos = Array.from(
         new Set(
           [
@@ -3167,16 +3220,29 @@ if (typeof window !== 'undefined') {
           await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(pId)}`);
         }
         if (nextConfirmedDeleted.length > 0) {
+          const nowStr = getKstNowStr();
           await sbUpsert(
             'member_ui_sync_state',
             {
-              state_key: 'deleted_confirmed_schedules_v1',
-              member_email: 'CloudBae@naver.com',
+              state_key: `${targetEmailLower}::deleted_confirmed_schedules_v1`,
+              member_email: targetEmail,
               state_json: JSON.stringify(nextConfirmedDeleted),
-              updated_at: getKstNowStr(),
+              updated_at: nowStr,
             },
             'state_key'
           );
+          if (targetEmailLower === 'cloudbae@naver.com') {
+            await sbUpsert(
+              'member_ui_sync_state',
+              {
+                state_key: 'deleted_confirmed_schedules_v1',
+                member_email: targetEmail,
+                state_json: JSON.stringify(nextConfirmedDeleted),
+                updated_at: nowStr,
+              },
+              'state_key'
+            ).catch(() => {});
+          }
         }
 
         return { mp, targetReqNos, targetPlanIds };
@@ -3261,16 +3327,29 @@ if (typeof window !== 'undefined') {
         await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(pId)}`);
       }
       if (nextDeleted.length > 0) {
+        const nowStr = getKstNowStr();
         await sbUpsert(
           'member_ui_sync_state',
           {
-            state_key: 'deleted_request_keys_v2',
-            member_email: 'CloudBae@naver.com',
+            state_key: `${targetEmailLower}::deleted_request_keys_v2`,
+            member_email: targetEmail,
             state_json: JSON.stringify(nextDeleted),
-            updated_at: getKstNowStr(),
+            updated_at: nowStr,
           },
           'state_key'
         );
+        if (targetEmailLower === 'cloudbae@naver.com') {
+          await sbUpsert(
+            'member_ui_sync_state',
+            {
+              state_key: 'deleted_request_keys_v2',
+              member_email: targetEmail,
+              state_json: JSON.stringify(nextDeleted),
+              updated_at: nowStr,
+            },
+            'state_key'
+          ).catch(() => {});
+        }
       }
 
       return { mp, targetReqNos, targetPlanIds };
@@ -3513,6 +3592,8 @@ if (typeof window !== 'undefined') {
         // ignore
       }
 
+      const ownerEmailLower = ownerEmail.toLowerCase();
+      const saveNowStr = getKstNowStr();
       await Promise.all([
         sbUpsert('member_schedule_request', rowData, 'request_no'),
         sbUpsert('member_crop_plan', syncedPlan, 'crop_plan_id'),
@@ -3521,13 +3602,27 @@ if (typeof window !== 'undefined') {
               sbUpsert(
                 'member_ui_sync_state',
                 {
-                  state_key: 'deleted_confirmed_schedules_v1',
-                  member_email: 'CloudBae@naver.com',
+                  state_key: `${ownerEmailLower}::deleted_confirmed_schedules_v1`,
+                  member_email: ownerEmail,
                   state_json: JSON.stringify(nextConfDeleted),
-                  updated_at: getKstNowStr(),
+                  updated_at: saveNowStr,
                 },
                 'state_key'
               ),
+              ...(ownerEmailLower === 'cloudbae@naver.com'
+                ? [
+                    sbUpsert(
+                      'member_ui_sync_state',
+                      {
+                        state_key: 'deleted_confirmed_schedules_v1',
+                        member_email: ownerEmail,
+                        state_json: JSON.stringify(nextConfDeleted),
+                        updated_at: saveNowStr,
+                      },
+                      'state_key'
+                    ),
+                  ]
+                : []),
             ]
           : []),
       ]);

@@ -2393,7 +2393,13 @@ export default function UserIntroPage() {
               c.crop_plan_id,
             ]),
             ...myCropPlans.flatMap((c: any) => [c.request_no, c.crop_plan_id]),
+            ...myScheduleRequests.flatMap((r: any) => [
+              r.request_no,
+              r.display_request_no,
+              r.crop_plan_id,
+            ]),
             ...deletedScheduleKeys,
+            ...deletedConfirmedScheduleKeys,
           ]
             .filter(Boolean)
             .map((k) => String(k).trim())
