@@ -555,9 +555,17 @@ export default function UserIntroPage() {
   const [fullScheduleOpenStepMap, setFullScheduleOpenStepMap] = useState<Record<number, boolean>>({});
   const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
   const [growthConfirmDateInput, setGrowthConfirmDateInput] = useState<string>('');
+  const [growthConfirmEndDateInput, setGrowthConfirmEndDateInput] = useState<string>('');
   const [growthConfirmModalTarget, setGrowthConfirmModalTarget] = useState<{
     reqNo: string;
     stepIdx?: number;
+    isRangeMode?: boolean;
+    phaseTitle?: string;
+    milestoneLabel?: string;
+    startYmd?: string;
+    endYmd?: string;
+    anchorTask?: any;
+    lastTaskInPhase?: any;
   } | null>(null);
   const [growthConfirmRadioChoice, setGrowthConfirmRadioChoice] = useState<
     'STARTED' | 'NOT_YET' | 'UNKNOWN'
@@ -10348,10 +10356,12 @@ export default function UserIntroPage() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                   }
-                  if (
-                    mobileScheduleStep === 'tasks' ||
-                    mobileScheduleStep === 'growth_check'
-                  ) {
+                  if (mobileScheduleStep === 'growth_check') {
+                    setMobileScheduleStep('tasks');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (mobileScheduleStep === 'tasks') {
                     setMobileScheduleStep('detail');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
@@ -11097,11 +11107,14 @@ export default function UserIntroPage() {
                           bucketIdx: number;
                           phaseTitle: string;
                           periodLabel: string;
+                          startYmd: string;
+                          endYmd: string;
                           milestoneId: string;
                           milestoneLabel: string;
                           milestoneDateYmd: string;
                           milestoneDateLabel: string;
                           anchorTask: any;
+                          lastTaskInPhase: any;
                           isCurrentPhase: boolean;
                           tasks: any[];
                         }> = [];
@@ -11118,14 +11131,26 @@ export default function UserIntroPage() {
                           const nextBucketTasks =
                             b + 1 < totalBuckets ? bucketAllTasksMap.get(b + 1) || [] : [];
 
+                          const customRangeKey = `${activeCropItem.request_no}__PHASE_RANGE_${b}`;
+                          const savedCustomRange = stageGrowthConfirmDates[customRangeKey];
+                          let customStart = '';
+                          let customEnd = '';
+                          if (savedCustomRange && savedCustomRange.includes('~')) {
+                            const [cs, ce] = savedCustomRange.split('~').map((s) => s.trim());
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(cs)) customStart = cs;
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(ce)) customEnd = ce;
+                          }
+
                           const startYmd =
+                            customStart ||
                             allInBucket[0]?.effDate ||
                             prevPhaseEndYmd ||
                             todayKstYmd;
                           const rawEndYmd =
-                            nextBucketTasks[0]?.effDate
+                            customEnd ||
+                            (nextBucketTasks[0]?.effDate
                               ? addDaysToYmd(nextBucketTasks[0].effDate, -1)
-                              : allInBucket[allInBucket.length - 1]?.effDate || startYmd;
+                              : allInBucket[allInBucket.length - 1]?.effDate || startYmd);
                           const endYmd = rawEndYmd >= startYmd ? rawEndYmd : startYmd;
                           prevPhaseEndYmd = addDaysToYmd(endYmd, 1);
 
@@ -11149,11 +11174,17 @@ export default function UserIntroPage() {
                               bucketIdx: b,
                               phaseTitle,
                               periodLabel,
+                              startYmd,
+                              endYmd,
                               milestoneId: `MILESTONE_${b}`,
                               milestoneLabel,
                               milestoneDateYmd: startYmd,
                               milestoneDateLabel,
                               anchorTask: allInBucket[0] || filteredInBucket[0] || null,
+                              lastTaskInPhase:
+                                allInBucket[allInBucket.length - 1] ||
+                                filteredInBucket[filteredInBucket.length - 1] ||
+                                null,
                               isCurrentPhase,
                               tasks: filteredInBucket,
                             });
@@ -11307,18 +11338,41 @@ export default function UserIntroPage() {
                                         key={`phase-sec-${section.bucketIdx}`}
                                         className="space-y-2"
                                       >
-                                        {/* 생육단계 전환 마일스톤 라인 (예: ✓ 정식  8월 19일 확인 / ✓ 새잎 생장  8월 26일 확인) — 클릭 시 해당 생육단계의 첫 항목 세부 페이지로 이동하여 일자 수정 가능 */}
+                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 클릭 시 모달리스 생육단계 확인 폼에서 1개 날짜 선택 수정) */}
                                         {section.milestoneLabel && (
                                           <div
                                             onClick={() => {
-                                              if (!section.anchorTask) return;
-                                              setMobileHighlightedTaskId(
-                                                section.anchorTask.itemId
+                                              const stepIdxVal = Math.max(
+                                                0,
+                                                section.bucketIdx - 1
                                               );
-                                              prepareTaskForExecAndLog(
-                                                section.anchorTask
+                                              const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdxVal}`;
+                                              setGrowthConfirmRadioChoice(
+                                                stageGrowthConfirmStatuses[
+                                                  confirmKey
+                                                ] || 'STARTED'
                                               );
-                                              goToScheduleStep('task_exec');
+                                              setGrowthConfirmDateInput(
+                                                section.milestoneDateYmd
+                                              );
+                                              setGrowthConfirmEndDateInput(
+                                                section.milestoneDateYmd
+                                              );
+                                              setGrowthConfirmModalTarget({
+                                                reqNo: activeCropItem.request_no,
+                                                stepIdx: stepIdxVal,
+                                                isRangeMode: false,
+                                                phaseTitle: section.phaseTitle,
+                                                milestoneLabel:
+                                                  section.milestoneLabel,
+                                                startYmd:
+                                                  section.milestoneDateYmd,
+                                                endYmd: section.milestoneDateYmd,
+                                                anchorTask: section.anchorTask,
+                                                lastTaskInPhase:
+                                                  section.lastTaskInPhase,
+                                              });
+                                              goToScheduleStep('growth_check');
                                             }}
                                             className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer transition"
                                           >
@@ -11354,12 +11408,48 @@ export default function UserIntroPage() {
                                           </div>
                                         )}
 
-                                        {/* 생육단계 구간 헤더 바 (예: [정식 준비 | 8월 7일 ~ 8월 18일], [활착기 | 8월 19일 ~ 8월 25일]) */}
+                                        {/* 생육단계 구간 헤더 바 (하루 이상 기간 기반 생육단계: 클릭 시 모달리스 생육단계 확인 폼에서 시작일~종료일 2개 날짜 선택 수정) */}
                                         <div
-                                          className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 ${
+                                          onClick={() => {
+                                            const stepIdxVal = Math.max(
+                                              0,
+                                              section.bucketIdx - 1
+                                            );
+                                            const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdxVal}`;
+                                            const isMultiDayRange =
+                                              section.startYmd !==
+                                              section.endYmd;
+                                            setGrowthConfirmRadioChoice(
+                                              stageGrowthConfirmStatuses[
+                                                confirmKey
+                                              ] || 'STARTED'
+                                            );
+                                            setGrowthConfirmDateInput(
+                                              section.startYmd
+                                            );
+                                            setGrowthConfirmEndDateInput(
+                                              section.endYmd
+                                            );
+                                            setGrowthConfirmModalTarget({
+                                              reqNo: activeCropItem.request_no,
+                                              stepIdx: stepIdxVal,
+                                              isRangeMode: isMultiDayRange || true,
+                                              phaseTitle: section.phaseTitle,
+                                              milestoneLabel:
+                                                section.milestoneLabel ||
+                                                section.phaseTitle,
+                                              startYmd: section.startYmd,
+                                              endYmd: section.endYmd,
+                                              anchorTask: section.anchorTask,
+                                              lastTaskInPhase:
+                                                section.lastTaskInPhase,
+                                            });
+                                            goToScheduleStep('growth_check');
+                                          }}
+                                          className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 cursor-pointer transition ${
                                             section.isCurrentPhase
-                                              ? 'bg-[#EFF8F1] border border-[#86EFAC]'
-                                              : 'bg-[#F3F4F6] border border-[#E5E7EB]/80'
+                                              ? 'bg-[#EFF8F1] hover:bg-[#E2F5E7] border border-[#86EFAC]'
+                                              : 'bg-[#F3F4F6] hover:bg-[#E5E7EB]/80 border border-[#E5E7EB]/80'
                                           }`}
                                         >
                                           <div className="flex items-center gap-2 min-w-0">
@@ -11372,9 +11462,12 @@ export default function UserIntroPage() {
                                               </span>
                                             )}
                                           </div>
-                                          <span className="text-[14px] font-semibold text-[#6B7280] tracking-[-0.02em] shrink-0">
-                                            {section.periodLabel}
-                                          </span>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className="text-[14px] font-semibold text-[#6B7280] tracking-[-0.02em]">
+                                              {section.periodLabel}
+                                            </span>
+                                            <ChevronRight className="w-4 h-4 text-[#6B7280] stroke-[2.2]" />
+                                          </div>
                                         </div>
 
                                         {/* 해당 생육단계 안의 세부 작업 항목들 */}
@@ -12310,7 +12403,7 @@ export default function UserIntroPage() {
                       </div>
                     )}
 
-                    {/* ==================== [페이지 6: 생육단계 확인 개별 페이지 (모달 없는 독립 페이지)] ==================== */}
+                    {/* ==================== [페이지 6: 생육단계 확인 및 일정 수정 모달리스 페이지 (첨부 이미지 구성 적용)] ==================== */}
                     {mobileScheduleStep === 'growth_check' &&
                       activeCropItem &&
                       (() => {
@@ -12326,62 +12419,151 @@ export default function UserIntroPage() {
                             stage_name: '생육',
                             description: '',
                           };
-                        const stgName = targetStageObj.stage_name || '생육';
-                        const totalStgs = Math.max(1, activeCropCultStages.length);
-                        const defaultOffsets = [0, 14, 30, 60, 75, 85];
-                        const computedDefaultYmd =
-                          stepIdx === 0
-                            ? activeCropItem.basePlantingYmd
-                            : stepIdx >= totalStgs - 1
-                            ? activeCropItem.expectedHarvestYmd
-                            : addDaysToYmd(
-                                activeCropItem.basePlantingYmd,
-                                defaultOffsets[stepIdx] ?? stepIdx * 15
-                              );
-                        const targetItemIds = ['SCH-07', 'SCH-09', 'SCH-12', 'SCH-15'];
-                        const spec = {
-                          idx: stepIdx,
-                          title: `${stgName} 시작일 확인`,
-                          prompt: `${activeCropItem.shortName}의 [${stgName}] 단계가 시작되었나요?`,
-                          startedLabel: `네, ${stgName} 단계가 시작되었습니다.`,
-                          notYetLabel: `아직 ${stgName} 단계가 시작되지 않았습니다.`,
-                          unknownLabel: '잘 모르겠습니다.',
-                          dateLabel: `실제 ${stgName} 시작일`,
-                          defaultYmd: computedDefaultYmd,
-                          targetItemId:
-                            targetItemIds[Math.min(targetItemIds.length - 1, stepIdx)] ||
-                            'SCH-09',
-                        };
-                        const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
-                        const effYmd =
+                        const stgName =
+                          growthConfirmModalTarget?.phaseTitle ||
+                          targetStageObj.stage_name ||
+                          '결구 초기';
+                        const milestoneTitle =
+                          growthConfirmModalTarget?.milestoneLabel || stgName;
+                        const isRangeMode = Boolean(
+                          growthConfirmModalTarget?.isRangeMode &&
+                            growthConfirmModalTarget?.startYmd !==
+                              growthConfirmModalTarget?.endYmd
+                        );
+
+                        const prevStageName =
+                          stepIdx > 0 && activeCropCultStages[stepIdx - 1]
+                            ? activeCropCultStages[stepIdx - 1].stage_name
+                            : currentStageTitle;
+
+                        const questionSubject = milestoneTitle.includes('결구')
+                          ? '결구가'
+                          : milestoneTitle.includes('정식')
+                          ? '정식이'
+                          : milestoneTitle.includes('새잎') ||
+                            milestoneTitle.includes('신장')
+                          ? '새잎 생장이'
+                          : milestoneTitle.includes('수확')
+                          ? '수확 적기가'
+                          : `[${milestoneTitle}] 단계가`;
+
+                        const beforeCaption = `${milestoneTitle.replace(
+                          /\s*시작$/,
+                          ''
+                        )} 시작 전`;
+                        const afterCaption = `${milestoneTitle.replace(
+                          /\s*시작$/,
+                          ''
+                        )} 시작 후`;
+
+                        const defaultStartYmd =
+                          growthConfirmModalTarget?.startYmd ||
+                          activeCropItem.basePlantingYmd ||
+                          todayKstYmd;
+                        const defaultEndYmd =
+                          growthConfirmModalTarget?.endYmd || defaultStartYmd;
+
+                        const effStartYmd =
                           growthConfirmDateInput &&
                           /^\d{4}-\d{2}-\d{2}$/.test(growthConfirmDateInput)
                             ? growthConfirmDateInput
-                            : stageGrowthConfirmDates[confirmKey] ||
-                              spec.defaultYmd;
+                            : defaultStartYmd;
+                        const effEndYmd = isRangeMode
+                          ? growthConfirmEndDateInput &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(growthConfirmEndDateInput)
+                            ? growthConfirmEndDateInput
+                            : defaultEndYmd
+                          : effStartYmd;
+
+                        const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
 
                         return (
                           <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
-                            <div className="space-y-5">
-                              <div className="flex items-center justify-between gap-2">
-                                <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
-                                  {spec.title}
-                                </h1>
-                                <span className="px-3 py-1 rounded-full bg-[#EFF8F1] text-[#0E712F] text-[13px] font-extrabold">
-                                  생육 확인
-                                </span>
+                            <div className="space-y-4">
+                              {/* 1) 상단 타이틀: 생육단계 확인 */}
+                              <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
+                                생육단계 확인
+                              </h1>
+
+                              {/* 2) 작물 요약 헤더 (썸네일 + 작물명 + 노지·평수 + 현재 단계) */}
+                              <div className="flex items-center gap-3.5 pt-0.5">
+                                <div className="w-[68px] h-[68px] rounded-[16px] overflow-hidden bg-slate-100 border border-[#E5E7EB] shrink-0 shadow-2xs">
+                                  <img
+                                    src={activeCropItem.thumbUrl}
+                                    alt={activeCropItem.shortName}
+                                    className="w-full h-full object-cover block"
+                                  />
+                                </div>
+                                <div className="min-w-0 space-y-0.5">
+                                  <div className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                    {activeCropItem.shortName} (
+                                    {activeCropItem.cultivarName || '가을배추'})
+                                  </div>
+                                  <div className="text-[14.5px] font-semibold text-[#6B7280]">
+                                    {activeCropItem.cultivationMethod} ·{' '}
+                                    {activeCropItem.areaPyeong.toLocaleString()}평
+                                  </div>
+                                  <div className="text-[14.5px] font-extrabold text-[#15803D]">
+                                    현재 단계 : {prevStageName}
+                                  </div>
+                                </div>
                               </div>
 
-                              <p className="text-[16px] font-semibold text-[#374151] leading-snug">
-                                {spec.prompt}
-                              </p>
+                              {/* 3) 다음 생육단계 질문 배너 */}
+                              <div className="rounded-[16px] bg-[#EFF8F1] border border-[#DCFCE7] px-4 py-3.5 space-y-1">
+                                <div className="text-[13.5px] font-bold text-[#374151]">
+                                  다음 생육단계 · {stgName}
+                                </div>
+                                <div className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em] break-keep">
+                                  {activeCropItem.shortName}의 {questionSubject}{' '}
+                                  시작되었습니까?
+                                </div>
+                              </div>
 
-                              <div className="space-y-3.5 pt-1">
+                              {/* 4) 시작 전 / 시작 후 비교 이미지 2열 카드 */}
+                              <div className="grid grid-cols-2 gap-3 pt-0.5">
+                                <div className="space-y-1.5 text-center">
+                                  <div className="aspect-square rounded-[16px] overflow-hidden border border-[#E5E7EB] bg-slate-100 shadow-2xs">
+                                    <img
+                                      src={activeCropItem.thumbUrl}
+                                      alt={beforeCaption}
+                                      className="w-full h-full object-cover block scale-100 brightness-95"
+                                    />
+                                  </div>
+                                  <div className="text-[13.5px] font-bold text-[#4B5563]">
+                                    {beforeCaption}
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5 text-center">
+                                  <div className="aspect-square rounded-[16px] overflow-hidden border border-[#86EFAC] bg-slate-100 shadow-2xs">
+                                    <img
+                                      src={activeCropItem.thumbUrl}
+                                      alt={afterCaption}
+                                      className="w-full h-full object-cover block scale-110 contrast-105"
+                                    />
+                                  </div>
+                                  <div className="text-[13.5px] font-bold text-[#15803D]">
+                                    {afterCaption}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* 5) 3가지 보기 라디오 선택 */}
+                              <div className="space-y-3 pt-1">
                                 {(
                                   [
-                                    { key: 'STARTED', label: spec.startedLabel },
-                                    { key: 'NOT_YET', label: spec.notYetLabel },
-                                    { key: 'UNKNOWN', label: spec.unknownLabel },
+                                    {
+                                      key: 'STARTED',
+                                      label: '예, 시작되었습니다.',
+                                    },
+                                    {
+                                      key: 'NOT_YET',
+                                      label: '아니요, 아직입니다.',
+                                    },
+                                    {
+                                      key: 'UNKNOWN',
+                                      label: '잘 모르겠습니다.',
+                                    },
                                   ] as const
                                 ).map((opt) => {
                                   const isSel =
@@ -12393,20 +12575,20 @@ export default function UserIntroPage() {
                                       onClick={() =>
                                         setGrowthConfirmRadioChoice(opt.key)
                                       }
-                                      className="w-full flex items-center gap-3 text-left cursor-pointer"
+                                      className="w-full flex items-center gap-3 text-left cursor-pointer py-0.5"
                                     >
                                       <span
-                                        className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                        className={`w-[22px] h-[22px] rounded-full flex items-center justify-center shrink-0 transition ${
                                           isSel
-                                            ? 'border-[2.2px] border-[#0E712F] bg-white'
+                                            ? 'border-[2.2px] border-[#0E712F] bg-white ring-2 ring-[#22C55E]/30'
                                             : 'border-[1.8px] border-[#D1D5DB] bg-white'
                                         }`}
                                       >
                                         {isSel && (
-                                          <span className="w-3 h-3 rounded-full bg-[#0E712F]" />
+                                          <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
                                         )}
                                       </span>
-                                      <span className="text-[17px] font-bold text-[#111827]">
+                                      <span className="text-[17px] font-bold text-[#111827] tracking-[-0.02em]">
                                         {opt.label}
                                       </span>
                                     </button>
@@ -12414,35 +12596,93 @@ export default function UserIntroPage() {
                                 })}
                               </div>
 
-                              <div className="space-y-2 pt-2">
-                                <label className="block text-[15px] font-bold text-[#374151]">
-                                  {spec.dateLabel}
-                                </label>
-                                <label className="relative h-[52px] rounded-[14px] border border-[#D1D5DB] bg-white px-4 flex items-center gap-3 cursor-pointer">
-                                  <Calendar className="w-5 h-5 text-[#0E712F]" />
-                                  <span className="text-[17px] font-bold text-[#111827]">
-                                    {formatYmdToKoreanFull(effYmd)}
+                              {/* 6) 보기 바로 아래 일정 수정 폼 (하루 일정은 1개 날짜 선택, 하루 이상 기간 기반 생육단계는 시작일~종료일 2개 날짜 선택 폼) */}
+                              <div className="rounded-[16px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-3 shadow-2xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[14px] font-extrabold text-[#0E712F]">
+                                    {isRangeMode
+                                      ? `${stgName} 기간 일정 수정 (시작일 ~ 종료일)`
+                                      : `${milestoneTitle} 일자 수정`}
                                   </span>
-                                  <input
-                                    type="date"
-                                    value={effYmd}
-                                    onChange={(e) => {
-                                      if (e.target.value) {
-                                        setGrowthConfirmDateInput(
-                                          e.target.value
-                                        );
-                                      }
-                                    }}
-                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                                  />
-                                </label>
+                                  <span className="px-2 py-0.5 rounded-full bg-white border border-[#86EFAC] text-[#15803D] text-[11.5px] font-extrabold">
+                                    {isRangeMode ? '기간 설정' : '단일 일자'}
+                                  </span>
+                                </div>
+
+                                {!isRangeMode ? (
+                                  <div className="space-y-1.5">
+                                    <label className="block text-[12.5px] font-bold text-[#374151]">
+                                      변경할 일자 선택 (시작일 ~ 종료일 동일 적용)
+                                    </label>
+                                    <input
+                                      type="date"
+                                      value={effStartYmd}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (!v) return;
+                                        setGrowthConfirmDateInput(v);
+                                        setGrowthConfirmEndDateInput(v);
+                                      }}
+                                      className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827]"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <div className="space-y-1">
+                                      <label className="block text-[12.5px] font-bold text-[#374151]">
+                                        시작일 (부터)
+                                      </label>
+                                      <input
+                                        type="date"
+                                        value={effStartYmd}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          if (!v) return;
+                                          setGrowthConfirmDateInput(v);
+                                          if (effEndYmd && v > effEndYmd) {
+                                            setGrowthConfirmEndDateInput(v);
+                                          }
+                                        }}
+                                        className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="block text-[12.5px] font-bold text-[#374151]">
+                                        종료일 (까지)
+                                      </label>
+                                      <input
+                                        type="date"
+                                        value={effEndYmd}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          if (!v) return;
+                                          setGrowthConfirmEndDateInput(v);
+                                        }}
+                                        className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
 
-                            <div className="pt-4">
+                            {/* 7) 하단 [적용하기] 버튼 ("수정하시겠습니까?" 컨펌 승인 후 반영) */}
+                            <div className="pt-3">
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={async () => {
+                                  const finalStartYmd = effStartYmd;
+                                  const finalEndYmd = isRangeMode
+                                    ? effEndYmd >= effStartYmd
+                                      ? effEndYmd
+                                      : effStartYmd
+                                    : effStartYmd;
+
+                                  const confirmed =
+                                    window.confirm('수정하시겠습니까?');
+                                  if (!confirmed) return;
+
+                                  // 1) 생육단계 확인 라디오 상태 저장
                                   setStageGrowthConfirmStatuses((prev) => {
                                     const next = {
                                       ...prev,
@@ -12472,58 +12712,91 @@ export default function UserIntroPage() {
                                     }).catch(() => {});
                                     return next;
                                   });
-                                  if (
-                                    growthConfirmRadioChoice === 'STARTED' &&
-                                    effYmd
-                                  ) {
-                                    setStageGrowthConfirmDates((prev) => {
-                                      const next = {
-                                        ...prev,
-                                        [confirmKey]: effYmd,
-                                      };
-                                      try {
-                                        localStorage.setItem(
-                                          'hanfarm_stage_growth_confirm_dates_v1',
-                                          JSON.stringify(next)
-                                        );
-                                      } catch {
-                                        // ignore
-                                      }
-                                      fetch('/api/client-sync-state', {
-                                        method: 'POST',
-                                        headers: {
-                                          'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({
-                                          email:
-                                            loggedInUser.email ||
-                                            'CloudBae@naver.com',
-                                          state_key:
-                                            'stage_growth_confirm_dates_v1',
-                                          state_value: next,
-                                        }),
-                                      }).catch(() => {});
-                                      return next;
-                                    });
 
-                                    const matchedTargetTask =
-                                      activeCropItem.allTasks.find(
-                                        (t) => t.itemId === spec.targetItemId
-                                      ) || null;
-                                    if (matchedTargetTask) {
-                                      applySingleTaskDateChangeWithClimateRecalc(
-                                        activeCropItem.request_no,
-                                        matchedTargetTask,
-                                        effYmd
+                                  // 2) 생육단계 시작일~종료일(단일 일자는 finalStartYmd ~ finalStartYmd) 저장
+                                  const bucketIdxForRange =
+                                    growthConfirmModalTarget?.phaseTitle ===
+                                    '정식 준비'
+                                      ? 0
+                                      : stepIdx + 1;
+                                  const customRangeKey = `${activeCropItem.request_no}__PHASE_RANGE_${bucketIdxForRange}`;
+
+                                  setStageGrowthConfirmDates((prev) => {
+                                    const next = {
+                                      ...prev,
+                                      [confirmKey]: finalStartYmd,
+                                      [customRangeKey]: `${finalStartYmd}~${finalEndYmd}`,
+                                    };
+                                    try {
+                                      localStorage.setItem(
+                                        'hanfarm_stage_growth_confirm_dates_v1',
+                                        JSON.stringify(next)
                                       );
+                                    } catch {
+                                      // ignore
+                                    }
+                                    fetch('/api/client-sync-state', {
+                                      method: 'POST',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify({
+                                        email:
+                                          loggedInUser.email ||
+                                          'CloudBae@naver.com',
+                                        state_key:
+                                          'stage_growth_confirm_dates_v1',
+                                        state_value: next,
+                                      }),
+                                    }).catch(() => {});
+                                    return next;
+                                  });
+
+                                  // 3) 해당 생육단계의 기준 작업(anchorTask) 및 후속 일정을 AI 기후 데이터 기반으로 재산출하여 DB 반영
+                                  const targetItemIds = [
+                                    'SCH-07',
+                                    'SCH-09',
+                                    'SCH-12',
+                                    'SCH-15',
+                                  ];
+                                  const fallbackItemId =
+                                    targetItemIds[
+                                      Math.min(
+                                        targetItemIds.length - 1,
+                                        stepIdx
+                                      )
+                                    ] || 'SCH-09';
+                                  const matchedAnchorTask =
+                                    growthConfirmModalTarget?.anchorTask ||
+                                    activeCropItem.allTasks.find(
+                                      (t) => t.itemId === fallbackItemId
+                                    ) ||
+                                    null;
+
+                                  if (matchedAnchorTask && finalStartYmd) {
+                                    const res =
+                                      await applySingleTaskDateChangeWithClimateRecalc(
+                                        activeCropItem.request_no,
+                                        {
+                                          ...matchedAnchorTask,
+                                          shortTitle: isRangeMode
+                                            ? stgName
+                                            : milestoneTitle,
+                                        },
+                                        finalStartYmd
+                                      );
+                                    if (res.summaryMessage) {
+                                      window.alert(res.summaryMessage);
                                     }
                                   }
+
                                   setGrowthConfirmModalTarget(null);
-                                  goToScheduleStep('detail');
+                                  goToScheduleStep('tasks');
                                 }}
-                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[17.5px] flex items-center justify-center shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
+                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.26)] cursor-pointer transition"
                               >
-                                확인 결과 저장
+                                <Check className="w-5 h-5 stroke-[2.8]" />
+                                <span>적용하기</span>
                               </button>
                             </div>
                           </div>
