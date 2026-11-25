@@ -11338,7 +11338,7 @@ export default function UserIntroPage() {
                                         key={`phase-sec-${section.bucketIdx}`}
                                         className="space-y-2"
                                       >
-                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 클릭 시 모달리스 생육단계 확인 폼에서 1개 날짜 선택 수정) */}
+                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 클릭 시 페이지 이동 없이 모달리스 생육단계 수정 폼 열기) */}
                                         {section.milestoneLabel && (
                                           <div
                                             onClick={() => {
@@ -11372,7 +11372,6 @@ export default function UserIntroPage() {
                                                 lastTaskInPhase:
                                                   section.lastTaskInPhase,
                                               });
-                                              goToScheduleStep('growth_check');
                                             }}
                                             className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer transition"
                                           >
@@ -11408,7 +11407,7 @@ export default function UserIntroPage() {
                                           </div>
                                         )}
 
-                                        {/* 생육단계 구간 헤더 바 (하루 이상 기간 기반 생육단계: 클릭 시 모달리스 생육단계 확인 폼에서 시작일~종료일 2개 날짜 선택 수정) */}
+                                        {/* 생육단계 구간 헤더 바 (하루 이상 기간 기반 생육단계: 클릭 시 페이지 이동 없이 모달리스 생육단계 수정 폼 열기) */}
                                         <div
                                           onClick={() => {
                                             const stepIdxVal = Math.max(
@@ -11444,7 +11443,6 @@ export default function UserIntroPage() {
                                               lastTaskInPhase:
                                                 section.lastTaskInPhase,
                                             });
-                                            goToScheduleStep('growth_check');
                                           }}
                                           className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 cursor-pointer transition ${
                                             section.isCurrentPhase
@@ -12403,12 +12401,12 @@ export default function UserIntroPage() {
                       </div>
                     )}
 
-                    {/* ==================== [페이지 6: 생육단계 확인 및 일정 수정 모달리스 페이지 (첨부 이미지 구성 적용)] ==================== */}
-                    {mobileScheduleStep === 'growth_check' &&
+                    {/* ==================== [생육단계 정보변경 모달리스 폼 (페이지 이동 없이 현재 페이지 위에 열림)] ==================== */}
+                    {growthConfirmModalTarget &&
                       activeCropItem &&
                       (() => {
                         const stepIdx: number =
-                          growthConfirmModalTarget?.stepIdx !== undefined
+                          growthConfirmModalTarget.stepIdx !== undefined
                             ? growthConfirmModalTarget.stepIdx
                             : activeCropItem.activeStepIdx;
                         const targetStageObj =
@@ -12420,16 +12418,19 @@ export default function UserIntroPage() {
                             description: '',
                           };
                         const stgName =
-                          growthConfirmModalTarget?.phaseTitle ||
+                          growthConfirmModalTarget.phaseTitle ||
                           targetStageObj.stage_name ||
                           '결구 초기';
                         const milestoneTitle =
-                          growthConfirmModalTarget?.milestoneLabel || stgName;
+                          growthConfirmModalTarget.milestoneLabel || stgName;
                         const isRangeMode = Boolean(
-                          growthConfirmModalTarget?.isRangeMode &&
-                            growthConfirmModalTarget?.startYmd !==
-                              growthConfirmModalTarget?.endYmd
+                          growthConfirmModalTarget.isRangeMode &&
+                            growthConfirmModalTarget.startYmd !==
+                              growthConfirmModalTarget.endYmd
                         );
+                        const displayStageName = isRangeMode
+                          ? stgName
+                          : milestoneTitle;
 
                         const prevStageName =
                           stepIdx > 0 && activeCropCultStages[stepIdx - 1]
@@ -12445,7 +12446,7 @@ export default function UserIntroPage() {
                           ? '새잎 생장이'
                           : milestoneTitle.includes('수확')
                           ? '수확 적기가'
-                          : `[${milestoneTitle}] 단계가`;
+                          : `[${displayStageName}] 단계가`;
 
                         const beforeCaption = `${milestoneTitle.replace(
                           /\s*시작$/,
@@ -12457,11 +12458,11 @@ export default function UserIntroPage() {
                         )} 시작 후`;
 
                         const defaultStartYmd =
-                          growthConfirmModalTarget?.startYmd ||
+                          growthConfirmModalTarget.startYmd ||
                           activeCropItem.basePlantingYmd ||
                           todayKstYmd;
                         const defaultEndYmd =
-                          growthConfirmModalTarget?.endYmd || defaultStartYmd;
+                          growthConfirmModalTarget.endYmd || defaultStartYmd;
 
                         const effStartYmd =
                           growthConfirmDateInput &&
@@ -12478,16 +12479,28 @@ export default function UserIntroPage() {
                         const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
 
                         return (
-                          <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
-                            <div className="space-y-4">
-                              {/* 1) 상단 타이틀: 생육단계 확인 */}
-                              <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
-                                생육단계 확인
-                              </h1>
+                          <div className="fixed inset-x-0 bottom-0 top-[56px] z-[80] flex items-center justify-center p-3 pointer-events-none">
+                            <div className="w-full max-w-[440px] max-h-[86vh] overflow-y-auto rounded-[24px] border-2 border-[#0E712F] bg-white p-4.5 shadow-[0_18px_50px_rgba(15,23,42,0.28)] pointer-events-auto space-y-4">
+                              {/* 1) 상단 타이틀: {해당 생육단계 이름} 정보변경 + 닫기 버튼 */}
+                              <div className="flex items-center justify-between gap-2 border-b border-[#E5E7EB] pb-3">
+                                <h2 className="text-[21px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                  {displayStageName} 정보변경
+                                </h2>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setGrowthConfirmModalTarget(null)
+                                  }
+                                  aria-label="생육단계 정보변경 폼 닫기"
+                                  className="w-8 h-8 rounded-full bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] flex items-center justify-center cursor-pointer shrink-0 transition"
+                                >
+                                  <X className="w-4 h-4 stroke-[2.5]" />
+                                </button>
+                              </div>
 
                               {/* 2) 작물 요약 헤더 (썸네일 + 작물명 + 노지·평수 + 현재 단계) */}
-                              <div className="flex items-center gap-3.5 pt-0.5">
-                                <div className="w-[68px] h-[68px] rounded-[16px] overflow-hidden bg-slate-100 border border-[#E5E7EB] shrink-0 shadow-2xs">
+                              <div className="flex items-center gap-3">
+                                <div className="w-[58px] h-[58px] rounded-[14px] overflow-hidden bg-slate-100 border border-[#E5E7EB] shrink-0 shadow-2xs">
                                   <img
                                     src={activeCropItem.thumbUrl}
                                     alt={activeCropItem.shortName}
@@ -12495,61 +12508,61 @@ export default function UserIntroPage() {
                                   />
                                 </div>
                                 <div className="min-w-0 space-y-0.5">
-                                  <div className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                  <div className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
                                     {activeCropItem.shortName} (
                                     {activeCropItem.cultivarName || '가을배추'})
                                   </div>
-                                  <div className="text-[14.5px] font-semibold text-[#6B7280]">
+                                  <div className="text-[13.5px] font-semibold text-[#6B7280]">
                                     {activeCropItem.cultivationMethod} ·{' '}
                                     {activeCropItem.areaPyeong.toLocaleString()}평
                                   </div>
-                                  <div className="text-[14.5px] font-extrabold text-[#15803D]">
+                                  <div className="text-[13.5px] font-extrabold text-[#15803D]">
                                     현재 단계 : {prevStageName}
                                   </div>
                                 </div>
                               </div>
 
                               {/* 3) 다음 생육단계 질문 배너 */}
-                              <div className="rounded-[16px] bg-[#EFF8F1] border border-[#DCFCE7] px-4 py-3.5 space-y-1">
-                                <div className="text-[13.5px] font-bold text-[#374151]">
+                              <div className="rounded-[14px] bg-[#EFF8F1] border border-[#DCFCE7] px-3.5 py-3 space-y-0.5">
+                                <div className="text-[13px] font-bold text-[#374151]">
                                   다음 생육단계 · {stgName}
                                 </div>
-                                <div className="text-[20px] font-black text-[#0E712F] tracking-[-0.03em] break-keep">
+                                <div className="text-[18px] font-black text-[#0E712F] tracking-[-0.03em] break-keep">
                                   {activeCropItem.shortName}의 {questionSubject}{' '}
                                   시작되었습니까?
                                 </div>
                               </div>
 
                               {/* 4) 시작 전 / 시작 후 비교 이미지 2열 카드 */}
-                              <div className="grid grid-cols-2 gap-3 pt-0.5">
-                                <div className="space-y-1.5 text-center">
-                                  <div className="aspect-square rounded-[16px] overflow-hidden border border-[#E5E7EB] bg-slate-100 shadow-2xs">
+                              <div className="grid grid-cols-2 gap-2.5">
+                                <div className="space-y-1 text-center">
+                                  <div className="aspect-[4/3] rounded-[14px] overflow-hidden border border-[#E5E7EB] bg-slate-100 shadow-2xs">
                                     <img
                                       src={activeCropItem.thumbUrl}
                                       alt={beforeCaption}
                                       className="w-full h-full object-cover block scale-100 brightness-95"
                                     />
                                   </div>
-                                  <div className="text-[13.5px] font-bold text-[#4B5563]">
+                                  <div className="text-[12.5px] font-bold text-[#4B5563]">
                                     {beforeCaption}
                                   </div>
                                 </div>
-                                <div className="space-y-1.5 text-center">
-                                  <div className="aspect-square rounded-[16px] overflow-hidden border border-[#86EFAC] bg-slate-100 shadow-2xs">
+                                <div className="space-y-1 text-center">
+                                  <div className="aspect-[4/3] rounded-[14px] overflow-hidden border border-[#86EFAC] bg-slate-100 shadow-2xs">
                                     <img
                                       src={activeCropItem.thumbUrl}
                                       alt={afterCaption}
                                       className="w-full h-full object-cover block scale-110 contrast-105"
                                     />
                                   </div>
-                                  <div className="text-[13.5px] font-bold text-[#15803D]">
+                                  <div className="text-[12.5px] font-bold text-[#15803D]">
                                     {afterCaption}
                                   </div>
                                 </div>
                               </div>
 
                               {/* 5) 3가지 보기 라디오 선택 */}
-                              <div className="space-y-3 pt-1">
+                              <div className="space-y-2.5 pt-0.5">
                                 {(
                                   [
                                     {
@@ -12578,17 +12591,17 @@ export default function UserIntroPage() {
                                       className="w-full flex items-center gap-3 text-left cursor-pointer py-0.5"
                                     >
                                       <span
-                                        className={`w-[22px] h-[22px] rounded-full flex items-center justify-center shrink-0 transition ${
+                                        className={`w-[21px] h-[21px] rounded-full flex items-center justify-center shrink-0 transition ${
                                           isSel
                                             ? 'border-[2.2px] border-[#0E712F] bg-white ring-2 ring-[#22C55E]/30'
                                             : 'border-[1.8px] border-[#D1D5DB] bg-white'
                                         }`}
                                       >
                                         {isSel && (
-                                          <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
+                                          <span className="w-[10.5px] h-[10.5px] rounded-full bg-[#0E712F]" />
                                         )}
                                       </span>
-                                      <span className="text-[17px] font-bold text-[#111827] tracking-[-0.02em]">
+                                      <span className="text-[16px] font-bold text-[#111827] tracking-[-0.02em]">
                                         {opt.label}
                                       </span>
                                     </button>
@@ -12597,21 +12610,21 @@ export default function UserIntroPage() {
                               </div>
 
                               {/* 6) 보기 바로 아래 일정 수정 폼 (하루 일정은 1개 날짜 선택, 하루 이상 기간 기반 생육단계는 시작일~종료일 2개 날짜 선택 폼) */}
-                              <div className="rounded-[16px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-3 shadow-2xs">
+                              <div className="rounded-[14px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3 space-y-2.5 shadow-2xs">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[14px] font-extrabold text-[#0E712F]">
+                                  <span className="text-[13.5px] font-extrabold text-[#0E712F]">
                                     {isRangeMode
                                       ? `${stgName} 기간 일정 수정 (시작일 ~ 종료일)`
                                       : `${milestoneTitle} 일자 수정`}
                                   </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-white border border-[#86EFAC] text-[#15803D] text-[11.5px] font-extrabold">
+                                  <span className="px-2 py-0.5 rounded-full bg-white border border-[#86EFAC] text-[#15803D] text-[11px] font-extrabold">
                                     {isRangeMode ? '기간 설정' : '단일 일자'}
                                   </span>
                                 </div>
 
                                 {!isRangeMode ? (
-                                  <div className="space-y-1.5">
-                                    <label className="block text-[12.5px] font-bold text-[#374151]">
+                                  <div className="space-y-1">
+                                    <label className="block text-[12px] font-bold text-[#374151]">
                                       변경할 일자 선택 (시작일 ~ 종료일 동일 적용)
                                     </label>
                                     <input
@@ -12623,13 +12636,13 @@ export default function UserIntroPage() {
                                         setGrowthConfirmDateInput(v);
                                         setGrowthConfirmEndDateInput(v);
                                       }}
-                                      className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827]"
+                                      className="w-full h-[42px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
                                     />
                                   </div>
                                 ) : (
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
-                                      <label className="block text-[12.5px] font-bold text-[#374151]">
+                                      <label className="block text-[12px] font-bold text-[#374151]">
                                         시작일 (부터)
                                       </label>
                                       <input
@@ -12643,11 +12656,11 @@ export default function UserIntroPage() {
                                             setGrowthConfirmEndDateInput(v);
                                           }
                                         }}
-                                        className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
+                                        className="w-full h-[42px] px-2.5 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[13.5px] text-[#111827]"
                                       />
                                     </div>
                                     <div className="space-y-1">
-                                      <label className="block text-[12.5px] font-bold text-[#374151]">
+                                      <label className="block text-[12px] font-bold text-[#374151]">
                                         종료일 (까지)
                                       </label>
                                       <input
@@ -12658,146 +12671,147 @@ export default function UserIntroPage() {
                                           if (!v) return;
                                           setGrowthConfirmEndDateInput(v);
                                         }}
-                                        className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
+                                        className="w-full h-[42px] px-2.5 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[13.5px] text-[#111827]"
                                       />
                                     </div>
                                   </div>
                                 )}
                               </div>
-                            </div>
 
-                            {/* 7) 하단 [적용하기] 버튼 ("수정하시겠습니까?" 컨펌 승인 후 반영) */}
-                            <div className="pt-3">
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  const finalStartYmd = effStartYmd;
-                                  const finalEndYmd = isRangeMode
-                                    ? effEndYmd >= effStartYmd
-                                      ? effEndYmd
-                                      : effStartYmd
-                                    : effStartYmd;
+                              {/* 7) 하단 [변경 사항 저장] 버튼 ("수정하시겠습니까?" 컨펌 승인 후 모달리스 폼만 닫고 상세페이지 리로드) */}
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const finalStartYmd = effStartYmd;
+                                    const finalEndYmd = isRangeMode
+                                      ? effEndYmd >= effStartYmd
+                                        ? effEndYmd
+                                        : effStartYmd
+                                      : effStartYmd;
 
-                                  const confirmed =
-                                    window.confirm('수정하시겠습니까?');
-                                  if (!confirmed) return;
+                                    const confirmed =
+                                      window.confirm('수정하시겠습니까?');
+                                    if (!confirmed) return;
 
-                                  // 1) 생육단계 확인 라디오 상태 저장
-                                  setStageGrowthConfirmStatuses((prev) => {
-                                    const next = {
-                                      ...prev,
-                                      [confirmKey]: growthConfirmRadioChoice,
-                                    };
-                                    try {
-                                      localStorage.setItem(
-                                        'hanfarm_stage_growth_confirm_statuses_v1',
-                                        JSON.stringify(next)
-                                      );
-                                    } catch {
-                                      // ignore
-                                    }
-                                    fetch('/api/client-sync-state', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({
-                                        email:
-                                          loggedInUser.email ||
-                                          'CloudBae@naver.com',
-                                        state_key:
-                                          'stage_growth_confirm_statuses_v1',
-                                        state_value: next,
-                                      }),
-                                    }).catch(() => {});
-                                    return next;
-                                  });
+                                    // 1) 생육단계 확인 라디오 상태 저장
+                                    setStageGrowthConfirmStatuses((prev) => {
+                                      const next = {
+                                        ...prev,
+                                        [confirmKey]: growthConfirmRadioChoice,
+                                      };
+                                      try {
+                                        localStorage.setItem(
+                                          'hanfarm_stage_growth_confirm_statuses_v1',
+                                          JSON.stringify(next)
+                                        );
+                                      } catch {
+                                        // ignore
+                                      }
+                                      fetch('/api/client-sync-state', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          email:
+                                            loggedInUser.email ||
+                                            'CloudBae@naver.com',
+                                          state_key:
+                                            'stage_growth_confirm_statuses_v1',
+                                          state_value: next,
+                                        }),
+                                      }).catch(() => {});
+                                      return next;
+                                    });
 
-                                  // 2) 생육단계 시작일~종료일(단일 일자는 finalStartYmd ~ finalStartYmd) 저장
-                                  const bucketIdxForRange =
-                                    growthConfirmModalTarget?.phaseTitle ===
-                                    '정식 준비'
-                                      ? 0
-                                      : stepIdx + 1;
-                                  const customRangeKey = `${activeCropItem.request_no}__PHASE_RANGE_${bucketIdxForRange}`;
+                                    // 2) 생육단계 시작일~종료일 저장
+                                    const bucketIdxForRange =
+                                      growthConfirmModalTarget.phaseTitle ===
+                                      '정식 준비'
+                                        ? 0
+                                        : stepIdx + 1;
+                                    const customRangeKey = `${activeCropItem.request_no}__PHASE_RANGE_${bucketIdxForRange}`;
 
-                                  setStageGrowthConfirmDates((prev) => {
-                                    const next = {
-                                      ...prev,
-                                      [confirmKey]: finalStartYmd,
-                                      [customRangeKey]: `${finalStartYmd}~${finalEndYmd}`,
-                                    };
-                                    try {
-                                      localStorage.setItem(
-                                        'hanfarm_stage_growth_confirm_dates_v1',
-                                        JSON.stringify(next)
-                                      );
-                                    } catch {
-                                      // ignore
-                                    }
-                                    fetch('/api/client-sync-state', {
-                                      method: 'POST',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                      },
-                                      body: JSON.stringify({
-                                        email:
-                                          loggedInUser.email ||
-                                          'CloudBae@naver.com',
-                                        state_key:
-                                          'stage_growth_confirm_dates_v1',
-                                        state_value: next,
-                                      }),
-                                    }).catch(() => {});
-                                    return next;
-                                  });
+                                    setStageGrowthConfirmDates((prev) => {
+                                      const next = {
+                                        ...prev,
+                                        [confirmKey]: finalStartYmd,
+                                        [customRangeKey]: `${finalStartYmd}~${finalEndYmd}`,
+                                      };
+                                      try {
+                                        localStorage.setItem(
+                                          'hanfarm_stage_growth_confirm_dates_v1',
+                                          JSON.stringify(next)
+                                        );
+                                      } catch {
+                                        // ignore
+                                      }
+                                      fetch('/api/client-sync-state', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                          email:
+                                            loggedInUser.email ||
+                                            'CloudBae@naver.com',
+                                          state_key:
+                                            'stage_growth_confirm_dates_v1',
+                                          state_value: next,
+                                        }),
+                                      }).catch(() => {});
+                                      return next;
+                                    });
 
-                                  // 3) 해당 생육단계의 기준 작업(anchorTask) 및 후속 일정을 AI 기후 데이터 기반으로 재산출하여 DB 반영
-                                  const targetItemIds = [
-                                    'SCH-07',
-                                    'SCH-09',
-                                    'SCH-12',
-                                    'SCH-15',
-                                  ];
-                                  const fallbackItemId =
-                                    targetItemIds[
-                                      Math.min(
-                                        targetItemIds.length - 1,
-                                        stepIdx
-                                      )
-                                    ] || 'SCH-09';
-                                  const matchedAnchorTask =
-                                    growthConfirmModalTarget?.anchorTask ||
-                                    activeCropItem.allTasks.find(
-                                      (t) => t.itemId === fallbackItemId
-                                    ) ||
-                                    null;
+                                    // 3) 해당 생육단계의 기준 작업(anchorTask) 및 후속 일정을 AI 기후 데이터 기반으로 재산출하여 DB 반영
+                                    const targetItemIds = [
+                                      'SCH-07',
+                                      'SCH-09',
+                                      'SCH-12',
+                                      'SCH-15',
+                                    ];
+                                    const fallbackItemId =
+                                      targetItemIds[
+                                        Math.min(
+                                          targetItemIds.length - 1,
+                                          stepIdx
+                                        )
+                                      ] || 'SCH-09';
+                                    const matchedAnchorTask =
+                                      growthConfirmModalTarget.anchorTask ||
+                                      activeCropItem.allTasks.find(
+                                        (t) => t.itemId === fallbackItemId
+                                      ) ||
+                                      null;
 
-                                  if (matchedAnchorTask && finalStartYmd) {
-                                    const res =
+                                    if (matchedAnchorTask && finalStartYmd) {
                                       await applySingleTaskDateChangeWithClimateRecalc(
                                         activeCropItem.request_no,
                                         {
                                           ...matchedAnchorTask,
-                                          shortTitle: isRangeMode
-                                            ? stgName
-                                            : milestoneTitle,
+                                          shortTitle: displayStageName,
                                         },
                                         finalStartYmd
                                       );
-                                    if (res.summaryMessage) {
-                                      window.alert(res.summaryMessage);
                                     }
-                                  }
 
-                                  setGrowthConfirmModalTarget(null);
-                                  goToScheduleStep('tasks');
-                                }}
-                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.26)] cursor-pointer transition"
-                              >
-                                <Check className="w-5 h-5 stroke-[2.8]" />
-                                <span>적용하기</span>
-                              </button>
+                                    // 4) 다른 알림 폼을 띄우지 않고 모달리스 폼만 즉시 삭제
+                                    setMobileScheduleRecalcNotice('');
+                                    setGrowthConfirmModalTarget(null);
+
+                                    // 5) 상세페이지(현재 재배일정 페이지) 데이터 리로드
+                                    await loadScheduleProvision(
+                                      activeCropItem.request_no,
+                                      { gdd_mode: patentGddMode }
+                                    ).catch(() => {});
+                                  }}
+                                  className="w-full h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[17.5px] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.26)] cursor-pointer transition"
+                                >
+                                  <Check className="w-5 h-5 stroke-[2.8]" />
+                                  <span>변경 사항 저장</span>
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
