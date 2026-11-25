@@ -11338,74 +11338,137 @@ export default function UserIntroPage() {
                                         key={`phase-sec-${section.bucketIdx}`}
                                         className="space-y-2"
                                       >
-                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 클릭 시 페이지 이동 없이 모달리스 생육단계 수정 폼 열기) */}
-                                        {section.milestoneLabel && (
-                                          <div
-                                            onClick={() => {
-                                              const stepIdxVal = Math.max(
-                                                0,
-                                                section.bucketIdx - 1
-                                              );
-                                              const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdxVal}`;
-                                              setGrowthConfirmRadioChoice(
-                                                stageGrowthConfirmStatuses[
-                                                  confirmKey
-                                                ] || 'STARTED'
-                                              );
-                                              setGrowthConfirmDateInput(
-                                                section.milestoneDateYmd
-                                              );
-                                              setGrowthConfirmEndDateInput(
-                                                section.milestoneDateYmd
-                                              );
-                                              setGrowthConfirmModalTarget({
-                                                reqNo: activeCropItem.request_no,
-                                                stepIdx: stepIdxVal,
-                                                isRangeMode: false,
-                                                phaseTitle: section.phaseTitle,
-                                                milestoneLabel:
-                                                  section.milestoneLabel,
-                                                startYmd:
-                                                  section.milestoneDateYmd,
-                                                endYmd: section.milestoneDateYmd,
-                                                anchorTask: section.anchorTask,
-                                                lastTaskInPhase:
-                                                  section.lastTaskInPhase,
-                                              });
-                                            }}
-                                            className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer transition"
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <span className="w-[20px] h-[20px] rounded-full border-[1.8px] border-[#15803D] bg-white text-[#15803D] inline-flex items-center justify-center shrink-0">
-                                                <svg
-                                                  viewBox="0 0 16 16"
-                                                  className="w-3 h-3"
-                                                  fill="none"
-                                                >
-                                                  <path
-                                                    d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                  />
-                                                </svg>
-                                              </span>
-                                              <span className="text-[15px] font-extrabold text-[#15803D] tracking-[-0.02em]">
-                                                {section.milestoneLabel}
-                                              </span>
-                                            </div>
+                                        {/* 생육단계 전환 마일스톤 라인 (하루 일정 생육단계: 오늘 날짜 기준으로 기본 저장일이 지난 경우 오렌지색 "확인요망", 재배자가 확인하여 날짜 재저장 시 "확인완료") */}
+                                        {section.milestoneLabel &&
+                                          (() => {
+                                            const stepIdxVal = Math.max(
+                                              0,
+                                              section.bucketIdx - 1
+                                            );
+                                            const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdxVal}`;
+                                            const isUserConfirmedStage = Boolean(
+                                              stageGrowthConfirmDates[
+                                                confirmKey
+                                              ] &&
+                                                /^\d{4}-\d{2}-\d{2}$/.test(
+                                                  stageGrowthConfirmDates[
+                                                    confirmKey
+                                                  ]
+                                                )
+                                            );
+                                            const isPastMilestoneDate = Boolean(
+                                              section.milestoneDateYmd &&
+                                                /^\d{4}-\d{2}-\d{2}$/.test(
+                                                  section.milestoneDateYmd
+                                                ) &&
+                                                section.milestoneDateYmd <
+                                                  todayKstYmd
+                                            );
+                                            const milestoneStatusType:
+                                              | 'CONFIRMED'
+                                              | 'NEEDS_CONFIRM'
+                                              | 'DEFAULT' = isUserConfirmedStage
+                                              ? 'CONFIRMED'
+                                              : isPastMilestoneDate
+                                              ? 'NEEDS_CONFIRM'
+                                              : 'DEFAULT';
 
-                                            <div className="flex items-center gap-2 shrink-0">
-                                              <span className="text-[14.5px] font-semibold text-[#4B5563]">
-                                                {section.milestoneDateLabel}
-                                              </span>
-                                              <span className="px-2 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[13px] font-extrabold text-[#15803D]">
-                                                확인
-                                              </span>
-                                            </div>
-                                          </div>
-                                        )}
+                                            return (
+                                              <div
+                                                onClick={() => {
+                                                  setGrowthConfirmRadioChoice(
+                                                    stageGrowthConfirmStatuses[
+                                                      confirmKey
+                                                    ] || 'STARTED'
+                                                  );
+                                                  setGrowthConfirmDateInput(
+                                                    section.milestoneDateYmd
+                                                  );
+                                                  setGrowthConfirmEndDateInput(
+                                                    section.milestoneDateYmd
+                                                  );
+                                                  setGrowthConfirmModalTarget({
+                                                    reqNo:
+                                                      activeCropItem.request_no,
+                                                    stepIdx: stepIdxVal,
+                                                    isRangeMode: false,
+                                                    phaseTitle:
+                                                      section.phaseTitle,
+                                                    milestoneLabel:
+                                                      section.milestoneLabel,
+                                                    startYmd:
+                                                      section.milestoneDateYmd,
+                                                    endYmd:
+                                                      section.milestoneDateYmd,
+                                                    anchorTask:
+                                                      section.anchorTask,
+                                                    lastTaskInPhase:
+                                                      section.lastTaskInPhase,
+                                                  });
+                                                }}
+                                                className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer transition"
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <span
+                                                    className={`w-[20px] h-[20px] rounded-full border-[1.8px] inline-flex items-center justify-center shrink-0 ${
+                                                      milestoneStatusType ===
+                                                      'NEEDS_CONFIRM'
+                                                        ? 'border-[#EA580C] bg-[#FFF7ED] text-[#EA580C]'
+                                                        : milestoneStatusType ===
+                                                          'CONFIRMED'
+                                                        ? 'border-[#15803D] bg-[#15803D] text-white'
+                                                        : 'border-[#15803D] bg-white text-[#15803D]'
+                                                    }`}
+                                                  >
+                                                    <svg
+                                                      viewBox="0 0 16 16"
+                                                      className="w-3 h-3"
+                                                      fill="none"
+                                                    >
+                                                      <path
+                                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2.2"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                      />
+                                                    </svg>
+                                                  </span>
+                                                  <span
+                                                    className={`text-[15px] font-extrabold tracking-[-0.02em] ${
+                                                      milestoneStatusType ===
+                                                      'NEEDS_CONFIRM'
+                                                        ? 'text-[#EA580C]'
+                                                        : 'text-[#15803D]'
+                                                    }`}
+                                                  >
+                                                    {section.milestoneLabel}
+                                                  </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                  <span className="text-[14.5px] font-semibold text-[#4B5563]">
+                                                    {section.milestoneDateLabel}
+                                                  </span>
+                                                  {milestoneStatusType ===
+                                                  'CONFIRMED' ? (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[12.5px] font-extrabold text-[#15803D]">
+                                                      확인완료
+                                                    </span>
+                                                  ) : milestoneStatusType ===
+                                                    'NEEDS_CONFIRM' ? (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#FFF7ED] border border-[#FDBA74] text-[12.5px] font-extrabold text-[#EA580C]">
+                                                      확인요망
+                                                    </span>
+                                                  ) : (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[12.5px] font-extrabold text-[#15803D]">
+                                                      확인
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            );
+                                          })()}
 
                                         {/* 생육단계 구간 헤더 바 (하루 이상 기간 기반 생육단계: 클릭 시 페이지 이동 없이 모달리스 생육단계 수정 폼 열기) */}
                                         <div
