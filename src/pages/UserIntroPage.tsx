@@ -11329,11 +11329,9 @@ export default function UserIntroPage() {
                                               firstUpcomingInFiltered?.itemId ===
                                                 task.itemId;
                                             const isRadioSelected =
-                                              !isPastDate &&
                                               mobileSelectedEditTaskId ===
-                                                task.itemId;
+                                              task.itemId;
                                             const isEditingThisItem =
-                                              !isPastDate &&
                                               isMobileScheduleEditMode &&
                                               isRadioSelected;
                                             const isHighlightedTarget =
@@ -11344,6 +11342,15 @@ export default function UserIntroPage() {
                                               String(task.shortTitle || '')
                                                 .replace(/\s*\([^)]*\)/g, '')
                                                 .trim() || task.shortTitle;
+                                            const taskSortedIdx = allSortedTasks.findIndex(
+                                              (t: any) => t.itemId === task.itemId
+                                            );
+                                            const prevSortedTask =
+                                              taskSortedIdx > 0
+                                                ? allSortedTasks[taskSortedIdx - 1]
+                                                : null;
+                                            const minEditDateYmd =
+                                              prevSortedTask?.effDate || undefined;
 
                                             return (
                                               <div
@@ -11375,12 +11382,9 @@ export default function UserIntroPage() {
                                                 <div className="flex items-center gap-3 min-w-0 flex-1">
                                                   <button
                                                     type="button"
-                                                    disabled={isPastDate}
-                                                    aria-disabled={isPastDate}
                                                     aria-label={`${cleanShortTitle} 일정 수정 대상 선택`}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
-                                                      if (isPastDate) return;
                                                       setMobileScheduleRecalcNotice(
                                                         ''
                                                       );
@@ -11414,11 +11418,7 @@ export default function UserIntroPage() {
                                                         }
                                                       }
                                                     }}
-                                                    className={`p-1 -m-1 flex items-center justify-center shrink-0 focus:outline-none ${
-                                                      isPastDate
-                                                        ? 'cursor-not-allowed'
-                                                        : 'cursor-pointer'
-                                                    }`}
+                                                    className="p-1 -m-1 flex items-center justify-center shrink-0 focus:outline-none cursor-pointer"
                                                   >
                                                     {isRadioSelected ? (
                                                       <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
@@ -11479,7 +11479,7 @@ export default function UserIntroPage() {
                                                   {isEditingThisItem ? (
                                                     <input
                                                       type="date"
-                                                      min={todayKstYmd}
+                                                      min={minEditDateYmd}
                                                       value={
                                                         mobileEditTargetDateYmd ||
                                                         task.effDate
@@ -11557,20 +11557,6 @@ export default function UserIntroPage() {
                                     if (!selectedEditTaskObj) {
                                       window.alert(
                                         '수정하고자 하는 항목을 선택해 주세요'
-                                      );
-                                      return;
-                                    }
-                                    if (
-                                      selectedEditTaskObj.effDate &&
-                                      /^\d{4}-\d{2}-\d{2}$/.test(
-                                        selectedEditTaskObj.effDate
-                                      ) &&
-                                      selectedEditTaskObj.effDate < todayKstYmd
-                                    ) {
-                                      setMobileSelectedEditTaskId('');
-                                      setMobileEditTargetDateYmd('');
-                                      window.alert(
-                                        '현재 날짜 기준으로 지난 일정은 수정할 수 없습니다.'
                                       );
                                       return;
                                     }
