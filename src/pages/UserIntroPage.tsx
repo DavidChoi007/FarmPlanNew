@@ -11342,15 +11342,6 @@ export default function UserIntroPage() {
                                               String(task.shortTitle || '')
                                                 .replace(/\s*\([^)]*\)/g, '')
                                                 .trim() || task.shortTitle;
-                                            const taskSortedIdx = allSortedTasks.findIndex(
-                                              (t: any) => t.itemId === task.itemId
-                                            );
-                                            const prevSortedTask =
-                                              taskSortedIdx > 0
-                                                ? allSortedTasks[taskSortedIdx - 1]
-                                                : null;
-                                            const minEditDateYmd =
-                                              prevSortedTask?.effDate || undefined;
 
                                             return (
                                               <div
@@ -11479,7 +11470,6 @@ export default function UserIntroPage() {
                                                   {isEditingThisItem ? (
                                                     <input
                                                       type="date"
-                                                      min={minEditDateYmd}
                                                       value={
                                                         mobileEditTargetDateYmd ||
                                                         task.effDate
@@ -11908,16 +11898,10 @@ export default function UserIntroPage() {
                                     <span className="text-[13.5px] font-extrabold text-[#0E712F]">
                                       변경할 작업 시작일 선택
                                     </span>
-                                    {prevStageTask && (
-                                      <span className="text-[11.5px] font-semibold text-[#4B5563]">
-                                        직전 단계일({prevStageTask.effDate}) 이후 선택
-                                      </span>
-                                    )}
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="date"
-                                      min={minAllowedDateYmd || undefined}
                                       value={
                                         taskExecDraftDateYmd || selectedTaskItem.effDate
                                       }
@@ -11935,19 +11919,6 @@ export default function UserIntroPage() {
                                           taskExecDraftDateYmd ||
                                           selectedTaskItem.effDate;
                                         if (!targetYmd) return;
-
-                                        // 직전 단계보다 앞선 날짜 역전 방지
-                                        if (
-                                          minAllowedDateYmd &&
-                                          targetYmd < minAllowedDateYmd
-                                        ) {
-                                          window.alert(
-                                            `직전 단계(${prevStageTask.shortTitle}: ${formatYmdToKoreanFull(
-                                              minAllowedDateYmd
-                                            )})보다 이전 날짜로는 변경할 수 없습니다.`
-                                          );
-                                          return;
-                                        }
 
                                         // 날짜를 바꾸지 않고 그대로 적용한 경우
                                         if (targetYmd === selectedTaskItem.effDate) {
