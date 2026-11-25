@@ -12593,7 +12593,7 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 4) 생육단계 시작일 수정 폼 (달력에서 날짜 선택 시 즉시 저장 후 창 닫기) */}
+                              {/* 4) 생육단계 시작일 수정 폼 */}
                               <div className="rounded-[14px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-2 shadow-2xs">
                                 <div className="flex items-center justify-between gap-2">
                                   <span className="text-[14px] font-extrabold text-[#0E712F]">
@@ -12604,11 +12604,27 @@ export default function UserIntroPage() {
                                 <input
                                   type="date"
                                   value={effStartYmd}
-                                  onChange={async (e) => {
-                                    const finalStartYmd = e.target.value;
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (!v) return;
+                                    setGrowthConfirmDateInput(v);
+                                    setGrowthConfirmEndDateInput(v);
+                                  }}
+                                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827] cursor-pointer"
+                                />
+                              </div>
+
+                              {/* 5) 하단 [정보변경 저장] 버튼 */}
+                              <div className="pt-1">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const finalStartYmd = effStartYmd;
                                     if (!finalStartYmd) return;
-                                    setGrowthConfirmDateInput(finalStartYmd);
-                                    setGrowthConfirmEndDateInput(finalStartYmd);
+
+                                    const confirmed =
+                                      window.confirm('수정하시겠습니까?');
+                                    if (!confirmed) return;
 
                                     // 1) 생육단계 확인 상태 저장
                                     setStageGrowthConfirmStatuses((prev) => {
@@ -12722,8 +12738,11 @@ export default function UserIntroPage() {
                                       { gdd_mode: patentGddMode }
                                     ).catch(() => {});
                                   }}
-                                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827] cursor-pointer"
-                                />
+                                  className="w-full h-[52px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[17.5px] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.26)] cursor-pointer transition"
+                                >
+                                  <Check className="w-5 h-5 stroke-[2.8]" />
+                                  <span>정보변경 저장</span>
+                                </button>
                               </div>
                             </div>
                           </div>
