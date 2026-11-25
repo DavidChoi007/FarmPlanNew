@@ -10807,46 +10807,50 @@ export default function UserIntroPage() {
                           </button>
                         </div>
 
-                        {/* 5) 하단 메뉴 버튼 (재배일정 (농작업별) / 재배일정 (생육단계별) / 생육단계 확인 / 작업기록) */}
+                        {/* 5) 하단 메뉴 버튼 (재배일정 전체보기 / 생육단계 확인 / 작업기록) */}
                         <div className="space-y-2.5 pt-1">
                           <button
                             type="button"
                             onClick={() => {
+                              const targetTask =
+                                activeCropItem.primaryNextTask ||
+                                activeCropItem.allTasks[0] ||
+                                null;
                               const currentTaskCat =
-                                (activeCropItem.primaryNextTask?.iconType as
+                                (targetTask?.iconType as
                                   | 'WORK'
                                   | 'FERTILIZER'
                                   | 'PEST'
                                   | undefined) || 'WORK';
+                              const targetId = targetTask?.itemId || '';
                               setMobileFullScheduleFilterTab(currentTaskCat);
                               setIsMobileScheduleEditMode(false);
                               setMobileSelectedEditTaskId('');
                               setMobileEditTargetDateYmd('');
                               setMobileScheduleRecalcNotice('');
-                              setMobileHighlightedTaskId('');
+                              setMobileHighlightedTaskId(targetId);
                               setMobileScheduleTaskTab('todo');
                               goToScheduleStep('tasks');
+                              if (typeof window !== 'undefined' && targetId) {
+                                setTimeout(() => {
+                                  const el = document.getElementById(
+                                    `mobile-task-row-${targetId}`
+                                  );
+                                  if (el) {
+                                    el.scrollIntoView({
+                                      behavior: 'smooth',
+                                      block: 'center',
+                                    });
+                                  }
+                                }, 120);
+                              }
                             }}
                             className="w-full h-[72px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
                           >
                             <div className="flex items-center gap-3.5">
                               <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
                               <span className="text-[20px] font-black text-white tracking-[-0.03em]">
-                                재배일정 (농작업별)
-                              </span>
-                            </div>
-                            <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {}}
-                            className="w-full h-[72px] rounded-[18px] border border-[#0E712F] bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] px-5 flex items-center justify-between gap-3 shadow-[0_6px_16px_rgba(14,113,47,0.25)] cursor-pointer transition"
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
-                              <span className="text-[20px] font-black text-white tracking-[-0.03em]">
-                                재배일정 (생육단계별)
+                                재배일정 전체보기
                               </span>
                             </div>
                             <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
@@ -10943,6 +10947,130 @@ export default function UserIntroPage() {
                           { key: 'ALL', label: '전체일정' },
                         ];
 
+                        const formatShortMonthDay = (ymd: string) => {
+                          if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+                          const [, m, d] = ymd.split('-').map(Number);
+                          return `${m}월 ${d}일`;
+                        };
+
+                        // 전체 작업(allTasks)을 사전 정식 준비 구간 + 작물별 생육단계 기초 코드(활착기, 외엽 신장기, 결구기, 수확적기 등)로 그룹화
+                        const cultStages = activeCropItem.cropCultStages || [];
+                        const cultStageCount = Math.max(1, cultStages.length);
+
+                        const resolveTaskPhaseBucketIndex = (stepOrd: number): number => {
+                          // 0: 정식 준비 (stepOrder 1~6: 퇴비·기비 살포, 토양소독, 두둑·멀칭, 종자 파종, 육묘상 관리, 정식 전 순화)
+                          if (stepOrd <= 6) return 0;
+                          if (cultStageCount === 4) {
+                            // 1: 1단계(활착기 등, SCH-07~08), 2: 2단계(외엽 신장기 등, SCH-09~10), 3: 3단계(결구기 등, SCH-11~14), 4: 4단계(수확적기 등, SCH-15~16)
+                            if (stepOrd <= 8) return 1;
+                            if (stepOrd <= 10) return 2;
+                            if (stepOrd <= 14) return 3;
+                            return 4;
+                          }
+                          if (stepOrd <= 8) return 1;
+                          if (stepOrd >= 15) return cultStageCount;
+                          const ratio = (stepOrd - 8) / 8;
+                          const mappedIdx = Math.min(
+                            cultStageCount - 1,
+                            Math.max(0, Math.floor(ratio * cultStageCount))
+                          );
+                          return mappedIdx + 1;
+                        };
+
+                        const resolveMilestoneLabelForStage = (
+                          stageName: string,
+                          cIdx: number
+                        ): string => {
+                          const sName = String(stageName || '');
+                          if (cIdx === 0 || /활착|정식/.test(sName)) return '정식';
+                          if (/외엽|신장|영양|초기|줄기/.test(sName)) return '새잎 생장';
+                          if (/결구|비대|개화|착과|성숙/.test(sName)) {
+                            if (sName.includes('결구')) return '결구 시작';
+                            if (sName.includes('비대')) return '비대 시작';
+                            if (sName.includes('착과') || sName.includes('개화'))
+                              return '개화·착과';
+                            return `${sName} 진입`;
+                          }
+                          if (/수확/.test(sName)) return '수확 적기 도달';
+                          return `${sName} 진입`;
+                        };
+
+                        const totalBuckets = cultStageCount + 1;
+                        const allSortedTasks = [...activeCropItem.allTasks].sort(
+                          (a, b) => Number(a.stepOrder) - Number(b.stepOrder)
+                        );
+
+                        // 각 생육단계 구간의 전체 일정 기준 시작일~종료일 산출
+                        const bucketAllTasksMap = new Map<number, any[]>();
+                        for (let b = 0; b < totalBuckets; b++) {
+                          bucketAllTasksMap.set(b, []);
+                        }
+                        allSortedTasks.forEach((tk) => {
+                          const bIdx = resolveTaskPhaseBucketIndex(Number(tk.stepOrder || 1));
+                          bucketAllTasksMap.get(bIdx)?.push(tk);
+                        });
+
+                        const stagePhaseSections: Array<{
+                          bucketIdx: number;
+                          phaseTitle: string;
+                          periodLabel: string;
+                          milestoneLabel: string;
+                          milestoneDateLabel: string;
+                          isCurrentPhase: boolean;
+                          tasks: any[];
+                        }> = [];
+
+                        let prevPhaseEndYmd = activeCropItem.basePlantingYmd || todayKstYmd;
+
+                        for (let b = 0; b < totalBuckets; b++) {
+                          const allInBucket = bucketAllTasksMap.get(b) || [];
+                          const filteredInBucket = filteredScheduleTasks.filter(
+                            (tk) =>
+                              resolveTaskPhaseBucketIndex(Number(tk.stepOrder || 1)) === b
+                          );
+
+                          const nextBucketTasks =
+                            b + 1 < totalBuckets ? bucketAllTasksMap.get(b + 1) || [] : [];
+
+                          const startYmd =
+                            allInBucket[0]?.effDate ||
+                            prevPhaseEndYmd ||
+                            todayKstYmd;
+                          const rawEndYmd =
+                            nextBucketTasks[0]?.effDate
+                              ? addDaysToYmd(nextBucketTasks[0].effDate, -1)
+                              : allInBucket[allInBucket.length - 1]?.effDate || startYmd;
+                          const endYmd = rawEndYmd >= startYmd ? rawEndYmd : startYmd;
+                          prevPhaseEndYmd = addDaysToYmd(endYmd, 1);
+
+                          const isPrep = b === 0;
+                          const cultStageObj = !isPrep ? cultStages[b - 1] : null;
+                          const phaseTitle = isPrep
+                            ? '정식 준비'
+                            : cultStageObj?.stage_name || `${b}단계`;
+                          const periodLabel = `${formatShortMonthDay(
+                            startYmd
+                          )} ~ ${formatShortMonthDay(endYmd)}`;
+                          const milestoneLabel = isPrep
+                            ? ''
+                            : resolveMilestoneLabelForStage(phaseTitle, b - 1);
+                          const milestoneDateLabel = formatShortMonthDay(startYmd);
+                          const isCurrentPhase =
+                            !isPrep && b - 1 === activeCropItem.activeStepIdx;
+
+                          if (filteredInBucket.length > 0) {
+                            stagePhaseSections.push({
+                              bucketIdx: b,
+                              phaseTitle,
+                              periodLabel,
+                              milestoneLabel,
+                              milestoneDateLabel,
+                              isCurrentPhase,
+                              tasks: filteredInBucket,
+                            });
+                          }
+                        }
+
                         return (
                           <div className="mt-3 flex-1 flex flex-col justify-between space-y-5">
                             <div className="space-y-4">
@@ -10977,7 +11105,7 @@ export default function UserIntroPage() {
                                 </button>
                               </div>
 
-                              {/* 2) 4개 카테고리 캡슐 탭 (전체일정 / 농작업 / 시비관리 / 병해충) */}
+                              {/* 2) 4개 카테고리 캡슐 탭 (농작업 / 시비관리 / 병해충 / 전체일정) */}
                               <div className="rounded-full bg-[#F3F4F6] border border-[#E5E7EB] p-1 grid grid-cols-4 gap-0.5">
                                 {filterTabs.map((tab) => {
                                   const isSelected =
@@ -10986,9 +11114,40 @@ export default function UserIntroPage() {
                                     <button
                                       key={tab.key}
                                       type="button"
-                                      onClick={() =>
-                                        setMobileFullScheduleFilterTab(tab.key)
-                                      }
+                                      onClick={() => {
+                                        setMobileFullScheduleFilterTab(tab.key);
+                                        const tabTasks = activeCropItem.allTasks.filter(
+                                          (t) =>
+                                            tab.key === 'ALL'
+                                              ? true
+                                              : t.iconType === tab.key
+                                        );
+                                        const targetInTab =
+                                          tabTasks.find(
+                                            (t) =>
+                                              !t.isRecognized &&
+                                              t.effDate >= todayKstYmd
+                                          ) ||
+                                          tabTasks.find((t) => !t.isRecognized) ||
+                                          tabTasks[0] ||
+                                          null;
+                                        if (
+                                          typeof window !== 'undefined' &&
+                                          targetInTab
+                                        ) {
+                                          setTimeout(() => {
+                                            const el = document.getElementById(
+                                              `mobile-task-row-${targetInTab.itemId}`
+                                            );
+                                            if (el) {
+                                              el.scrollIntoView({
+                                                behavior: 'smooth',
+                                                block: 'center',
+                                              });
+                                            }
+                                          }, 100);
+                                        }
+                                      }}
                                       className={`h-[38px] rounded-full text-[13.5px] tracking-[-0.03em] flex items-center justify-center cursor-pointer transition whitespace-nowrap ${
                                         isSelected
                                           ? 'bg-[#0E712F] text-white font-extrabold shadow-2xs'
@@ -11046,235 +11205,313 @@ export default function UserIntroPage() {
                                 </div>
                               )}
 
-                              {/* 3) 타임라인 생육과정 리스트 */}
+                              {/* 3) 생육단계별 구간 헤더 + 타임라인 생육과정 리스트 (첨부 이미지 통합형) */}
                               <div className="relative pt-1">
-                                {filteredScheduleTasks.length > 1 && (
-                                  <div
-                                    className="absolute left-[18px] top-[24px] bottom-[24px] w-[1.5px] bg-[#E5E7EB]"
-                                    aria-hidden="true"
-                                  />
-                                )}
-
-                                {filteredScheduleTasks.length === 0 ? (
+                                {stagePhaseSections.length === 0 ? (
                                   <div className="rounded-[16px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center text-[14px] font-semibold text-[#6B7280]">
                                     해당 분류의 생육과정 일정이 없습니다.
                                   </div>
                                 ) : (
-                                  <div className="space-y-1">
-                                    {filteredScheduleTasks.map((task) => {
-                                      const isDone = Boolean(task.isRecognized);
-                                      const isPastDate = Boolean(
-                                        task.effDate &&
-                                          /^\d{4}-\d{2}-\d{2}$/.test(
-                                            task.effDate
-                                          ) &&
-                                          task.effDate < todayKstYmd
-                                      );
-                                      const isNextTarget =
-                                        !isDone &&
-                                        !isPastDate &&
-                                        firstUpcomingInFiltered?.itemId ===
-                                          task.itemId;
-                                      const isRadioSelected =
-                                        !isPastDate &&
-                                        mobileSelectedEditTaskId === task.itemId;
-                                      const isEditingThisItem =
-                                        !isPastDate &&
-                                        isMobileScheduleEditMode &&
-                                        isRadioSelected;
-                                      const isHighlightedTarget =
-                                        mobileHighlightedTaskId === task.itemId;
-                                      const isDimmedPast = isPastDate;
-                                      const cleanShortTitle =
-                                        String(task.shortTitle || '')
-                                          .replace(/\s*\([^)]*\)/g, '')
-                                          .trim() || task.shortTitle;
+                                  <div className="space-y-4">
+                                    {stagePhaseSections.map((section) => (
+                                      <div
+                                        key={`phase-sec-${section.bucketIdx}`}
+                                        className="space-y-2"
+                                      >
+                                        {/* 생육단계 전환 마일스톤 라인 (예: ✓ 정식  8월 19일 확인 / ✓ 새잎 생장  8월 26일 확인) */}
+                                        {section.milestoneLabel && (
+                                          <div className="px-1.5 pt-1 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="w-[20px] h-[20px] rounded-full border-[1.8px] border-[#15803D] bg-white text-[#15803D] inline-flex items-center justify-center shrink-0">
+                                                <svg
+                                                  viewBox="0 0 16 16"
+                                                  className="w-3 h-3"
+                                                  fill="none"
+                                                >
+                                                  <path
+                                                    d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                  />
+                                                </svg>
+                                              </span>
+                                              <span className="text-[15px] font-extrabold text-[#15803D] tracking-[-0.02em]">
+                                                {section.milestoneLabel}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              <span className="text-[14.5px] font-semibold text-[#4B5563]">
+                                                {section.milestoneDateLabel}
+                                              </span>
+                                              <span className="text-[13.5px] font-extrabold text-[#15803D]">
+                                                확인
+                                              </span>
+                                            </div>
+                                          </div>
+                                        )}
 
-                                      return (
+                                        {/* 생육단계 구간 헤더 바 (예: [정식 준비 | 8월 7일 ~ 8월 18일], [활착기 | 8월 19일 ~ 8월 25일]) */}
                                         <div
-                                          key={task.itemId}
-                                          id={`mobile-task-row-${task.itemId}`}
-                                          onClick={() => {
-                                            if (isEditingThisItem) return;
-                                            setMobileHighlightedTaskId(task.itemId);
-                                            prepareTaskForExecAndLog(task);
-                                            goToScheduleStep('task_exec');
-                                          }}
-                                          className={`relative z-10 w-full rounded-[16px] px-2.5 py-3 flex items-center justify-between gap-2 transition ${
-                                            isEditingThisItem
-                                              ? 'cursor-default bg-[#EFF8F1] border-2 border-[#0E712F] shadow-xs'
-                                              : isHighlightedTarget
-                                              ? 'cursor-pointer bg-[#EAF6ED] border-2 border-[#0E712F] ring-2 ring-[#22C55E]/35 shadow-sm'
-                                              : isRadioSelected
-                                              ? 'cursor-pointer bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs'
-                                              : isNextTarget
-                                              ? 'cursor-pointer bg-[#EFF8F1]/80 border border-[#DCFCE7] shadow-2xs'
-                                              : isDimmedPast
-                                              ? 'cursor-pointer bg-transparent border border-transparent border-b-[#F3F4F6] opacity-85'
-                                              : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
+                                          className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 ${
+                                            section.isCurrentPhase
+                                              ? 'bg-[#EFF8F1] border border-[#86EFAC]'
+                                              : 'bg-[#F3F4F6] border border-[#E5E7EB]/80'
                                           }`}
                                         >
-                                          {/* 좌측 라디오 선택 버튼 (지난 날짜는 선택/수정 불가, 오늘 이후 항목만 1개 선택 가능) + 생육과정명 */}
-                                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <button
-                                              type="button"
-                                              disabled={isPastDate}
-                                              aria-disabled={isPastDate}
-                                              aria-label={`${cleanShortTitle} 일정 수정 대상 선택`}
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (isPastDate) return;
-                                                setMobileScheduleRecalcNotice('');
-                                                setMobileHighlightedTaskId(task.itemId);
-                                                if (
-                                                  mobileSelectedEditTaskId ===
-                                                    task.itemId &&
-                                                  !isMobileScheduleEditMode
-                                                ) {
-                                                  setMobileSelectedEditTaskId('');
-                                                  setMobileEditTargetDateYmd('');
-                                                } else {
-                                                  setMobileSelectedEditTaskId(
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-[17px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                              {section.phaseTitle}
+                                            </span>
+                                            {section.isCurrentPhase && (
+                                              <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[11px] font-extrabold shrink-0">
+                                                현재 단계
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="text-[14px] font-semibold text-[#6B7280] tracking-[-0.02em] shrink-0">
+                                            {section.periodLabel}
+                                          </span>
+                                        </div>
+
+                                        {/* 해당 생육단계 안의 세부 작업 항목들 */}
+                                        <div className="relative space-y-1 pl-0.5">
+                                          {section.tasks.length > 1 && (
+                                            <div
+                                              className="absolute left-[20px] top-[22px] bottom-[22px] w-[1.5px] bg-[#E5E7EB]"
+                                              aria-hidden="true"
+                                            />
+                                          )}
+                                          {section.tasks.map((task) => {
+                                            const isDone = Boolean(task.isRecognized);
+                                            const isPastDate = Boolean(
+                                              task.effDate &&
+                                                /^\d{4}-\d{2}-\d{2}$/.test(
+                                                  task.effDate
+                                                ) &&
+                                                task.effDate < todayKstYmd
+                                            );
+                                            const isNextTarget =
+                                              !isDone &&
+                                              !isPastDate &&
+                                              firstUpcomingInFiltered?.itemId ===
+                                                task.itemId;
+                                            const isRadioSelected =
+                                              !isPastDate &&
+                                              mobileSelectedEditTaskId ===
+                                                task.itemId;
+                                            const isEditingThisItem =
+                                              !isPastDate &&
+                                              isMobileScheduleEditMode &&
+                                              isRadioSelected;
+                                            const isHighlightedTarget =
+                                              mobileHighlightedTaskId ===
+                                              task.itemId;
+                                            const isDimmedPast = isPastDate;
+                                            const cleanShortTitle =
+                                              String(task.shortTitle || '')
+                                                .replace(/\s*\([^)]*\)/g, '')
+                                                .trim() || task.shortTitle;
+
+                                            return (
+                                              <div
+                                                key={task.itemId}
+                                                id={`mobile-task-row-${task.itemId}`}
+                                                onClick={() => {
+                                                  if (isEditingThisItem) return;
+                                                  setMobileHighlightedTaskId(
                                                     task.itemId
                                                   );
-                                                  setMobileEditTargetDateYmd(
-                                                    task.effDate
-                                                  );
-                                                  if (isMobileScheduleEditMode) {
-                                                    setIsMobileScheduleEditMode(
-                                                      false
-                                                    );
-                                                  }
-                                                }
-                                              }}
-                                              className={`p-1 -m-1 flex items-center justify-center shrink-0 focus:outline-none ${
-                                                isPastDate
-                                                  ? 'cursor-not-allowed'
-                                                  : 'cursor-pointer'
-                                              }`}
-                                            >
-                                              {isRadioSelected ? (
-                                                <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
-                                                  <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
-                                                </span>
-                                              ) : isDimmedPast ? (
-                                                isDone ? (
-                                                  <span className="w-[22px] h-[22px] rounded-full bg-[#9CA3AF] text-white flex items-center justify-center shrink-0">
-                                                    <svg
-                                                      viewBox="0 0 16 16"
-                                                      className="w-3 h-3"
-                                                      fill="none"
-                                                    >
-                                                      <path
-                                                        d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                                        stroke="#FFFFFF"
-                                                        strokeWidth="2.4"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                      />
-                                                    </svg>
-                                                  </span>
-                                                ) : (
-                                                  <span className="w-[22px] h-[22px] rounded-full border-[2px] border-[#9CA3AF] bg-[#F3F4F6] shrink-0" />
-                                                )
-                                              ) : isDone ? (
-                                                <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
-                                                  <svg
-                                                    viewBox="0 0 16 16"
-                                                    className="w-3 h-3"
-                                                    fill="none"
-                                                  >
-                                                    <path
-                                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                                      stroke="#FFFFFF"
-                                                      strokeWidth="2.4"
-                                                      strokeLinecap="round"
-                                                      strokeLinejoin="round"
-                                                    />
-                                                  </svg>
-                                                </span>
-                                              ) : isNextTarget ? (
-                                                <span className="w-[22px] h-[22px] rounded-full border-[2.4px] border-[#16A34A] bg-white shrink-0 shadow-2xs" />
-                                              ) : (
-                                                <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
-                                              )}
-                                            </button>
-
-                                            <span
-                                              className={`text-[16.5px] tracking-[-0.03em] truncate ${
-                                                isDimmedPast
-                                                  ? 'font-extrabold text-[#6B7280]'
-                                                  : 'font-black text-[#111827]'
-                                              }`}
-                                            >
-                                              {cleanShortTitle}
-                                            </span>
-                                          </div>
-
-                                          {/* 우측 날짜(선택된 1개 항목만 수정 가능, 확인 버튼 클릭 시 컨펌 후 반영) + 상태 배지 (완료 / 예정) + 화살표 */}
-                                          <div className="flex items-center gap-2 shrink-0">
-                                            {isEditingThisItem ? (
-                                              <input
-                                                type="date"
-                                                min={todayKstYmd}
-                                                value={
-                                                  mobileEditTargetDateYmd ||
-                                                  task.effDate
-                                                }
-                                                onClick={(e) =>
-                                                  e.stopPropagation()
-                                                }
-                                                onChange={(e) => {
-                                                  const nextYmd =
-                                                    e.target.value;
-                                                  if (!nextYmd) return;
-                                                  setMobileEditTargetDateYmd(
-                                                    nextYmd
-                                                  );
+                                                  prepareTaskForExecAndLog(task);
+                                                  goToScheduleStep('task_exec');
                                                 }}
-                                                className="h-[34px] px-2.5 rounded-lg border-2 border-[#0E712F] bg-white text-[13.5px] font-extrabold text-[#111827] shadow-2xs"
-                                              />
-                                            ) : (
-                                              <span
-                                                className={`text-[14.5px] font-medium tracking-[-0.02em] whitespace-nowrap ${
-                                                  isDimmedPast
-                                                    ? 'text-[#6B7280]'
-                                                    : 'text-[#1F2937]'
+                                                className={`relative z-10 w-full rounded-[16px] px-2.5 py-3 flex items-center justify-between gap-2 transition ${
+                                                  isEditingThisItem
+                                                    ? 'cursor-default bg-[#EFF8F1] border-2 border-[#0E712F] shadow-xs'
+                                                    : isHighlightedTarget
+                                                    ? 'cursor-pointer bg-[#EAF6ED] border-2 border-[#0E712F] ring-2 ring-[#22C55E]/35 shadow-sm'
+                                                    : isRadioSelected
+                                                    ? 'cursor-pointer bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs'
+                                                    : isNextTarget
+                                                    ? 'cursor-pointer bg-[#EFF8F1]/80 border border-[#DCFCE7] shadow-2xs'
+                                                    : isDimmedPast
+                                                    ? 'cursor-pointer bg-transparent border border-transparent border-b-[#F3F4F6] opacity-85'
+                                                    : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
                                                 }`}
                                               >
-                                                {task.dateLabel}
-                                              </span>
-                                            )}
+                                                {/* 좌측 라디오 선택 버튼 + 생육과정명 */}
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                  <button
+                                                    type="button"
+                                                    disabled={isPastDate}
+                                                    aria-disabled={isPastDate}
+                                                    aria-label={`${cleanShortTitle} 일정 수정 대상 선택`}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (isPastDate) return;
+                                                      setMobileScheduleRecalcNotice(
+                                                        ''
+                                                      );
+                                                      setMobileHighlightedTaskId(
+                                                        task.itemId
+                                                      );
+                                                      if (
+                                                        mobileSelectedEditTaskId ===
+                                                          task.itemId &&
+                                                        !isMobileScheduleEditMode
+                                                      ) {
+                                                        setMobileSelectedEditTaskId(
+                                                          ''
+                                                        );
+                                                        setMobileEditTargetDateYmd(
+                                                          ''
+                                                        );
+                                                      } else {
+                                                        setMobileSelectedEditTaskId(
+                                                          task.itemId
+                                                        );
+                                                        setMobileEditTargetDateYmd(
+                                                          task.effDate
+                                                        );
+                                                        if (
+                                                          isMobileScheduleEditMode
+                                                        ) {
+                                                          setIsMobileScheduleEditMode(
+                                                            false
+                                                          );
+                                                        }
+                                                      }
+                                                    }}
+                                                    className={`p-1 -m-1 flex items-center justify-center shrink-0 focus:outline-none ${
+                                                      isPastDate
+                                                        ? 'cursor-not-allowed'
+                                                        : 'cursor-pointer'
+                                                    }`}
+                                                  >
+                                                    {isRadioSelected ? (
+                                                      <span className="w-[23px] h-[23px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
+                                                        <span className="w-[11px] h-[11px] rounded-full bg-[#0E712F]" />
+                                                      </span>
+                                                    ) : isDimmedPast ? (
+                                                      <span className="w-[22px] h-[22px] rounded-full bg-[#9CA3AF] text-white flex items-center justify-center shrink-0">
+                                                        <svg
+                                                          viewBox="0 0 16 16"
+                                                          className="w-3 h-3"
+                                                          fill="none"
+                                                        >
+                                                          <path
+                                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                            stroke="#FFFFFF"
+                                                            strokeWidth="2.4"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                          />
+                                                        </svg>
+                                                      </span>
+                                                    ) : isDone ? (
+                                                      <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                                        <svg
+                                                          viewBox="0 0 16 16"
+                                                          className="w-3 h-3"
+                                                          fill="none"
+                                                        >
+                                                          <path
+                                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                            stroke="#FFFFFF"
+                                                            strokeWidth="2.4"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                          />
+                                                        </svg>
+                                                      </span>
+                                                    ) : isNextTarget ? (
+                                                      <span className="w-[22px] h-[22px] rounded-full border-[2.4px] border-[#16A34A] bg-white shrink-0 shadow-2xs" />
+                                                    ) : (
+                                                      <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
+                                                    )}
+                                                  </button>
 
-                                            {isDimmedPast ? (
-                                              <span className="px-2.5 py-0.5 rounded-full bg-[#E5E7EB]/80 text-[#6B7280] text-[12.5px] font-bold whitespace-nowrap">
-                                                {isDone ? '완료' : '예정'}
-                                              </span>
-                                            ) : isDone ? (
-                                              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[12.5px] font-extrabold whitespace-nowrap">
-                                                완료
-                                              </span>
-                                            ) : isNextTarget ? (
-                                              <span className="px-2.5 py-0.5 rounded-full bg-[#FEF08A] text-[#111827] text-[12.5px] font-extrabold whitespace-nowrap">
-                                                예정
-                                              </span>
-                                            ) : (
-                                              <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#374151] text-[12.5px] font-bold whitespace-nowrap">
-                                                예정
-                                              </span>
-                                            )}
+                                                  <span
+                                                    className={`text-[16.5px] tracking-[-0.03em] truncate ${
+                                                      isDimmedPast
+                                                        ? 'font-extrabold text-[#6B7280]'
+                                                        : 'font-black text-[#111827]'
+                                                    }`}
+                                                  >
+                                                    {cleanShortTitle}
+                                                  </span>
+                                                </div>
 
-                                            <ChevronRight
-                                              className={`w-4 h-4 stroke-[2.3] shrink-0 ${
-                                                isDimmedPast
-                                                  ? 'text-[#9CA3AF]'
-                                                  : 'text-[#111827]'
-                                              }`}
-                                            />
-                                          </div>
+                                                {/* 우측 날짜 + 상태 배지 (완료 / 예정) + 화살표 */}
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                  {isEditingThisItem ? (
+                                                    <input
+                                                      type="date"
+                                                      min={todayKstYmd}
+                                                      value={
+                                                        mobileEditTargetDateYmd ||
+                                                        task.effDate
+                                                      }
+                                                      onClick={(e) =>
+                                                        e.stopPropagation()
+                                                      }
+                                                      onChange={(e) => {
+                                                        const nextYmd =
+                                                          e.target.value;
+                                                        if (!nextYmd) return;
+                                                        setMobileEditTargetDateYmd(
+                                                          nextYmd
+                                                        );
+                                                      }}
+                                                      className="h-[34px] px-2.5 rounded-lg border-2 border-[#0E712F] bg-white text-[13.5px] font-extrabold text-[#111827] shadow-2xs"
+                                                    />
+                                                  ) : (
+                                                    <span
+                                                      className={`text-[14.5px] font-medium tracking-[-0.02em] whitespace-nowrap ${
+                                                        isDimmedPast
+                                                          ? 'text-[#6B7280]'
+                                                          : 'text-[#1F2937]'
+                                                      }`}
+                                                    >
+                                                      {formatShortMonthDay(
+                                                        task.effDate
+                                                      ) || task.dateLabel}
+                                                    </span>
+                                                  )}
+
+                                                  {isDimmedPast ? (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#E5E7EB]/80 text-[#6B7280] text-[12.5px] font-bold whitespace-nowrap">
+                                                      완료
+                                                    </span>
+                                                  ) : isDone ? (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[12.5px] font-extrabold whitespace-nowrap">
+                                                      완료
+                                                    </span>
+                                                  ) : isNextTarget ? (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#FEF08A] text-[#111827] text-[12.5px] font-extrabold whitespace-nowrap">
+                                                      예정
+                                                    </span>
+                                                  ) : (
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#374151] text-[12.5px] font-bold whitespace-nowrap">
+                                                      예정
+                                                    </span>
+                                                  )}
+
+                                                  <ChevronRight
+                                                    className={`w-4 h-4 stroke-[2.3] shrink-0 ${
+                                                      isDimmedPast
+                                                        ? 'text-[#9CA3AF]'
+                                                        : 'text-[#111827]'
+                                                    }`}
+                                                  />
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
                                         </div>
-                                      );
-                                    })}
+                                      </div>
+                                    ))}
                                   </div>
                                 )}
                               </div>
