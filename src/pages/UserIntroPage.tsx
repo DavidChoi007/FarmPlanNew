@@ -383,6 +383,8 @@ export default function UserIntroPage() {
   const [workLogSelectedMaterialThumb, setWorkLogSelectedMaterialThumb] = useState<string>('/images/fertilizers/FERT-PRD-01-thumb.png');
   const [workLogUnit, setWorkLogUnit] = useState<string>('kg');
   const [isPostponeDatePickerOpen, setIsPostponeDatePickerOpen] = useState<boolean>(false);
+  const [isTaskExecDateChangeOpen, setIsTaskExecDateChangeOpen] = useState<boolean>(false);
+  const [taskExecDraftDateYmd, setTaskExecDraftDateYmd] = useState<string>('');
 
   // 3가지 일정 보기 탭: 'timeline' (타임라인) | 'calendar' (달력) | 'stages' (생육단계)
   const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'calendar' | 'stages'>('timeline');
@@ -9821,22 +9823,107 @@ export default function UserIntroPage() {
                   const ddayVal = rawDiff > 0 ? rawDiff : Math.max(1, (sIdx + 1) * 5);
                   const ddayLabel = stg.isRecognized ? '완료' : `D-${ddayVal}`;
 
+                  const descByItemId: Record<string, string> = {
+                    'SCH-01': '전작물 잔재물을 제거하고 포장 배수로 및 토양 환경을 정비합니다.',
+                    'SCH-02': '토양검정 결과에 맞춘 밑거름과 토양개량제를 시비하고 경운합니다.',
+                    'SCH-03': '배수와 통기성을 확보하기 위해 적정 높이의 이랑(두둑)과 멀칭을 조성합니다.',
+                    'SCH-04': '우량 코팅종자를 준비하고 육묘 트레이(또는 본밭)에 적정 간격으로 파종합니다.',
+                    'SCH-05': '육묘상 적정 온도와 수분을 유지하여 건실한 본엽 생장을 유도합니다.',
+                    'SCH-06': '정식 전 외기 순화 및 육묘기 초기 병해충을 예방하고 건묘를 육성합니다.',
+                    'SCH-07': '본밭 재식거리를 준수하여 모종을 정식하고 초기 활착을 위한 충분한 관수를 실시합니다.',
+                    'SCH-08': '정식 후 초기 뿌리 활착 상태를 점검하고 수분 및 차광 관리를 수행합니다.',
+                    'SCH-09': '초기 생장 촉진을 위한 웃거름(추비)을 시비하고 토양 수분을 적정하게 관리합니다.',
+                    'SCH-10': '외엽 확보 및 생육 균일도 유지를 위해 잎·줄기(또는 결구·유인) 관리를 진행합니다.',
+                    'SCH-11': '시기별 생육량을 점검하고 칼슘·붕소 등 미량요소 영양 상태를 보강합니다.',
+                    'SCH-12': '기상 예보와 연동하여 주요 병해충 발생 여부를 정기적으로 예찰하고 점검합니다.',
+                    'SCH-13': '생육기 병해충을 예방하고 강우 전후 병원균·해충 발생을 효과적으로 억제합니다.',
+                    'SCH-14': '수확 전 포장 위생 환경을 관리하고 농약 안전사용기준(PLS)을 준수하여 예방합니다.',
+                    'SCH-15': '목표 적산온도(PGDD) 및 성숙·결구 충실도를 확인하여 적기에 수확을 실시합니다.',
+                    'SCH-16': '수확 후 현장 예건과 등급별 선별 및 적정 온·습도 저장 관리를 수행합니다.',
+                  };
+                  const strippedContent = String(stg.workContent || '')
+                    .replace(/\[[^\]]*\]\s*/g, '')
+                    .trim();
+                  const taskDescription =
+                    strippedContent ||
+                    descByItemId[stg.itemId] ||
+                    `${stg.stageGroupName} 단계의 생육 목표 달성을 위한 맞춤 농작업을 수행합니다.`;
+
                   const usageAmountNum = isPest
                     ? Math.max(1, Math.round((areaPyeongVal / 500) * 2))
                     : Math.max(10, Math.round((areaPyeongVal / 500) * 50));
                   const usageUnit = isPest ? 'L' : 'kg';
+                  const pestMlAmount = Math.max(100, Math.round((areaPyeongVal / 500) * 500));
+                  const waterLAmount = Math.max(100, Math.round((areaPyeongVal / 500) * 500));
                   const materialName = isPest
                     ? '친환경 살균·살충 방제제'
-                    : '복합비료 15-15-15';
+                    : isFert
+                    ? '복합비료 15-15-15'
+                    : ord === 4 || ord === 5
+                    ? '우량 코팅 종자 · 육묘 상토'
+                    : ord === 7 || ord === 8
+                    ? '우량 건묘 · 활착 촉진 자재'
+                    : '단계별 표준 영농 자재';
+                  const materialSubLabel = isPest
+                    ? '적기 예방·방제 약제'
+                    : isFert
+                    ? '생육 맞춤형 비료·영양제'
+                    : '표준 농작업 자재';
                   const materialThumb = isPest
                     ? '/images/fertilizers/MAT-PEST-01-thumb.png'
                     : '/images/fertilizers/FERT-PRD-01-thumb.png';
                   const usageMethod = isPest
-                    ? '작물 잎 앞뒷면에 골고루 분무 살포'
-                    : '밭에 골고루 살포 후 관수';
+                    ? '잎 앞뒷면에 골고루 살포'
+                    : isFert
+                    ? '밭(고랑)에 골고루 살포 후 관수'
+                    : '표준 재식·작업 기준에 맞춰 균일하게 실시';
                   const usageCaution = isPest
-                    ? '강우 직전이나 한낮 고온기 살포 피하기'
-                    : '비온 직후 또는 토양이 습할 때';
+                    ? '이른 오전 또는 해질 무렵 살포'
+                    : isFert
+                    ? '비온 직후 또는 토양이 적당히 습할 때 시비'
+                    : '강우 직전이나 기상 악화 시 작업 피하기';
+
+                  const usageTableRows = isPest
+                    ? [
+                        {
+                          label: '사용량',
+                          val: `${areaPyeongVal.toLocaleString()}평 기준 ${pestMlAmount.toLocaleString()}mL (10a 당 100mL)`,
+                        },
+                        {
+                          label: '희석배수',
+                          val: `물 ${waterLAmount.toLocaleString()}L에 ${pestMlAmount.toLocaleString()}mL (1,000배)`,
+                        },
+                        { label: '살포방법', val: usageMethod },
+                        { label: '주의사항', val: usageCaution },
+                      ]
+                    : isFert
+                    ? [
+                        {
+                          label: '사용량',
+                          val: `${areaPyeongVal.toLocaleString()}평 기준 ${usageAmountNum}${usageUnit} (10a 당 ${Math.max(
+                            10,
+                            Math.round((usageAmountNum / Math.max(1, areaPyeongVal)) * 300)
+                          )}${usageUnit})`,
+                        },
+                        {
+                          label: '시비기준',
+                          val: `${stg.stageGroupName} 적기 정량 시비`,
+                        },
+                        { label: '시비방법', val: usageMethod },
+                        { label: '주의사항', val: usageCaution },
+                      ]
+                    : [
+                        {
+                          label: '작업면적',
+                          val: `${areaPyeongVal.toLocaleString()}평 기준 (${stg.stageGroupName})`,
+                        },
+                        {
+                          label: '적온기준',
+                          val: `생육 적온(${cropOptTempText}) 및 토양 수분 유지`,
+                        },
+                        { label: '작업방법', val: usageMethod },
+                        { label: '주의사항', val: usageCaution },
+                      ];
 
                   return {
                     ...stg,
@@ -9844,12 +9931,15 @@ export default function UserIntroPage() {
                     dateLabel: formatKoreanMonthDayWeekday(stg.effDate),
                     ddayLabel,
                     iconType,
+                    taskDescription,
                     materialName,
+                    materialSubLabel,
                     materialThumb,
                     usageAmountNum,
                     usageUnit,
                     usageMethod,
                     usageCaution,
+                    usageTableRows,
                   };
                 };
 
@@ -9932,13 +10022,23 @@ export default function UserIntroPage() {
                 return `${y}년 ${m}월 ${d}일`;
               };
 
-              // 선택된 1개 생육과정 일정이 변경되었을 때, 그 이후의 모든 후속 일정을 초기 산출 규칙(작년기후+올해기후예측, PGDD 적산온도, 강우량 회피, 토양 특성 보정) 그대로 최적 일정으로 연쇄 재계산 후 DB에 영구 저장하는 함수
+              // 선택된 1개 생육과정 일정이 변경되었을 때, AI가 그 이후의 모든 후속 일정을 초기 산출 규칙(작년기후+올해기후예측, PGDD 적산온도, 강우량 회피, 토양 특성 보정)으로 시뮬레이션하여 후속 일정 변경 필요 여부를 판단하고 DB에 영구 저장하는 함수
               const applySingleTaskDateChangeWithClimateRecalc = async (
                 reqNo: string,
                 targetTask: any,
                 newStartYmd: string
-              ) => {
-                if (!reqNo || !targetTask || !/^\d{4}-\d{2}-\d{2}$/.test(newStartYmd)) return;
+              ): Promise<{
+                changedSubsequentCount: number;
+                totalSubsequentCount: number;
+                summaryMessage: string;
+              }> => {
+                if (!reqNo || !targetTask || !/^\d{4}-\d{2}-\d{2}$/.test(newStartYmd)) {
+                  return {
+                    changedSubsequentCount: 0,
+                    totalSubsequentCount: 0,
+                    summaryMessage: '',
+                  };
+                }
                 const allCropTasks = activeCropItem?.allTasks || [];
                 const targetStepOrder = Number(targetTask.stepOrder || targetTask.step_order || 1);
                 const oldStartYmd = String(targetTask.effDate || targetTask.start_date || newStartYmd);
@@ -10004,13 +10104,20 @@ export default function UserIntroPage() {
                   recommended_date_with_weekday: formatYmdWithWeekday(newStartYmd),
                 };
 
-                // 이후 모든 후속 일정(step_order > targetStepOrder)을 기후(작년+올해예측)·PGDD·강우량·토양성질 기반으로 최적 재산출
+                // 이후 모든 후속 일정(step_order > targetStepOrder)을 기후(작년+올해예측)·PGDD·강우량·토양성질 기반으로 AI 시뮬레이션
                 const subsequentTasks = allCropTasks
                   .filter((t: any) => Number(t.stepOrder) > targetStepOrder)
                   .sort((a: any, b: any) => Number(a.stepOrder) - Number(b.stepOrder));
 
+                // AI 판단 기준:
+                // - 병해충 예찰/방제(PEST) 또는 단순 점검이 3일 이내로 미세 조정된 경우: 생육 누적 적산온도(PGDD) 본 줄기에 직접 영향을 주지 않으므로, 기존 후속 예정일이 공정 역전되지 않고 해당일 기후(한계온도·강수)가 적합하면 기존 일정을 유지!
+                const isMinorEnvAdjustment =
+                  (targetTask.iconType === 'PEST' && Math.abs(deltaDays) <= 4) ||
+                  (targetTask.iconType !== 'WORK' && Math.abs(deltaDays) <= 2);
+
                 let prevRecYmd = newStartYmd;
                 const cascadedItems: any[] = [];
+                let changedSubsequentCount = 0;
                 const nextDraftEntries: Record<string, string> = {
                   [`${reqNo}__${targetTask.itemId}`]: newStartYmd,
                 };
@@ -10039,9 +10146,6 @@ export default function UserIntroPage() {
                     )
                   );
 
-                  // 1) 기준 이동일 + 토양 미기후 보정
-                  const candidateBaseYmd = addDaysToYmd(curSubYmd, deltaDays + soilMicroShift);
-                  // 2) 공정 순서 역전 방지 최소 허용일
                   const minAllowedYmd = addDaysToYmd(prevRecYmd, 1);
                   const slotKey =
                     subTask.iconType === 'PEST'
@@ -10050,21 +10154,44 @@ export default function UserIntroPage() {
                       ? 'STG-HARVEST'
                       : rawSub.stage_slot_key || rawSub.stage_group_id || 'STG-GROWTH';
 
-                  // 3) 작년기후 + 올해기후(예측 포함) + 강우량 회피 + 한계/적정온도(PGDD) 최적일 탐색
-                  const climateRec =
-                    modFlags.ai_work_date_optimizer !== false
-                      ? findClimateRecommendedSingleDate(candidateBaseYmd, minAllowedYmd, slotKey)
-                      : {
-                          recommendedDate:
-                            candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd,
-                          recommendedWithWeekday: formatYmdWithWeekday(
-                            candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd
-                          ),
-                          climateBadge: '기후·적산온도 연동 산출',
-                          climateDetailText: '',
-                        };
+                  // 기존 후속 예정일의 기후 적합성 점검
+                  const curSubClimate = getDayClimate(curSubYmd);
+                  const isCurSubClimateSafe =
+                    curSubYmd >= minAllowedYmd &&
+                    Number(curSubClimate.temp_avg ?? 18) >= cropMinT &&
+                    Number(curSubClimate.temp_avg ?? 18) <= cropMaxT &&
+                    Number(curSubClimate.precipitation_mm ?? 0) < 10;
 
-                  const finalSubStartYmd = climateRec.recommendedDate;
+                  let finalSubStartYmd = curSubYmd;
+                  let finalClimateBadge = rawSub.climate_rule || '기후·적산온도 적정 유지';
+
+                  if (deltaDays === 0 || (isMinorEnvAdjustment && isCurSubClimateSafe)) {
+                    // AI 판단: 단기 강우 회피/미세 조정이며 기존 후속일 기후·PGDD가 유효하므로 기존 일정 그대로 유지
+                    finalSubStartYmd = curSubYmd;
+                  } else {
+                    // 1) 기준 이동일 + 토양 미기후 보정
+                    const candidateBaseYmd = addDaysToYmd(curSubYmd, deltaDays + soilMicroShift);
+                    // 2) 작년기후 + 올해기후(예측 포함) + 강우량 회피 + 한계/적정온도(PGDD) 최적일 탐색
+                    const climateRec =
+                      modFlags.ai_work_date_optimizer !== false
+                        ? findClimateRecommendedSingleDate(candidateBaseYmd, minAllowedYmd, slotKey)
+                        : {
+                            recommendedDate:
+                              candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd,
+                            recommendedWithWeekday: formatYmdWithWeekday(
+                              candidateBaseYmd < minAllowedYmd ? minAllowedYmd : candidateBaseYmd
+                            ),
+                            climateBadge: '기후·적산온도 연동 산출',
+                            climateDetailText: '',
+                          };
+                    finalSubStartYmd = climateRec.recommendedDate;
+                    finalClimateBadge = climateRec.climateBadge || finalClimateBadge;
+                  }
+
+                  if (finalSubStartYmd !== curSubYmd) {
+                    changedSubsequentCount += 1;
+                  }
+
                   const finalSubEndYmd = addDaysToYmd(finalSubStartYmd, subOrigSpan);
                   prevRecYmd = finalSubStartYmd;
 
@@ -10076,8 +10203,8 @@ export default function UserIntroPage() {
                     start_date: finalSubStartYmd,
                     end_date: finalSubEndYmd,
                     recommended_date: finalSubStartYmd,
-                    recommended_date_with_weekday: climateRec.recommendedWithWeekday,
-                    climate_rule: climateRec.climateBadge || rawSub.climate_rule || '',
+                    recommended_date_with_weekday: formatYmdWithWeekday(finalSubStartYmd),
+                    climate_rule: finalClimateBadge,
                   });
                 }
 
@@ -10132,18 +10259,26 @@ export default function UserIntroPage() {
                   // ignore network error
                 }
 
-                // 만약 정식(SCH-07) 또는 수확(SCH-15/16) 날짜가 바뀌었다면 작물 카드 기간도 동기화
                 const cleanTitle =
                   String(targetTask.shortTitle || '')
                     .replace(/\s*\([^)]*\)/g, '')
                     .trim() || targetTask.shortTitle;
-                setMobileScheduleRecalcNotice(
-                  `[${cleanTitle}] 일정이 ${formatYmdToKoreanFull(
-                    newStartYmd
-                  )}로 변경되어, 이후 후속 일정 ${
-                    cascadedItems.length
-                  }건이 기후(작년+올해예측)·적산온도(PGDD)·강우량·토양 조건에 맞춰 최적 일정으로 자동 재계산 및 DB 저장되었습니다.`
-                );
+
+                const summaryMessage =
+                  changedSubsequentCount > 0
+                    ? `[${cleanTitle}] 시작일이 ${formatYmdToKoreanFull(
+                        newStartYmd
+                      )}로 변경 저장되었습니다. AI 기후(작년+올해예측)·적산온도(PGDD)·강우량·토양 분석 결과, 향후 ${changedSubsequentCount}건의 후속 일정이 최적 일정으로 재조정되었습니다.`
+                    : `[${cleanTitle}] 시작일이 ${formatYmdToKoreanFull(
+                        newStartYmd
+                      )}로 변경 저장되었습니다.\n향후 일정에는 추가 일정 변동없이 진행하셔도 됩니다.`;
+
+                setMobileScheduleRecalcNotice(summaryMessage);
+                return {
+                  changedSubsequentCount,
+                  totalSubsequentCount: subsequentTasks.length,
+                  summaryMessage,
+                };
               };
 
               const goToScheduleStep = (
@@ -10223,6 +10358,8 @@ export default function UserIntroPage() {
                 if (!task) return;
                 setSelectedScheduleTaskId(task.itemId);
                 setTaskDetailActualDate(task.effDate);
+                setTaskExecDraftDateYmd(task.effDate);
+                setIsTaskExecDateChangeOpen(false);
                 setTaskDetailActualAmount(String(task.usageAmountNum || 50));
                 setWorkLogUnit(task.usageUnit || 'kg');
                 setWorkLogSelectedMaterialName(
@@ -11106,11 +11243,18 @@ export default function UserIntroPage() {
                                       selectedEditTaskObj &&
                                       mobileEditTargetDateYmd
                                     ) {
-                                      await applySingleTaskDateChangeWithClimateRecalc(
-                                        activeCropItem.request_no,
-                                        selectedEditTaskObj,
-                                        mobileEditTargetDateYmd
-                                      );
+                                      const res =
+                                        await applySingleTaskDateChangeWithClimateRecalc(
+                                          activeCropItem.request_no,
+                                          selectedEditTaskObj,
+                                          mobileEditTargetDateYmd
+                                        );
+                                      if (
+                                        res.summaryMessage &&
+                                        typeof window !== 'undefined'
+                                      ) {
+                                        window.alert(res.summaryMessage);
+                                      }
                                     }
                                     setIsMobileScheduleEditMode(false);
                                   }
@@ -11148,379 +11292,387 @@ export default function UserIntroPage() {
                         );
                       })()}
 
-                    {/* ==================== [페이지 4: 농작업 실행하기 페이지 (첨부 이미지 4번)] ==================== */}
+                    {/* ==================== [페이지 4: 농작업 상세 및 작업시작 페이지 (첨부 이미지 구성 적용)] ==================== */}
                     {mobileScheduleStep === 'task_exec' &&
                       activeCropItem &&
-                      selectedTaskItem && (
-                        <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
-                          <div className="space-y-5">
-                            <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
-                              {selectedTaskItem.shortTitle} (실행하기)
-                            </h1>
+                      selectedTaskItem &&
+                      (() => {
+                        const cleanExecTitle =
+                          String(selectedTaskItem.shortTitle || '')
+                            .replace(/\s*\(실행하기\)\s*$/g, '')
+                            .replace(/\s*\([^)]*\)\s*$/g, '')
+                            .trim() || selectedTaskItem.shortTitle;
 
-                            {/* 예정일 배너 */}
-                            <div className="rounded-[14px] bg-[#EFF8F1] px-4 py-3.5 flex items-center gap-3">
-                              <Calendar className="w-6 h-6 text-[#16A34A] stroke-[2.1] shrink-0" />
-                              <span className="text-[16.5px] font-medium text-[#374151]">
-                                예정일
-                              </span>
-                              <span className="text-[17.5px] font-bold text-[#111827]">
-                                {selectedTaskItem.dateLabel}
-                              </span>
-                            </div>
+                        const allSortedTasks = [...(activeCropItem.allTasks || [])].sort(
+                          (a: any, b: any) => Number(a.stepOrder) - Number(b.stepOrder)
+                        );
+                        const curIdx = allSortedTasks.findIndex(
+                          (t: any) => t.itemId === selectedTaskItem.itemId
+                        );
+                        const prevStageTask = curIdx > 0 ? allSortedTasks[curIdx - 1] : null;
+                        const minAllowedDateYmd = prevStageTask?.effDate || '';
 
-                            {/* 사용 농자재 */}
-                            <div className="space-y-2.5">
-                              <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
-                                  <svg
-                                    viewBox="0 0 16 16"
-                                    className="w-3 h-3"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                      stroke="#FFFFFF"
-                                      strokeWidth="2.3"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                </span>
-                                <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
-                                  사용 농자재
-                                </span>
-                              </div>
+                        const rawDiffFromToday = diffDaysBetweenYmd(
+                          todayKstYmd,
+                          selectedTaskItem.effDate
+                        );
+                        const ddayPillText =
+                          rawDiffFromToday === 0
+                            ? 'D-Day'
+                            : rawDiffFromToday > 0
+                            ? `D-${rawDiffFromToday}`
+                            : selectedTaskItem.isRecognized
+                            ? '완료'
+                            : `D+${Math.abs(rawDiffFromToday)}`;
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setMobileAgroCategoryTab(
-                                    selectedTaskItem.iconType === 'PEST'
-                                      ? 'PESTICIDE'
-                                      : 'FERTILIZER'
-                                  );
-                                  setActiveMenu('농작물 구매');
-                                }}
-                                className="w-full rounded-[16px] border border-[#E5E7EB] hover:border-[#0E712F] bg-white p-3.5 flex items-center justify-between gap-3 cursor-pointer shadow-2xs transition"
-                              >
-                                <div className="flex items-center gap-3.5 min-w-0">
-                                  <div className="w-[52px] h-[52px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
-                                    <img
-                                      src={normalizeAgroThumbPath(
-                                        selectedTaskItem.materialThumb,
-                                        selectedTaskItem.iconType === 'PEST'
-                                      )}
-                                      alt={selectedTaskItem.materialName}
-                                      onError={(e) => {
-                                        e.currentTarget.src =
-                                          selectedTaskItem.iconType === 'PEST'
-                                            ? '/images/fertilizers/MAT-PEST-01-thumb.png'
-                                            : '/images/fertilizers/FERT-PRD-01-thumb.png';
-                                      }}
-                                      className="w-full h-full object-contain block"
-                                    />
-                                  </div>
-                                  <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em] truncate">
-                                    {selectedTaskItem.materialName}
+                        const usageRows: Array<{ label: string; val: string }> =
+                          Array.isArray(selectedTaskItem.usageTableRows) &&
+                          selectedTaskItem.usageTableRows.length > 0
+                            ? selectedTaskItem.usageTableRows
+                            : [
+                                {
+                                  label: '사용량',
+                                  val: `${activeCropItem.areaPyeong.toLocaleString()}평 기준 ${
+                                    selectedTaskItem.usageAmountNum
+                                  }${selectedTaskItem.usageUnit} (10a 당 100mL)`,
+                                },
+                                {
+                                  label: '희석배수',
+                                  val: '물 500L에 500mL (1,000배)',
+                                },
+                                {
+                                  label: '살포방법',
+                                  val: selectedTaskItem.usageMethod,
+                                },
+                                {
+                                  label: '주의사항',
+                                  val: selectedTaskItem.usageCaution,
+                                },
+                              ];
+
+                        const recordTaskStartCompletion = (targetDateYmd: string) => {
+                          const rNo = activeCropItem.request_no;
+                          const compKey = `${rNo}__${selectedTaskItem.itemId}`;
+                          saveStageItemCompletions((prev) => ({
+                            ...prev,
+                            [compKey]: {
+                              completed: true,
+                              confirmedDate: targetDateYmd,
+                              confirmedAt: new Date().toISOString(),
+                            },
+                          }));
+                          setTaskDetailActualDate(targetDateYmd);
+                        };
+
+                        return (
+                          <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
+                            <div className="space-y-5">
+                              {/* 상단 작업 제목 */}
+                              <h1 className="text-[24px] font-black text-[#111827] tracking-[-0.03em]">
+                                {cleanExecTitle}
+                              </h1>
+
+                              {/* 예정일 + 우측 D-Day 노란 배지 배너 */}
+                              <div className="rounded-[16px] bg-[#FEFCE8]/90 border border-[#FEF08A] px-4 py-3.5 flex items-center justify-between gap-2 shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <Calendar className="w-[22px] h-[22px] text-[#16A34A] stroke-[2.2] shrink-0" />
+                                  <span className="text-[16px] font-bold text-[#1F2937] shrink-0">
+                                    예정일
+                                  </span>
+                                  <span className="text-[17px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                    {selectedTaskItem.dateLabel}
                                   </span>
                                 </div>
-                                <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
-                              </button>
-                            </div>
-
-                            {/* 사용방법 (사용량 / 방법 / 주의) */}
-                            <div className="space-y-3 pt-1">
-                              <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
-                                  <svg
-                                    viewBox="0 0 16 16"
-                                    className="w-3 h-3"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                      stroke="#FFFFFF"
-                                      strokeWidth="2.3"
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                    />
-                                  </svg>
-                                </span>
-                                <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
-                                  사용방법
+                                <span className="px-3.5 py-1 rounded-full bg-[#FDE047] text-[#111827] font-black text-[14.5px] tracking-[-0.02em] shrink-0 shadow-2xs">
+                                  {ddayPillText}
                                 </span>
                               </div>
 
-                              <div className="space-y-2.5 pl-1">
-                                {[
-                                  {
-                                    label: '사용량',
-                                    val: `${activeCropItem.areaPyeong.toLocaleString()}평 기준 ${
-                                      selectedTaskItem.usageAmountNum
-                                    }${selectedTaskItem.usageUnit}`,
-                                  },
-                                  {
-                                    label: '방법',
-                                    val: selectedTaskItem.usageMethod,
-                                  },
-                                  {
-                                    label: '주의',
-                                    val: selectedTaskItem.usageCaution,
-                                  },
-                                ].map((row) => (
-                                  <div
-                                    key={row.label}
-                                    className="flex items-center gap-3 text-[16px]"
-                                  >
-                                    <span className="w-5 h-5 rounded-full bg-[#16A34A] text-white inline-flex items-center justify-center shrink-0">
-                                      <svg
-                                        viewBox="0 0 16 16"
-                                        className="w-3 h-3"
-                                        fill="none"
-                                      >
-                                        <path
-                                          d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                          stroke="#FFFFFF"
-                                          strokeWidth="2.2"
-                                          strokeLinecap="round"
-                                          strokeLinejoin="round"
-                                        />
-                                      </svg>
-                                    </span>
-                                    <span className="w-[52px] font-extrabold text-[#111827] shrink-0">
-                                      {row.label}
-                                    </span>
-                                    <span className="font-medium text-[#1F2937] tracking-[-0.02em]">
-                                      {row.val}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* 사용방법 항목 밑: 해당 농작업의 저장된 [작업기록] 리스트 (사진 + 내용) */}
-                            {(() => {
-                              const allCropLogs = Array.isArray(
-                                cropWorkLogs[activeCropItem.request_no]
-                              )
-                                ? cropWorkLogs[activeCropItem.request_no]
-                                : [];
-                              const matchedTaskLogs = allCropLogs.filter(
-                                (lg) =>
-                                  (lg.itemId &&
-                                    lg.itemId === selectedTaskItem.itemId) ||
-                                  (!lg.itemId &&
-                                    String(lg.taskTitle || '').includes(
-                                      selectedTaskItem.shortTitle
-                                    ))
-                              );
-
-                              return (
-                                <div className="space-y-2.5 pt-2 border-t border-[#F1F5F9]">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
-                                        <svg
-                                          viewBox="0 0 16 16"
-                                          className="w-3 h-3"
-                                          fill="none"
-                                        >
-                                          <path
-                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                            stroke="#FFFFFF"
-                                            strokeWidth="2.3"
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                          />
-                                        </svg>
-                                      </span>
-                                      <span className="text-[18px] font-extrabold text-[#111827] tracking-[-0.03em]">
-                                        작업기록
-                                      </span>
-                                      {matchedTaskLogs.length > 0 && (
-                                        <span className="px-2 py-0.5 rounded-full bg-[#EFF8F1] text-[#0E712F] text-[12.5px] font-extrabold">
-                                          {matchedTaskLogs.length}건
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {matchedTaskLogs.length === 0 ? (
-                                    <div className="rounded-[14px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] px-4 py-3 text-[13.5px] font-medium text-[#6B7280]">
-                                      등록된 작업기록이 없습니다. 아래{' '}
-                                      <strong className="text-[#0E712F]">
-                                        [작업 완료하기]
-                                      </strong>
-                                      를 눌러 작업 사진과 내용을 기록해 보세요.
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-2.5">
-                                      {matchedTaskLogs.map((logItem) => {
-                                        const thumbSrc =
-                                          logItem.photoDataUrl ||
-                                          normalizeAgroThumbPath(
-                                            logItem.materialThumb ||
-                                              selectedTaskItem.materialThumb,
-                                            selectedTaskItem.iconType === 'PEST'
-                                          ) ||
-                                          activeCropItem.thumbUrl;
-                                        const cleanMemo = String(
-                                          logItem.memo || ''
-                                        )
-                                          .replace(/\[첨부사진:[^\]]*\]/g, '')
-                                          .trim();
-                                        const matSummary = logItem.materialName
-                                          ? `${logItem.materialName} · ${
-                                              logItem.actualAmount ||
-                                              selectedTaskItem.usageAmountNum
-                                            }${
-                                              logItem.unit ||
-                                              selectedTaskItem.usageUnit
-                                            }`
-                                          : logItem.taskTitle;
-
-                                        return (
-                                          <div
-                                            key={logItem.id}
-                                            className="rounded-[16px] border border-[#E5E7EB] bg-[#F9FBF9] p-3 flex items-start gap-3 shadow-2xs"
-                                          >
-                                            <div className="w-[64px] h-[64px] rounded-[12px] overflow-hidden bg-white border border-[#E5E7EB] shrink-0 flex items-center justify-center">
-                                              <img
-                                                src={thumbSrc}
-                                                alt="작업 기록 사진"
-                                                onError={(e) => {
-                                                  e.currentTarget.src =
-                                                    '/images/fertilizers/FERT-PRD-01-thumb.png';
-                                                }}
-                                                className="w-full h-full object-cover block"
-                                              />
-                                            </div>
-
-                                            <div className="min-w-0 flex-1 space-y-1">
-                                              <div className="flex items-center justify-between gap-2">
-                                                <span className="text-[14px] font-extrabold text-[#0E712F] tracking-[-0.02em]">
-                                                  {formatYmdToKoreanFull(
-                                                    logItem.workDate
-                                                  )}
-                                                </span>
-                                                <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[11px] font-extrabold shrink-0">
-                                                  기록완료
-                                                </span>
-                                              </div>
-                                              <div className="text-[15px] font-black text-[#111827] tracking-[-0.02em] truncate">
-                                                {matSummary}
-                                              </div>
-                                              <p className="text-[14px] font-medium text-[#374151] leading-snug break-keep">
-                                                {cleanMemo ||
-                                                  `${selectedTaskItem.shortTitle} 작업 완료`}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
-
-                            {/* 연기하기 인라인 날짜 선택 패널 (팝업이 아닌 인라인 표시 + 기후 연동 후속 일정 자동 재계산 및 DB 저장) */}
-                            {isPostponeDatePickerOpen && (
-                              <div className="rounded-[14px] border border-[#0E712F] bg-[#F4F8F5] p-3.5 space-y-2">
-                                <div className="text-[14px] font-extrabold text-[#0E712F]">
-                                  변경할 예정일을 선택하세요 (이후 일정이 기후 기반으로 자동 재계산됩니다)
-                                </div>
+                              {/* 1) 작업 내용 섹션 */}
+                              <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <input
-                                    type="date"
-                                    value={selectedTaskItem.effDate}
-                                    onChange={(e) => {
-                                      const nextYmd = e.target.value;
-                                      if (!nextYmd) return;
-                                      applySingleTaskDateChangeWithClimateRecalc(
-                                        activeCropItem.request_no,
-                                        selectedTaskItem,
-                                        nextYmd
-                                      );
-                                      setTaskDetailActualDate(nextYmd);
-                                      setIsPostponeDatePickerOpen(false);
-                                    }}
-                                    className="flex-1 h-[42px] px-3 rounded-lg border border-slate-300 bg-white font-bold text-sm text-slate-900"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const nextYmd = addDaysToYmd(
-                                        selectedTaskItem.effDate,
-                                        3
-                                      );
-                                      applySingleTaskDateChangeWithClimateRecalc(
-                                        activeCropItem.request_no,
-                                        selectedTaskItem,
-                                        nextYmd
-                                      );
-                                      setTaskDetailActualDate(nextYmd);
-                                      setIsPostponeDatePickerOpen(false);
-                                    }}
-                                    className="h-[42px] px-3 rounded-lg bg-[#0E712F] text-white font-bold text-xs cursor-pointer shrink-0"
-                                  >
-                                    +3일 연기
-                                  </button>
+                                  <span className="w-6 h-6 inline-flex items-center justify-center text-[#16A34A] shrink-0">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="w-[22px] h-[22px]"
+                                      fill="none"
+                                    >
+                                      <path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                        stroke="#16A34A"
+                                        strokeWidth="2.1"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                      <path
+                                        d="M9 12l2 2 4-4"
+                                        stroke="#16A34A"
+                                        strokeWidth="2.1"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </span>
+                                  <span className="text-[18.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                    작업 내용
+                                  </span>
+                                </div>
+                                <p className="pl-8 text-[15.5px] font-semibold text-[#1F2937] leading-relaxed break-keep">
+                                  {selectedTaskItem.taskDescription ||
+                                    '해당 생육 단계의 목표 달성을 위한 표준 농작업을 수행합니다.'}
+                                </p>
+                              </div>
+
+                              {/* 2) 권장 농자재 카드 */}
+                              <div className="rounded-[18px] border border-[#E2F0E5] bg-[#EFF8F1] overflow-hidden shadow-2xs">
+                                <div className="px-4 py-2.5 flex items-center gap-2">
+                                  <span className="w-5 h-5 inline-flex items-center justify-center text-[#16A34A] shrink-0">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="w-5 h-5"
+                                      fill="none"
+                                    >
+                                      <path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                        stroke="#16A34A"
+                                        strokeWidth="2.1"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                      <path
+                                        d="M9 12l2 2 4-4"
+                                        stroke="#16A34A"
+                                        strokeWidth="2.1"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                      />
+                                    </svg>
+                                  </span>
+                                  <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                    권장 농자재
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMobileAgroCategoryTab(
+                                      selectedTaskItem.iconType === 'PEST'
+                                        ? 'PESTICIDE'
+                                        : 'FERTILIZER'
+                                    );
+                                    setActiveMenu('농작물 구매');
+                                  }}
+                                  className="w-full bg-white px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-[#FAFDFB] transition border-t border-[#E2F0E5]"
+                                >
+                                  <div className="flex items-center gap-3.5 min-w-0">
+                                    <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+                                      <img
+                                        src={normalizeAgroThumbPath(
+                                          selectedTaskItem.materialThumb,
+                                          selectedTaskItem.iconType === 'PEST'
+                                        )}
+                                        alt={selectedTaskItem.materialName}
+                                        onError={(e) => {
+                                          e.currentTarget.src =
+                                            selectedTaskItem.iconType === 'PEST'
+                                              ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+                                              : '/images/fertilizers/FERT-PRD-01-thumb.png';
+                                        }}
+                                        className="w-full h-full object-contain block"
+                                      />
+                                    </div>
+                                    <div className="flex items-baseline gap-1.5 min-w-0 truncate">
+                                      <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                        {selectedTaskItem.materialName}
+                                      </span>
+                                      <span className="text-[14.5px] font-semibold text-[#4B5563] shrink-0">
+                                        ({selectedTaskItem.materialSubLabel || '예시제품'})
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
+                                </button>
+                              </div>
+
+                              {/* 3) 사용방법 테이블 섹션 */}
+                              <div className="space-y-2.5 pt-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-6 h-6 inline-flex items-center justify-center text-[#16A34A] shrink-0">
+                                    <svg
+                                      viewBox="0 0 24 24"
+                                      className="w-[21px] h-[21px]"
+                                      fill="none"
+                                    >
+                                      <rect
+                                        x="3"
+                                        y="4"
+                                        width="18"
+                                        height="16"
+                                        rx="3"
+                                        stroke="#16A34A"
+                                        strokeWidth="2.1"
+                                      />
+                                      <path
+                                        d="M7 9h2M12 9h5M7 13h2M12 13h5M7 17h2M12 17h5"
+                                        stroke="#16A34A"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                      />
+                                    </svg>
+                                  </span>
+                                  <span className="text-[18.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                    사용방법
+                                  </span>
+                                </div>
+
+                                <div className="rounded-[16px] border border-[#E5E7EB] bg-white overflow-hidden divide-y divide-[#F1F5F9] shadow-2xs">
+                                  {usageRows.map((row) => (
+                                    <div
+                                      key={row.label}
+                                      className="flex items-center text-[15px]"
+                                    >
+                                      <div className="w-[92px] bg-[#F8FAFC] px-3.5 py-3 font-extrabold text-[#111827] shrink-0 text-center">
+                                        {row.label}
+                                      </div>
+                                      <div className="px-3.5 py-3 font-semibold text-[#111827] tracking-[-0.02em] flex-1 break-keep">
+                                        {row.val}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
-                            )}
-                          </div>
+                            </div>
 
-                          {/* 하단 버튼 3종: [✓ 작업 완료하기] / [📅 연기하기] [✕ 미실시] */}
-                          <div className="space-y-3 pt-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                prepareTaskForExecAndLog(selectedTaskItem);
-                                goToScheduleStep('work_log');
-                              }}
-                              className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
-                            >
-                              <Check className="w-5 h-5 stroke-[2.8]" />
-                              <span>작업 완료하기</span>
-                            </button>
+                            {/* 하단 영역: 일정변경 날짜 입력창(열림 시) + [✓ 작업시작] 버튼 */}
+                            <div className="space-y-3 pt-4">
+                              {isTaskExecDateChangeOpen && (
+                                <div className="rounded-[16px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-2.5 shadow-xs">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[13.5px] font-extrabold text-[#0E712F]">
+                                      변경할 작업 시작일 선택
+                                    </span>
+                                    {prevStageTask && (
+                                      <span className="text-[11.5px] font-semibold text-[#4B5563]">
+                                        직전 단계일({prevStageTask.effDate}) 이후 선택
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="date"
+                                      min={minAllowedDateYmd || undefined}
+                                      value={
+                                        taskExecDraftDateYmd || selectedTaskItem.effDate
+                                      }
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (!v) return;
+                                        setTaskExecDraftDateYmd(v);
+                                      }}
+                                      className="flex-1 h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827]"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        const targetYmd =
+                                          taskExecDraftDateYmd ||
+                                          selectedTaskItem.effDate;
+                                        if (!targetYmd) return;
 
-                            <div className="grid grid-cols-2 gap-3">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setIsPostponeDatePickerOpen((prev) => !prev)
-                                }
-                                className="h-[48px] rounded-full border-[1.5px] border-[#16A34A] bg-white hover:bg-[#F4F9F5] text-[#111827] font-extrabold text-[16px] flex items-center justify-center gap-2 cursor-pointer transition"
-                              >
-                                <Calendar className="w-5 h-5 text-[#16A34A] stroke-[2.1]" />
-                                <span>연기하기</span>
-                              </button>
+                                        // 직전 단계보다 앞선 날짜 역전 방지
+                                        if (
+                                          minAllowedDateYmd &&
+                                          targetYmd < minAllowedDateYmd
+                                        ) {
+                                          window.alert(
+                                            `직전 단계(${prevStageTask.shortTitle}: ${formatYmdToKoreanFull(
+                                              minAllowedDateYmd
+                                            )})보다 이전 날짜로는 변경할 수 없습니다.`
+                                          );
+                                          return;
+                                        }
+
+                                        // 날짜를 바꾸지 않고 그대로 적용한 경우
+                                        if (targetYmd === selectedTaskItem.effDate) {
+                                          recordTaskStartCompletion(targetYmd);
+                                          setIsTaskExecDateChangeOpen(false);
+                                          window.alert('시작일이 저장되었습니다.');
+                                          return;
+                                        }
+
+                                        // 2차 승인 메시지
+                                        const proceed = window.confirm(
+                                          '향후 모든 일정이 수정될수 있습니다. 계속 진행하시겠습니까?'
+                                        );
+                                        if (!proceed) return;
+
+                                        const res =
+                                          await applySingleTaskDateChangeWithClimateRecalc(
+                                            activeCropItem.request_no,
+                                            selectedTaskItem,
+                                            targetYmd
+                                          );
+                                        recordTaskStartCompletion(targetYmd);
+                                        setIsTaskExecDateChangeOpen(false);
+
+                                        if (res.summaryMessage) {
+                                          window.alert(res.summaryMessage);
+                                        } else {
+                                          window.alert('시작일이 저장되었습니다.');
+                                        }
+                                      }}
+                                      className="h-[44px] px-4 rounded-[10px] bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[14px] tracking-[-0.02em] cursor-pointer shrink-0 shadow-2xs transition"
+                                    >
+                                      변경된 날짜 적용
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
 
                               <button
                                 type="button"
                                 onClick={() => {
-                                  handleSaveStageUncompleted(
-                                    activeCropItem.request_no,
-                                    {
-                                      item_id: selectedTaskItem.itemId,
-                                      step_order: selectedTaskItem.stepOrder,
-                                      sub_item_name: selectedTaskItem.subItemName,
-                                      start_date: selectedTaskItem.effDate,
+                                  const schedYmd = selectedTaskItem.effDate;
+                                  // 1. 예정 일정이 지난 경우 (기본적으로 예정일정이 지나면 자동으로 그 날에 시작한 것으로 저장)
+                                  if (schedYmd < todayKstYmd) {
+                                    recordTaskStartCompletion(schedYmd);
+                                    const wantChange = window.confirm(
+                                      '예정일정으로 시작처리된 상태 입니다. 시작일을 변경하시겠습니까?'
+                                    );
+                                    if (wantChange) {
+                                      setTaskExecDraftDateYmd(schedYmd);
+                                      setIsTaskExecDateChangeOpen(true);
                                     }
-                                  );
-                                  goToScheduleStep('tasks');
+                                    return;
+                                  }
+
+                                  // 2-A. 예정일 전인 경우 (오늘보다 미래 일정)
+                                  if (schedYmd > todayKstYmd) {
+                                    const wantChange = window.confirm(
+                                      '예정일 이전 일정입니다. 시작일을 변경하시겠습니까?'
+                                    );
+                                    if (wantChange) {
+                                      setTaskExecDraftDateYmd(schedYmd);
+                                      setIsTaskExecDateChangeOpen(true);
+                                    }
+                                    return;
+                                  }
+
+                                  // 2-B. 예정일과 같은 경우 (오늘 === 예정일)
+                                  recordTaskStartCompletion(schedYmd);
+                                  setIsTaskExecDateChangeOpen(false);
+                                  window.alert('시작일이 저장되었습니다.');
                                 }}
-                                className="h-[48px] rounded-full border-[1.5px] border-[#16A34A] bg-white hover:bg-[#F4F9F5] text-[#111827] font-extrabold text-[16px] flex items-center justify-center gap-2 cursor-pointer transition"
+                                className="w-full h-[56px] rounded-full bg-gradient-to-b from-[#15803D] to-[#0E712F] hover:from-[#126E34] hover:to-[#0B5D26] active:scale-[0.99] text-white font-black text-[19px] tracking-[-0.02em] flex items-center justify-center gap-2.5 shadow-[0_6px_16px_rgba(14,113,47,0.28)] cursor-pointer transition"
                               >
-                                <X className="w-5 h-5 text-[#16A34A] stroke-[2.4]" />
-                                <span>미실시</span>
+                                <Check className="w-6 h-6 stroke-[3]" />
+                                <span>작업시작</span>
                               </button>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
 
                     {/* ==================== [페이지 5: 작업 기록 페이지 (첨부 이미지 5번)] ==================== */}
                     {mobileScheduleStep === 'work_log' && activeCropItem && (
