@@ -10870,7 +10870,7 @@ export default function UserIntroPage() {
                                               : isNextTarget
                                               ? 'cursor-pointer bg-[#EFF8F1]/80 border border-[#DCFCE7] shadow-2xs'
                                               : isDimmedPast
-                                              ? 'cursor-pointer bg-transparent border border-transparent border-b-[#F3F4F6] opacity-55'
+                                              ? 'cursor-pointer bg-transparent border border-transparent border-b-[#F3F4F6] opacity-85'
                                               : 'cursor-pointer bg-transparent hover:bg-slate-50/80 border border-transparent border-b-[#F3F4F6]'
                                           }`}
                                         >
@@ -10911,7 +10911,7 @@ export default function UserIntroPage() {
                                                 </span>
                                               ) : isDimmedPast ? (
                                                 isDone ? (
-                                                  <span className="w-[22px] h-[22px] rounded-full bg-[#D1D5DB] text-white flex items-center justify-center shrink-0">
+                                                  <span className="w-[22px] h-[22px] rounded-full bg-[#9CA3AF] text-white flex items-center justify-center shrink-0">
                                                     <svg
                                                       viewBox="0 0 16 16"
                                                       className="w-3 h-3"
@@ -10927,7 +10927,7 @@ export default function UserIntroPage() {
                                                     </svg>
                                                   </span>
                                                 ) : (
-                                                  <span className="w-[22px] h-[22px] rounded-full border-[2px] border-[#D1D5DB] bg-[#F9FAFB] shrink-0" />
+                                                  <span className="w-[22px] h-[22px] rounded-full border-[2px] border-[#9CA3AF] bg-[#F3F4F6] shrink-0" />
                                                 )
                                               ) : isDone ? (
                                                 <span className="w-[22px] h-[22px] rounded-full bg-[#15803D] text-white flex items-center justify-center shrink-0 shadow-2xs">
@@ -10955,7 +10955,7 @@ export default function UserIntroPage() {
                                             <span
                                               className={`text-[16.5px] tracking-[-0.03em] truncate ${
                                                 isDimmedPast
-                                                  ? 'font-bold text-[#9CA3AF]'
+                                                  ? 'font-extrabold text-[#6B7280]'
                                                   : 'font-black text-[#111827]'
                                               }`}
                                             >
@@ -10994,7 +10994,7 @@ export default function UserIntroPage() {
                                               <span
                                                 className={`text-[14.5px] font-medium tracking-[-0.02em] whitespace-nowrap ${
                                                   isDimmedPast
-                                                    ? 'text-[#9CA3AF]'
+                                                    ? 'text-[#6B7280]'
                                                     : 'text-[#1F2937]'
                                                 }`}
                                               >
@@ -11003,7 +11003,7 @@ export default function UserIntroPage() {
                                             )}
 
                                             {isDimmedPast ? (
-                                              <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#9CA3AF] text-[12.5px] font-bold whitespace-nowrap">
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#E5E7EB]/80 text-[#6B7280] text-[12.5px] font-bold whitespace-nowrap">
                                                 {isDone ? '완료' : '예정'}
                                               </span>
                                             ) : isDone ? (
@@ -11023,7 +11023,7 @@ export default function UserIntroPage() {
                                             <ChevronRight
                                               className={`w-4 h-4 stroke-[2.3] shrink-0 ${
                                                 isDimmedPast
-                                                  ? 'text-[#D1D5DB]'
+                                                  ? 'text-[#9CA3AF]'
                                                   : 'text-[#111827]'
                                               }`}
                                             />
