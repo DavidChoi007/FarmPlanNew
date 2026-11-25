@@ -11764,6 +11764,14 @@ export default function UserIntroPage() {
                                 },
                               ];
 
+                        const execDraftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
+                        const isTaskDateEditedByUser = Boolean(
+                          inlineStageDateDrafts[execDraftKey] ||
+                            stageItemCompletions[activeCropItem.request_no]?.[
+                              selectedTaskItem.itemId
+                            ]?.confirmedDate
+                        );
+
                         const recordTaskStartCompletion = (targetDateYmd: string) => {
                           const rNo = activeCropItem.request_no;
                           saveStageItemCompletions((prev) => {
@@ -11802,9 +11810,11 @@ export default function UserIntroPage() {
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <Calendar className="w-[21px] h-[21px] text-[#16A34A] stroke-[2.2] shrink-0" />
-                                    <span className="text-[15.5px] font-bold text-[#1F2937] shrink-0">
-                                      예정일
-                                    </span>
+                                    {!isTaskDateEditedByUser && (
+                                      <span className="text-[15.5px] font-bold text-[#1F2937] shrink-0">
+                                        예정일
+                                      </span>
+                                    )}
                                     <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
                                       {selectedTaskItem.dateLabel}
                                     </span>
