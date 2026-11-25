@@ -11950,54 +11950,14 @@ export default function UserIntroPage() {
                                   setTaskExecDraftDateYmd(selectedTaskItem.effDate);
                                   setIsTaskExecDateChangeOpen((prev) => !prev);
                                 }}
-                                className="w-full h-[50px] rounded-full border-[1.6px] border-[#16A34A] bg-white hover:bg-[#EFF8F1] text-[#0E712F] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                                className="w-full h-[54px] rounded-full bg-gradient-to-b from-[#15803D] to-[#0E712F] hover:from-[#126E34] hover:to-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_6px_16px_rgba(14,113,47,0.28)] cursor-pointer transition"
                               >
-                                <Calendar className="w-5 h-5 text-[#0E712F] stroke-[2.2]" />
+                                <Calendar className="w-5 h-5 text-white stroke-[2.2]" />
                                 <span>
                                   {isTaskExecDateChangeOpen
                                     ? '일정 수정 닫기'
                                     : '일정 수정하기'}
                                 </span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const schedYmd = selectedTaskItem.effDate;
-                                  // 1. 예정 일정이 지난 경우 (기본적으로 예정일정이 지나면 자동으로 그 날에 시작한 것으로 저장)
-                                  if (schedYmd < todayKstYmd) {
-                                    recordTaskStartCompletion(schedYmd);
-                                    const wantChange = window.confirm(
-                                      '예정일정으로 시작처리된 상태 입니다. 시작일을 변경하시겠습니까?'
-                                    );
-                                    if (wantChange) {
-                                      setTaskExecDraftDateYmd(schedYmd);
-                                      setIsTaskExecDateChangeOpen(true);
-                                    }
-                                    return;
-                                  }
-
-                                  // 2-A. 예정일 전인 경우 (오늘보다 미래 일정)
-                                  if (schedYmd > todayKstYmd) {
-                                    const wantChange = window.confirm(
-                                      '예정일 이전 일정입니다. 시작일을 변경하시겠습니까?'
-                                    );
-                                    if (wantChange) {
-                                      setTaskExecDraftDateYmd(schedYmd);
-                                      setIsTaskExecDateChangeOpen(true);
-                                    }
-                                    return;
-                                  }
-
-                                  // 2-B. 예정일과 같은 경우 (오늘 === 예정일)
-                                  recordTaskStartCompletion(schedYmd);
-                                  setIsTaskExecDateChangeOpen(false);
-                                  window.alert('시작일이 저장되었습니다.');
-                                }}
-                                className="w-full h-[56px] rounded-full bg-gradient-to-b from-[#15803D] to-[#0E712F] hover:from-[#126E34] hover:to-[#0B5D26] active:scale-[0.99] text-white font-black text-[19px] tracking-[-0.02em] flex items-center justify-center gap-2.5 shadow-[0_6px_16px_rgba(14,113,47,0.28)] cursor-pointer transition"
-                              >
-                                <Check className="w-6 h-6 stroke-[3]" />
-                                <span>작업시작</span>
                               </button>
                             </div>
                           </div>
