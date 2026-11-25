@@ -12526,12 +12526,16 @@ export default function UserIntroPage() {
 
                         return (
                           <div
-                            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
+                            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4 cursor-pointer"
                             onClick={() => setGrowthConfirmModalTarget(null)}
+                            onMouseDown={() => setGrowthConfirmModalTarget(null)}
+                            onTouchStart={() => setGrowthConfirmModalTarget(null)}
                           >
                             <div
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full max-w-[380px] rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-2xl space-y-4"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              className="w-full max-w-[380px] rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-2xl space-y-4 cursor-default"
                             >
                               {/* 1) 상단 타이틀: {해당 생육단계 이름} 정보변경 + 닫기 버튼 */}
                               <div className="flex items-center justify-between gap-2 border-b border-[#F1F5F9] pb-3">
