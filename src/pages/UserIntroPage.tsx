@@ -12448,15 +12448,6 @@ export default function UserIntroPage() {
                           ? '수확 적기가'
                           : `[${displayStageName}] 단계가`;
 
-                        const beforeCaption = `${milestoneTitle.replace(
-                          /\s*시작$/,
-                          ''
-                        )} 시작 전`;
-                        const afterCaption = `${milestoneTitle.replace(
-                          /\s*시작$/,
-                          ''
-                        )} 시작 후`;
-
                         const defaultStartYmd =
                           growthConfirmModalTarget.startYmd ||
                           activeCropItem.basePlantingYmd ||
@@ -12479,11 +12470,17 @@ export default function UserIntroPage() {
                         const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
 
                         return (
-                          <div className="fixed inset-x-0 bottom-0 top-[56px] z-[80] flex items-center justify-center p-3 pointer-events-none">
-                            <div className="w-full max-w-[440px] max-h-[86vh] overflow-y-auto rounded-[24px] border-2 border-[#0E712F] bg-white p-4.5 shadow-[0_18px_50px_rgba(15,23,42,0.28)] pointer-events-auto space-y-4">
+                          <div
+                            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4"
+                            onClick={() => setGrowthConfirmModalTarget(null)}
+                          >
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full max-w-[380px] rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-2xl space-y-4"
+                            >
                               {/* 1) 상단 타이틀: {해당 생육단계 이름} 정보변경 + 닫기 버튼 */}
-                              <div className="flex items-center justify-between gap-2 border-b border-[#E5E7EB] pb-3">
-                                <h2 className="text-[21px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                              <div className="flex items-center justify-between gap-2 border-b border-[#F1F5F9] pb-3">
+                                <h2 className="text-[19px] font-black text-[#111827] tracking-[-0.03em] truncate">
                                   {displayStageName} 정보변경
                                 </h2>
                                 <button
@@ -12491,7 +12488,7 @@ export default function UserIntroPage() {
                                   onClick={() =>
                                     setGrowthConfirmModalTarget(null)
                                   }
-                                  aria-label="생육단계 정보변경 폼 닫기"
+                                  aria-label="생육단계 정보변경 팝업 닫기"
                                   className="w-8 h-8 rounded-full bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] flex items-center justify-center cursor-pointer shrink-0 transition"
                                 >
                                   <X className="w-4 h-4 stroke-[2.5]" />
@@ -12500,7 +12497,7 @@ export default function UserIntroPage() {
 
                               {/* 2) 작물 요약 헤더 (썸네일 + 작물명 + 노지·평수 + 현재 단계) */}
                               <div className="flex items-center gap-3">
-                                <div className="w-[58px] h-[58px] rounded-[14px] overflow-hidden bg-slate-100 border border-[#E5E7EB] shrink-0 shadow-2xs">
+                                <div className="w-[52px] h-[52px] rounded-[12px] overflow-hidden bg-slate-100 border border-[#E5E7EB] shrink-0">
                                   <img
                                     src={activeCropItem.thumbUrl}
                                     alt={activeCropItem.shortName}
@@ -12508,60 +12505,32 @@ export default function UserIntroPage() {
                                   />
                                 </div>
                                 <div className="min-w-0 space-y-0.5">
-                                  <div className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                  <div className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
                                     {activeCropItem.shortName} (
                                     {activeCropItem.cultivarName || '가을배추'})
                                   </div>
-                                  <div className="text-[13.5px] font-semibold text-[#6B7280]">
+                                  <div className="text-[13px] font-semibold text-[#6B7280]">
                                     {activeCropItem.cultivationMethod} ·{' '}
                                     {activeCropItem.areaPyeong.toLocaleString()}평
                                   </div>
-                                  <div className="text-[13.5px] font-extrabold text-[#15803D]">
+                                  <div className="text-[13px] font-extrabold text-[#15803D]">
                                     현재 단계 : {prevStageName}
                                   </div>
                                 </div>
                               </div>
 
                               {/* 3) 다음 생육단계 질문 배너 */}
-                              <div className="rounded-[14px] bg-[#EFF8F1] border border-[#DCFCE7] px-3.5 py-3 space-y-0.5">
-                                <div className="text-[13px] font-bold text-[#374151]">
+                              <div className="rounded-[12px] bg-[#EFF8F1] border border-[#DCFCE7] px-3.5 py-2.5 space-y-0.5">
+                                <div className="text-[12.5px] font-bold text-[#374151]">
                                   다음 생육단계 · {stgName}
                                 </div>
-                                <div className="text-[18px] font-black text-[#0E712F] tracking-[-0.03em] break-keep">
+                                <div className="text-[16.5px] font-black text-[#0E712F] tracking-[-0.03em] break-keep">
                                   {activeCropItem.shortName}의 {questionSubject}{' '}
                                   시작되었습니까?
                                 </div>
                               </div>
 
-                              {/* 4) 시작 전 / 시작 후 비교 이미지 2열 카드 */}
-                              <div className="grid grid-cols-2 gap-2.5">
-                                <div className="space-y-1 text-center">
-                                  <div className="aspect-[4/3] rounded-[14px] overflow-hidden border border-[#E5E7EB] bg-slate-100 shadow-2xs">
-                                    <img
-                                      src={activeCropItem.thumbUrl}
-                                      alt={beforeCaption}
-                                      className="w-full h-full object-cover block scale-100 brightness-95"
-                                    />
-                                  </div>
-                                  <div className="text-[12.5px] font-bold text-[#4B5563]">
-                                    {beforeCaption}
-                                  </div>
-                                </div>
-                                <div className="space-y-1 text-center">
-                                  <div className="aspect-[4/3] rounded-[14px] overflow-hidden border border-[#86EFAC] bg-slate-100 shadow-2xs">
-                                    <img
-                                      src={activeCropItem.thumbUrl}
-                                      alt={afterCaption}
-                                      className="w-full h-full object-cover block scale-110 contrast-105"
-                                    />
-                                  </div>
-                                  <div className="text-[12.5px] font-bold text-[#15803D]">
-                                    {afterCaption}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* 5) 3가지 보기 라디오 선택 */}
+                              {/* 4) 3가지 보기 라디오 선택 */}
                               <div className="space-y-2.5 pt-0.5">
                                 {(
                                   [
@@ -12591,17 +12560,17 @@ export default function UserIntroPage() {
                                       className="w-full flex items-center gap-3 text-left cursor-pointer py-0.5"
                                     >
                                       <span
-                                        className={`w-[21px] h-[21px] rounded-full flex items-center justify-center shrink-0 transition ${
+                                        className={`w-[20px] h-[20px] rounded-full flex items-center justify-center shrink-0 transition ${
                                           isSel
                                             ? 'border-[2.2px] border-[#0E712F] bg-white ring-2 ring-[#22C55E]/30'
                                             : 'border-[1.8px] border-[#D1D5DB] bg-white'
                                         }`}
                                       >
                                         {isSel && (
-                                          <span className="w-[10.5px] h-[10.5px] rounded-full bg-[#0E712F]" />
+                                          <span className="w-[10px] h-[10px] rounded-full bg-[#0E712F]" />
                                         )}
                                       </span>
-                                      <span className="text-[16px] font-bold text-[#111827] tracking-[-0.02em]">
+                                      <span className="text-[15.5px] font-bold text-[#111827] tracking-[-0.02em]">
                                         {opt.label}
                                       </span>
                                     </button>
