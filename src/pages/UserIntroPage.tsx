@@ -11472,7 +11472,7 @@ export default function UserIntroPage() {
                                                     </span>
                                                   ) : (
                                                     <span className="px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[12.5px] font-extrabold text-[#15803D]">
-                                                      확인
+                                                      예정
                                                     </span>
                                                   )}
                                                 </div>
