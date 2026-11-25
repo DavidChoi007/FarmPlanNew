@@ -32,6 +32,10 @@ import {
   normalizeScheduleGenerationModuleConfig,
   getEnabledModuleFlags,
 } from '../src/utils/scheduleGenerationModule.ts';
+import {
+  resolveCropAgronomicProfile,
+  computeCropExpectedHarvestDate,
+} from '../src/utils/cropAgronomicProfiles.ts';
 
 initDatabase();
 
@@ -6271,8 +6275,14 @@ const server = http.createServer(async (req, res) => {
         cultivation_type: body.cultivation_type || '노지',
         land_category: body.land_category || '전(밭)',
         planting_method: body.planting_method || '육묘정식',
-        desired_start_date: body.desired_start_date || '2026-08-25',
-        expected_harvest_date: body.expected_harvest_date || '2026-11-15',
+        desired_start_date: body.desired_start_date || resolveCropAgronomicProfile(crop_name, crop_id).defaultPlantingDate,
+        expected_harvest_date:
+          body.expected_harvest_date ||
+          computeCropExpectedHarvestDate(
+            body.desired_start_date || resolveCropAgronomicProfile(crop_name, crop_id).defaultPlantingDate,
+            crop_name,
+            crop_id
+          ),
         mulching_yn:
           body.mulching_yn !== undefined
             ? body.mulching_yn
@@ -7461,7 +7471,7 @@ const server = http.createServer(async (req, res) => {
         }
         let acc = 0;
         let reachedDate = addDays(plantingDate, fallbackOffsetDays);
-        for (let d = 0; d <= 220; d++) {
+        for (let d = 0; d <= 340; d++) {
           const curDate = addDays(plantingDate, d);
           acc += calcDailyPgdd(curDate);
           if (acc >= targetPgdd) {
@@ -7792,11 +7802,12 @@ const server = http.createServer(async (req, res) => {
       const optPrep2 = findBestWorkDate(addDays(plantingDate, -(18 + soilLimeReactionDays)), 2, 'DRY_WORK');
       const optPrep3 = findBestWorkDate(addDays(plantingDate, -9), 2, 'MULCH_OR_PLANT');
 
-      const dPrep1Start = optPrep1.bestDate; // 포장 정리 시작 (강우 회피 보정)
+      const dPrep1StartRaw = optPrep1.bestDate; // 포장 정리 시작 (강우 회피 보정)
+      let dPrep1Start = dPrep1StartRaw;
       const dPrep1End = addDays(dPrep1Start, 9);
       const dPrep2Start = optPrep2.bestDate; // 토양 개량·밑거름 시비 (무강우 경운 적기)
       const dPrep2End = addDays(dPrep2Start, 9);
-      const dPrep3Start = optPrep3.bestDate; // 이랑 만들기·비닐멀칭 (강우 직후 적습 구간)
+      let dPrep3Start = optPrep3.bestDate; // 이랑 만들기·비닐멀칭 (강우 직후 적습 구간)
       const dPrep3End = addDays(plantingDate, -1);
 
       const dNurs1Start = nursSowing.date; // 파종·최아 시작일 (기온 역산)
@@ -7807,22 +7818,22 @@ const server = http.createServer(async (req, res) => {
       const dNurs3End = addDays(plantingDate, -1);
 
       // 2) 정식/파종 이후: 작년 365일 온도·습도·강수량 복합 AI-PGDD 누적 도달일 + 작업별 강수·습도 최적일 보정
-      const gddRooting = findDateByTargetPgdd(targetRootingPgdd, 9);
-      const gddTop1 = findDateByTargetPgdd(targetTop1Pgdd, 16, 'TOPDRESS');
-      const gddVigorous = findDateByTargetPgdd(targetVigorousPgdd, 26);
-      const gddHeading = findDateByTargetPgdd(targetHeadingPgdd, 36);
-      const gddTop2 = findDateByTargetPgdd(targetTop2Pgdd, 48, 'TOPDRESS');
+      let gddRooting = findDateByTargetPgdd(targetRootingPgdd, 9);
+      let gddTop1 = findDateByTargetPgdd(targetTop1Pgdd, 16, 'TOPDRESS');
+      let gddVigorous = findDateByTargetPgdd(targetVigorousPgdd, 26);
+      let gddHeading = findDateByTargetPgdd(targetHeadingPgdd, 36);
+      let gddTop2 = findDateByTargetPgdd(targetTop2Pgdd, 48, 'TOPDRESS');
       const gddReady = findDateByTargetPgdd(targetReadyPgdd, 68, 'HARVEST');
       const gddHarvest = findDateByTargetPgdd(requiredTotalGdd, 78, 'HARVEST');
 
       // 날짜 역전 방지 보장 (수확 적기 확인 <= 본 수확 시작 <= 본 수확 종료)
-      const safeReadyDate = gddReady.date <= gddHarvest.date ? gddReady.date : addDays(gddHarvest.date, -5);
-      const safeHarvestDate = gddHarvest.date >= safeReadyDate ? gddHarvest.date : addDays(safeReadyDate, 5);
+      let safeReadyDate = gddReady.date <= gddHarvest.date ? gddReady.date : addDays(gddHarvest.date, -5);
+      let safeHarvestDate = gddHarvest.date >= safeReadyDate ? gddHarvest.date : addDays(safeReadyDate, 5);
 
-      const dPlantStart = plantingDate;
+      let dPlantStart = plantingDate;
       const dPlantEnd = addDays(plantingDate, 3);
-      const dRootStart = addDays(plantingDate, 2);
-      const dRootEnd = addDays(gddRooting.date, 2);
+      let dRootStart = addDays(plantingDate, 2);
+      let dRootEnd = addDays(gddRooting.date, 2);
 
       const dGrow1Start = gddRooting.date;
       const dGrow1End = addDays(gddTop2.date, 6);
@@ -7844,7 +7855,7 @@ const server = http.createServer(async (req, res) => {
       const dHarv1Start = isDanwolDefaultSchedule ? '2026-11-18' : addDays(safeReadyDate, -3);
       const dHarv1End = isDanwolDefaultSchedule ? '2026-11-22' : safeHarvestDate;
       const dHarv2Start = isDanwolDefaultSchedule ? '2026-11-25' : safeReadyDate;
-      const dHarv2End = isDanwolDefaultSchedule ? '2026-11-30' : addDays(safeHarvestDate, 6);
+      let dHarv2End = isDanwolDefaultSchedule ? '2026-11-30' : addDays(safeHarvestDate, 6);
 
       const isDirectSowing =
         reqCropId === 'CRP-POTATO' ||
@@ -8326,6 +8337,88 @@ const server = http.createServer(async (req, res) => {
         },
       ];
 
+      // [18개 전 작물 생리·재배주기·파종방식·병해충 맞춤형 16단계 프로필 적용]
+      const cropProfile = resolveCropAgronomicProfile(cropDisplayName, reqCropId);
+      const profileAnchorDate =
+        Math.abs(
+          Math.round(
+            (parseDateUTC(plantingDate).getTime() - parseDateUTC(rawDesiredDate).getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        ) <= 3
+          ? plantingDate
+          : rawDesiredDate;
+      for (let idx = 0; idx < rawScheduleItems.length; idx++) {
+        const it = rawScheduleItems[idx];
+        const profStg = cropProfile.stages[idx];
+        if (!profStg) continue;
+
+        const stageColorBySlot: Record<string, string> = {
+          'STG-PREP': '#64748b',
+          'STG-NURSERY': '#2563eb',
+          'STG-PLANT': '#0d9488',
+          'STG-GROWTH': '#22a559',
+          'STG-PEST': '#d4941e',
+          'STG-HARVEST': '#d96b38',
+        };
+        it.stage_group_id = profStg.stageGroupId;
+        it.stage_group_name = profStg.stageGroupName;
+        it.stage_color = stageColorBySlot[profStg.stageGroupId] || it.stage_color || '#22a559';
+        it.sub_item_name = profStg.subItemName;
+        it.bar_label = profStg.subItemName;
+        it.process_code = profStg.processCode;
+        it.process_name = profStg.processName;
+        it.target_pgdd = profStg.targetPgdd;
+        it.is_after_planting = profStg.offsetDays >= 0;
+        (it as any).profile_icon_type = profStg.iconType;
+        (it as any).profile_stage_spec = profStg;
+
+        if (!isDanwolDefaultSchedule) {
+          const baseStart = addDays(profileAnchorDate, Number(profStg.offsetDays || 0));
+          const isExactAnchorStage = Number(profStg.offsetDays || 0) === 0 || idx === 15;
+          const workMode =
+            idx === 0 || idx === 1
+              ? 'DRY_WORK'
+              : idx === 2 || idx === 6
+              ? 'MULCH_OR_PLANT'
+              : idx === 8 || idx === 13
+              ? 'TOPDRESS'
+              : idx >= 14
+              ? 'HARVEST'
+              : undefined;
+          const optDate =
+            workMode && !isExactAnchorStage
+              ? findBestWorkDate(baseStart, 1, workMode).bestDate
+              : baseStart;
+          const spanDays = Math.max(1, Number(profStg.spanDays || 3));
+          it.start_date = optDate;
+          it.end_date = addDays(optDate, Math.max(1, spanDays - 1));
+        }
+
+        it.work_content = `[${activeRequest.sido} ${activeRequest.sigungu} ${activeRequest.eupmyeondong} · ${cropDisplayName}(${cvDisplayName}) ${areaPyeong.toLocaleString()}평 · 추천일 ${it.start_date}] ${profStg.workContent}`;
+        it.usage_tip = profStg.usageTip;
+        it.climate_rule = profStg.climateRule;
+        if (Array.isArray(profStg.preferredMaterialIds) && profStg.preferredMaterialIds.length > 0) {
+          it.materials = enrichMaterials(profStg.preferredMaterialIds);
+        }
+      }
+
+      if (!isDanwolDefaultSchedule && rawScheduleItems.length >= 16) {
+        dPrep1Start = rawScheduleItems[0].start_date;
+        dPrep3Start = rawScheduleItems[2].start_date;
+        dPlantStart = rawScheduleItems[6].start_date;
+        dRootStart = rawScheduleItems[7].start_date;
+        dRootEnd = rawScheduleItems[7].end_date;
+        gddRooting = { ...gddRooting, date: rawScheduleItems[7].start_date };
+        gddTop1 = { ...gddTop1, date: rawScheduleItems[8].start_date };
+        gddVigorous = { ...gddVigorous, date: rawScheduleItems[9].start_date };
+        gddHeading = { ...gddHeading, date: rawScheduleItems[10].start_date };
+        gddTop2 = { ...gddTop2, date: rawScheduleItems[13].start_date };
+        safeReadyDate = rawScheduleItems[14].start_date;
+        safeHarvestDate = rawScheduleItems[15].start_date;
+        dHarv2End = rawScheduleItems[15].end_date;
+      }
+
       // [변경된 3대 대분류(비료·영양제·병해충관리제) 등록 항목 + 생육과정 요구성분 + 현재 토양성분 + 기상/PLS 기준 통합 추천 엔진 적용]
       const scheduleSoilStdRow =
         (db.prepare('SELECT * FROM soil_standard WHERE crop_id = ?').get(reqCropId) as any) ||
@@ -8395,9 +8488,17 @@ const server = http.createServer(async (req, res) => {
           const topRationaleTemplate = dynamicallyRecommended[0];
           const curatedStageMats = Array.isArray(schItem.materials) ? schItem.materials : [];
           if (curatedStageMats.length > 0) {
+            const profStg = (schItem as any).profile_stage_spec;
             schItem.materials = curatedStageMats.map((cm: any, idx: number) => ({
               ...topRationaleTemplate,
               ...cm,
+              product_name: idx === 0 && profStg?.materialName ? profStg.materialName : cm.product_name,
+              sub_type: idx === 0 && profStg?.materialSubLabel ? profStg.materialSubLabel : cm.sub_type,
+              image_url: idx === 0 && profStg?.materialThumb ? profStg.materialThumb : cm.image_url,
+              usage_amount_per_100pyeong: idx === 0 && profStg?.usageAmountPer100Pyeong ? profStg.usageAmountPer100Pyeong : undefined,
+              dilution_text: idx === 0 && profStg?.dilutionText ? profStg.dilutionText : undefined,
+              usage_method: idx === 0 && profStg?.usageMethod ? profStg.usageMethod : undefined,
+              usage_caution: idx === 0 && profStg?.usageCaution ? profStg.usageCaution : undefined,
               match_score: idx === 0 ? Number(topRationaleTemplate?.match_score || 98) : 95,
               is_top1_recommended: idx === 0,
             }));
@@ -8848,9 +8949,9 @@ const server = http.createServer(async (req, res) => {
           stage_slot_key: it.stage_group_id,
           stage_group_id: gtMaster?.type_code || it.stage_group_id,
           stage_group_code: gtMaster?.type_code || it.stage_group_id,
-          stage_group_name: gtMaster?.type_name || it.stage_group_name,
-          stage_color: gtMaster?.stage_color || it.stage_color,
-          icon_type: gtMaster?.icon_type || 'leaf',
+          stage_group_name: it.stage_group_name || gtMaster?.type_name,
+          stage_color: it.stage_color || gtMaster?.stage_color,
+          icon_type: (it as any).profile_icon_type || gtMaster?.icon_type || 'leaf',
           process_type: gtMaster?.type_code || it.stage_group_id,
           start_month: startPos.month,
           start_week: startPos.week,
@@ -9631,20 +9732,21 @@ const server = http.createServer(async (req, res) => {
         moduleD_harvestFeedback,
       };
 
-      // [기초 코드 관리 > 생육 구분 기초 코드 (growth_type_code)] 순서(1~6번)대로 단계(관리명칭) 그룹핑 생성 (코드 + 코드명 반영)
+      // [기초 코드 관리 > 생육 구분 기초 코드 (growth_type_code)] 순서(1~6번)대로 단계(관리명칭) 그룹핑 생성 (작물별 파종·정식 구분 명칭 반영)
       const stageGroups = canonicalStageSlots
         .map((slot) => {
           const meta = resolvedStageMetaBySlot.get(slot.slotKey)!;
+          const groupItems = scheduleItems.filter((i) => i.stage_slot_key === slot.slotKey);
           return {
             stage_slot_key: slot.slotKey,
             stage_group_id: meta.type_code,
             stage_group_code: meta.type_code,
-            stage_group_name: meta.type_name,
-            stage_color: meta.stage_color,
+            stage_group_name: groupItems[0]?.stage_group_name || meta.type_name,
+            stage_color: groupItems[0]?.stage_color || meta.stage_color,
             icon_type: meta.icon_type,
             description: meta.description,
             sort_order: meta.sort_order,
-            items: scheduleItems.filter((i) => i.stage_slot_key === slot.slotKey),
+            items: groupItems,
           };
         })
         .filter((g) => g.items.length > 0);
@@ -11548,15 +11650,10 @@ const server = http.createServer(async (req, res) => {
       const plantingDate = String(body.planting_date || '2026-08-25').trim();
       const progressPct = Math.max(0, Math.min(100, Number(body.progress_pct ?? 25)));
 
-      // 정식/파종일 기준 약 80일 뒤를 수확예정일로 자동 계산
-      const [y, m, d] = plantingDate.split('-').map(Number);
-      const dt = new Date(y || 2026, (m || 8) - 1, d || 25);
-      dt.setDate(dt.getDate() + 80);
+      // 작물별 표준 생리·재배기간(defaultCultivationDays) 기준 수확예정일 자동 계산
+      const computedExpectedHarvestDate = computeCropExpectedHarvestDate(plantingDate, cropName);
       const expectedHarvestDate =
-        String(body.expected_harvest_date || '').trim() ||
-        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(
-          dt.getDate()
-        ).padStart(2, '0')}`;
+        String(body.expected_harvest_date || '').trim() || computedExpectedHarvestDate;
 
       const requestNo =
         String(body.request_no || '').trim() ||

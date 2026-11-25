@@ -17,6 +17,10 @@ import {
   saveScheduleGenerationModuleToStorage,
   getEnabledModuleFlags,
 } from './utils/scheduleGenerationModule.ts';
+import {
+  resolveCropAgronomicProfile,
+  computeCropExpectedHarvestDate,
+} from './utils/cropAgronomicProfiles.ts';
 
 let cachedKoreaAddresses: ReturnType<typeof generateKoreaAddressDataset> | null = null;
 function getKoreaAddressesCache() {
@@ -2867,14 +2871,13 @@ if (typeof window !== 'undefined') {
       const existingIdx = list.findIndex((c: any) => c.crop_plan_id === cropPlanId);
       const existing = existingIdx >= 0 ? list[existingIdx] : null;
       const pct = Math.max(0, Math.min(100, Number(body.progress_pct ?? existing?.progress_pct ?? 25)));
-      const plantingDate = String(body.planting_date || existing?.planting_date || '2026-08-25').trim();
-      const [y, m, d] = plantingDate.split('-').map(Number);
-      const dt = new Date(y || 2026, (m || 8) - 1, d || 25);
-      dt.setDate(dt.getDate() + 80);
+      const cropName = String(body.crop_name || existing?.crop_name || '가을배추').trim();
+      const plantingDate = String(
+        body.planting_date || existing?.planting_date || resolveCropAgronomicProfile(cropName).defaultPlantingDate
+      ).trim();
       const expectedHarvestDate =
         String(body.expected_harvest_date || existing?.expected_harvest_date || '').trim() ||
-        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
-      const cropName = String(body.crop_name || existing?.crop_name || '가을배추').trim();
+        computeCropExpectedHarvestDate(plantingDate, cropName);
       const plantingType = String(body.planting_type || existing?.planting_type || '모종').trim();
       const requestNo =
         String(body.request_no || existing?.request_no || '').trim() ||
@@ -3043,9 +3046,19 @@ if (typeof window !== 'undefined') {
         cultivar_name: body.cultivar_name || existingPlan?.cultivar_name || '불암3호',
         planting_type: body.planting_type || existingPlan?.planting_type || '모종',
         area_pyeong: targetArea,
-        planting_date: body.planting_date || existingPlan?.planting_date || '2026-08-25',
+        planting_date:
+          body.planting_date ||
+          existingPlan?.planting_date ||
+          resolveCropAgronomicProfile(body.crop_name || existingPlan?.crop_name || '가을배추').defaultPlantingDate,
         expected_harvest_date:
-          body.expected_harvest_date || existingPlan?.expected_harvest_date || '2026-11-15',
+          body.expected_harvest_date ||
+          existingPlan?.expected_harvest_date ||
+          computeCropExpectedHarvestDate(
+            body.planting_date ||
+              existingPlan?.planting_date ||
+              resolveCropAgronomicProfile(body.crop_name || existingPlan?.crop_name || '가을배추').defaultPlantingDate,
+            body.crop_name || existingPlan?.crop_name || '가을배추'
+          ),
         current_stage_name: pct >= 100 ? '06. 수확 완료' : '04. 생육 관리',
         progress_pct: pct,
         status_text: pct >= 100 ? '수확 완료 · 이력 반영' : '기후 연동 생육 관리중',
@@ -3510,8 +3523,21 @@ if (typeof window !== 'undefined') {
         cultivation_type: String(body.cultivation_type || '노지').trim(),
         land_category: String(body.land_category || '전').trim(),
         planting_method: String(body.planting_method || '모종').trim(),
-        desired_start_date: String(body.desired_start_date || '2026-08-25').trim(),
-        expected_harvest_date: String(body.expected_harvest_date || '2026-11-15').trim(),
+        desired_start_date: String(
+          body.desired_start_date ||
+            resolveCropAgronomicProfile(body.crop_name || '가을배추', body.crop_id).defaultPlantingDate
+        ).trim(),
+        expected_harvest_date: String(
+          body.expected_harvest_date ||
+            computeCropExpectedHarvestDate(
+              String(
+                body.desired_start_date ||
+                  resolveCropAgronomicProfile(body.crop_name || '가을배추', body.crop_id).defaultPlantingDate
+              ).trim(),
+              body.crop_name || '가을배추',
+              body.crop_id
+            )
+        ).trim(),
         mulching_yn:
           body.mulching_yn !== undefined
             ? body.mulching_yn === 'N' || body.mulching_yn === 0
@@ -3942,39 +3968,51 @@ if (typeof window !== 'undefined') {
         return Math.round((tMs - bMs) / (24 * 3600 * 1000));
       };
 
-      const desiredStartDeltaDays = calcDiffDaysFromBase(
-        '2026-08-25',
-        String(activeReq.desired_start_date || '2026-08-25')
+      const cropProfile = resolveCropAgronomicProfile(
+        String(activeReq.crop_name || '가을배추'),
+        String(activeReq.crop_id || '')
       );
+      const basePlantingYmd = String(activeReq.desired_start_date || cropProfile.defaultPlantingDate || '2026-08-25');
+      const desiredStartDeltaDays = calcDiffDaysFromBase('2026-08-25', basePlantingYmd);
 
-      const applyModuleToScheduleItem = (it: any) => {
-        let dayOffset = desiredStartDeltaDays;
-        const stepOrder = Number(it.step_order || 1);
-        const isSeedReq = String(activeReq.planting_method || '').includes('씨') || String(activeReq.planting_method || '').includes('직파');
+      const applyModuleToScheduleItem = (it: any, itemIdx?: number) => {
+        const stepOrder = Number(it.step_order || (itemIdx !== undefined ? itemIdx + 1 : 1));
+        const profStg = cropProfile.stages[stepOrder - 1] || cropProfile.stages[itemIdx ?? 0];
+        let modDeltaDays = 0;
+        const isSeedReq =
+          cropProfile.propagationMethod !== 'TRANSPLANT' ||
+          String(activeReq.planting_method || '').includes('씨') ||
+          String(activeReq.planting_method || '').includes('직파') ||
+          String(activeReq.planting_method || '').includes('종구') ||
+          String(activeReq.planting_method || '').includes('종서');
         if (!isSeedReq && modFlags.seedling_opt_temp_filter === false) {
-          dayOffset -= 1;
+          modDeltaDays -= 1;
         }
         if (isSeedReq && modFlags.seed_germination_early_start === false) {
-          dayOffset += 2;
+          modDeltaDays += 2;
         }
         if (modFlags.soil_topo_microclimate_offset === false && stepOrder <= 3) {
-          dayOffset += 1;
+          modDeltaDays += 1;
         }
         if (modFlags.ai_multivariate_pgdd_model === false && stepOrder >= 8) {
-          dayOffset += Math.min(3, Math.floor((stepOrder - 7) / 3));
+          modDeltaDays += Math.min(3, Math.floor((stepOrder - 7) / 3));
         }
         if (modFlags.ai_work_date_optimizer === false) {
-          dayOffset += stepOrder % 2 === 0 ? -1 : 0;
+          modDeltaDays += stepOrder % 2 === 0 ? -1 : 0;
         }
 
         const customOverlay = customItemMap[it.item_id] || {};
         const hasCustomStart = Boolean(customOverlay.start_date);
-        const adjStartDate = hasCustomStart
-          ? customOverlay.start_date
-          : shiftYmdByDays(String(it.start_date || ''), dayOffset);
-        const adjEndDate = customOverlay.end_date
-          ? customOverlay.end_date
-          : shiftYmdByDays(String(it.end_date || it.start_date || ''), dayOffset);
+        const spanDays = Math.max(1, Number(profStg?.spanDays || 3));
+        const profileStartDate = profStg
+          ? shiftYmdByDays(basePlantingYmd, Number(profStg.offsetDays || 0) + modDeltaDays)
+          : shiftYmdByDays(String(it.start_date || ''), desiredStartDeltaDays + modDeltaDays);
+        const profileEndDate = profStg
+          ? shiftYmdByDays(profileStartDate, Math.max(1, spanDays - 1))
+          : shiftYmdByDays(String(it.end_date || it.start_date || ''), desiredStartDeltaDays + modDeltaDays);
+
+        const adjStartDate = hasCustomStart ? customOverlay.start_date : profileStartDate;
+        const adjEndDate = customOverlay.end_date ? customOverlay.end_date : profileEndDate;
 
         const activeRuleLabels: string[] = [];
         if (modFlags.past_climate_blend_avg) activeRuleLabels.push('작년+올해예측 평균(BLENDED_AVG)');
@@ -3983,11 +4021,42 @@ if (typeof window !== 'undefined') {
         if (modFlags.ai_multivariate_pgdd_model) activeRuleLabels.push('AI-PGDD 다변량 추론');
         if (modFlags.ai_work_date_optimizer) activeRuleLabels.push('AI 작업적기 보정');
 
-        const baseReason = String(customOverlay.ai_analysis_reason || it.ai_analysis_reason || '');
+        const baseReason = String(
+          customOverlay.ai_analysis_reason ||
+            `[${activeReq.sido || '충청북도'} ${activeReq.sigungu || '충주시'} ${activeReq.eupmyeondong || '단월동'} · ${activeReq.crop_name || cropProfile.displayName}] 목표 적산온도 ${profStg?.targetPgdd ?? it.target_pgdd ?? 0}℃ 및 한계온도(${cropProfile.minTemp}~${cropProfile.maxTemp}℃ · 최적 ${cropProfile.optTempMin}~${cropProfile.optTempMax}℃) 기준 추천일 ${adjStartDate} 산출`
+        );
         const modulePrefix = `[적용모듈: ${activeRuleLabels.join(' · ')}] `;
+
+        const stageColorBySlot: Record<string, string> = {
+          'STG-PREP': '#64748b',
+          'STG-NURSERY': '#2563eb',
+          'STG-PLANT': '#0d9488',
+          'STG-GROWTH': '#22a559',
+          'STG-PEST': '#d4941e',
+          'STG-HARVEST': '#d96b38',
+        };
 
         const mergedItem = {
           ...it,
+          ...(profStg
+            ? {
+                stage_slot_key: profStg.stageGroupId,
+                stage_group_id: profStg.stageGroupId,
+                stage_group_code: profStg.stageGroupId,
+                stage_group_name: profStg.stageGroupName,
+                stage_color: stageColorBySlot[profStg.stageGroupId] || it.stage_color || '#22a559',
+                sub_item_name: profStg.subItemName,
+                bar_label: profStg.subItemName,
+                process_code: profStg.processCode,
+                process_name: profStg.processName,
+                target_pgdd: profStg.targetPgdd,
+                is_after_planting: profStg.offsetDays >= 0,
+                icon_type: profStg.iconType,
+                work_content: `[${activeReq.sido || '충청북도'} ${activeReq.sigungu || '충주시'} ${activeReq.eupmyeondong || '단월동'} · ${activeReq.crop_name || cropProfile.displayName}(${activeReq.item_name_3rd || ''}) ${safeAreaPyeong.toLocaleString()}평 · 추천일 ${adjStartDate}] ${profStg.workContent}`,
+                usage_tip: profStg.usageTip,
+                climate_rule: profStg.climateRule,
+              }
+            : {}),
           ...customOverlay,
           start_date: adjStartDate,
           recommended_date: adjStartDate,
@@ -3997,6 +4066,18 @@ if (typeof window !== 'undefined') {
             : `${modulePrefix}${baseReason}`,
         };
         const mats = normalizeStageSingleMaterial(mergedItem);
+        if (profStg && mats.length > 0 && !customOverlay.materials_json) {
+          mats[0] = {
+            ...mats[0],
+            product_name: profStg.materialName || mats[0].product_name,
+            sub_type: profStg.materialSubLabel || mats[0].sub_type,
+            image_url: profStg.materialThumb || mats[0].image_url,
+            usage_amount_per_100pyeong: profStg.usageAmountPer100Pyeong,
+            dilution_text: profStg.dilutionText,
+            usage_method: profStg.usageMethod,
+            usage_caution: profStg.usageCaution,
+          };
+        }
         if (modFlags.ai_stage_agro_recommender === false && mats.length > 0) {
           mats[0] = {
             ...mats[0],
@@ -4010,23 +4091,28 @@ if (typeof window !== 'undefined') {
       };
 
       if (Array.isArray(baseProv.scheduleItems)) {
-        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any) =>
-          applyModuleToScheduleItem(it)
+        baseProv.scheduleItems = baseProv.scheduleItems.map((it: any, idx: number) =>
+          applyModuleToScheduleItem(it, idx)
         );
       }
       if (Array.isArray(baseProv.stageGroups)) {
         const byItemId = new Map<string, any>();
         (baseProv.scheduleItems || []).forEach((it: any) => byItemId.set(it.item_id, it));
-        baseProv.stageGroups = baseProv.stageGroups.map((grp: any) => ({
-          ...grp,
-          items: Array.isArray(grp.items)
+        baseProv.stageGroups = baseProv.stageGroups.map((grp: any) => {
+          const items = Array.isArray(grp.items)
             ? grp.items.map((gi: any) => {
                 const fromSchedule = byItemId.get(gi.item_id);
                 if (fromSchedule) return fromSchedule;
                 return applyModuleToScheduleItem(gi);
               })
-            : [],
-        }));
+            : [];
+          return {
+            ...grp,
+            stage_group_name: items[0]?.stage_group_name || grp.stage_group_name,
+            stage_color: items[0]?.stage_color || grp.stage_color,
+            items,
+          };
+        });
       }
 
       try {

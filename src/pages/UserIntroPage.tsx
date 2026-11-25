@@ -7,6 +7,10 @@ import {
   getEnabledModuleFlags,
 } from '../utils/scheduleGenerationModule.ts';
 import {
+  resolveCropAgronomicProfile,
+  computeCropExpectedHarvestDate,
+} from '../utils/cropAgronomicProfiles.ts';
+import {
   Sprout,
   Calendar,
   FileEdit,
@@ -1544,15 +1548,22 @@ export default function UserIntroPage() {
       };
     }
 
-    // 비활성 재배일정 요청 카드용 (STANDARD_16_STAGE_META 및 날짜 비교 판정 기준 산출)
+    // 비활성 재배일정 요청 카드용 (작물별 표준 16단계 프로필 및 날짜 비교 판정 기준 산출)
+    const matchedReqForSummary =
+      myScheduleRequests.find((sr: any) => (sr.request_no || sr.display_request_no) === rNo) ||
+      myCropPlans.find((cp: any) => cp.request_no === rNo);
+    const summaryCropProfile = resolveCropAgronomicProfile(
+      matchedReqForSummary?.crop_name || matchedReqForSummary?.crop_short || '배추',
+      matchedReqForSummary?.crop_id
+    );
     const totalCount = 16;
     const basePlantingYmd =
       plantingDateHint && /^\d{4}-\d{2}-\d{2}$/.test(plantingDateHint)
         ? plantingDateHint
-        : '2026-08-25';
+        : summaryCropProfile.defaultPlantingDate || '2026-08-25';
     const todayKstYmd = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 
-    const resolveMetaDate = (m: (typeof STANDARD_16_STAGE_META)[number]): string => {
+    const resolveMetaDate = (m: (typeof summaryCropProfile.stages)[number]): string => {
       const draftKey = `${rNo}__${m.itemId}`;
       if (inlineStageDateDrafts[draftKey] && /^\d{4}-\d{2}-\d{2}$/.test(inlineStageDateDrafts[draftKey])) {
         return inlineStageDateDrafts[draftKey];
@@ -1566,7 +1577,7 @@ export default function UserIntroPage() {
       return addDaysToYmd(basePlantingYmd, m.offsetDays);
     };
 
-    const isMetaRecognized = (m: (typeof STANDARD_16_STAGE_META)[number]): boolean => {
+    const isMetaRecognized = (m: (typeof summaryCropProfile.stages)[number]): boolean => {
       const e = reqMap[m.itemId];
       const effDate = resolveMetaDate(m);
       if (e && e.completed === false && e.confirmedDate === effDate) {
@@ -1576,11 +1587,11 @@ export default function UserIntroPage() {
       return diffDaysBetweenYmd(effDate, todayKstYmd) >= 0;
     };
 
-    const recognizedMetas = STANDARD_16_STAGE_META.filter((m) => isMetaRecognized(m));
+    const recognizedMetas = summaryCropProfile.stages.filter((m) => isMetaRecognized(m));
     const completedCount = recognizedMetas.length;
     const progressPct = Math.round((completedCount / totalCount) * 100);
     const lastMeta = recognizedMetas[recognizedMetas.length - 1] || null;
-    const nextMeta = STANDARD_16_STAGE_META.find((m) => !isMetaRecognized(m)) || null;
+    const nextMeta = summaryCropProfile.stages.find((m) => !isMetaRecognized(m)) || null;
 
     let currentStageName = '01. 재배 준비 (작업완료 처리 필요)';
     let statusText = `완료 인정 0/${totalCount}건 · 작업완료 처리 필요`;
@@ -2331,13 +2342,15 @@ export default function UserIntroPage() {
       const enabledRuleCount = genModConfig.items.filter((i) => i.category === 'RULE_LOGIC' && i.enabled).length;
       const enabledAiCount = genModConfig.items.filter((i) => i.category === 'AI_AGENT' && i.enabled).length;
 
+      const reqCropProfile = resolveCropAgronomicProfile(effReqForm.crop_name);
       const isSeed =
+        reqCropProfile.propagationMethod !== 'TRANSPLANT' ||
         effReqForm.schedule_base_type === 'SOWING_DATE' ||
         String(effReqForm.planting_type || '').includes('씨');
       const rawDesiredDate =
         effReqForm.schedule_base_type !== 'OPTIMAL_AUTO' && effReqForm.schedule_base_date
           ? effReqForm.schedule_base_date
-          : effReqForm.planting_date || '2026-08-25';
+          : effReqForm.planting_date || reqCropProfile.defaultPlantingDate;
       // 선택된 일정 생성 모듈(RULE-03 모종 최적온도 시작 / RULE-04 씨 발아온도 조기 시작 / AI-02 농작업 적기 탐색) 반영
       let startShiftDays = 0;
       if (isSeed && modFlags.seed_germination_early_start === false) {
@@ -2348,8 +2361,8 @@ export default function UserIntroPage() {
         startShiftDays = 0;
       }
 
-      // 선택된 일정 생성 모듈(RULE-05 지역별 PGDD, RULE-06 토양·지형 미기후 보정, AI-01 다변량 생육속도 모델) 기반 재배일수 산출
-      let baseSpanDays = 82;
+      // 선택된 일정 생성 모듈(RULE-05 지역별 PGDD, RULE-06 토양·지형 미기후 보정, AI-01 다변량 생육속도 모델) 및 작물별 표준 생육기간 기반 재배일수 산출
+      let baseSpanDays = reqCropProfile.defaultCultivationDays;
       if (modFlags.regional_pgdd_matching === false) baseSpanDays -= 3;
       if (modFlags.soil_topo_microclimate_offset === false) baseSpanDays -= 2;
       if (modFlags.ai_multivariate_pgdd_model === false) baseSpanDays += 3;
@@ -9554,29 +9567,24 @@ export default function UserIntroPage() {
                   )
                   .sort((a, b) => Number(a.stage_order || 0) - Number(b.stage_order || 0));
 
-                if (matched.length > 0) return matched;
+                // 작물별 생리·생육 특성 프로필에 정의된 4대 핵심 생육단계 반환 (등록된 기초 코드가 있을 경우 우선 연동)
+                const prof = resolveCropAgronomicProfile(
+                  rawCropNameInput || shortNameInput,
+                  targetCropId
+                );
+                if (matched.length > 0 && targetCropId === 'CRP-CABBAGE') return matched;
 
-                // 등록된 기초 코드가 아직 없는 타 작물일 경우 작물 특성에 맞는 기본 4단계 반환
-                const n = String(shortNameInput || '');
-                const fallbackNames =
-                  /오이|토마토|수박|참외|고추/.test(n)
-                    ? ['활착기', '영양생장기', '개화/결실기', '수확기']
-                    : /무|당근|감자|고구마|마늘|양파/.test(n)
-                    ? ['활착기', '경엽신장기', '구비대기', '수확기']
-                    : /시금치|상추|대파/.test(n)
-                    ? ['발아/활착기', '초기생육기', '엽신장기', '수확적기']
-                    : ['활착기', '외엽 신장기', '결구기', '수확적기'];
                 const defaultColors = ['#0d9488', '#22a559', '#16a34a', '#d96b38'];
-                return fallbackNames.map((sName, i) => ({
-                  stage_code: `CSTG-${targetCropId.replace(/^CRP-/, '')}-0${i + 1}`,
-                  group_id: 'GRP-LEAF',
-                  group_name: '작물군',
-                  crop_id: targetCropId,
-                  crop_name: shortNameInput || '배추',
-                  stage_order: i + 1,
-                  stage_name: sName,
-                  description: `${shortNameInput} ${i + 1}단계 (${sName})`,
-                  stage_color: defaultColors[i % defaultColors.length],
+                return prof.lifecycleStages.map((ls, i) => ({
+                  stage_code: ls.stage_code || `CSTG-${targetCropId.replace(/^CRP-/, '')}-0${i + 1}`,
+                  group_id: ls.group_id || prof.groupId,
+                  group_name: ls.group_name || prof.groupName,
+                  crop_id: ls.crop_id || targetCropId,
+                  crop_name: shortNameInput || prof.cropKey,
+                  stage_order: ls.stage_order || i + 1,
+                  stage_name: ls.stage_name,
+                  description: ls.description || `${shortNameInput} ${i + 1}단계 (${ls.stage_name})`,
+                  stage_color: ls.stage_color || defaultColors[i % defaultColors.length],
                 }));
               };
 
@@ -9586,13 +9594,14 @@ export default function UserIntroPage() {
                 const rawShort = String(crop.crop_short || crop.crop_name || '배추').trim();
                 const shortName =
                   rawShort === '가을배추' || rawShort === '봄배추' ? '배추' : rawShort;
+                const cropProfile = resolveCropAgronomicProfile(rawShort, crop.crop_id);
                 const basePlantingYmd =
                   crop.planting_date && /^\d{4}-\d{2}-\d{2}$/.test(crop.planting_date)
                     ? crop.planting_date
                     : crop.desired_start_date &&
                       /^\d{4}-\d{2}-\d{2}$/.test(crop.desired_start_date)
                     ? crop.desired_start_date
-                    : '2026-08-25';
+                    : cropProfile.defaultPlantingDate || '2026-08-25';
 
                 const isActiveProvisionForCrop =
                   provisionData &&
@@ -9616,7 +9625,7 @@ export default function UserIntroPage() {
                   evaluatedStages = (provisionData.scheduleItems as any[]).map(
                     (it: any, sIdx: number) => {
                       const st = getStageItemCompletionState(reqNo, it);
-                      const meta = STANDARD_16_STAGE_META.find(
+                      const meta = cropProfile.stages.find(
                         (m) => m.itemId === st.itemId
                       );
                       return {
@@ -9628,7 +9637,7 @@ export default function UserIntroPage() {
                         subItemName: String(
                           it.sub_item_name || meta?.subItemName || '농작업'
                         ).trim(),
-                        workContent: String(it.work_content || '').trim(),
+                        workContent: String(it.work_content || meta?.workContent || '').trim(),
                         effDate: st.effectiveDate,
                         isRecognized: st.isRecognized,
                       };
@@ -9636,7 +9645,7 @@ export default function UserIntroPage() {
                   );
                 } else {
                   const reqMap = stageItemCompletions[reqNo] || {};
-                  evaluatedStages = STANDARD_16_STAGE_META.map((m) => {
+                  evaluatedStages = cropProfile.stages.map((m) => {
                     const draftKey = `${reqNo}__${m.itemId}`;
                     let effDate = addDaysToYmd(basePlantingYmd, m.offsetDays);
                     if (
@@ -9664,7 +9673,7 @@ export default function UserIntroPage() {
                       stepOrder: m.stepOrder,
                       stageGroupName: m.stageGroupName,
                       subItemName: m.subItemName,
-                      workContent: '',
+                      workContent: m.workContent,
                       effDate,
                       isRecognized,
                     };
@@ -9696,12 +9705,21 @@ export default function UserIntroPage() {
                   stageBadge = cropCultStages[activeStepIdx]?.stage_name || '수확기';
                 } else if (nextStage) {
                   const ord = nextStage.stepOrder;
+                  const isGarlicCrop = cropProfile.cropKey === '마늘';
                   if (stageCount === 4) {
-                    // 4단계 기본 매핑: 1단계(SCH-01~08), 2단계(SCH-09~10), 3단계(SCH-11~14), 4단계(SCH-15~16)
-                    if (ord <= 8) activeStepIdx = 0;
-                    else if (ord <= 10) activeStepIdx = 1;
-                    else if (ord <= 14) activeStepIdx = 2;
-                    else activeStepIdx = 3;
+                    if (isGarlicCrop) {
+                      // 마늘 4단계 매핑: 1단계 파종·초기생육(SCH-01~07), 2단계 월동·생육재개(SCH-08~11), 3단계 잎·구 비대(SCH-12~14), 4단계 성숙·수확(SCH-15~16)
+                      if (ord <= 7) activeStepIdx = 0;
+                      else if (ord <= 11) activeStepIdx = 1;
+                      else if (ord <= 14) activeStepIdx = 2;
+                      else activeStepIdx = 3;
+                    } else {
+                      // 표준 4단계 매핑: 1단계(SCH-01~08), 2단계(SCH-09~10), 3단계(SCH-11~14), 4단계(SCH-15~16)
+                      if (ord <= 8) activeStepIdx = 0;
+                      else if (ord <= 10) activeStepIdx = 1;
+                      else if (ord <= 14) activeStepIdx = 2;
+                      else activeStepIdx = 3;
+                    }
                   } else {
                     // N단계 동적 매핑: 정식 이후(stepOrder 7~16) 비율에 따라 단계 배분
                     if (ord <= 8) {
@@ -9807,12 +9825,21 @@ export default function UserIntroPage() {
                   nextTaskDateLabel = formatKoreanMonthDayWeekday(nextStage.effDate);
                 }
 
-                const expectedHarvestYmd =
+                const lastEvalYmd = evaluatedStages[evaluatedStages.length - 1]?.effDate;
+                const rawSavedHarvest =
                   crop.expected_harvest_date &&
                   /^\d{4}-\d{2}-\d{2}$/.test(crop.expected_harvest_date)
                     ? crop.expected_harvest_date
-                    : evaluatedStages[evaluatedStages.length - 1]?.effDate ||
-                      addDaysToYmd(basePlantingYmd, 92);
+                    : '';
+                const isLegacyShortHarvestForLongCrop =
+                  rawSavedHarvest &&
+                  cropProfile.defaultCultivationDays >= 150 &&
+                  diffDaysBetweenYmd(basePlantingYmd, rawSavedHarvest) < 110;
+                const expectedHarvestYmd =
+                  rawSavedHarvest && !isLegacyShortHarvestForLongCrop
+                    ? rawSavedHarvest
+                    : lastEvalYmd ||
+                      computeCropExpectedHarvestDate(basePlantingYmd, rawShort, crop.crop_id);
 
                 const formatYmdToDot = (ymd: string) => {
                   if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '2026.8.25';
@@ -9834,22 +9861,31 @@ export default function UserIntroPage() {
                   : todayKstYmd;
 
                 const enrichTaskItem = (stg: EvalStage, sIdx: number) => {
+                  const profStg =
+                    cropProfile.stages.find((ps) => ps.itemId === stg.itemId) ||
+                    cropProfile.stages[sIdx];
                   const combinedTitle = `${stg.stageGroupName} ${stg.subItemName}`;
                   const ord = Number(stg.stepOrder || 0);
                   const isPest =
-                    /병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle) ||
-                    ord === 6 ||
-                    ord === 12 ||
-                    ord === 13 ||
-                    ord === 14;
+                    profStg?.iconType === 'PEST' ||
+                    (!profStg &&
+                      (/병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle) ||
+                        ord === 6 ||
+                        ord === 12 ||
+                        ord === 13 ||
+                        ord === 14));
                   const isFert =
-                    !isPest &&
-                    (/시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*촉진/.test(
-                      combinedTitle
-                    ) ||
-                      ord === 2 ||
-                      ord === 9);
-                  const iconType: 'FERTILIZER' | 'PEST' | 'WORK' = isPest
+                    profStg?.iconType === 'FERTILIZER' ||
+                    (!profStg &&
+                      !isPest &&
+                      (/시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*촉진/.test(
+                        combinedTitle
+                      ) ||
+                        ord === 2 ||
+                        ord === 9));
+                  const iconType: 'FERTILIZER' | 'PEST' | 'WORK' = profStg?.iconType
+                    ? profStg.iconType
+                    : isPest
                     ? 'PEST'
                     : isFert
                     ? 'FERTILIZER'
@@ -9859,30 +9895,11 @@ export default function UserIntroPage() {
                   const ddayVal = rawDiff > 0 ? rawDiff : Math.max(1, (sIdx + 1) * 5);
                   const ddayLabel = stg.isRecognized ? '완료' : `D-${ddayVal}`;
 
-                  const descByItemId: Record<string, string> = {
-                    'SCH-01': '전작물 잔재물을 제거하고 포장 배수로 및 토양 환경을 정비합니다.',
-                    'SCH-02': '토양검정 결과에 맞춘 밑거름과 토양개량제를 시비하고 경운합니다.',
-                    'SCH-03': '배수와 통기성을 확보하기 위해 적정 높이의 이랑(두둑)과 멀칭을 조성합니다.',
-                    'SCH-04': '우량 코팅종자를 준비하고 육묘 트레이(또는 본밭)에 적정 간격으로 파종합니다.',
-                    'SCH-05': '육묘상 적정 온도와 수분을 유지하여 건실한 본엽 생장을 유도합니다.',
-                    'SCH-06': '정식 전 외기 순화 및 육묘기 초기 병해충을 예방하고 건묘를 육성합니다.',
-                    'SCH-07': '본밭 재식거리를 준수하여 모종을 정식하고 초기 활착을 위한 충분한 관수를 실시합니다.',
-                    'SCH-08': '정식 후 초기 뿌리 활착 상태를 점검하고 수분 및 차광 관리를 수행합니다.',
-                    'SCH-09': '초기 생장 촉진을 위한 웃거름(추비)을 시비하고 토양 수분을 적정하게 관리합니다.',
-                    'SCH-10': '외엽 확보 및 생육 균일도 유지를 위해 잎·줄기(또는 결구·유인) 관리를 진행합니다.',
-                    'SCH-11': '시기별 생육량을 점검하고 칼슘·붕소 등 미량요소 영양 상태를 보강합니다.',
-                    'SCH-12': '기상 예보와 연동하여 주요 병해충 발생 여부를 정기적으로 예찰하고 점검합니다.',
-                    'SCH-13': '생육기 병해충을 예방하고 강우 전후 병원균·해충 발생을 효과적으로 억제합니다.',
-                    'SCH-14': '수확 전 포장 위생 환경을 관리하고 농약 안전사용기준(PLS)을 준수하여 예방합니다.',
-                    'SCH-15': '목표 적산온도(PGDD) 및 성숙·결구 충실도를 확인하여 적기에 수확을 실시합니다.',
-                    'SCH-16': '수확 후 현장 예건과 등급별 선별 및 적정 온·습도 저장 관리를 수행합니다.',
-                  };
-                  const strippedContent = String(stg.workContent || '')
+                  const strippedContent = String(stg.workContent || profStg?.workContent || '')
                     .replace(/\[[^\]]*\]\s*/g, '')
                     .trim();
                   const taskDescription =
                     strippedContent ||
-                    descByItemId[stg.itemId] ||
                     `${stg.stageGroupName} 단계의 생육 목표 달성을 위한 맞춤 농작업을 수행합니다.`;
 
                   const usageAmountNum = isPest
@@ -9891,35 +9908,54 @@ export default function UserIntroPage() {
                   const usageUnit = isPest ? 'L' : 'kg';
                   const pestMlAmount = Math.max(100, Math.round((areaPyeongVal / 500) * 500));
                   const waterLAmount = Math.max(100, Math.round((areaPyeongVal / 500) * 500));
-                  const materialName = isPest
-                    ? '친환경 살균·살충 방제제'
-                    : isFert
-                    ? '복합비료 15-15-15'
-                    : ord === 4 || ord === 5
-                    ? '우량 코팅 종자 · 육묘 상토'
-                    : ord === 7 || ord === 8
-                    ? '우량 건묘 · 활착 촉진 자재'
-                    : '단계별 표준 영농 자재';
-                  const materialSubLabel = isPest
-                    ? '적기 예방·방제 약제'
-                    : isFert
-                    ? '생육 맞춤형 비료·영양제'
-                    : '표준 농작업 자재';
-                  const materialThumb = isPest
-                    ? '/images/fertilizers/MAT-PEST-01-thumb.png'
-                    : '/images/fertilizers/FERT-PRD-01-thumb.png';
-                  const usageMethod = isPest
-                    ? '잎 앞뒷면에 골고루 살포'
-                    : isFert
-                    ? '밭(고랑)에 골고루 살포 후 관수'
-                    : '표준 재식·작업 기준에 맞춰 균일하게 실시';
-                  const usageCaution = isPest
-                    ? '이른 오전 또는 해질 무렵 살포'
-                    : isFert
-                    ? '비온 직후 또는 토양이 적당히 습할 때 시비'
-                    : '강우 직전이나 기상 악화 시 작업 피하기';
+                  const materialName =
+                    profStg?.materialName ||
+                    (isPest
+                      ? '친환경 살균·살충 방제제'
+                      : isFert
+                      ? '복합비료 15-15-15'
+                      : '단계별 표준 영농 자재');
+                  const materialSubLabel =
+                    profStg?.materialSubLabel ||
+                    (isPest
+                      ? '적기 예방·방제 약제'
+                      : isFert
+                      ? '생육 맞춤형 비료·영양제'
+                      : '표준 농작업 자재');
+                  const materialThumb =
+                    profStg?.materialThumb ||
+                    (isPest
+                      ? '/images/fertilizers/MAT-PEST-01-thumb.png'
+                      : '/images/fertilizers/FERT-PRD-01-thumb.png');
+                  const usageMethod =
+                    profStg?.usageMethod ||
+                    (isPest
+                      ? '잎 앞뒷면에 골고루 살포'
+                      : isFert
+                      ? '밭(고랑)에 골고루 살포 후 관수'
+                      : '표준 재식·작업 기준에 맞춰 균일하게 실시');
+                  const usageCaution =
+                    profStg?.usageCaution ||
+                    (isPest
+                      ? '이른 오전 또는 해질 무렵 살포'
+                      : isFert
+                      ? '비온 직후 또는 토양이 적당히 습할 때 시비'
+                      : '강우 직전이나 기상 악화 시 작업 피하기');
 
-                  const usageTableRows = isPest
+                  const usageTableRows = profStg
+                    ? [
+                        {
+                          label: '사용량',
+                          val: `${areaPyeongVal.toLocaleString()}평 기준 · 100평당 ${profStg.usageAmountPer100Pyeong}`,
+                        },
+                        {
+                          label: isPest ? '희석배수' : isFert ? '시비기준' : '적용기준',
+                          val: profStg.dilutionText,
+                        },
+                        { label: isPest ? '살포방법' : isFert ? '시비방법' : '작업방법', val: usageMethod },
+                        { label: '주의사항', val: usageCaution },
+                      ]
+                    : isPest
                     ? [
                         {
                           label: '사용량',
@@ -11060,8 +11096,21 @@ export default function UserIntroPage() {
                         const cultStages = activeCropItem.cropCultStages || [];
                         const cultStageCount = Math.max(1, cultStages.length);
 
+                        const activeCropProfileForSchedule = resolveCropAgronomicProfile(
+                          activeCropItem.shortName
+                        );
+                        const isGarlicSchedule = activeCropProfileForSchedule.cropKey === '마늘';
+
                         const resolveTaskPhaseBucketIndex = (stepOrd: number): number => {
-                          // 0: 정식 준비 (stepOrder 1~6: 퇴비·기비 살포, 토양소독, 두둑·멀칭, 종자 파종, 육묘상 관리, 정식 전 순화)
+                          if (isGarlicSchedule) {
+                            // 마늘: 0 파종 준비(SCH-01~03, 9월), 1 파종·초기생육기(SCH-04~07, 10~11월), 2 월동·생육재개기(SCH-08~11, 12~2월), 3 잎·구 비대기(SCH-12~14, 3~4월), 4 성숙·수확기(SCH-15~16, 5월)
+                            if (stepOrd <= 3) return 0;
+                            if (stepOrd <= 7) return 1;
+                            if (stepOrd <= 11) return 2;
+                            if (stepOrd <= 14) return 3;
+                            return 4;
+                          }
+                          // 0: 정식/파종 준비 (stepOrder 1~6)
                           if (stepOrd <= 6) return 0;
                           if (cultStageCount === 4) {
                             // 1: 1단계(활착기 등, SCH-07~08), 2: 2단계(외엽 신장기 등, SCH-09~10), 3: 3단계(결구기 등, SCH-11~14), 4: 4단계(수확적기 등, SCH-15~16)
@@ -11084,6 +11133,9 @@ export default function UserIntroPage() {
                           stageName: string,
                           cIdx: number
                         ): string => {
+                          const fromProfile =
+                            activeCropProfileForSchedule.lifecycleStages[cIdx]?.milestone_label;
+                          if (fromProfile) return fromProfile;
                           const sName = String(stageName || '');
                           if (cIdx === 0 || /활착|정식|발아/.test(sName)) {
                             return sName.includes('발아') ? '발아·활착' : '정식';
@@ -11172,7 +11224,7 @@ export default function UserIntroPage() {
                           const isPrep = b === 0;
                           const cultStageObj = !isPrep ? cultStages[b - 1] : null;
                           const phaseTitle = isPrep
-                            ? '정식 준비'
+                            ? activeCropProfileForSchedule.prepPhaseTitle || '정식 준비'
                             : cultStageObj?.stage_name || `${b}단계`;
                           const periodLabel = `${formatShortMonthDay(
                             startYmd
@@ -18039,6 +18091,7 @@ export default function UserIntroPage() {
                 const firstCv = cropSpec.cultivars[0]?.value || cropSpec.defaultCultivar;
                 const firstPType =
                   cropSpec.cultivars[0]?.plantingType || cropSpec.plantingType;
+                const selectedProf = resolveCropAgronomicProfile(cropSpec.cropKey);
                 setReqForm((prev) => ({
                   ...prev,
                   group_id: cropSpec.groupId,
@@ -18046,6 +18099,8 @@ export default function UserIntroPage() {
                   crop_name: cropSpec.cropKey,
                   cultivar_name: firstCv,
                   planting_type: firstPType,
+                  planting_date: selectedProf.defaultPlantingDate,
+                  schedule_base_date: selectedProf.defaultPlantingDate,
                   schedule_base_type: firstPType === '씨' ? 'SOWING_DATE' : 'PLANTING_DATE',
                 }));
               };
@@ -19521,6 +19576,7 @@ export default function UserIntroPage() {
                                   const firstCvSpecs = getCultivarSpecsForCrop(firstCrop);
                                   const firstCv = firstCvSpecs[0]?.value || '춘추배추';
                                   const firstPType = firstCvSpecs[0]?.plantingType || '모종';
+                                  const firstProf = resolveCropAgronomicProfile(firstCrop);
                                   setReqForm((prev) => ({
                                     ...prev,
                                     group_id: nextGroupId,
@@ -19528,6 +19584,8 @@ export default function UserIntroPage() {
                                     crop_name: firstCrop,
                                     cultivar_name: firstCv,
                                     planting_type: firstPType,
+                                    planting_date: firstProf.defaultPlantingDate,
+                                    schedule_base_date: firstProf.defaultPlantingDate,
                                   }));
                                 }}
                                 className="w-full px-3.5 py-2.5 rounded-xl border border-emerald-300 bg-emerald-50/40 text-slate-900 font-bold"
@@ -19549,11 +19607,14 @@ export default function UserIntroPage() {
                                   const cvSpecs = getCultivarSpecsForCrop(cname);
                                   const defaultCv = cvSpecs[0]?.value || '춘추배추';
                                   const defaultPType = cvSpecs[0]?.plantingType || '모종';
+                                  const nextProf = resolveCropAgronomicProfile(cname);
                                   setReqForm((prev) => ({
                                     ...prev,
                                     crop_name: cname,
                                     cultivar_name: defaultCv,
                                     planting_type: defaultPType,
+                                    planting_date: nextProf.defaultPlantingDate,
+                                    schedule_base_date: nextProf.defaultPlantingDate,
                                   }));
                                 }}
                                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 font-semibold"
