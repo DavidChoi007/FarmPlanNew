@@ -12530,121 +12530,25 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 4) 3가지 보기 라디오 선택 */}
-                              <div className="space-y-2.5 pt-0.5">
-                                {(
-                                  [
-                                    {
-                                      key: 'STARTED',
-                                      label: '예, 시작되었습니다.',
-                                    },
-                                    {
-                                      key: 'NOT_YET',
-                                      label: '아니요, 아직입니다.',
-                                    },
-                                    {
-                                      key: 'UNKNOWN',
-                                      label: '잘 모르겠습니다.',
-                                    },
-                                  ] as const
-                                ).map((opt) => {
-                                  const isSel =
-                                    growthConfirmRadioChoice === opt.key;
-                                  return (
-                                    <button
-                                      key={opt.key}
-                                      type="button"
-                                      onClick={() =>
-                                        setGrowthConfirmRadioChoice(opt.key)
-                                      }
-                                      className="w-full flex items-center gap-3 text-left cursor-pointer py-0.5"
-                                    >
-                                      <span
-                                        className={`w-[20px] h-[20px] rounded-full flex items-center justify-center shrink-0 transition ${
-                                          isSel
-                                            ? 'border-[2.2px] border-[#0E712F] bg-white ring-2 ring-[#22C55E]/30'
-                                            : 'border-[1.8px] border-[#D1D5DB] bg-white'
-                                        }`}
-                                      >
-                                        {isSel && (
-                                          <span className="w-[10px] h-[10px] rounded-full bg-[#0E712F]" />
-                                        )}
-                                      </span>
-                                      <span className="text-[15.5px] font-bold text-[#111827] tracking-[-0.02em]">
-                                        {opt.label}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-
-                              {/* 6) 보기 바로 아래 일정 수정 폼 (하루 일정은 1개 날짜 선택, 하루 이상 기간 기반 생육단계는 시작일~종료일 2개 날짜 선택 폼) */}
-                              <div className="rounded-[14px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3 space-y-2.5 shadow-2xs">
+                              {/* 4) 생육단계 시작일 수정 폼 (단일 1개 날짜 선택) */}
+                              <div className="rounded-[14px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-2 shadow-2xs">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[13.5px] font-extrabold text-[#0E712F]">
-                                    {isRangeMode
-                                      ? `${stgName} 기간 일정 수정 (시작일 ~ 종료일)`
-                                      : `${milestoneTitle} 일자 수정`}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full bg-white border border-[#86EFAC] text-[#15803D] text-[11px] font-extrabold">
-                                    {isRangeMode ? '기간 설정' : '단일 일자'}
+                                  <span className="text-[14px] font-extrabold text-[#0E712F]">
+                                    {displayStageName} 시작일
                                   </span>
                                 </div>
 
-                                {!isRangeMode ? (
-                                  <div className="space-y-1">
-                                    <label className="block text-[12px] font-bold text-[#374151]">
-                                      변경할 일자 선택 (시작일 ~ 종료일 동일 적용)
-                                    </label>
-                                    <input
-                                      type="date"
-                                      value={effStartYmd}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        if (!v) return;
-                                        setGrowthConfirmDateInput(v);
-                                        setGrowthConfirmEndDateInput(v);
-                                      }}
-                                      className="w-full h-[42px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                      <label className="block text-[12px] font-bold text-[#374151]">
-                                        시작일 (부터)
-                                      </label>
-                                      <input
-                                        type="date"
-                                        value={effStartYmd}
-                                        onChange={(e) => {
-                                          const v = e.target.value;
-                                          if (!v) return;
-                                          setGrowthConfirmDateInput(v);
-                                          if (effEndYmd && v > effEndYmd) {
-                                            setGrowthConfirmEndDateInput(v);
-                                          }
-                                        }}
-                                        className="w-full h-[42px] px-2.5 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[13.5px] text-[#111827]"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <label className="block text-[12px] font-bold text-[#374151]">
-                                        종료일 (까지)
-                                      </label>
-                                      <input
-                                        type="date"
-                                        value={effEndYmd}
-                                        onChange={(e) => {
-                                          const v = e.target.value;
-                                          if (!v) return;
-                                          setGrowthConfirmEndDateInput(v);
-                                        }}
-                                        className="w-full h-[42px] px-2.5 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[13.5px] text-[#111827]"
-                                      />
-                                    </div>
-                                  </div>
-                                )}
+                                <input
+                                  type="date"
+                                  value={effStartYmd}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (!v) return;
+                                    setGrowthConfirmDateInput(v);
+                                    setGrowthConfirmEndDateInput(v);
+                                  }}
+                                  className="w-full h-[44px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[15px] text-[#111827]"
+                                />
                               </div>
 
                               {/* 7) 하단 [변경 사항 저장] 버튼 ("수정하시겠습니까?" 컨펌 승인 후 모달리스 폼만 닫고 상세페이지 리로드) */}
@@ -12653,21 +12557,16 @@ export default function UserIntroPage() {
                                   type="button"
                                   onClick={async () => {
                                     const finalStartYmd = effStartYmd;
-                                    const finalEndYmd = isRangeMode
-                                      ? effEndYmd >= effStartYmd
-                                        ? effEndYmd
-                                        : effStartYmd
-                                      : effStartYmd;
 
                                     const confirmed =
                                       window.confirm('수정하시겠습니까?');
                                     if (!confirmed) return;
 
-                                    // 1) 생육단계 확인 라디오 상태 저장
+                                    // 1) 생육단계 확인 상태 저장
                                     setStageGrowthConfirmStatuses((prev) => {
                                       const next = {
                                         ...prev,
-                                        [confirmKey]: growthConfirmRadioChoice,
+                                        [confirmKey]: 'STARTED' as const,
                                       };
                                       try {
                                         localStorage.setItem(
@@ -12694,7 +12593,7 @@ export default function UserIntroPage() {
                                       return next;
                                     });
 
-                                    // 2) 생육단계 시작일~종료일 저장
+                                    // 2) 생육단계 시작일 저장 (기존 커스텀 종료일 오버라이드가 있었다면 제거하여 새 시작일 기준으로 자동 산출되게 함)
                                     const bucketIdxForRange =
                                       growthConfirmModalTarget.phaseTitle ===
                                       '정식 준비'
@@ -12706,8 +12605,8 @@ export default function UserIntroPage() {
                                       const next = {
                                         ...prev,
                                         [confirmKey]: finalStartYmd,
-                                        [customRangeKey]: `${finalStartYmd}~${finalEndYmd}`,
                                       };
+                                      delete next[customRangeKey];
                                       try {
                                         localStorage.setItem(
                                           'hanfarm_stage_growth_confirm_dates_v1',
