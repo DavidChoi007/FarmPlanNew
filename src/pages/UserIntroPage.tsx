@@ -10598,22 +10598,14 @@ export default function UserIntroPage() {
                               const isCurrent = sIdx === activeCropItem.activeStepIdx;
                               const customColor = stg.stage_color || '#0E712F';
                               return (
-                                <button
+                                <div
                                   key={stg.stage_code || `${stg.stage_name}-${sIdx}`}
-                                  type="button"
-                                  onClick={() => {
-                                    setGrowthConfirmModalTarget({
-                                      reqNo: activeCropItem.request_no,
-                                      stepIdx: sIdx,
-                                    });
-                                    goToScheduleStep('growth_check');
-                                  }}
-                                  className={`relative rounded-[14px] px-1.5 py-2.5 flex flex-col items-center justify-center gap-1 text-center transition cursor-pointer border ${
+                                  className={`relative rounded-[14px] px-1.5 py-2.5 flex flex-col items-center justify-center gap-1 text-center border select-none ${
                                     isCurrent
                                       ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-[0_6px_16px_rgba(14,113,47,0.28)] ring-2 ring-[#22C55E]/40'
                                       : isDone
-                                      ? 'bg-[#EAF6ED] border-[#A7F3D0] text-[#0E712F] hover:bg-[#DCFCE7]'
-                                      : 'bg-[#F3F4F6] border-[#E5E7EB] text-[#6B7280] hover:bg-[#E5E7EB]/60'
+                                      ? 'bg-[#EAF6ED] border-[#A7F3D0] text-[#0E712F]'
+                                      : 'bg-[#F3F4F6] border-[#E5E7EB] text-[#6B7280]'
                                   }`}
                                   style={
                                     isCurrent && customColor
@@ -10662,7 +10654,7 @@ export default function UserIntroPage() {
                                   >
                                     {stg.stage_name}
                                   </span>
-                                </button>
+                                </div>
                               );
                             })}
                           </div>
