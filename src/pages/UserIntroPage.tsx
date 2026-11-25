@@ -11632,20 +11632,99 @@ export default function UserIntroPage() {
                                 {cleanExecTitle}
                               </h1>
 
-                              {/* 예정일 + 우측 D-Day 노란 배지 배너 */}
-                              <div className="rounded-[16px] bg-[#FEFCE8]/90 border border-[#FEF08A] px-4 py-3.5 flex items-center justify-between gap-2 shadow-2xs">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <Calendar className="w-[22px] h-[22px] text-[#16A34A] stroke-[2.2] shrink-0" />
-                                  <span className="text-[16px] font-bold text-[#1F2937] shrink-0">
-                                    예정일
-                                  </span>
-                                  <span className="text-[17px] font-black text-[#111827] tracking-[-0.02em] truncate">
-                                    {selectedTaskItem.dateLabel}
-                                  </span>
+                              {/* 예정일 + 우측 D-Day 노란 배지 및 [일정 수정] 버튼 배너 */}
+                              <div className="rounded-[16px] bg-[#FEFCE8]/90 border border-[#FEF08A] px-4 py-3.5 space-y-3 shadow-2xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Calendar className="w-[21px] h-[21px] text-[#16A34A] stroke-[2.2] shrink-0" />
+                                    <span className="text-[15.5px] font-bold text-[#1F2937] shrink-0">
+                                      예정일
+                                    </span>
+                                    <span className="text-[16.5px] font-black text-[#111827] tracking-[-0.02em] truncate">
+                                      {selectedTaskItem.dateLabel}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="px-3 py-1 rounded-full bg-[#FDE047] text-[#111827] font-black text-[13.5px] tracking-[-0.02em] shadow-2xs">
+                                      {ddayPillText}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setTaskExecDraftDateYmd(
+                                          selectedTaskItem.effDate
+                                        );
+                                        setIsTaskExecDateChangeOpen(
+                                          (prev) => !prev
+                                        );
+                                      }}
+                                      className="px-2.5 py-1 rounded-full bg-white hover:bg-[#EFF8F1] border border-[#16A34A] text-[#0E712F] font-extrabold text-[12.5px] tracking-[-0.02em] cursor-pointer transition shadow-2xs"
+                                    >
+                                      {isTaskExecDateChangeOpen
+                                        ? '닫기'
+                                        : '일정 수정'}
+                                    </button>
+                                  </div>
                                 </div>
-                                <span className="px-3.5 py-1 rounded-full bg-[#FDE047] text-[#111827] font-black text-[14.5px] tracking-[-0.02em] shrink-0 shadow-2xs">
-                                  {ddayPillText}
-                                </span>
+
+                                {isTaskExecDateChangeOpen && (
+                                  <div className="rounded-[12px] border border-[#16A34A] bg-white p-3 space-y-2">
+                                    <div className="text-[13px] font-extrabold text-[#0E712F]">
+                                      변경할 예정일(작업 시작일)을 선택하세요
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="date"
+                                        value={
+                                          taskExecDraftDateYmd ||
+                                          selectedTaskItem.effDate
+                                        }
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          if (!v) return;
+                                          setTaskExecDraftDateYmd(v);
+                                        }}
+                                        className="flex-1 h-[42px] px-3 rounded-[10px] border border-[#16A34A] bg-white font-extrabold text-[14.5px] text-[#111827]"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          const targetYmd =
+                                            taskExecDraftDateYmd ||
+                                            selectedTaskItem.effDate;
+                                          if (!targetYmd) return;
+
+                                          const proceed = window.confirm(
+                                            '향후 모든 일정이 수정될수 있습니다. 계속 진행하시겠습니까?'
+                                          );
+                                          if (!proceed) return;
+
+                                          const res =
+                                            await applySingleTaskDateChangeWithClimateRecalc(
+                                              activeCropItem.request_no,
+                                              selectedTaskItem,
+                                              targetYmd
+                                            );
+                                          if (targetYmd <= todayKstYmd) {
+                                            recordTaskStartCompletion(targetYmd);
+                                          }
+                                          setIsTaskExecDateChangeOpen(false);
+
+                                          if (res.summaryMessage) {
+                                            window.alert(res.summaryMessage);
+                                          } else {
+                                            window.alert(
+                                              '일정이 수정되어 저장되었습니다.'
+                                            );
+                                          }
+                                        }}
+                                        className="h-[42px] px-3.5 rounded-[10px] bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[13.5px] tracking-[-0.02em] cursor-pointer shrink-0 shadow-2xs transition"
+                                      >
+                                        일정 수정 완료
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               {/* 1) 작업 내용 섹션 */}
@@ -11804,8 +11883,8 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 하단 영역: 일정변경 날짜 입력창(열림 시) + [✓ 작업시작] 버튼 */}
-                            <div className="space-y-3 pt-4">
+                            {/* 하단 영역: 일정변경 날짜 입력창(열림 시) + [📅 일정 수정하기] 및 [✓ 작업시작] 버튼 */}
+                            <div className="space-y-2.5 pt-4">
                               {isTaskExecDateChangeOpen && (
                                 <div className="rounded-[16px] border-[1.5px] border-[#16A34A] bg-[#F2FBF5] p-3.5 space-y-2.5 shadow-xs">
                                   <div className="flex items-center justify-between">
@@ -11834,14 +11913,6 @@ export default function UserIntroPage() {
                                           selectedTaskItem.effDate;
                                         if (!targetYmd) return;
 
-                                        // 날짜를 바꾸지 않고 그대로 적용한 경우
-                                        if (targetYmd === selectedTaskItem.effDate) {
-                                          recordTaskStartCompletion(targetYmd);
-                                          setIsTaskExecDateChangeOpen(false);
-                                          window.alert('시작일이 저장되었습니다.');
-                                          return;
-                                        }
-
                                         // 2차 승인 메시지
                                         const proceed = window.confirm(
                                           '향후 모든 일정이 수정될수 있습니다. 계속 진행하시겠습니까?'
@@ -11854,7 +11925,9 @@ export default function UserIntroPage() {
                                             selectedTaskItem,
                                             targetYmd
                                           );
-                                        recordTaskStartCompletion(targetYmd);
+                                        if (targetYmd <= todayKstYmd) {
+                                          recordTaskStartCompletion(targetYmd);
+                                        }
                                         setIsTaskExecDateChangeOpen(false);
 
                                         if (res.summaryMessage) {
@@ -11870,6 +11943,22 @@ export default function UserIntroPage() {
                                   </div>
                                 </div>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTaskExecDraftDateYmd(selectedTaskItem.effDate);
+                                  setIsTaskExecDateChangeOpen((prev) => !prev);
+                                }}
+                                className="w-full h-[50px] rounded-full border-[1.6px] border-[#16A34A] bg-white hover:bg-[#EFF8F1] text-[#0E712F] font-extrabold text-[17px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs"
+                              >
+                                <Calendar className="w-5 h-5 text-[#0E712F] stroke-[2.2]" />
+                                <span>
+                                  {isTaskExecDateChangeOpen
+                                    ? '일정 수정 닫기'
+                                    : '일정 수정하기'}
+                                </span>
+                              </button>
 
                               <button
                                 type="button"
