@@ -556,6 +556,7 @@ export default function UserIntroPage() {
   const [isGrowthConfirmDatePickerOpen, setIsGrowthConfirmDatePickerOpen] = useState<boolean>(false);
   const [growthConfirmDateInput, setGrowthConfirmDateInput] = useState<string>('');
   const [growthConfirmEndDateInput, setGrowthConfirmEndDateInput] = useState<string>('');
+  const growthConfirmModelessBoxRef = React.useRef<HTMLDivElement | null>(null);
   const [growthConfirmModalTarget, setGrowthConfirmModalTarget] = useState<{
     reqNo: string;
     stepIdx?: number;
@@ -567,6 +568,24 @@ export default function UserIntroPage() {
     anchorTask?: any;
     lastTaskInPhase?: any;
   } | null>(null);
+
+  // 모달리스 생육단계 수정 폼이 열려 있을 때 폼 바깥 영역을 클릭/터치하면 자동으로 닫기
+  useEffect(() => {
+    if (!growthConfirmModalTarget) return;
+    const handleOutsidePointerDown = (e: MouseEvent | TouchEvent) => {
+      const boxEl = growthConfirmModelessBoxRef.current;
+      if (!boxEl) return;
+      if (e.target instanceof Node && !boxEl.contains(e.target)) {
+        setGrowthConfirmModalTarget(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsidePointerDown);
+    document.addEventListener('touchstart', handleOutsidePointerDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsidePointerDown);
+      document.removeEventListener('touchstart', handleOutsidePointerDown);
+    };
+  }, [growthConfirmModalTarget]);
   const [growthConfirmRadioChoice, setGrowthConfirmRadioChoice] = useState<
     'STARTED' | 'NOT_YET' | 'UNKNOWN'
   >('STARTED');
@@ -12525,17 +12544,10 @@ export default function UserIntroPage() {
                         const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdx}`;
 
                         return (
-                          <div
-                            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/45 p-4 cursor-pointer"
-                            onClick={() => setGrowthConfirmModalTarget(null)}
-                            onMouseDown={() => setGrowthConfirmModalTarget(null)}
-                            onTouchStart={() => setGrowthConfirmModalTarget(null)}
-                          >
+                          <div className="fixed inset-x-0 bottom-0 top-[56px] z-[90] flex items-center justify-center p-4 pointer-events-none">
                             <div
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onTouchStart={(e) => e.stopPropagation()}
-                              className="w-full max-w-[380px] rounded-[20px] border border-[#E5E7EB] bg-white p-5 shadow-2xl space-y-4 cursor-default"
+                              ref={growthConfirmModelessBoxRef}
+                              className="w-full max-w-[380px] rounded-[20px] border-2 border-[#0E712F] bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.28)] space-y-4 pointer-events-auto cursor-default"
                             >
                               {/* 1) 상단 타이틀: {해당 생육단계 이름} 정보변경 + 닫기 버튼 */}
                               <div className="flex items-center justify-between gap-2 border-b border-[#F1F5F9] pb-3">
