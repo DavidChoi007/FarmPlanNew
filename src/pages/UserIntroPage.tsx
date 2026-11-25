@@ -373,7 +373,7 @@ export default function UserIntroPage() {
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
   const [mobileFullScheduleFilterTab, setMobileFullScheduleFilterTab] = useState<
     'WORK' | 'FERTILIZER' | 'PEST' | 'ALL'
-  >('WORK');
+  >('ALL');
   const [isMobileScheduleEditMode, setIsMobileScheduleEditMode] = useState<boolean>(false);
   const [mobileSelectedEditTaskId, setMobileSelectedEditTaskId] = useState<string>('');
   const [mobileEditTargetDateYmd, setMobileEditTargetDateYmd] = useState<string>('');
@@ -10693,7 +10693,7 @@ export default function UserIntroPage() {
                           </div>
                         </div>
 
-                        {/* 3) 현재 생육단계 카드 (클릭 시 전체 재배일정 페이지의 해당 탭 및 생육과정 위치로 이동·강조) */}
+                        {/* 3) 현재 생육단계 카드 (클릭 시 전체 재배일정 페이지의 '전체일정' 탭에서 해당 생육과정 위치로 이동·강조) */}
                         <button
                           type="button"
                           onClick={() => {
@@ -10701,14 +10701,8 @@ export default function UserIntroPage() {
                               activeCropItem.primaryNextTask ||
                               activeCropItem.allTasks[0] ||
                               null;
-                            const targetCat =
-                              (targetTask?.iconType as
-                                | 'WORK'
-                                | 'FERTILIZER'
-                                | 'PEST'
-                                | undefined) || 'WORK';
                             const targetId = targetTask?.itemId || '';
-                            setMobileFullScheduleFilterTab(targetCat);
+                            setMobileFullScheduleFilterTab('ALL');
                             setIsMobileScheduleEditMode(false);
                             setMobileSelectedEditTaskId(
                               targetTask &&
@@ -10757,7 +10751,7 @@ export default function UserIntroPage() {
                           </div>
                         </button>
 
-                        {/* 4) 다음 농작업 섹션 (클릭 시 전체 재배일정 페이지의 해당 탭 및 생육과정 위치로 이동·강조) */}
+                        {/* 4) 다음 농작업 섹션 (클릭 시 전체 재배일정 페이지의 '전체일정' 탭에서 해당 생육과정 위치로 이동·강조) */}
                         <div className="space-y-2.5">
                           <div className="flex items-center gap-2">
                             <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center">
@@ -10783,14 +10777,8 @@ export default function UserIntroPage() {
                                 activeCropItem.primaryNextTask ||
                                 activeCropItem.allTasks[0] ||
                                 null;
-                              const targetCat =
-                                (targetTask?.iconType as
-                                  | 'WORK'
-                                  | 'FERTILIZER'
-                                  | 'PEST'
-                                  | undefined) || 'WORK';
                               const targetId = targetTask?.itemId || '';
-                              setMobileFullScheduleFilterTab(targetCat);
+                              setMobileFullScheduleFilterTab('ALL');
                               setIsMobileScheduleEditMode(false);
                               setMobileSelectedEditTaskId(
                                 targetTask &&
@@ -10848,14 +10836,8 @@ export default function UserIntroPage() {
                                 activeCropItem.primaryNextTask ||
                                 activeCropItem.allTasks[0] ||
                                 null;
-                              const currentTaskCat =
-                                (targetTask?.iconType as
-                                  | 'WORK'
-                                  | 'FERTILIZER'
-                                  | 'PEST'
-                                  | undefined) || 'WORK';
                               const targetId = targetTask?.itemId || '';
-                              setMobileFullScheduleFilterTab(currentTaskCat);
+                              setMobileFullScheduleFilterTab('ALL');
                               setIsMobileScheduleEditMode(false);
                               setMobileSelectedEditTaskId('');
                               setMobileEditTargetDateYmd('');
@@ -11037,10 +11019,10 @@ export default function UserIntroPage() {
                           key: 'WORK' | 'FERTILIZER' | 'PEST' | 'ALL';
                           label: string;
                         }> = [
+                          { key: 'ALL', label: '전체일정' },
                           { key: 'WORK', label: '농작업' },
                           { key: 'FERTILIZER', label: '시비관리' },
                           { key: 'PEST', label: '병해충' },
-                          { key: 'ALL', label: '전체일정' },
                         ];
 
                         const formatShortMonthDay = (ymd: string) => {
