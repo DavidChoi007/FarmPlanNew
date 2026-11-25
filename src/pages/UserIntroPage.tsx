@@ -10956,10 +10956,69 @@ export default function UserIntroPage() {
                           filteredScheduleTasks.find((t) => !t.isRecognized) ||
                           null;
 
+                        const selectedEditMilestoneInfo = (() => {
+                          const mMatch = String(mobileSelectedEditTaskId || '').match(
+                            /^MILESTONE_(\d+)$/
+                          );
+                          if (!mMatch) return null;
+                          const bIdx = Number(mMatch[1]);
+                          const allSorted = [...activeCropItem.allTasks].sort(
+                            (a, b) => Number(a.stepOrder) - Number(b.stepOrder)
+                          );
+                          const cStages = activeCropItem.cropCultStages || [];
+                          const cCount = Math.max(1, cStages.length);
+                          const firstInBucket = allSorted.find((tk) => {
+                            const ord = Number(tk.stepOrder || 1);
+                            if (ord <= 6) return bIdx === 0;
+                            if (cCount === 4) {
+                              const mapped =
+                                ord <= 8 ? 1 : ord <= 10 ? 2 : ord <= 14 ? 3 : 4;
+                              return mapped === bIdx;
+                            }
+                            if (ord <= 8) return bIdx === 1;
+                            if (ord >= 15) return bIdx === cCount;
+                            const ratio = (ord - 8) / 8;
+                            const mapped =
+                              Math.min(
+                                cCount - 1,
+                                Math.max(0, Math.floor(ratio * cCount))
+                              ) + 1;
+                            return mapped === bIdx;
+                          });
+                          if (!firstInBucket) return null;
+                          const stgName =
+                            cStages[bIdx - 1]?.stage_name || `${bIdx}단계`;
+                          let mLabel = `${stgName} 진입`;
+                          if (bIdx === 1 || /활착|정식/.test(stgName)) mLabel = '정식';
+                          else if (/외엽|신장|영양|초기|줄기/.test(stgName))
+                            mLabel = '새잎 생장';
+                          else if (/결구|비대|개화|착과|성숙/.test(stgName)) {
+                            if (stgName.includes('결구')) mLabel = '결구 시작';
+                            else if (stgName.includes('비대')) mLabel = '비대 시작';
+                            else if (
+                              stgName.includes('착과') ||
+                              stgName.includes('개화')
+                            )
+                              mLabel = '개화·착과';
+                          } else if (/수확/.test(stgName)) mLabel = '수확 적기 도달';
+                          return {
+                            bucketIdx: bIdx,
+                            milestoneId: `MILESTONE_${bIdx}`,
+                            milestoneLabel: mLabel,
+                            phaseTitle: stgName,
+                            anchorTask: {
+                              ...firstInBucket,
+                              shortTitle: `${mLabel} (${stgName})`,
+                            },
+                          };
+                        })();
+
                         const selectedEditTaskObj =
+                          selectedEditMilestoneInfo?.anchorTask ||
                           activeCropItem.allTasks.find(
                             (t) => t.itemId === mobileSelectedEditTaskId
-                          ) || null;
+                          ) ||
+                          null;
 
                         const filterTabs: Array<{
                           key: 'WORK' | 'FERTILIZER' | 'PEST' | 'ALL';
@@ -11038,8 +11097,11 @@ export default function UserIntroPage() {
                           bucketIdx: number;
                           phaseTitle: string;
                           periodLabel: string;
+                          milestoneId: string;
                           milestoneLabel: string;
+                          milestoneDateYmd: string;
                           milestoneDateLabel: string;
+                          anchorTask: any;
                           isCurrentPhase: boolean;
                           tasks: any[];
                         }> = [];
@@ -11087,8 +11149,11 @@ export default function UserIntroPage() {
                               bucketIdx: b,
                               phaseTitle,
                               periodLabel,
+                              milestoneId: `MILESTONE_${b}`,
                               milestoneLabel,
+                              milestoneDateYmd: startYmd,
                               milestoneDateLabel,
+                              anchorTask: allInBucket[0] || filteredInBucket[0] || null,
                               isCurrentPhase,
                               tasks: filteredInBucket,
                             });
@@ -11242,39 +11307,140 @@ export default function UserIntroPage() {
                                         key={`phase-sec-${section.bucketIdx}`}
                                         className="space-y-2"
                                       >
-                                        {/* 생육단계 전환 마일스톤 라인 (예: ✓ 정식  8월 19일 확인 / ✓ 새잎 생장  8월 26일 확인) */}
-                                        {section.milestoneLabel && (
-                                          <div className="px-1.5 pt-1 flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2">
-                                              <span className="w-[20px] h-[20px] rounded-full border-[1.8px] border-[#15803D] bg-white text-[#15803D] inline-flex items-center justify-center shrink-0">
-                                                <svg
-                                                  viewBox="0 0 16 16"
-                                                  className="w-3 h-3"
-                                                  fill="none"
-                                                >
-                                                  <path
-                                                    d="M3.5 8.2L6.6 11.3L12.5 5.2"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                  />
-                                                </svg>
-                                              </span>
-                                              <span className="text-[15px] font-extrabold text-[#15803D] tracking-[-0.02em]">
-                                                {section.milestoneLabel}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-2 shrink-0">
-                                              <span className="text-[14.5px] font-semibold text-[#4B5563]">
-                                                {section.milestoneDateLabel}
-                                              </span>
-                                              <span className="text-[13.5px] font-extrabold text-[#15803D]">
-                                                확인
-                                              </span>
-                                            </div>
-                                          </div>
-                                        )}
+                                        {/* 생육단계 전환 마일스톤 라인 (예: ✓ 정식  8월 19일 확인 / ✓ 새잎 생장  8월 26일 확인) — 선택하여 일자 변경 가능 */}
+                                        {section.milestoneLabel &&
+                                          (() => {
+                                            const isMilestoneSelected =
+                                              mobileSelectedEditTaskId ===
+                                              section.milestoneId;
+                                            const isEditingMilestone =
+                                              isMobileScheduleEditMode &&
+                                              isMilestoneSelected;
+
+                                            const handleSelectMilestone = () => {
+                                              if (isEditingMilestone) return;
+                                              setMobileScheduleRecalcNotice('');
+                                              if (
+                                                mobileSelectedEditTaskId ===
+                                                  section.milestoneId &&
+                                                !isMobileScheduleEditMode
+                                              ) {
+                                                setMobileSelectedEditTaskId('');
+                                                setMobileEditTargetDateYmd('');
+                                              } else {
+                                                setMobileSelectedEditTaskId(
+                                                  section.milestoneId
+                                                );
+                                                setMobileEditTargetDateYmd(
+                                                  section.milestoneDateYmd
+                                                );
+                                                if (isMobileScheduleEditMode) {
+                                                  setIsMobileScheduleEditMode(
+                                                    false
+                                                  );
+                                                }
+                                              }
+                                            };
+
+                                            return (
+                                              <div
+                                                onClick={handleSelectMilestone}
+                                                className={`rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 transition ${
+                                                  isEditingMilestone
+                                                    ? 'bg-[#EFF8F1] border-2 border-[#0E712F] shadow-xs cursor-default'
+                                                    : isMilestoneSelected
+                                                    ? 'bg-[#EFF8F1] border-[1.5px] border-[#16A34A] shadow-2xs cursor-pointer'
+                                                    : 'hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer'
+                                                }`}
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  <button
+                                                    type="button"
+                                                    aria-label={`${section.milestoneLabel} 생육단계 일자 수정 선택`}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleSelectMilestone();
+                                                    }}
+                                                    className="p-0.5 -m-0.5 flex items-center justify-center shrink-0 cursor-pointer focus:outline-none"
+                                                  >
+                                                    {isMilestoneSelected ? (
+                                                      <span className="w-[22px] h-[22px] rounded-full border-[2.5px] border-[#0E712F] bg-white flex items-center justify-center shadow-2xs ring-2 ring-[#22C55E]/35">
+                                                        <span className="w-[10.5px] h-[10.5px] rounded-full bg-[#0E712F]" />
+                                                      </span>
+                                                    ) : (
+                                                      <span className="w-[20px] h-[20px] rounded-full border-[1.8px] border-[#15803D] bg-white text-[#15803D] inline-flex items-center justify-center shrink-0">
+                                                        <svg
+                                                          viewBox="0 0 16 16"
+                                                          className="w-3 h-3"
+                                                          fill="none"
+                                                        >
+                                                          <path
+                                                            d="M3.5 8.2L6.6 11.3L12.5 5.2"
+                                                            stroke="currentColor"
+                                                            strokeWidth="2.2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                          />
+                                                        </svg>
+                                                      </span>
+                                                    )}
+                                                  </button>
+                                                  <span className="text-[15px] font-extrabold text-[#15803D] tracking-[-0.02em]">
+                                                    {section.milestoneLabel}
+                                                  </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                  {isEditingMilestone ? (
+                                                    <input
+                                                      type="date"
+                                                      value={
+                                                        mobileEditTargetDateYmd ||
+                                                        section.milestoneDateYmd
+                                                      }
+                                                      onClick={(e) =>
+                                                        e.stopPropagation()
+                                                      }
+                                                      onChange={(e) => {
+                                                        const nextYmd =
+                                                          e.target.value;
+                                                        if (!nextYmd) return;
+                                                        setMobileEditTargetDateYmd(
+                                                          nextYmd
+                                                        );
+                                                      }}
+                                                      className="h-[34px] px-2.5 rounded-lg border-2 border-[#0E712F] bg-white text-[13.5px] font-extrabold text-[#111827] shadow-2xs"
+                                                    />
+                                                  ) : (
+                                                    <span className="text-[14.5px] font-semibold text-[#4B5563]">
+                                                      {section.milestoneDateLabel}
+                                                    </span>
+                                                  )}
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setMobileSelectedEditTaskId(
+                                                        section.milestoneId
+                                                      );
+                                                      setMobileEditTargetDateYmd(
+                                                        section.milestoneDateYmd
+                                                      );
+                                                      setMobileScheduleRecalcNotice(
+                                                        ''
+                                                      );
+                                                      setIsMobileScheduleEditMode(
+                                                        true
+                                                      );
+                                                    }}
+                                                    className="px-2 py-0.5 rounded-full bg-[#EFF8F1] hover:bg-[#DCFCE7] border border-[#86EFAC] text-[13px] font-extrabold text-[#15803D] cursor-pointer transition"
+                                                  >
+                                                    확인
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            );
+                                          })()}
 
                                         {/* 생육단계 구간 헤더 바 (예: [정식 준비 | 8월 7일 ~ 8월 18일], [활착기 | 8월 19일 ~ 8월 25일]) */}
                                         <div
