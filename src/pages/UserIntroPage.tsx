@@ -12914,17 +12914,59 @@ export default function UserIntroPage() {
                                 </p>
                               </div>
 
-                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 기본 1개 표시, 펼치면 해당 생육단계 전체 추천 농자재 표시 · 좌측 선택 체크박스 · 구매완료 제품 비활성화 및 우측 끝 (구매) 표시) */}
+                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 기본 1개 표시, 펼치면 해당 생육단계 전체 추천 농자재 표시 · 좌측 선택 체크박스 · 구매완료 제품 비활성화 및 우측 끝 (구매) 표시 + 체크한 제품 바로 장바구니 담아 이동하는 [구매하기] 버튼) */}
                               {(() => {
                                 const stageRecProducts = buildStageRecommendedAgroProducts(selectedTaskItem);
                                 const visibleRecProducts = isTaskExecAgroExpanded
                                   ? stageRecProducts
                                   : stageRecProducts.slice(0, 1);
-                                const checkedRecCount = stageRecProducts.filter(
+                                const checkedRecProducts = stageRecProducts.filter(
                                   (prd) =>
                                     !isStageAgroProductPurchased(prd) &&
                                     Boolean(mobileTaskAgroCheckedMap[prd.material_id])
-                                ).length;
+                                );
+                                const checkedRecCount = checkedRecProducts.length;
+                                const checkedRecTotalPrice = checkedRecProducts.reduce(
+                                  (acc, prd) => acc + Number(prd.unit_price || 0),
+                                  0
+                                );
+
+                                const handleBuyCheckedRecAgroProducts = () => {
+                                  if (checkedRecProducts.length === 0) return;
+                                  checkedRecProducts.forEach((prd) => {
+                                    handleAddStageProductToCart({
+                                      cropObj: {
+                                        request_no: activeCropItem.request_no,
+                                        crop_name: activeCropItem.shortName,
+                                        cultivar_name: activeCropItem.cultivarName,
+                                        crop_title: `${activeCropItem.shortName} (${activeCropItem.cultivarName})`,
+                                        region: activeCropItem.region,
+                                        area_pyeong: activeCropItem.areaPyeong,
+                                        planting_label: activeCropItem.basePlantingYmd,
+                                        expected_harvest_date: activeCropItem.expectedHarvestYmd,
+                                      },
+                                      stageItem: {
+                                        item_id: selectedTaskItem.itemId,
+                                        process_code: selectedTaskItem.itemId,
+                                        stage_group_name: selectedTaskItem.stageGroupName,
+                                        sub_item_name: cleanExecTitle,
+                                        process_name: cleanExecTitle,
+                                        start_date: selectedTaskItem.effDate,
+                                        work_content: selectedTaskItem.taskDescription,
+                                      },
+                                      mat: prd,
+                                      qty: 1,
+                                    });
+                                  });
+                                  setMyPageToast(
+                                    `[${cleanExecTitle}] 추천 농자재 ${checkedRecProducts.length}건이 장바구니에 담겼습니다.`
+                                  );
+                                  setActiveMenu('마이페이지');
+                                  setMyPageTab('CART');
+                                  if (typeof window !== 'undefined') {
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                };
 
                                 return (
                                   <div className="rounded-[18px] border border-[#E2F0E5] bg-[#EFF8F1] overflow-hidden shadow-2xs">
@@ -13112,26 +13154,51 @@ export default function UserIntroPage() {
                                       })}
                                     </div>
 
-                                    {stageRecProducts.length > 1 && (
+                                    {/* 추천 농자재 카드 하단 액션바: 좌측 전체 펼치기/접기 + 우측 [구매하기] 버튼 (체크한 제품 장바구니로 전송 후 장바구니 페이지로 이동) */}
+                                    <div className="px-3.5 py-2.5 bg-[#F2FBF5] border-t border-[#E2F0E5] flex items-center justify-between gap-2">
+                                      {stageRecProducts.length > 1 ? (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setIsTaskExecAgroExpanded((prev) => !prev)
+                                          }
+                                          className="text-[#0E712F] hover:text-[#0B5D26] text-[12.5px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
+                                        >
+                                          <span>
+                                            {isTaskExecAgroExpanded
+                                              ? '목록 접기'
+                                              : `전체 ${stageRecProducts.length}종 펼치기`}
+                                          </span>
+                                          <ChevronDown
+                                            className={`w-4 h-4 stroke-[2.4] transition-transform ${
+                                              isTaskExecAgroExpanded ? 'rotate-180' : ''
+                                            }`}
+                                          />
+                                        </button>
+                                      ) : (
+                                        <span className="text-[12px] font-bold text-[#0E712F]">
+                                          체크한 제품을 장바구니에 담아 구매합니다
+                                        </span>
+                                      )}
+
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          setIsTaskExecAgroExpanded((prev) => !prev)
-                                        }
-                                        className="w-full py-2 bg-[#F8FBF9] hover:bg-[#EFF8F1] border-t border-[#E2F0E5] text-[#0E712F] text-[12.5px] font-extrabold flex items-center justify-center gap-1 cursor-pointer transition"
+                                        disabled={checkedRecCount === 0}
+                                        onClick={handleBuyCheckedRecAgroProducts}
+                                        className={`h-[36px] px-3.5 rounded-full font-black text-[13px] tracking-[-0.02em] inline-flex items-center justify-center gap-1.5 shrink-0 transition ${
+                                          checkedRecCount > 0
+                                            ? 'bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white shadow-2xs cursor-pointer'
+                                            : 'bg-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed'
+                                        }`}
                                       >
+                                        <ShoppingCart className="w-3.5 h-3.5 stroke-[2.4]" />
                                         <span>
-                                          {isTaskExecAgroExpanded
-                                            ? '추천 농자재 목록 접기'
-                                            : `추천 농자재 전체 ${stageRecProducts.length}종 펼치기`}
+                                          {checkedRecCount > 0
+                                            ? `구매하기 (${checkedRecCount}개 · ${checkedRecTotalPrice.toLocaleString()}원)`
+                                            : '구매하기'}
                                         </span>
-                                        <ChevronDown
-                                          className={`w-4 h-4 stroke-[2.4] transition-transform ${
-                                            isTaskExecAgroExpanded ? 'rotate-180' : ''
-                                          }`}
-                                        />
                                       </button>
-                                    )}
+                                    </div>
                                   </div>
                                 );
                               })()}
@@ -13216,15 +13283,63 @@ export default function UserIntroPage() {
                               );
                             })()}
 
-                            {/* 하단 액션 버튼 영역 (첨부 이미지 1번: 농자재 구매 / 작업일지 작성하기) */}
+                            {/* 하단 액션 버튼 영역 (농자재 구매 / 작업일지 작성하기) */}
                             <div className="pt-4 pb-2 space-y-2.5">
                               <button
                                 type="button"
-                                onClick={() => openTaskAgroBuyPage(selectedTaskItem, true)}
+                                onClick={() => {
+                                  const stageRecProducts =
+                                    buildStageRecommendedAgroProducts(selectedTaskItem);
+                                  const checkedRecProducts = stageRecProducts.filter(
+                                    (prd) =>
+                                      !isStageAgroProductPurchased(prd) &&
+                                      Boolean(mobileTaskAgroCheckedMap[prd.material_id])
+                                  );
+                                  const targetList =
+                                    checkedRecProducts.length > 0
+                                      ? checkedRecProducts
+                                      : stageRecProducts
+                                          .filter((prd) => !isStageAgroProductPurchased(prd))
+                                          .slice(0, 1);
+                                  if (targetList.length === 0) return;
+                                  targetList.forEach((prd) => {
+                                    handleAddStageProductToCart({
+                                      cropObj: {
+                                        request_no: activeCropItem.request_no,
+                                        crop_name: activeCropItem.shortName,
+                                        cultivar_name: activeCropItem.cultivarName,
+                                        crop_title: `${activeCropItem.shortName} (${activeCropItem.cultivarName})`,
+                                        region: activeCropItem.region,
+                                        area_pyeong: activeCropItem.areaPyeong,
+                                        planting_label: activeCropItem.basePlantingYmd,
+                                        expected_harvest_date: activeCropItem.expectedHarvestYmd,
+                                      },
+                                      stageItem: {
+                                        item_id: selectedTaskItem.itemId,
+                                        process_code: selectedTaskItem.itemId,
+                                        stage_group_name: selectedTaskItem.stageGroupName,
+                                        sub_item_name: cleanExecTitle,
+                                        process_name: cleanExecTitle,
+                                        start_date: selectedTaskItem.effDate,
+                                        work_content: selectedTaskItem.taskDescription,
+                                      },
+                                      mat: prd,
+                                      qty: 1,
+                                    });
+                                  });
+                                  setMyPageToast(
+                                    `[${cleanExecTitle}] 추천 농자재 ${targetList.length}건이 장바구니에 담겼습니다.`
+                                  );
+                                  setActiveMenu('마이페이지');
+                                  setMyPageTab('CART');
+                                  if (typeof window !== 'undefined') {
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                }}
                                 className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] tracking-[-0.03em] shadow-sm flex items-center justify-center gap-2 cursor-pointer transition"
                               >
                                 <ShoppingCart className="w-[21px] h-[21px] stroke-[2.3]" />
-                                <span>농자재 구매</span>
+                                <span>선택 농자재 구매하기</span>
                               </button>
 
                               <button
@@ -13511,8 +13626,7 @@ export default function UserIntroPage() {
                                       onClick={() => {
                                         setMobileTaskAgroToast('');
                                         setActiveMenu('마이페이지');
-                                        setMyPageTab('AGRO_CART');
-                                        setMobileMyPageScreen('AGRO_CART');
+                                        setMyPageTab('CART');
                                       }}
                                       className="px-3 py-1.5 rounded-lg bg-[#22C55E] text-[#052E16] text-[12.5px] font-black cursor-pointer"
                                     >
