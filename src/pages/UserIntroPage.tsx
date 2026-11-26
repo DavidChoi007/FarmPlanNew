@@ -2096,12 +2096,22 @@ export default function UserIntroPage() {
     setIsScheduleReqModelessOpen(true);
   };
 
-  // [재배일정 요청] 및 [마이페이지 > 재배일정 확인]에서 재배일정 삭제 시 요청 리스트·구매 농자재·장바구니·작업기록 등 모든 연관 데이터 일괄 연쇄 삭제 핸들러
-  const handleDeleteScheduleAndCascade = async (cropInput: any, e?: React.MouseEvent) => {
+  // 재배일정 삭제 확인용 모달리스 창 타겟 상태 ("정말 삭제하시겠습니까?")
+  const [scheduleDeleteConfirmTarget, setScheduleDeleteConfirmTarget] = useState<any | null>(null);
+
+  // [재배일정 요청] 및 [마이페이지 > 재배일정 확인]에서 삭제 버튼 클릭 시 브라우저 기본 confirm 팝업 없이 "정말 삭제하시겠습니까?" 모달리스 창 오픈
+  const handleDeleteScheduleAndCascade = (cropInput: any, e?: React.MouseEvent) => {
     if (e) {
       e.stopPropagation();
     }
     if (!cropInput) return;
+    setScheduleDeleteConfirmTarget(cropInput);
+  };
+
+  // 모달리스 창에서 [삭제] 확정 클릭 시 요청 리스트·구매 농자재·장바구니·작업기록 등 모든 연관 데이터 일괄 연쇄 삭제 실행
+  const executeDeleteScheduleAndCascade = async (cropInput: any) => {
+    if (!cropInput) return;
+    setScheduleDeleteConfirmTarget(null);
 
     const rawReqKey = String(
       cropInput.request_no || cropInput.display_request_no || cropInput.id || ''
@@ -2121,11 +2131,6 @@ export default function UserIntroPage() {
       `${crop.crop_short || crop.shortName || '작물'} (${
         crop.cultivar_name || crop.cultivarName || ''
       })`;
-
-    const confirmed = window.confirm(
-      `[${cropTitle} · ${displayReqNo}] 재배일정을 삭제하시겠습니까?\n\n※ 삭제 시 다음 연관 데이터가 모두 함께 삭제됩니다:\n• 재배일정 확인 및 16단계 생육일정·진행률\n• 재배일정 요청 리스트의 해당 요청 항목\n• 관련 구매 농자재 내역 및 장바구니 품목\n• 일정 수정·완료 기록 및 작업기록 등 모든 연관 데이터\n\n정말 삭제하시겠습니까?`
-    );
-    if (!confirmed) return;
 
     const keysToDelete = Array.from(
       new Set(
@@ -31959,6 +31964,43 @@ export default function UserIntroPage() {
             })()}
           </div>
         </nav>
+      )}
+
+      {/* ==================== [재배일정 삭제 확인 모달리스 창: "정말 삭제하시겠습니까?"] ==================== */}
+      {scheduleDeleteConfirmTarget && (
+        <div className="fixed inset-0 z-[10090] pointer-events-none flex items-center justify-center p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-auto w-full max-w-[340px] rounded-3xl bg-white border-2 border-slate-200 shadow-[0_24px_60px_rgba(15,23,42,0.28)] p-6 text-center space-y-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-[19px] font-black text-slate-950 tracking-[-0.03em]">
+                정말 삭제하시겠습니까?
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setScheduleDeleteConfirmTarget(null)}
+                className="py-3 px-4 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 active:scale-[0.99] text-slate-700 font-extrabold text-[15px] cursor-pointer transition"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeDeleteScheduleAndCascade(scheduleDeleteConfirmTarget)}
+                className="py-3 px-4 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white font-black text-[15px] shadow-xs cursor-pointer transition"
+              >
+                삭제
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
