@@ -12033,20 +12033,43 @@ export default function UserIntroPage() {
                             if (/^\d{4}-\d{2}-\d{2}$/.test(ce)) customEnd = ce;
                           }
 
+                          const isPrep = b === 0;
+                          const confirmStepIdx = Math.max(0, b - 1);
+                          const milestoneConfirmKey = `${activeCropItem.request_no}__STEP_${confirmStepIdx}`;
+                          const savedMilestoneStart =
+                            !isPrep &&
+                            stageGrowthConfirmDates[milestoneConfirmKey] &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(stageGrowthConfirmDates[milestoneConfirmKey])
+                              ? stageGrowthConfirmDates[milestoneConfirmKey]
+                              : '';
+
+                          const nextConfirmStepIdx = b;
+                          const nextMilestoneConfirmKey = `${activeCropItem.request_no}__STEP_${nextConfirmStepIdx}`;
+                          const savedNextMilestoneStart =
+                            b + 1 < totalBuckets &&
+                            stageGrowthConfirmDates[nextMilestoneConfirmKey] &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(
+                              stageGrowthConfirmDates[nextMilestoneConfirmKey]
+                            )
+                              ? stageGrowthConfirmDates[nextMilestoneConfirmKey]
+                              : '';
+
                           const startYmd =
+                            savedMilestoneStart ||
                             customStart ||
                             allInBucket[0]?.effDate ||
                             prevPhaseEndYmd ||
                             todayKstYmd;
+                          const nextBoundaryStartYmd =
+                            savedNextMilestoneStart || nextBucketTasks[0]?.effDate || '';
                           const rawEndYmd =
                             customEnd ||
-                            (nextBucketTasks[0]?.effDate
-                              ? addDaysToYmd(nextBucketTasks[0].effDate, -1)
+                            (nextBoundaryStartYmd
+                              ? addDaysToYmd(nextBoundaryStartYmd, -1)
                               : allInBucket[allInBucket.length - 1]?.effDate || startYmd);
                           const endYmd = rawEndYmd >= startYmd ? rawEndYmd : startYmd;
                           prevPhaseEndYmd = addDaysToYmd(endYmd, 1);
 
-                          const isPrep = b === 0;
                           const cultStageObj = !isPrep ? cultStages[b - 1] : null;
                           const phaseTitle = isPrep
                             ? activeCropProfileForSchedule.prepPhaseTitle || '정식 준비'
@@ -12280,7 +12303,41 @@ export default function UserIntroPage() {
                                               : 'DEFAULT';
 
                                             return (
-                                              <div className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 border border-transparent select-none">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setGrowthConfirmDateInput(
+                                                    section.milestoneDateYmd
+                                                  );
+                                                  setGrowthConfirmEndDateInput(
+                                                    section.endYmd
+                                                  );
+                                                  setGrowthConfirmRadioChoice(
+                                                    'STARTED'
+                                                  );
+                                                  setIsGrowthConfirmDatePickerOpen(
+                                                    true
+                                                  );
+                                                  setGrowthConfirmModalTarget({
+                                                    reqNo:
+                                                      activeCropItem.request_no,
+                                                    stepIdx: stepIdxVal,
+                                                    isRangeMode: false,
+                                                    phaseTitle:
+                                                      section.phaseTitle,
+                                                    milestoneLabel:
+                                                      section.milestoneLabel,
+                                                    startYmd:
+                                                      section.milestoneDateYmd,
+                                                    endYmd: section.endYmd,
+                                                    anchorTask:
+                                                      section.anchorTask,
+                                                    lastTaskInPhase:
+                                                      section.lastTaskInPhase,
+                                                  });
+                                                }}
+                                                className="w-full rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 border border-transparent hover:border-[#86EFAC] hover:bg-[#F2FBF5] active:scale-[0.99] cursor-pointer transition text-left"
+                                              >
                                                 <div className="flex items-center gap-2">
                                                   <span
                                                     className={`w-[20px] h-[20px] rounded-full border-[1.8px] inline-flex items-center justify-center shrink-0 ${
@@ -12339,7 +12396,7 @@ export default function UserIntroPage() {
                                                     </span>
                                                   )}
                                                 </div>
-                                              </div>
+                                              </button>
                                             );
                                           })()}
 
