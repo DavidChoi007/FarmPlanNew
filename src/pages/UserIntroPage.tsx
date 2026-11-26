@@ -172,13 +172,8 @@ export default function UserIntroPage() {
       isLoggedIn: false,
     };
     try {
-      const saved = localStorage.getItem('hanfarm_auth_session_v1');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          return { ...baseUser, ...parsed };
-        }
-      }
+      // 자동 로그인 해제: 페이지 최초 진입 시 항상 비로그인(isLoggedIn: false) 상태로 시작하고, 이전 로컬 스토리지 자동 로그인 세션을 제거
+      localStorage.removeItem('hanfarm_auth_session_v1');
     } catch {
       // ignore
     }
@@ -3156,6 +3151,14 @@ export default function UserIntroPage() {
       const resolvedName =
         res.member.name && res.member.name !== '배클라우드' ? res.member.name : '배철민';
       setLoggedInUser((prev) => {
+        const shouldBeLoggedIn =
+          markLoggedIn === true ? true : markLoggedIn === false ? false : prev.isLoggedIn;
+        if (!shouldBeLoggedIn) {
+          return {
+            ...prev,
+            isLoggedIn: false,
+          };
+        }
         const nextUser = {
           id: resolvedName,
           email: res.member.email || 'CloudBae@naver.com',
@@ -3178,15 +3181,8 @@ export default function UserIntroPage() {
             | 'EMAIL'
             | 'GOOGLE_GMAIL',
           farmTitle: `${resolvedName} 님의 농장`,
-          isLoggedIn: markLoggedIn !== undefined ? markLoggedIn : prev.isLoggedIn,
+          isLoggedIn: true,
         };
-        if (nextUser.isLoggedIn) {
-          try {
-            localStorage.setItem('hanfarm_auth_session_v1', JSON.stringify(nextUser));
-          } catch {
-            // ignore
-          }
-        }
         return nextUser;
       });
     }
@@ -6285,7 +6281,7 @@ export default function UserIntroPage() {
       })
       .catch(() => {});
 
-    loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
+    loadMyPageData(loggedInUser.email || 'CloudBae@naver.com', false);
 
     fetch('/api/addresses/meta')
       .then((r) => r.json())
@@ -6603,7 +6599,7 @@ export default function UserIntroPage() {
         .then((r) => r.json())
         .then((res) => setData(res))
         .catch(() => {});
-      loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
+      loadMyPageData(loggedInUser.email || 'CloudBae@naver.com', false);
       const targetReqNo =
         expandedScheduleRequestNo ||
         selectedRequestNo ||
