@@ -12392,6 +12392,22 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 정적 파일 서빙 (프로덕션 배포 및 public/docs PDF 서빙용)
+    if (pathname === '/api/download-schedule-report-pdf') {
+      const pdfCandidate = path.resolve(process.cwd(), 'public', 'FarmPlan_Schedule_Comparison_Report.pdf');
+      if (fs.existsSync(pdfCandidate)) {
+        const stat = fs.statSync(pdfCandidate);
+        const encodedKorName = encodeURIComponent('마늘_및_전작물_재배일정_비교_보완_보고서.pdf');
+        res.writeHead(200, {
+          'Content-Type': 'application/pdf',
+          'Content-Length': stat.size,
+          'Content-Disposition': `attachment; filename="FarmPlan_Schedule_Comparison_Report.pdf"; filename*=UTF-8''${encodedKorName}`,
+          'Cache-Control': 'no-cache',
+        });
+        fs.createReadStream(pdfCandidate).pipe(res);
+        return;
+      }
+    }
+
     const distPath = path.resolve(process.cwd(), 'dist');
     const publicPath = path.resolve(process.cwd(), 'public');
     let filePath = path.join(distPath, pathname === '/' ? 'index.html' : pathname);
