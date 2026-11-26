@@ -33726,17 +33726,32 @@ export default function UserIntroPage() {
                 activeMenu === '재배일정 확인' &&
                 (mobileScheduleStep === 'work_log' ||
                   mobileScheduleStep === 'work_log_list');
+              // 재배일정 확인 목록(list) 페이지에서는 재배일정 항목이 아직 결정되지 않았으므로 영농일지 버튼 비활성화
+              const isWorkLogDisabled =
+                (activeMenu === '재배일정 확인' && mobileScheduleStep === 'list') ||
+                cloudBaeCropList.length === 0;
               return (
                 <button
                   type="button"
+                  disabled={isWorkLogDisabled}
+                  title={
+                    isWorkLogDisabled
+                      ? '진행중인 작물재배 일정에서 항목을 먼저 선택해 주세요'
+                      : '영농일지 · 작업일정 기록 보기'
+                  }
                   onClick={() => {
+                    if (isWorkLogDisabled) return;
                     setActiveMenu('재배일정 확인');
                     setMobileJournalStatusFilter('ALL');
                     setMobileJournalStageFilter('ALL');
                     setMobileScheduleStep('work_log_list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                  className={`flex flex-col items-center justify-center gap-1 py-1.5 transition ${
+                    isWorkLogDisabled
+                      ? 'opacity-40 cursor-not-allowed pointer-events-none select-none'
+                      : 'cursor-pointer'
+                  }`}
                 >
                   <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
                     <rect
@@ -33745,18 +33760,36 @@ export default function UserIntroPage() {
                       width="15"
                       height="18"
                       rx="2.5"
-                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      stroke={
+                        isWorkLogDisabled
+                          ? '#9CA3AF'
+                          : isWorkLogActive
+                          ? '#0E712F'
+                          : '#6B7280'
+                      }
                       strokeWidth="1.9"
                     />
                     <path
                       d="M10.5 4.2H17.5V7.2H10.5V4.2Z"
                       fill="#FFFFFF"
-                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      stroke={
+                        isWorkLogDisabled
+                          ? '#9CA3AF'
+                          : isWorkLogActive
+                          ? '#0E712F'
+                          : '#6B7280'
+                      }
                       strokeWidth="1.7"
                     />
                     <path
                       d="M11 15L13.2 17.2L17.5 12.8"
-                      stroke={isWorkLogActive ? '#0E712F' : '#6B7280'}
+                      stroke={
+                        isWorkLogDisabled
+                          ? '#9CA3AF'
+                          : isWorkLogActive
+                          ? '#0E712F'
+                          : '#6B7280'
+                      }
                       strokeWidth="1.9"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -33764,7 +33797,9 @@ export default function UserIntroPage() {
                   </svg>
                   <span
                     className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isWorkLogActive
+                      isWorkLogDisabled
+                        ? 'font-medium text-[#9CA3AF]'
+                        : isWorkLogActive
                         ? 'font-extrabold text-[#0E712F]'
                         : 'font-medium text-[#4B5563]'
                     }`}
