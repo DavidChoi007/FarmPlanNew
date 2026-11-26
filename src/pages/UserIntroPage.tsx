@@ -14338,6 +14338,184 @@ export default function UserIntroPage() {
 
                               {/* 6) 생육단계별 작업일정 리스트업 & 각 항목별 작업기록 작성/조회 */}
                               <div className="space-y-4 pt-1">
+                                {/* ==================== [작성된 영농일지 모음 (심플·고가시성 요약 리스트: 좌측 제목·일자·내용 / 우측 끝 생육단계 명칭·시행일)] ==================== */}
+                                {(() => {
+                                  const allRecordedEntries: Array<{
+                                    id: string;
+                                    itemId: string;
+                                    title: string;
+                                    dateText: string;
+                                    contentText: string;
+                                    stageName: string;
+                                    executedDateText: string;
+                                    photoDataUrl?: string;
+                                    matchedTask: any;
+                                  }> = [];
+
+                                  journalStageGroups.forEach((grp) => {
+                                    if (
+                                      mobileJournalStageFilter !== 'ALL' &&
+                                      grp.bucketKey !== mobileJournalStageFilter
+                                    ) {
+                                      return;
+                                    }
+                                    const allTasksInBucket = allSortedTasks.filter(
+                                      (tk) =>
+                                        resolveJournalPhaseBucketIndex(
+                                          Number(tk.stepOrder || 1)
+                                        ) === grp.bucketIdx
+                                    );
+                                    allTasksInBucket.forEach((tk) => {
+                                      const lg = logByItemIdMap.get(tk.itemId);
+                                      if (!lg) return;
+                                      const cleanTitle =
+                                        String(tk.shortTitle || '')
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim() ||
+                                        tk.shortTitle ||
+                                        lg.taskTitle ||
+                                        '농작업 기록';
+                                      const matSummary = lg.materialName
+                                        ? `${lg.materialName}${
+                                            lg.actualAmount
+                                              ? ` (${lg.actualAmount}${lg.unit || ''})`
+                                              : ''
+                                          }`
+                                        : '';
+                                      const memoSummary = String(lg.memo || '').trim();
+                                      const contentSummary =
+                                        [matSummary, memoSummary]
+                                          .filter(Boolean)
+                                          .join(' · ') ||
+                                        tk.taskDescription ||
+                                        '작업 완료 기록';
+
+                                      allRecordedEntries.push({
+                                        id: String(lg.id || tk.itemId),
+                                        itemId: tk.itemId,
+                                        title: cleanTitle,
+                                        dateText: tk.effDate || lg.workDate || '',
+                                        contentText: contentSummary,
+                                        stageName: grp.phaseTitle || lg.stageLabel || '생육단계',
+                                        executedDateText: lg.workDate || tk.effDate || '',
+                                        photoDataUrl: lg.photoDataUrl,
+                                        matchedTask: tk,
+                                      });
+                                    });
+                                  });
+
+                                  // 커스텀 작성된 영농일지(일정 항목 외 직접 추가 기록)도 포함
+                                  if (mobileJournalStageFilter === 'ALL') {
+                                    currentReqLogs.forEach((lg) => {
+                                      if (!lg) return;
+                                      const alreadyIncluded = allRecordedEntries.some(
+                                        (e) => e.id === lg.id || (lg.itemId && e.itemId === lg.itemId)
+                                      );
+                                      if (alreadyIncluded) return;
+                                      const matSummary = lg.materialName
+                                        ? `${lg.materialName}${
+                                            lg.actualAmount
+                                              ? ` (${lg.actualAmount}${lg.unit || ''})`
+                                              : ''
+                                          }`
+                                        : '';
+                                      const memoSummary = String(lg.memo || '').trim();
+                                      allRecordedEntries.push({
+                                        id: String(lg.id || `CUSTOM-${lg.createdAt}`),
+                                        itemId: String(lg.itemId || ''),
+                                        title: String(lg.taskTitle || '영농 작업기록')
+                                          .split(' · ')[0]
+                                          .trim(),
+                                        dateText: lg.workDate || '',
+                                        contentText:
+                                          [matSummary, memoSummary].filter(Boolean).join(' · ') ||
+                                          lg.taskTitle ||
+                                          '작업 완료 기록',
+                                        stageName: lg.stageLabel || currentStageTitle || '생육 관리',
+                                        executedDateText: lg.workDate || '',
+                                        photoDataUrl: lg.photoDataUrl,
+                                        matchedTask: null,
+                                      });
+                                    });
+                                  }
+
+                                  if (
+                                    mobileJournalStatusFilter === 'UNRECORDED' ||
+                                    allRecordedEntries.length === 0
+                                  ) {
+                                    return null;
+                                  }
+
+                                  return (
+                                    <div className="rounded-[18px] border-2 border-[#0E712F] bg-white overflow-hidden shadow-xs">
+                                      <div className="px-4 py-2.5 bg-[#0E712F] text-white flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                          <CheckCircle2 className="w-4 h-4 text-[#86EFAC] shrink-0" />
+                                          <span className="text-[15px] font-black tracking-[-0.02em]">
+                                            작성된 영농일지 모음
+                                          </span>
+                                        </div>
+                                        <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-[11.5px] font-extrabold">
+                                          총 {allRecordedEntries.length}건
+                                        </span>
+                                      </div>
+
+                                      <div className="divide-y divide-[#E5E7EB]">
+                                        {allRecordedEntries.map((entry) => (
+                                          <div
+                                            key={entry.id}
+                                            onClick={() => {
+                                              if (entry.matchedTask) {
+                                                prepareTaskForExecAndLog(
+                                                  entry.matchedTask,
+                                                  activeCropItem.request_no
+                                                );
+                                                setMobileWorkLogReturnStep('work_log_list');
+                                                goToScheduleStep('work_log');
+                                              }
+                                            }}
+                                            className="px-3.5 py-3 bg-white hover:bg-[#F4FBF6] flex items-center justify-between gap-3 cursor-pointer transition"
+                                          >
+                                            {/* 좌측: 제목 · 일자 · 내용 */}
+                                            <div className="min-w-0 flex-1 space-y-1">
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                                                  {entry.title}
+                                                </span>
+                                                <span className="text-[12px] font-bold text-[#6B7280]">
+                                                  예정일자 {entry.dateText}
+                                                </span>
+                                              </div>
+                                              <div className="text-[13.5px] font-semibold text-[#374151] leading-snug break-keep">
+                                                {entry.contentText}
+                                              </div>
+                                            </div>
+
+                                            {/* 우측 끝: 생육단계 명칭 · 시행일 (+ 사진 썸네일) */}
+                                            <div className="flex items-center gap-2.5 shrink-0">
+                                              {entry.photoDataUrl && (
+                                                <img
+                                                  src={entry.photoDataUrl}
+                                                  alt="작업 사진"
+                                                  className="w-10 h-10 rounded-[8px] object-cover border border-[#E5E7EB] shrink-0"
+                                                />
+                                              )}
+                                              <div className="text-right space-y-1">
+                                                <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
+                                                  {entry.stageName}
+                                                </span>
+                                                <div className="text-[12.5px] font-black text-[#111827] whitespace-nowrap">
+                                                  시행일 {entry.executedDateText}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
                                 {visibleStageGroups.length === 0 ? (
                                   <div className="rounded-[18px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center space-y-2">
                                     <div className="text-[15px] font-extrabold text-[#374151]">
@@ -14388,7 +14566,7 @@ export default function UserIntroPage() {
                                         </div>
                                       </div>
 
-                                      {/* 해당 생육단계의 작업일정 항목 리스트 */}
+                                      {/* 해당 생육단계의 작업일정 항목 리스트 (좌측: 제목·일자·내용 / 우측 끝: 생육단계 명칭·시행일·기록 버튼) */}
                                       <div className="divide-y divide-[#F1F5F9]">
                                         {grp.tasks.map((task) => {
                                           const savedLog = logByItemIdMap.get(task.itemId);
@@ -14396,147 +14574,104 @@ export default function UserIntroPage() {
                                             String(task.shortTitle || '')
                                               .replace(/\s*\([^)]*\)/g, '')
                                               .trim() || task.shortTitle;
-                                          const isPest = task.iconType === 'PEST';
-                                          const isFert = task.iconType === 'FERTILIZER';
-                                          const typeBadgeLabel = isPest
-                                            ? '병해충'
-                                            : isFert
-                                            ? '시비관리'
-                                            : '농작업';
-                                          const typeBadgeClass = isPest
-                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                            : isFert
-                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                            : 'bg-sky-50 text-sky-800 border-sky-200';
+                                          const contentSummary = savedLog
+                                            ? [
+                                                savedLog.materialName
+                                                  ? `${savedLog.materialName}${
+                                                      savedLog.actualAmount
+                                                        ? ` (${savedLog.actualAmount}${
+                                                            savedLog.unit || ''
+                                                          })`
+                                                        : ''
+                                                    }`
+                                                  : '',
+                                                String(savedLog.memo || '').trim(),
+                                              ]
+                                                .filter(Boolean)
+                                                .join(' · ') || task.taskDescription
+                                            : `${task.materialName ? `${task.materialName} · ` : ''}${
+                                                task.taskDescription || '생육단계 맞춤 농작업 수행'
+                                              }`;
 
                                           return (
                                             <div
                                               key={task.itemId}
-                                              className={`p-3.5 space-y-2.5 transition ${
+                                              className={`px-3.5 py-3 flex items-center justify-between gap-3 transition ${
                                                 savedLog ? 'bg-[#F9FEFB]' : 'bg-white'
                                               }`}
                                             >
-                                              <div className="flex items-start justify-between gap-2.5">
-                                                {/* 좌측: 작업번호/유형/작업명/권장일/권장자재 */}
-                                                <div
+                                              {/* 좌측: 제목 · 일자 · 내용 */}
+                                              <div
+                                                onClick={() => {
+                                                  setMobileHighlightedTaskId(task.itemId);
+                                                  prepareTaskForExecAndLog(
+                                                    task,
+                                                    activeCropItem.request_no
+                                                  );
+                                                  goToScheduleStep('task_exec');
+                                                }}
+                                                className="min-w-0 flex-1 space-y-1 cursor-pointer"
+                                              >
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                  <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em] leading-snug">
+                                                    {cleanTaskTitle}
+                                                  </span>
+                                                  <span className="text-[12px] font-bold text-[#6B7280]">
+                                                    일자 {task.effDate}
+                                                  </span>
+                                                </div>
+
+                                                <div className="text-[13px] font-semibold text-[#374151] leading-snug line-clamp-2 break-keep">
+                                                  {contentSummary}
+                                                </div>
+                                              </div>
+
+                                              {/* 우측 끝: 생육단계 명칭 · 시행일 + 기록/수정 버튼 */}
+                                              <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                                                <span className="px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[#0E712F] text-[11px] font-extrabold whitespace-nowrap">
+                                                  {grp.phaseTitle}
+                                                </span>
+
+                                                <span
+                                                  className={`text-[12px] font-extrabold whitespace-nowrap ${
+                                                    savedLog
+                                                      ? 'text-[#0E712F]'
+                                                      : 'text-[#6B7280]'
+                                                  }`}
+                                                >
+                                                  {savedLog
+                                                    ? `시행일 ${savedLog.workDate}`
+                                                    : '시행일 미기록'}
+                                                </span>
+
+                                                <button
+                                                  type="button"
                                                   onClick={() => {
-                                                    setMobileHighlightedTaskId(task.itemId);
                                                     prepareTaskForExecAndLog(
                                                       task,
                                                       activeCropItem.request_no
                                                     );
-                                                    goToScheduleStep('task_exec');
+                                                    setMobileWorkLogReturnStep(
+                                                      'work_log_list'
+                                                    );
+                                                    goToScheduleStep('work_log');
                                                   }}
-                                                  className="min-w-0 flex-1 space-y-1 cursor-pointer"
+                                                  className={`mt-0.5 px-2.5 py-1 rounded-full text-[11.5px] font-black inline-flex items-center gap-1 cursor-pointer transition ${
+                                                    savedLog
+                                                      ? 'bg-[#DCFCE7] hover:bg-[#BBF7D0] border border-[#86EFAC] text-[#0E712F]'
+                                                      : 'bg-[#0E712F] hover:bg-[#0B5D26] text-white'
+                                                  }`}
                                                 >
-                                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                                    <span className="px-2 py-0.5 rounded-md bg-[#F3F4F6] text-[#374151] text-[11px] font-extrabold">
-                                                      일정 {task.stepOrder}
-                                                    </span>
-                                                    <span
-                                                      className={`px-2 py-0.5 rounded-md border text-[11px] font-extrabold ${typeBadgeClass}`}
-                                                    >
-                                                      {typeBadgeLabel}
-                                                    </span>
-                                                    <span className="text-[12.5px] font-bold text-[#4B5563]">
-                                                      예정일: {formatShortMd(task.effDate)} (
-                                                      {task.ddayLabel})
-                                                    </span>
-                                                  </div>
-
-                                                  <div className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug">
-                                                    {cleanTaskTitle}
-                                                  </div>
-
-                                                  <div className="text-[12.5px] font-semibold text-[#6B7280] line-clamp-1">
-                                                    권장 농자재: {task.materialName}
-                                                  </div>
-                                                </div>
-
-                                                {/* 우측: 작업기록 작성 / 수정 버튼 + 세부보기 버튼 */}
-                                                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      prepareTaskForExecAndLog(
-                                                        task,
-                                                        activeCropItem.request_no
-                                                      );
-                                                      setMobileWorkLogReturnStep(
-                                                        'work_log_list'
-                                                      );
-                                                      goToScheduleStep('work_log');
-                                                    }}
-                                                    className={`px-3 py-1.5 rounded-full text-[12.5px] font-black inline-flex items-center gap-1 cursor-pointer transition shadow-2xs ${
-                                                      savedLog
-                                                        ? 'bg-[#DCFCE7] hover:bg-[#BBF7D0] border border-[#86EFAC] text-[#0E712F]'
-                                                        : 'bg-[#0E712F] hover:bg-[#0B5D26] text-white'
-                                                    }`}
-                                                  >
-                                                    {savedLog ? (
-                                                      <>
-                                                        <Check className="w-3.5 h-3.5 stroke-[2.8]" />
-                                                        <span>기록 수정</span>
-                                                      </>
-                                                    ) : (
-                                                      <>
-                                                        <span>✎ 작업기록 작성</span>
-                                                      </>
-                                                    )}
-                                                  </button>
-
-                                                  <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                      setMobileHighlightedTaskId(
-                                                        task.itemId
-                                                      );
-                                                      prepareTaskForExecAndLog(
-                                                        task,
-                                                        activeCropItem.request_no
-                                                      );
-                                                      goToScheduleStep('task_exec');
-                                                    }}
-                                                    className="text-[11.5px] font-extrabold text-[#4B5563] hover:text-[#0E712F] inline-flex items-center gap-0.5 cursor-pointer"
-                                                  >
-                                                    <span>세부보기·농자재 구매</span>
-                                                    <ChevronRight className="w-3.5 h-3.5" />
-                                                  </button>
-                                                </div>
-                                              </div>
-
-                                              {/* 이미 작성된 작업기록이 있을 경우 상세 박스 노출 */}
-                                              {savedLog && (
-                                                <div className="rounded-[12px] bg-[#EFF8F1] border border-[#BDE3C6] px-3 py-2.5 flex items-start justify-between gap-2.5">
-                                                  <div className="min-w-0 flex-1 space-y-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                      <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[10.5px] font-extrabold">
-                                                        작업기록 완료
-                                                      </span>
-                                                      <span className="text-[12.5px] font-extrabold text-[#0E712F]">
-                                                        실제 작업일: {savedLog.workDate}
-                                                      </span>
-                                                    </div>
-                                                    <div className="text-[13.5px] font-extrabold text-[#111827]">
-                                                      사용 자재: {savedLog.materialName} ·{' '}
-                                                      {savedLog.actualAmount}
-                                                      {savedLog.unit}
-                                                    </div>
-                                                    {savedLog.memo && (
-                                                      <div className="text-[12.5px] font-medium text-[#374151] break-keep">
-                                                        메모: {savedLog.memo}
-                                                      </div>
-                                                    )}
-                                                  </div>
-                                                  {savedLog.photoDataUrl && (
-                                                    <img
-                                                      src={savedLog.photoDataUrl}
-                                                      alt="작업 사진"
-                                                      className="w-12 h-12 rounded-[8px] object-cover border border-white shadow-2xs shrink-0"
-                                                    />
+                                                  {savedLog ? (
+                                                    <>
+                                                      <Check className="w-3 h-3 stroke-[2.8]" />
+                                                      <span>기록 수정</span>
+                                                    </>
+                                                  ) : (
+                                                    <span>✎ 기록 작성</span>
                                                   )}
-                                                </div>
-                                              )}
+                                                </button>
+                                              </div>
                                             </div>
                                           );
                                         })}
