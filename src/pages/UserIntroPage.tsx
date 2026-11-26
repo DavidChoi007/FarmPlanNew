@@ -14542,7 +14542,7 @@ export default function UserIntroPage() {
                                                 ) : null}
                                                 {entry.memoLine ? (
                                                   <div className="text-[13px] font-semibold text-[#374151] leading-snug break-keep">
-                                                    내용: {entry.memoLine}
+                                                    {entry.memoLine}
                                                   </div>
                                                 ) : !entry.materialLine ? (
                                                   <div className="text-[13px] font-semibold text-[#374151] leading-snug break-keep">
