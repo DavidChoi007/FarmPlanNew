@@ -396,6 +396,7 @@ export default function UserIntroPage() {
     'INFO' | 'USAGE' | 'CAUTION'
   >('INFO');
   const [mobileTaskAgroToast, setMobileTaskAgroToast] = useState<string>('');
+  const [isTaskExecAgroExpanded, setIsTaskExecAgroExpanded] = useState<boolean>(false);
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
   const [mobileFullScheduleFilterTab, setMobileFullScheduleFilterTab] = useState<
     'WORK' | 'FERTILIZER' | 'PEST' | 'ALL'
@@ -11201,15 +11202,64 @@ export default function UserIntroPage() {
                 return results;
               };
 
-              const openTaskAgroBuyPage = (task: any) => {
+              // 해당 농자재 제품이 이미 구매 완료(stagePurchaseHistory 또는 myOrders)된 제품인지 판별
+              const isStageAgroProductPurchased = (prd: any) => {
+                if (!prd) return false;
+                const pId = String(prd.material_id || prd.id || '').trim();
+                const pName = String(prd.product_name || prd.productName || prd.name || '').trim();
+                const histMatch = (stagePurchaseHistory || []).some((h: any) => {
+                  const hId = String(h.material_id || h.materialId || '').trim();
+                  const hName = String(h.productName || h.product_name || '').trim();
+                  return (pId && hId && pId === hId) || (pName && hName && pName === hName);
+                });
+                if (histMatch) return true;
+                const orderMatch = (myOrders || []).some((ord: any) => {
+                  const items = Array.isArray(ord.items)
+                    ? ord.items
+                    : Array.isArray(ord.order_items)
+                    ? ord.order_items
+                    : [];
+                  return items.some((it: any) => {
+                    const itId = String(it.material_id || it.materialId || '').trim();
+                    const itName = String(it.product_name || it.productName || '').trim();
+                    return (pId && itId && pId === itId) || (pName && itName && pName === itName);
+                  });
+                });
+                return orderMatch;
+              };
+
+              const openTaskAgroBuyPage = (task: any, preserveChecks = false) => {
                 const targetTask = task || selectedTaskItem;
                 if (!targetTask) return;
                 const recProducts = buildStageRecommendedAgroProducts(targetTask);
-                const initialChecked: Record<string, boolean> = {};
-                if (recProducts.length > 0) {
-                  initialChecked[recProducts[0].material_id] = true;
+                if (!preserveChecks) {
+                  const initialChecked: Record<string, boolean> = {};
+                  const firstUnpurchased = recProducts.find(
+                    (p) => !isStageAgroProductPurchased(p)
+                  );
+                  if (firstUnpurchased) {
+                    initialChecked[firstUnpurchased.material_id] = true;
+                  }
+                  setMobileTaskAgroCheckedMap(initialChecked);
+                } else {
+                  setMobileTaskAgroCheckedMap((prev) => {
+                    const cleaned: Record<string, boolean> = {};
+                    recProducts.forEach((p) => {
+                      if (!isStageAgroProductPurchased(p) && prev[p.material_id]) {
+                        cleaned[p.material_id] = true;
+                      }
+                    });
+                    if (Object.keys(cleaned).length === 0) {
+                      const firstUnpurchased = recProducts.find(
+                        (p) => !isStageAgroProductPurchased(p)
+                      );
+                      if (firstUnpurchased) {
+                        cleaned[firstUnpurchased.material_id] = true;
+                      }
+                    }
+                    return cleaned;
+                  });
                 }
-                setMobileTaskAgroCheckedMap(initialChecked);
                 setMobileTaskAgroFilterTab('ALL');
                 setMobileTaskAgroSelectedProduct(recProducts[0] || null);
                 setMobileTaskAgroDetailTab('INFO');
@@ -11234,6 +11284,14 @@ export default function UserIntroPage() {
                 const matchedLog = existingLogs.find((lg) => lg.itemId === task.itemId) || null;
 
                 setSelectedScheduleTaskId(task.itemId);
+                setIsTaskExecAgroExpanded(false);
+                const recForTask = buildStageRecommendedAgroProducts(task);
+                const initCheckMap: Record<string, boolean> = {};
+                const firstAvail = recForTask.find((p) => !isStageAgroProductPurchased(p));
+                if (firstAvail) {
+                  initCheckMap[firstAvail.material_id] = true;
+                }
+                setMobileTaskAgroCheckedMap(initCheckMap);
                 setTaskDetailActualDate(matchedLog?.workDate || task.effDate);
                 setTaskExecDraftDateYmd(matchedLog?.workDate || task.effDate);
                 setIsTaskExecDateChangeOpen(false);
@@ -12856,70 +12914,227 @@ export default function UserIntroPage() {
                                 </p>
                               </div>
 
-                              {/* 2) 권장 농자재 카드 */}
-                              <div className="rounded-[18px] border border-[#E2F0E5] bg-[#EFF8F1] overflow-hidden shadow-2xs">
-                                <div className="px-4 py-2.5 flex items-center gap-2">
-                                  <span className="w-5 h-5 inline-flex items-center justify-center text-[#16A34A] shrink-0">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      className="w-5 h-5"
-                                      fill="none"
-                                    >
-                                      <path
-                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                                        stroke="#16A34A"
-                                        strokeWidth="2.1"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                      <path
-                                        d="M9 12l2 2 4-4"
-                                        stroke="#16A34A"
-                                        strokeWidth="2.1"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                      />
-                                    </svg>
-                                  </span>
-                                  <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
-                                    권장 농자재
-                                  </span>
-                                </div>
+                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 기본 1개 표시, 펼치면 해당 생육단계 전체 추천 농자재 표시 · 좌측 선택 체크박스 · 구매완료 제품 비활성화 및 우측 끝 (구매) 표시) */}
+                              {(() => {
+                                const stageRecProducts = buildStageRecommendedAgroProducts(selectedTaskItem);
+                                const visibleRecProducts = isTaskExecAgroExpanded
+                                  ? stageRecProducts
+                                  : stageRecProducts.slice(0, 1);
+                                const checkedRecCount = stageRecProducts.filter(
+                                  (prd) =>
+                                    !isStageAgroProductPurchased(prd) &&
+                                    Boolean(mobileTaskAgroCheckedMap[prd.material_id])
+                                ).length;
 
-                                <button
-                                  type="button"
-                                  onClick={() => openTaskAgroBuyPage(selectedTaskItem)}
-                                  className="w-full bg-white px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-[#FAFDFB] transition border-t border-[#E2F0E5]"
-                                >
-                                  <div className="flex items-center gap-3.5 min-w-0">
-                                    <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
-                                      <img
-                                        src={normalizeAgroThumbPath(
-                                          selectedTaskItem.materialThumb,
-                                          selectedTaskItem.iconType === 'PEST'
-                                        )}
-                                        alt={selectedTaskItem.materialName}
-                                        onError={(e) => {
-                                          e.currentTarget.src =
-                                            selectedTaskItem.iconType === 'PEST'
-                                              ? '/images/fertilizers/MAT-PEST-01-thumb.png'
-                                              : '/images/fertilizers/FERT-PRD-01-thumb.png';
-                                        }}
-                                        className="w-full h-full object-contain block"
-                                      />
+                                return (
+                                  <div className="rounded-[18px] border border-[#E2F0E5] bg-[#EFF8F1] overflow-hidden shadow-2xs">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setIsTaskExecAgroExpanded((prev) => !prev)
+                                      }
+                                      className="w-full px-4 py-2.5 flex items-center justify-between gap-2 cursor-pointer hover:bg-[#E4F3E8] transition text-left"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-5 h-5 inline-flex items-center justify-center text-[#16A34A] shrink-0">
+                                          <svg
+                                            viewBox="0 0 24 24"
+                                            className="w-5 h-5"
+                                            fill="none"
+                                          >
+                                            <path
+                                              d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                              stroke="#16A34A"
+                                              strokeWidth="2.1"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                            <path
+                                              d="M9 12l2 2 4-4"
+                                              stroke="#16A34A"
+                                              strokeWidth="2.1"
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                            />
+                                          </svg>
+                                        </span>
+                                        <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                          추천 농자재
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full bg-white/90 border border-[#86EFAC] text-[#0E712F] text-[11.5px] font-extrabold">
+                                          총 {stageRecProducts.length}종
+                                          {checkedRecCount > 0
+                                            ? ` · 선택 ${checkedRecCount}`
+                                            : ''}
+                                        </span>
+                                      </div>
+
+                                      {stageRecProducts.length > 1 && (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-[#CBEAD3] text-[#0E712F] text-[12px] font-extrabold shrink-0">
+                                          <span>
+                                            {isTaskExecAgroExpanded
+                                              ? '접기'
+                                              : `전체보기 (+${stageRecProducts.length - 1})`}
+                                          </span>
+                                          <ChevronDown
+                                            className={`w-3.5 h-3.5 stroke-[2.5] transition-transform ${
+                                              isTaskExecAgroExpanded ? 'rotate-180' : ''
+                                            }`}
+                                          />
+                                        </span>
+                                      )}
+                                    </button>
+
+                                    <div className="divide-y divide-[#E2F0E5] border-t border-[#E2F0E5] bg-white">
+                                      {visibleRecProducts.map((prd) => {
+                                        const isPurchased = isStageAgroProductPurchased(prd);
+                                        const isChecked =
+                                          !isPurchased &&
+                                          Boolean(mobileTaskAgroCheckedMap[prd.material_id]);
+
+                                        return (
+                                          <div
+                                            key={prd.material_id}
+                                            onClick={() => {
+                                              if (isPurchased) return;
+                                              setMobileTaskAgroCheckedMap((prev) => ({
+                                                ...prev,
+                                                [prd.material_id]: !prev[prd.material_id],
+                                              }));
+                                              setWorkLogSelectedMaterialName(prd.product_name);
+                                              setWorkLogSelectedMaterialThumb(prd.thumbnail_url);
+                                              setWorkLogUnit(
+                                                prd.material_category === 'FERTILIZER'
+                                                  ? 'kg'
+                                                  : 'L'
+                                              );
+                                            }}
+                                            className={`w-full px-3.5 py-3 flex items-center justify-between gap-2.5 transition ${
+                                              isPurchased
+                                                ? 'bg-[#F8FAFC] opacity-65 cursor-not-allowed select-none'
+                                                : isChecked
+                                                ? 'bg-[#F2FBF5] cursor-pointer hover:bg-[#EAF8EE]'
+                                                : 'bg-white cursor-pointer hover:bg-[#FAFDFB]'
+                                            }`}
+                                          >
+                                            {/* 좌측 체크박스 + 썸네일 + 제품명/분류 */}
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                              <button
+                                                type="button"
+                                                disabled={isPurchased}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (isPurchased) return;
+                                                  setMobileTaskAgroCheckedMap((prev) => ({
+                                                    ...prev,
+                                                    [prd.material_id]: !prev[prd.material_id],
+                                                  }));
+                                                  setWorkLogSelectedMaterialName(
+                                                    prd.product_name
+                                                  );
+                                                  setWorkLogSelectedMaterialThumb(
+                                                    prd.thumbnail_url
+                                                  );
+                                                  setWorkLogUnit(
+                                                    prd.material_category === 'FERTILIZER'
+                                                      ? 'kg'
+                                                      : 'L'
+                                                  );
+                                                }}
+                                                aria-label={`${prd.product_name} 선택`}
+                                                className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center shrink-0 transition ${
+                                                  isPurchased
+                                                    ? 'bg-[#E5E7EB] border border-[#D1D5DB] text-[#9CA3AF] cursor-not-allowed'
+                                                    : isChecked
+                                                    ? 'bg-[#0E712F] border border-[#0E712F] text-white cursor-pointer'
+                                                    : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent cursor-pointer'
+                                                }`}
+                                              >
+                                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                              </button>
+
+                                              <div className="w-[44px] h-[44px] rounded-[10px] overflow-hidden bg-slate-50 border border-[#E5E7EB]/80 flex items-center justify-center p-0.5 shrink-0">
+                                                <img
+                                                  src={normalizeAgroThumbPath(
+                                                    prd.thumbnail_url,
+                                                    prd.material_category === 'PESTICIDE'
+                                                  )}
+                                                  alt={prd.product_name}
+                                                  onError={handleAgroThumbImgError}
+                                                  className="w-full h-full object-contain block"
+                                                />
+                                              </div>
+
+                                              <div className="min-w-0 flex-1">
+                                                <div className="flex items-baseline gap-1.5 min-w-0">
+                                                  <span
+                                                    className={`text-[15.5px] font-black tracking-[-0.03em] truncate ${
+                                                      isPurchased
+                                                        ? 'text-[#6B7280] line-through'
+                                                        : 'text-[#111827]'
+                                                    }`}
+                                                  >
+                                                    {prd.product_name}
+                                                  </span>
+                                                </div>
+                                                <div className="text-[12.5px] font-semibold text-[#6B7280] truncate">
+                                                  {prd.sub_type || selectedTaskItem.materialSubLabel || '맞춤 추천 자재'}{' '}
+                                                  · {prd.unit_spec} ·{' '}
+                                                  {Number(prd.unit_price || 0).toLocaleString()}원
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            {/* 우측 끝: 이미 구매한 제품은 (구매) 표시 및 비활성화, 미구매 제품은 상세보기 버튼 */}
+                                            <div className="shrink-0 flex items-center gap-1.5">
+                                              {isPurchased ? (
+                                                <span className="px-2.5 py-1 rounded-full bg-[#E5E7EB] border border-[#D1D5DB] text-[#4B5563] text-[12px] font-extrabold whitespace-nowrap">
+                                                  (구매)
+                                                </span>
+                                              ) : (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setMobileTaskAgroSelectedProduct(prd);
+                                                    setMobileTaskAgroDetailTab('INFO');
+                                                    goToScheduleStep('task_agro_detail');
+                                                  }}
+                                                  aria-label={`${prd.product_name} 상세보기`}
+                                                  className="p-1.5 rounded-full hover:bg-[#EFF8F1] text-[#374151] cursor-pointer transition"
+                                                >
+                                                  <ChevronRight className="w-4 h-4 stroke-[2.3]" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
                                     </div>
-                                    <div className="flex items-baseline gap-1.5 min-w-0 truncate">
-                                      <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
-                                        {selectedTaskItem.materialName}
-                                      </span>
-                                      <span className="text-[14.5px] font-semibold text-[#4B5563] shrink-0">
-                                        ({selectedTaskItem.materialSubLabel || '예시제품'})
-                                      </span>
-                                    </div>
+
+                                    {stageRecProducts.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setIsTaskExecAgroExpanded((prev) => !prev)
+                                        }
+                                        className="w-full py-2 bg-[#F8FBF9] hover:bg-[#EFF8F1] border-t border-[#E2F0E5] text-[#0E712F] text-[12.5px] font-extrabold flex items-center justify-center gap-1 cursor-pointer transition"
+                                      >
+                                        <span>
+                                          {isTaskExecAgroExpanded
+                                            ? '추천 농자재 목록 접기'
+                                            : `추천 농자재 전체 ${stageRecProducts.length}종 펼치기`}
+                                        </span>
+                                        <ChevronDown
+                                          className={`w-4 h-4 stroke-[2.4] transition-transform ${
+                                            isTaskExecAgroExpanded ? 'rotate-180' : ''
+                                          }`}
+                                        />
+                                      </button>
+                                    )}
                                   </div>
-                                  <ChevronRight className="w-5 h-5 text-[#111827] stroke-[2.2] shrink-0" />
-                                </button>
-                              </div>
+                                );
+                              })()}
 
                               {/* 3) 사용방법 테이블 섹션 */}
                               <div className="space-y-2.5 pt-1">
@@ -13005,7 +13220,7 @@ export default function UserIntroPage() {
                             <div className="pt-4 pb-2 space-y-2.5">
                               <button
                                 type="button"
-                                onClick={() => openTaskAgroBuyPage(selectedTaskItem)}
+                                onClick={() => openTaskAgroBuyPage(selectedTaskItem, true)}
                                 className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] tracking-[-0.03em] shadow-sm flex items-center justify-center gap-2 cursor-pointer transition"
                               >
                                 <ShoppingCart className="w-[21px] h-[21px] stroke-[2.3]" />
@@ -13163,14 +13378,17 @@ export default function UserIntroPage() {
                               {/* 단계별 추천 농자재 카드 리스트 */}
                               <div className="space-y-2.5">
                                 {displayProducts.map((prd) => {
-                                  const isChecked = Boolean(
-                                    mobileTaskAgroCheckedMap[prd.material_id]
-                                  );
+                                  const isPurchased = isStageAgroProductPurchased(prd);
+                                  const isChecked =
+                                    !isPurchased &&
+                                    Boolean(mobileTaskAgroCheckedMap[prd.material_id]);
                                   return (
                                     <div
                                       key={prd.material_id}
                                       className={`rounded-[18px] border px-3.5 py-3.5 flex items-center justify-between gap-3 transition ${
-                                        isChecked
+                                        isPurchased
+                                          ? 'bg-[#F8FAFC] border-[#E5E7EB] opacity-65 select-none'
+                                          : isChecked
                                           ? 'bg-[#F1FAF3] border-[#BDE3C6] shadow-2xs'
                                           : 'bg-white border-[#E5E7EB]'
                                       }`}
@@ -13178,12 +13396,18 @@ export default function UserIntroPage() {
                                       {/* 좌측 체크박스 */}
                                       <button
                                         type="button"
-                                        onClick={() => toggleCheckProduct(prd.material_id)}
+                                        disabled={isPurchased}
+                                        onClick={() => {
+                                          if (isPurchased) return;
+                                          toggleCheckProduct(prd.material_id);
+                                        }}
                                         aria-label={`${prd.product_name} 선택`}
-                                        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 transition cursor-pointer ${
-                                          isChecked
-                                            ? 'bg-[#127A34] text-white border border-[#127A34]'
-                                            : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent'
+                                        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 transition ${
+                                          isPurchased
+                                            ? 'bg-[#E5E7EB] border border-[#D1D5DB] text-[#9CA3AF] cursor-not-allowed'
+                                            : isChecked
+                                            ? 'bg-[#127A34] text-white border border-[#127A34] cursor-pointer'
+                                            : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent cursor-pointer'
                                         }`}
                                       >
                                         <Check className="w-4 h-4 stroke-[3]" />
@@ -13192,12 +13416,16 @@ export default function UserIntroPage() {
                                       {/* 중앙 제품 썸네일 + 제품명/규격/가격 (클릭 시 상품 상세 이동) */}
                                       <button
                                         type="button"
+                                        disabled={isPurchased}
                                         onClick={() => {
+                                          if (isPurchased) return;
                                           setMobileTaskAgroSelectedProduct(prd);
                                           setMobileTaskAgroDetailTab('INFO');
                                           goToScheduleStep('task_agro_detail');
                                         }}
-                                        className="flex-1 min-w-0 flex items-center gap-3.5 text-left cursor-pointer"
+                                        className={`flex-1 min-w-0 flex items-center gap-3.5 text-left ${
+                                          isPurchased ? 'cursor-not-allowed' : 'cursor-pointer'
+                                        }`}
                                       >
                                         <div className="w-[58px] h-[68px] rounded-[12px] bg-white border border-[#E5E7EB]/80 flex items-center justify-center p-1 shrink-0 overflow-hidden">
                                           <img
@@ -13208,7 +13436,13 @@ export default function UserIntroPage() {
                                           />
                                         </div>
                                         <div className="min-w-0 flex-1 space-y-0.5">
-                                          <div className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug truncate">
+                                          <div
+                                            className={`text-[17.5px] font-black tracking-[-0.03em] leading-snug truncate ${
+                                              isPurchased
+                                                ? 'text-[#6B7280] line-through'
+                                                : 'text-[#111827]'
+                                            }`}
+                                          >
                                             {prd.product_name}
                                           </div>
                                           <div className="text-[14.5px] font-semibold text-[#4B5563]">
@@ -13220,19 +13454,25 @@ export default function UserIntroPage() {
                                         </div>
                                       </button>
 
-                                      {/* 우측 체크박스 */}
-                                      <button
-                                        type="button"
-                                        onClick={() => toggleCheckProduct(prd.material_id)}
-                                        aria-label={`${prd.product_name} 선택 토글`}
-                                        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 transition cursor-pointer ${
-                                          isChecked
-                                            ? 'bg-[#127A34] text-white border border-[#127A34]'
-                                            : 'bg-white border-[1.8px] border-[#9CA3AF] text-transparent'
-                                        }`}
-                                      >
-                                        <Check className="w-4 h-4 stroke-[3]" />
-                                      </button>
+                                      {/* 우측 끝: 이미 구매한 제품은 (구매) 표시, 미구매 제품은 상세 화살표 */}
+                                      {isPurchased ? (
+                                        <span className="px-2.5 py-1 rounded-full bg-[#E5E7EB] border border-[#D1D5DB] text-[#4B5563] text-[12.5px] font-extrabold whitespace-nowrap shrink-0">
+                                          (구매)
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setMobileTaskAgroSelectedProduct(prd);
+                                            setMobileTaskAgroDetailTab('INFO');
+                                            goToScheduleStep('task_agro_detail');
+                                          }}
+                                          aria-label={`${prd.product_name} 상세보기`}
+                                          className="p-1.5 rounded-full hover:bg-[#EFF8F1] text-[#374151] shrink-0 transition cursor-pointer"
+                                        >
+                                          <ChevronRight className="w-5 h-5 stroke-[2.2]" />
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })}
@@ -13564,18 +13804,19 @@ export default function UserIntroPage() {
                         const stageRecommendedProducts = curTask
                           ? buildStageRecommendedAgroProducts(curTask)
                           : [];
-                        const pickerMaterialOptions = [
-                          ...stageRecommendedProducts.map((prd) => ({
+                        const pickerMaterialOptions = stageRecommendedProducts
+                          .map((prd) => ({
+                            id: prd.material_id,
                             name: prd.product_name,
                             thumb: prd.thumbnail_url,
                             unit: prd.material_category === 'FERTILIZER' ? 'kg' : 'L',
                             defaultAmt: String(curTask?.usageAmountNum || 50),
-                          })),
-                          ...availableWorkLogMaterials,
-                        ].filter(
-                          (mat, idx, arr) =>
-                            arr.findIndex((x) => x.name === mat.name) === idx
-                        );
+                            isPurchased: isStageAgroProductPurchased(prd),
+                          }))
+                          .filter(
+                            (mat, idx, arr) =>
+                              arr.findIndex((x) => x.name === mat.name) === idx
+                          );
 
                         const existingItemLog = (
                           cropWorkLogs[activeCropItem.request_no] || []
