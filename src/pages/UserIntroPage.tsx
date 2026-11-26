@@ -12229,40 +12229,7 @@ export default function UserIntroPage() {
                                               : 'DEFAULT';
 
                                             return (
-                                              <div
-                                                onClick={() => {
-                                                  setGrowthConfirmRadioChoice(
-                                                    stageGrowthConfirmStatuses[
-                                                      confirmKey
-                                                    ] || 'STARTED'
-                                                  );
-                                                  setGrowthConfirmDateInput(
-                                                    section.milestoneDateYmd
-                                                  );
-                                                  setGrowthConfirmEndDateInput(
-                                                    section.milestoneDateYmd
-                                                  );
-                                                  setGrowthConfirmModalTarget({
-                                                    reqNo:
-                                                      activeCropItem.request_no,
-                                                    stepIdx: stepIdxVal,
-                                                    isRangeMode: false,
-                                                    phaseTitle:
-                                                      section.phaseTitle,
-                                                    milestoneLabel:
-                                                      section.milestoneLabel,
-                                                    startYmd:
-                                                      section.milestoneDateYmd,
-                                                    endYmd:
-                                                      section.milestoneDateYmd,
-                                                    anchorTask:
-                                                      section.anchorTask,
-                                                    lastTaskInPhase:
-                                                      section.lastTaskInPhase,
-                                                  });
-                                                }}
-                                                className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 hover:bg-[#EFF8F1]/60 border border-transparent cursor-pointer transition"
-                                              >
+                                              <div className="rounded-[12px] px-2 py-2 flex items-center justify-between gap-2 border border-transparent select-none">
                                                 <div className="flex items-center gap-2">
                                                   <span
                                                     className={`w-[20px] h-[20px] rounded-full border-[1.8px] inline-flex items-center justify-center shrink-0 ${
@@ -12325,47 +12292,12 @@ export default function UserIntroPage() {
                                             );
                                           })()}
 
-                                        {/* 생육단계 구간 헤더 바 (하루 이상 기간 기반 생육단계: 클릭 시 페이지 이동 없이 모달리스 생육단계 수정 폼 열기) */}
+                                        {/* 생육단계 구간 헤더 바 (파종 준비 / 발아·초기생육기 / 월동·생육재개기 등 생육단계 구분명: 클릭 비활성화, 실제 클릭·수정은 하위 세부항목에서 진행) */}
                                         <div
-                                          onClick={() => {
-                                            const stepIdxVal = Math.max(
-                                              0,
-                                              section.bucketIdx - 1
-                                            );
-                                            const confirmKey = `${activeCropItem.request_no}__STEP_${stepIdxVal}`;
-                                            const isMultiDayRange =
-                                              section.startYmd !==
-                                              section.endYmd;
-                                            setGrowthConfirmRadioChoice(
-                                              stageGrowthConfirmStatuses[
-                                                confirmKey
-                                              ] || 'STARTED'
-                                            );
-                                            setGrowthConfirmDateInput(
-                                              section.startYmd
-                                            );
-                                            setGrowthConfirmEndDateInput(
-                                              section.endYmd
-                                            );
-                                            setGrowthConfirmModalTarget({
-                                              reqNo: activeCropItem.request_no,
-                                              stepIdx: stepIdxVal,
-                                              isRangeMode: isMultiDayRange || true,
-                                              phaseTitle: section.phaseTitle,
-                                              milestoneLabel:
-                                                section.milestoneLabel ||
-                                                section.phaseTitle,
-                                              startYmd: section.startYmd,
-                                              endYmd: section.endYmd,
-                                              anchorTask: section.anchorTask,
-                                              lastTaskInPhase:
-                                                section.lastTaskInPhase,
-                                            });
-                                          }}
-                                          className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 cursor-pointer transition ${
+                                          className={`rounded-[14px] px-4 py-3 flex items-center justify-between gap-2 select-none ${
                                             section.isCurrentPhase
-                                              ? 'bg-[#EFF8F1] hover:bg-[#E2F5E7] border border-[#86EFAC]'
-                                              : 'bg-[#F3F4F6] hover:bg-[#E5E7EB]/80 border border-[#E5E7EB]/80'
+                                              ? 'bg-[#EFF8F1] border border-[#86EFAC]'
+                                              : 'bg-[#F3F4F6] border border-[#E5E7EB]/80'
                                           }`}
                                         >
                                           <div className="flex items-center gap-2 min-w-0">
@@ -12382,7 +12314,6 @@ export default function UserIntroPage() {
                                             <span className="text-[14px] font-semibold text-[#6B7280] tracking-[-0.02em]">
                                               {section.periodLabel}
                                             </span>
-                                            <ChevronRight className="w-4 h-4 text-[#6B7280] stroke-[2.2]" />
                                           </div>
                                         </div>
 
