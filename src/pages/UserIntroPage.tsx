@@ -370,7 +370,7 @@ export default function UserIntroPage() {
   const [isSavingDetailItem, setIsSavingDetailItem] = useState<boolean>(false);
   const [detailSaveMessage, setDetailSaveMessage] = useState<string>('');
 
-  // 모바일 단계 전환: 'list' (1단계 작물 목록) -> 'detail' (2단계 대시보드) -> 'tasks' (3단계 농작업 목록) -> 'task_exec' (4단계 실행하기) -> 'task_agro_buy' (단계별 추천 농자재 구매) -> 'task_agro_detail' (추천 농자재 상품 상세) -> 'work_log' (5단계 작업 기록) -> 'growth_check' (생육단계 확인)
+  // 모바일 단계 전환: 'list' (1단계 작물 목록) -> 'detail' (2단계 대시보드) -> 'tasks' (3단계 농작업 목록) -> 'task_exec' (4단계 실행하기) -> 'task_agro_buy' (단계별 추천 농자재 구매) -> 'task_agro_detail' (추천 농자재 상품 상세) -> 'work_log' (5단계 작업 기록 작성) -> 'work_log_list' (영농일지 · 재배일정별/생육단계별 작업일정 및 작업기록 리스트) -> 'growth_check' (생육단계 확인)
   const [mobileScheduleStep, setMobileScheduleStep] = useState<
     | 'list'
     | 'detail'
@@ -379,8 +379,17 @@ export default function UserIntroPage() {
     | 'task_agro_buy'
     | 'task_agro_detail'
     | 'work_log'
+    | 'work_log_list'
     | 'growth_check'
   >('list');
+  const [mobileJournalStatusFilter, setMobileJournalStatusFilter] = useState<
+    'ALL' | 'RECORDED' | 'UNRECORDED'
+  >('ALL');
+  const [mobileJournalStageFilter, setMobileJournalStageFilter] = useState<string>('ALL');
+  const [mobileWorkLogReturnStep, setMobileWorkLogReturnStep] = useState<
+    'task_exec' | 'work_log_list' | 'tasks'
+  >('task_exec');
+  const [mobileJournalToast, setMobileJournalToast] = useState<string>('');
   const [mobileTaskAgroFilterTab, setMobileTaskAgroFilterTab] = useState<
     'ALL' | 'PESTICIDE' | 'FERTILIZER' | 'NUTRIENT'
   >('ALL');
@@ -10630,6 +10639,7 @@ export default function UserIntroPage() {
                   | 'task_agro_buy'
                   | 'task_agro_detail'
                   | 'work_log'
+                  | 'work_log_list'
                   | 'growth_check'
               ) => {
                 setIsWorkLogMaterialPickerOpen(false);
@@ -10654,6 +10664,16 @@ export default function UserIntroPage() {
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                   }
+                  if (mobileScheduleStep === 'work_log') {
+                    setMobileScheduleStep(mobileWorkLogReturnStep || 'task_exec');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
+                  if (mobileScheduleStep === 'work_log_list') {
+                    setMobileScheduleStep('detail');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    return;
+                  }
                   const curIdx = navIndexRef.current;
                   const prevSnap = curIdx > 0 ? navStackRef.current[curIdx - 1] : null;
                   if (
@@ -10663,11 +10683,6 @@ export default function UserIntroPage() {
                     prevSnap.mobileScheduleStep !== mobileScheduleStep
                   ) {
                     window.history.back();
-                    return;
-                  }
-                  if (mobileScheduleStep === 'work_log') {
-                    setMobileScheduleStep('task_exec');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                   }
                   if (mobileScheduleStep === 'task_exec') {
@@ -11061,23 +11076,32 @@ export default function UserIntroPage() {
                 return u;
               };
 
-              const prepareTaskForExecAndLog = (task: any) => {
+              const prepareTaskForExecAndLog = (task: any, targetReqNo?: string) => {
                 if (!task) return;
+                const reqKey = targetReqNo || activeCropItem?.request_no || selectedRequestNo;
+                const existingLogs = Array.isArray(cropWorkLogs[reqKey]) ? cropWorkLogs[reqKey] : [];
+                const matchedLog = existingLogs.find((lg) => lg.itemId === task.itemId) || null;
+
                 setSelectedScheduleTaskId(task.itemId);
-                setTaskDetailActualDate(task.effDate);
-                setTaskExecDraftDateYmd(task.effDate);
+                setTaskDetailActualDate(matchedLog?.workDate || task.effDate);
+                setTaskExecDraftDateYmd(matchedLog?.workDate || task.effDate);
                 setIsTaskExecDateChangeOpen(false);
-                setTaskDetailActualAmount(String(task.usageAmountNum || 50));
-                setWorkLogUnit(task.usageUnit || 'kg');
+                setTaskDetailActualAmount(
+                  String(matchedLog?.actualAmount || task.usageAmountNum || 50)
+                );
+                setWorkLogUnit(matchedLog?.unit || task.usageUnit || 'kg');
                 setWorkLogSelectedMaterialName(
-                  task.materialName || '복합비료 15-15-15'
+                  matchedLog?.materialName || task.materialName || '복합비료 15-15-15'
                 );
                 setWorkLogSelectedMaterialThumb(
-                  normalizeAgroThumbPath(task.materialThumb, task.iconType === 'PEST')
+                  normalizeAgroThumbPath(
+                    matchedLog?.materialThumb || task.materialThumb,
+                    task.iconType === 'PEST'
+                  )
                 );
-                setTaskDetailMemo('');
-                setTaskDetailPhotoName('');
-                setTaskDetailPhotoDataUrl('');
+                setTaskDetailMemo(matchedLog?.memo || '');
+                setTaskDetailPhotoName(matchedLog?.photoName || '');
+                setTaskDetailPhotoDataUrl(matchedLog?.photoDataUrl || '');
               };
 
               const renderTaskCategoryIcon = (
@@ -11584,14 +11608,17 @@ export default function UserIntroPage() {
 
                           <button
                             type="button"
-                            disabled
-                            aria-disabled="true"
-                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 flex items-center justify-between gap-3 opacity-50 cursor-not-allowed select-none"
+                            onClick={() => {
+                              setMobileJournalStatusFilter('ALL');
+                              setMobileJournalStageFilter('ALL');
+                              goToScheduleStep('work_log_list');
+                            }}
+                            className="w-full h-[64px] rounded-[16px] border border-[#0E712F]/40 bg-[#F2FBF5] hover:bg-[#E4F7EA] active:scale-[0.99] px-4 flex items-center justify-between gap-3 cursor-pointer transition shadow-2xs"
                           >
                             <div className="flex items-center gap-3.5">
                               <svg
                                 viewBox="0 0 24 24"
-                                className="w-6 h-6 text-[#9CA3AF]"
+                                className="w-6 h-6 text-[#0E712F]"
                                 fill="none"
                               >
                                 <rect
@@ -11610,11 +11637,22 @@ export default function UserIntroPage() {
                                   strokeLinecap="round"
                                 />
                               </svg>
-                              <span className="text-[18px] font-extrabold text-[#9CA3AF] tracking-[-0.03em]">
-                                작업기록
-                              </span>
+                              <div className="text-left">
+                                <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em] block leading-tight">
+                                  영농일지 · 작업기록 관리
+                                </span>
+                                <span className="text-[12.5px] font-bold text-[#0E712F] block">
+                                  생육단계·일정 항목별 작업기록 작성 및 조회 (
+                                  {
+                                    (cropWorkLogs[activeCropItem.request_no] || []).filter(
+                                      (lg) => lg && lg.itemId
+                                    ).length
+                                  }
+                                  /{activeCropItem.allTasks.length}건 기록됨)
+                                </span>
+                              </div>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-[#9CA3AF] stroke-[2.2]" />
+                            <ChevronRight className="w-5 h-5 text-[#0E712F] stroke-[2.4]" />
                           </button>
                         </div>
                       </div>
@@ -12257,6 +12295,9 @@ export default function UserIntroPage() {
                                             />
                                           )}
                                           {section.tasks.map((task) => {
+                                            const existingTaskLog = (
+                                              cropWorkLogs[activeCropItem.request_no] || []
+                                            ).find((lg) => lg.itemId === task.itemId);
                                             const isPastDate = Boolean(
                                               task.effDate &&
                                                 /^\d{4}-\d{2}-\d{2}$/.test(
@@ -12265,7 +12306,8 @@ export default function UserIntroPage() {
                                                 task.effDate < todayKstYmd
                                             );
                                             const isDone = Boolean(
-                                              task.isRecognized ||
+                                              existingTaskLog ||
+                                                task.isRecognized ||
                                                 (task.effDate &&
                                                   /^\d{4}-\d{2}-\d{2}$/.test(
                                                     task.effDate
@@ -12280,7 +12322,7 @@ export default function UserIntroPage() {
                                             const isHighlightedTarget =
                                               mobileHighlightedTaskId ===
                                               task.itemId;
-                                            const isDimmedPast = isPastDate;
+                                            const isDimmedPast = isPastDate && !existingTaskLog;
                                             const cleanShortTitle =
                                               String(task.shortTitle || '')
                                                 .replace(/\s*\([^)]*\)/g, '')
@@ -12347,21 +12389,31 @@ export default function UserIntroPage() {
                                                     <span className="w-[22px] h-[22px] rounded-full border-[2.2px] border-[#9CA3AF] bg-white shrink-0" />
                                                   )}
 
-                                                  <span
-                                                    className={`text-[16.5px] tracking-[-0.03em] truncate ${
-                                                      isDimmedPast
-                                                        ? 'font-extrabold text-[#6B7280]'
-                                                        : 'font-black text-[#111827]'
-                                                    }`}
-                                                  >
-                                                    {cleanShortTitle}
-                                                  </span>
+                                                  <div className="min-w-0 flex-1">
+                                                    <span
+                                                      className={`text-[16px] tracking-[-0.03em] truncate block ${
+                                                        isDimmedPast
+                                                          ? 'font-extrabold text-[#6B7280]'
+                                                          : 'font-black text-[#111827]'
+                                                      }`}
+                                                    >
+                                                      {cleanShortTitle}
+                                                    </span>
+                                                    {existingTaskLog && (
+                                                      <span className="text-[11.5px] font-bold text-[#0E712F] truncate block">
+                                                        기록완료 · {existingTaskLog.workDate} (
+                                                        {existingTaskLog.materialName}{' '}
+                                                        {existingTaskLog.actualAmount}
+                                                        {existingTaskLog.unit})
+                                                      </span>
+                                                    )}
+                                                  </div>
                                                 </div>
 
-                                                {/* 우측 날짜 + 상태 배지 (완료 / 예정) + 화살표 */}
-                                                <div className="flex items-center gap-2 shrink-0">
+                                                {/* 우측 날짜 + 작업기록 빠른 작성 버튼 + 화살표 */}
+                                                <div className="flex items-center gap-1.5 shrink-0">
                                                   <span
-                                                    className={`text-[14.5px] font-medium tracking-[-0.02em] whitespace-nowrap ${
+                                                    className={`text-[13.5px] font-semibold tracking-[-0.02em] whitespace-nowrap ${
                                                       isDimmedPast
                                                         ? 'text-[#6B7280]'
                                                         : 'text-[#1F2937]'
@@ -12372,23 +12424,23 @@ export default function UserIntroPage() {
                                                     ) || task.dateLabel}
                                                   </span>
 
-                                                  {isDimmedPast ? (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#E5E7EB]/80 text-[#6B7280] text-[12.5px] font-bold whitespace-nowrap">
-                                                      완료
-                                                    </span>
-                                                  ) : isDone ? (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] text-[12.5px] font-extrabold whitespace-nowrap">
-                                                      완료
-                                                    </span>
-                                                  ) : isNextTarget ? (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#FEF08A] text-[#111827] text-[12.5px] font-extrabold whitespace-nowrap">
-                                                      예정
-                                                    </span>
-                                                  ) : (
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#F3F4F6] text-[#374151] text-[12.5px] font-bold whitespace-nowrap">
-                                                      예정
-                                                    </span>
-                                                  )}
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setMobileHighlightedTaskId(task.itemId);
+                                                      prepareTaskForExecAndLog(task);
+                                                      setMobileWorkLogReturnStep('tasks');
+                                                      goToScheduleStep('work_log');
+                                                    }}
+                                                    className={`px-2.5 py-1 rounded-full text-[12px] font-extrabold whitespace-nowrap cursor-pointer transition ${
+                                                      existingTaskLog
+                                                        ? 'bg-[#DCFCE7] border border-[#86EFAC] text-[#0E712F] hover:bg-[#BBF7D0]'
+                                                        : 'bg-white border border-[#0E712F] text-[#0E712F] hover:bg-[#EFF8F1]'
+                                                    }`}
+                                                  >
+                                                    {existingTaskLog ? '✓ 기록됨' : '✎ 기록'}
+                                                  </button>
 
                                                   <ChevronRight
                                                     className={`w-4 h-4 stroke-[2.3] shrink-0 ${
@@ -12779,6 +12831,37 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
+                            {/* 해당 일정 항목에 이미 작성된 작업기록이 있는 경우 요약 카드 표시 */}
+                            {(() => {
+                              const existingExecLog = (
+                                cropWorkLogs[activeCropItem.request_no] || []
+                              ).find((lg) => lg.itemId === selectedTaskItem.itemId);
+                              if (!existingExecLog) return null;
+                              return (
+                                <div className="mt-2 rounded-[16px] border border-[#86EFAC] bg-[#F0FDF4] p-3.5 space-y-1.5 shadow-2xs">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-1.5 text-[13.5px] font-black text-[#0E712F]">
+                                      <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+                                      <span>작성된 영농일지 작업기록</span>
+                                    </span>
+                                    <span className="text-[12.5px] font-bold text-[#15803D]">
+                                      작업일: {existingExecLog.workDate}
+                                    </span>
+                                  </div>
+                                  <div className="text-[14px] font-extrabold text-[#111827]">
+                                    사용 농자재: {existingExecLog.materialName} (
+                                    {existingExecLog.actualAmount}
+                                    {existingExecLog.unit})
+                                  </div>
+                                  {existingExecLog.memo && (
+                                    <div className="text-[13px] font-medium text-[#374151] bg-white/80 rounded-lg px-2.5 py-1.5 border border-[#DCFCE7]">
+                                      메모: {existingExecLog.memo}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
                             {/* 하단 액션 버튼 영역 (첨부 이미지 1번: 농자재 구매 / 작업기록 작성하기) */}
                             <div className="pt-4 pb-2 space-y-2.5">
                               <button
@@ -12792,11 +12875,24 @@ export default function UserIntroPage() {
 
                               <button
                                 type="button"
-                                onClick={() => goToScheduleStep('work_log')}
+                                onClick={() => {
+                                  prepareTaskForExecAndLog(
+                                    selectedTaskItem,
+                                    activeCropItem.request_no
+                                  );
+                                  setMobileWorkLogReturnStep('task_exec');
+                                  goToScheduleStep('work_log');
+                                }}
                                 className="w-full h-[52px] rounded-full bg-white hover:bg-[#F3FAF5] active:scale-[0.99] border-[1.8px] border-[#0E712F] text-[#0E712F] font-black text-[17.5px] tracking-[-0.03em] flex items-center justify-center gap-2 cursor-pointer transition"
                               >
                                 <Check className="w-[20px] h-[20px] stroke-[2.8]" />
-                                <span>작업기록 작성하기</span>
+                                <span>
+                                  {(cropWorkLogs[activeCropItem.request_no] || []).some(
+                                    (lg) => lg.itemId === selectedTaskItem.itemId
+                                  )
+                                    ? '작업기록 수정하기'
+                                    : '작업기록 작성하기'}
+                                </span>
                               </button>
                             </div>
                           </div>
@@ -13311,351 +13407,1101 @@ export default function UserIntroPage() {
                         );
                       })()}
 
-                    {/* ==================== [페이지 5: 작업 기록 페이지 (첨부 이미지 5번)] ==================== */}
-                    {mobileScheduleStep === 'work_log' && activeCropItem && (
-                      <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
-                        <div className="space-y-4">
-                          <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
-                            작업 기록
-                          </h1>
+                    {/* ==================== [페이지 5: 작업 기록 작성·수정 페이지 (첨부 이미지 5번 + 재배일정/생육단계/일정항목 선택 지원)] ==================== */}
+                    {mobileScheduleStep === 'work_log' &&
+                      activeCropItem &&
+                      (() => {
+                        const curTask =
+                          selectedTaskItem ||
+                          activeCropItem.primaryNextTask ||
+                          activeCropItem.allTasks[0] ||
+                          null;
+                        const cleanCurTaskTitle =
+                          String(curTask?.shortTitle || '농작업')
+                            .replace(/\s*\([^)]*\)/g, '')
+                            .trim() ||
+                          curTask?.shortTitle ||
+                          '농작업';
+                        const stageRecommendedProducts = curTask
+                          ? buildStageRecommendedAgroProducts(curTask)
+                          : [];
+                        const pickerMaterialOptions = [
+                          ...stageRecommendedProducts.map((prd) => ({
+                            name: prd.product_name,
+                            thumb: prd.thumbnail_url,
+                            unit: prd.material_category === 'FERTILIZER' ? 'kg' : 'L',
+                            defaultAmt: String(curTask?.usageAmountNum || 50),
+                          })),
+                          ...availableWorkLogMaterials,
+                        ].filter(
+                          (mat, idx, arr) =>
+                            arr.findIndex((x) => x.name === mat.name) === idx
+                        );
 
-                          {/* 1) 작업일 * */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[16px] font-bold text-[#111827]">
-                              작업일 <span className="text-[#DC2626]">*</span>
-                            </label>
-                            <label className="relative h-[52px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white px-4 flex items-center gap-3 cursor-pointer shadow-2xs transition">
-                              <Calendar className="w-5 h-5 text-[#16A34A] stroke-[2.1] shrink-0" />
-                              <span className="text-[17px] font-medium text-[#111827]">
-                                {formatYmdToKoreanFull(
-                                  taskDetailActualDate ||
-                                    selectedTaskItem?.effDate ||
-                                    todayKstYmd
-                                )}
-                              </span>
-                              <input
-                                type="date"
-                                value={
-                                  taskDetailActualDate ||
-                                  selectedTaskItem?.effDate ||
-                                  todayKstYmd
-                                }
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    setTaskDetailActualDate(e.target.value);
+                        const existingItemLog = (
+                          cropWorkLogs[activeCropItem.request_no] || []
+                        ).find((lg) => lg.itemId === curTask?.itemId);
+
+                        return (
+                          <div className="mt-3 flex-1 flex flex-col justify-between space-y-6">
+                            <div className="space-y-4">
+                              {/* 상단 타이틀 및 영농일지 목록/뒤로가기 */}
+                              <div className="flex items-center justify-between gap-2">
+                                <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
+                                  {existingItemLog ? '작업 기록 수정' : '작업 기록 작성'}
+                                </h1>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    goToScheduleStep(
+                                      mobileWorkLogReturnStep || 'work_log_list'
+                                    )
                                   }
-                                }}
-                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                              />
-                            </label>
-                          </div>
-
-                          {/* 2) 사용 농자재 */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[16px] font-bold text-[#111827]">
-                              사용 농자재
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setIsWorkLogMaterialPickerOpen((prev) => !prev)
-                              }
-                              className="w-full rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white p-3 flex items-center justify-between gap-3 cursor-pointer shadow-2xs transition"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
-                                  <img
-                                    src={normalizeAgroThumbPath(workLogSelectedMaterialThumb)}
-                                    alt={workLogSelectedMaterialName}
-                                    onError={(e) => {
-                                      e.currentTarget.src =
-                                        '/images/fertilizers/FERT-PRD-01-thumb.png';
-                                    }}
-                                    className="w-full h-full object-contain block"
-                                  />
-                                </div>
-                                <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
-                                  {workLogSelectedMaterialName}
-                                </span>
+                                  className="px-3 py-1.5 rounded-full bg-[#F3F4F6] hover:bg-[#E5E7EB] text-[#374151] text-[13px] font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
+                                >
+                                  <span>
+                                    ←{' '}
+                                    {mobileWorkLogReturnStep === 'work_log_list'
+                                      ? '영농일지 목록'
+                                      : mobileWorkLogReturnStep === 'tasks'
+                                      ? '전체 일정'
+                                      : '작업 상세'}
+                                  </span>
+                                </button>
                               </div>
-                              <ChevronRight
-                                className={`w-5 h-5 text-[#111827] stroke-[2.2] shrink-0 transition-transform ${
-                                  isWorkLogMaterialPickerOpen ? 'rotate-90' : ''
-                                }`}
-                              />
-                            </button>
 
-                            {isWorkLogMaterialPickerOpen && (
-                              <div className="rounded-[14px] border border-[#0E712F]/40 bg-[#F9FBF9] p-2 space-y-1.5">
-                                {availableWorkLogMaterials.map((mat) => (
-                                  <button
-                                    key={mat.name}
-                                    type="button"
-                                    onClick={() => {
-                                      setWorkLogSelectedMaterialName(mat.name);
-                                      setWorkLogSelectedMaterialThumb(mat.thumb);
-                                      setWorkLogUnit(mat.unit);
-                                      setTaskDetailActualAmount(mat.defaultAmt);
-                                      setIsWorkLogMaterialPickerOpen(false);
-                                    }}
-                                    className="w-full rounded-[10px] bg-white hover:bg-[#EDF7ED] p-2 flex items-center gap-2.5 text-left cursor-pointer"
-                                  >
+                              {/* 0) 대상 재배일정 · 생육단계 및 작업일정 항목 선택 카드 */}
+                              <div className="rounded-[16px] border border-[#DCFCE7] bg-[#F2FBF5] p-3.5 space-y-2.5 shadow-2xs">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
                                     <img
-                                      src={mat.thumb}
-                                      alt={mat.name}
-                                      className="w-8 h-8 object-contain shrink-0"
+                                      src={activeCropItem.thumbUrl}
+                                      alt={activeCropItem.shortName}
+                                      className="w-9 h-9 rounded-[10px] object-cover border border-white shadow-2xs shrink-0"
                                     />
-                                    <span className="text-[14px] font-bold text-[#111827]">
-                                      {mat.name}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
+                                    <div className="min-w-0">
+                                      <div className="text-[15px] font-black text-[#111827] truncate">
+                                        {activeCropItem.shortName} ({activeCropItem.cultivarName}) ·{' '}
+                                        {activeCropItem.cultivationMethod}
+                                      </div>
+                                      <div className="text-[12px] font-semibold text-[#15803D] truncate">
+                                        {activeCropItem.region} ·{' '}
+                                        {activeCropItem.areaPyeong.toLocaleString()}평
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {combinedMobileCrops.length > 1 && (
+                                    <select
+                                      value={activeCropItem.request_no}
+                                      onChange={(e) => {
+                                        const nextReqNo = e.target.value;
+                                        setSelectedRequestNo(nextReqNo);
+                                        const foundCrop = combinedMobileCrops.find(
+                                          (c) => c.request_no === nextReqNo
+                                        );
+                                        if (foundCrop) {
+                                          const firstTk =
+                                            foundCrop.primaryNextTask ||
+                                            foundCrop.allTasks[0] ||
+                                            null;
+                                          if (firstTk) {
+                                            prepareTaskForExecAndLog(firstTk, nextReqNo);
+                                          }
+                                        }
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-xl border border-[#86EFAC] bg-white text-[12px] font-extrabold text-[#0E712F] focus:outline-none cursor-pointer shrink-0"
+                                    >
+                                      {combinedMobileCrops.map((c) => (
+                                        <option key={c.request_no} value={c.request_no}>
+                                          {c.shortName}({c.cultivarName})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
 
-                          {/* 3) 실제 사용량 * */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[16px] font-bold text-[#111827]">
-                              실제 사용량 <span className="text-[#DC2626]">*</span>
-                            </label>
-                            <div className="flex items-center gap-2.5">
-                              <input
-                                type="number"
-                                min={0}
-                                value={taskDetailActualAmount}
-                                onChange={(e) =>
-                                  setTaskDetailActualAmount(e.target.value)
-                                }
-                                className="flex-1 min-w-0 h-[52px] rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white px-4 text-[18px] font-bold text-[#111827] focus:outline-none shadow-2xs"
-                              />
-                              <select
-                                value={workLogUnit}
-                                onChange={(e) => setWorkLogUnit(e.target.value)}
-                                className="w-[88px] h-[52px] rounded-[14px] border border-[#D1D5DB] bg-white text-center text-[17px] font-bold text-[#111827] focus:outline-none cursor-pointer shadow-2xs"
+                                {/* 생육단계 및 일정 항목 선택 드롭다운 */}
+                                <div className="space-y-1">
+                                  <label className="block text-[12.5px] font-extrabold text-[#0E712F]">
+                                    기록할 생육단계 · 작업일정 항목 선택
+                                  </label>
+                                  <select
+                                    value={curTask?.itemId || ''}
+                                    onChange={(e) => {
+                                      const nextId = e.target.value;
+                                      const foundTask = activeCropItem.allTasks.find(
+                                        (t) => t.itemId === nextId
+                                      );
+                                      if (foundTask) {
+                                        prepareTaskForExecAndLog(
+                                          foundTask,
+                                          activeCropItem.request_no
+                                        );
+                                      }
+                                    }}
+                                    className="w-full h-[44px] px-3 rounded-[12px] border border-[#86EFAC] bg-white text-[14.5px] font-extrabold text-[#111827] focus:outline-none cursor-pointer"
+                                  >
+                                    {activeCropItem.allTasks.map((tk) => {
+                                      const cleanName =
+                                        String(tk.shortTitle || '')
+                                          .replace(/\s*\([^)]*\)/g, '')
+                                          .trim() || tk.shortTitle;
+                                      const hasLog = (
+                                        cropWorkLogs[activeCropItem.request_no] || []
+                                      ).some((lg) => lg.itemId === tk.itemId);
+                                      return (
+                                        <option key={tk.itemId} value={tk.itemId}>
+                                          [{tk.stageGroupName}] {tk.stepOrder}. {cleanName} (
+                                          {tk.effDate}){hasLog ? ' · ✓기록됨' : ''}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* 1) 작업일 * */}
+                              <div className="space-y-1.5">
+                                <label className="block text-[16px] font-bold text-[#111827]">
+                                  작업일 <span className="text-[#DC2626]">*</span>
+                                </label>
+                                <label className="relative h-[52px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white px-4 flex items-center gap-3 cursor-pointer shadow-2xs transition">
+                                  <Calendar className="w-5 h-5 text-[#16A34A] stroke-[2.1] shrink-0" />
+                                  <span className="text-[17px] font-medium text-[#111827]">
+                                    {formatYmdToKoreanFull(
+                                      taskDetailActualDate ||
+                                        curTask?.effDate ||
+                                        todayKstYmd
+                                    )}
+                                  </span>
+                                  <input
+                                    type="date"
+                                    value={
+                                      taskDetailActualDate ||
+                                      curTask?.effDate ||
+                                      todayKstYmd
+                                    }
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        setTaskDetailActualDate(e.target.value);
+                                      }
+                                    }}
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* 2) 사용 농자재 */}
+                              <div className="space-y-1.5">
+                                <label className="block text-[16px] font-bold text-[#111827]">
+                                  사용 농자재
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setIsWorkLogMaterialPickerOpen((prev) => !prev)
+                                  }
+                                  className="w-full rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white p-3 flex items-center justify-between gap-3 cursor-pointer shadow-2xs transition"
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="w-[46px] h-[46px] rounded-[10px] overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+                                      <img
+                                        src={normalizeAgroThumbPath(
+                                          workLogSelectedMaterialThumb,
+                                          curTask?.iconType === 'PEST'
+                                        )}
+                                        alt={workLogSelectedMaterialName}
+                                        onError={(e) => {
+                                          e.currentTarget.src =
+                                            '/images/fertilizers/FERT-PRD-01-thumb.png';
+                                        }}
+                                        className="w-full h-full object-contain block"
+                                      />
+                                    </div>
+                                    <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                      {workLogSelectedMaterialName}
+                                    </span>
+                                  </div>
+                                  <ChevronRight
+                                    className={`w-5 h-5 text-[#111827] stroke-[2.2] shrink-0 transition-transform ${
+                                      isWorkLogMaterialPickerOpen ? 'rotate-90' : ''
+                                    }`}
+                                  />
+                                </button>
+
+                                {isWorkLogMaterialPickerOpen && (
+                                  <div className="rounded-[14px] border border-[#0E712F]/40 bg-[#F9FBF9] p-2 space-y-1.5 max-h-[240px] overflow-y-auto">
+                                    {pickerMaterialOptions.map((mat) => (
+                                      <button
+                                        key={mat.name}
+                                        type="button"
+                                        onClick={() => {
+                                          setWorkLogSelectedMaterialName(mat.name);
+                                          setWorkLogSelectedMaterialThumb(mat.thumb);
+                                          setWorkLogUnit(mat.unit);
+                                          setTaskDetailActualAmount(mat.defaultAmt);
+                                          setIsWorkLogMaterialPickerOpen(false);
+                                        }}
+                                        className="w-full rounded-[10px] bg-white hover:bg-[#EDF7ED] p-2 flex items-center gap-2.5 text-left cursor-pointer"
+                                      >
+                                        <img
+                                          src={mat.thumb}
+                                          alt={mat.name}
+                                          onError={handleAgroThumbImgError}
+                                          className="w-8 h-8 object-contain shrink-0"
+                                        />
+                                        <span className="text-[14px] font-bold text-[#111827]">
+                                          {mat.name}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 3) 실제 사용량 * */}
+                              <div className="space-y-1.5">
+                                <label className="block text-[16px] font-bold text-[#111827]">
+                                  실제 사용량 <span className="text-[#DC2626]">*</span>
+                                </label>
+                                <div className="flex items-center gap-2.5">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={taskDetailActualAmount}
+                                    onChange={(e) =>
+                                      setTaskDetailActualAmount(e.target.value)
+                                    }
+                                    className="flex-1 min-w-0 h-[52px] rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white px-4 text-[18px] font-bold text-[#111827] focus:outline-none shadow-2xs"
+                                  />
+                                  <select
+                                    value={workLogUnit}
+                                    onChange={(e) => setWorkLogUnit(e.target.value)}
+                                    className="w-[88px] h-[52px] rounded-[14px] border border-[#D1D5DB] bg-white text-center text-[17px] font-bold text-[#111827] focus:outline-none cursor-pointer shadow-2xs"
+                                  >
+                                    <option value="kg">kg</option>
+                                    <option value="L">L</option>
+                                    <option value="mL">mL</option>
+                                    <option value="포">포</option>
+                                    <option value="병">병</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* 4) 메모 (선택) */}
+                              <div className="space-y-1.5">
+                                <label className="block text-[16px] font-bold text-[#111827]">
+                                  메모{' '}
+                                  <span className="text-[14.5px] font-normal text-[#4B5563]">
+                                    (선택)
+                                  </span>
+                                </label>
+                                <textarea
+                                  value={taskDetailMemo}
+                                  onChange={(e) => setTaskDetailMemo(e.target.value)}
+                                  placeholder="생육 상태, 기상 특이사항, 작업 내용을 간단히 입력하세요."
+                                  rows={3}
+                                  className="w-full rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white p-3.5 text-[15.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none resize-none shadow-2xs"
+                                />
+                              </div>
+
+                              {/* 5) 사진 추가 */}
+                              <div>
+                                <label className="w-[112px] h-[94px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition relative overflow-hidden">
+                                  {taskDetailPhotoDataUrl ? (
+                                    <img
+                                      src={taskDetailPhotoDataUrl}
+                                      alt={taskDetailPhotoName || '첨부 사진'}
+                                      className="w-full h-full object-cover block"
+                                    />
+                                  ) : (
+                                    <>
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        className="w-7 h-7 text-[#111827]"
+                                        fill="none"
+                                      >
+                                        <path
+                                          d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
+                                          stroke="currentColor"
+                                          strokeWidth="1.8"
+                                          strokeLinejoin="round"
+                                        />
+                                        <circle
+                                          cx="12"
+                                          cy="13"
+                                          r="3.2"
+                                          stroke="currentColor"
+                                          strokeWidth="1.8"
+                                        />
+                                      </svg>
+                                      <span className="text-[13.5px] font-medium text-[#111827] truncate max-w-[96px]">
+                                        {taskDetailPhotoName ? '사진 첨부됨' : '사진 추가'}
+                                      </span>
+                                    </>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (!f) return;
+                                      setTaskDetailPhotoName(f.name);
+                                      const reader = new FileReader();
+                                      reader.onload = () => {
+                                        const rawUrl = String(reader.result || '');
+                                        if (!rawUrl) return;
+                                        const img = new Image();
+                                        img.onload = () => {
+                                          try {
+                                            const maxDim = 480;
+                                            const scale = Math.min(
+                                              1,
+                                              maxDim / Math.max(img.width || 1, img.height || 1)
+                                            );
+                                            const canvas = document.createElement('canvas');
+                                            canvas.width = Math.max(
+                                              1,
+                                              Math.round(img.width * scale)
+                                            );
+                                            canvas.height = Math.max(
+                                              1,
+                                              Math.round(img.height * scale)
+                                            );
+                                            const ctx = canvas.getContext('2d');
+                                            if (ctx) {
+                                              ctx.drawImage(
+                                                img,
+                                                0,
+                                                0,
+                                                canvas.width,
+                                                canvas.height
+                                              );
+                                              setTaskDetailPhotoDataUrl(
+                                                canvas.toDataURL('image/jpeg', 0.78)
+                                              );
+                                              return;
+                                            }
+                                          } catch {
+                                            // fallback to rawUrl
+                                          }
+                                          setTaskDetailPhotoDataUrl(rawUrl);
+                                        };
+                                        img.onerror = () => setTaskDetailPhotoDataUrl(rawUrl);
+                                        img.src = rawUrl;
+                                      };
+                                      reader.readAsDataURL(f);
+                                    }}
+                                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                  />
+                                </label>
+                              </div>
+                            </div>
+
+                            {/* 하단 [✓ 기록 저장] 버튼 */}
+                            <div className="pt-4">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const finalYmd =
+                                    taskDetailActualDate ||
+                                    curTask?.effDate ||
+                                    todayKstYmd;
+                                  if (curTask) {
+                                    const draftKey = `${activeCropItem.request_no}__${curTask.itemId}`;
+                                    saveInlineStageDateDrafts((prev) => ({
+                                      ...prev,
+                                      [draftKey]: finalYmd,
+                                    }));
+                                    handleSaveStageCompleted(
+                                      activeCropItem.request_no,
+                                      {
+                                        item_id: curTask.itemId,
+                                        step_order: curTask.stepOrder,
+                                        stage_group_name: curTask.stageGroupName,
+                                        sub_item_name: curTask.subItemName,
+                                        start_date: finalYmd,
+                                      },
+                                      { explicitDate: finalYmd }
+                                    );
+                                  }
+
+                                  const newLogEntry = {
+                                    id: existingItemLog?.id || `WLOG-${Date.now()}`,
+                                    itemId: curTask?.itemId || '',
+                                    workDate: finalYmd,
+                                    stageLabel:
+                                      curTask?.stageGroupName || currentStageTitle,
+                                    taskTitle: `${cleanCurTaskTitle} · ${workLogSelectedMaterialName} (${
+                                      taskDetailActualAmount || '50'
+                                    }${workLogUnit})`,
+                                    materialName: workLogSelectedMaterialName,
+                                    materialThumb: workLogSelectedMaterialThumb,
+                                    actualAmount: taskDetailActualAmount || '50',
+                                    unit: workLogUnit || 'kg',
+                                    memo: taskDetailMemo.trim(),
+                                    photoDataUrl: taskDetailPhotoDataUrl || '',
+                                    photoName: taskDetailPhotoName || '',
+                                    createdAt: new Date().toISOString(),
+                                  };
+
+                                  setCropWorkLogs((prev) => {
+                                    const prevList = Array.isArray(
+                                      prev[activeCropItem.request_no]
+                                    )
+                                      ? prev[activeCropItem.request_no]
+                                      : [];
+                                    const filteredPrev = curTask?.itemId
+                                      ? prevList.filter((x) => x.itemId !== curTask.itemId)
+                                      : prevList;
+                                    const next = {
+                                      ...prev,
+                                      [activeCropItem.request_no]: [
+                                        newLogEntry,
+                                        ...filteredPrev,
+                                      ],
+                                    };
+                                    try {
+                                      localStorage.setItem(
+                                        'hanfarm_crop_work_logs_v1',
+                                        JSON.stringify(next)
+                                      );
+                                    } catch {
+                                      // ignore
+                                    }
+                                    fetch('/api/client-sync-state', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        email:
+                                          loggedInUser.email || 'CloudBae@naver.com',
+                                        state_key: 'crop_work_logs_v1',
+                                        state_value: next,
+                                      }),
+                                    }).catch(() => {});
+                                    return next;
+                                  });
+
+                                  loadScheduleProvision(activeCropItem.request_no, {
+                                    gdd_mode: patentGddMode,
+                                  }).catch(() => {});
+
+                                  setMobileJournalToast(
+                                    `[${activeCropItem.shortName} · ${cleanCurTaskTitle}] 작업기록이 영농일지에 저장되었습니다.`
+                                  );
+                                  setTimeout(() => setMobileJournalToast(''), 3500);
+
+                                  goToScheduleStep('work_log_list');
+                                }}
+                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
                               >
-                                <option value="kg">kg</option>
-                                <option value="L">L</option>
-                                <option value="포">포</option>
-                                <option value="병">병</option>
-                              </select>
+                                <Check className="w-5 h-5 stroke-[2.8]" />
+                                <span>기록 저장</span>
+                              </button>
                             </div>
                           </div>
+                        );
+                      })()}
 
-                          {/* 4) 메모 (선택) */}
-                          <div className="space-y-1.5">
-                            <label className="block text-[16px] font-bold text-[#111827]">
-                              메모{' '}
-                              <span className="text-[14.5px] font-normal text-[#4B5563]">
-                                (선택)
-                              </span>
-                            </label>
-                            <textarea
-                              value={taskDetailMemo}
-                              onChange={(e) => setTaskDetailMemo(e.target.value)}
-                              placeholder="작업 내용을 간단히 입력하세요."
-                              rows={3}
-                              className="w-full rounded-[14px] border border-[#D1D5DB] focus:border-[#0E712F] bg-white p-3.5 text-[15.5px] font-medium text-[#111827] placeholder:text-[#9CA3AF] focus:outline-none resize-none shadow-2xs"
-                            />
-                          </div>
+                    {/* ==================== [페이지 6: 영농일지 (현재 등록된 재배일정별 · 생육단계 및 작업일정 항목별 리스트업 및 작업기록 관리)] ==================== */}
+                    {mobileScheduleStep === 'work_log_list' &&
+                      (() => {
+                        if (!activeCropItem || combinedMobileCrops.length === 0) {
+                          return (
+                            <div className="mt-3 flex-1 space-y-4">
+                              <div className="flex items-center gap-2 pb-2.5 border-b border-[#E5E7EB]">
+                                <span className="w-1.5 h-5 rounded-full bg-[#0E712F] shrink-0" />
+                                <h1 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                  영농일지 · 작업기록
+                                </h1>
+                              </div>
+                              <div className="rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
+                                <div className="text-[17px] font-black text-[#111827]">
+                                  현재 등록된 재배일정이 없습니다
+                                </div>
+                                <p className="text-[13.5px] font-medium text-[#4B5563] leading-relaxed">
+                                  재배일정을 먼저 요청·등록하시면 생육단계별 작업일정 리스트와 영농일지를 작성할 수 있습니다.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMobileReqStep(1);
+                                    setActiveMenu('재배일정 요청');
+                                  }}
+                                  className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[14.5px] font-extrabold shadow-xs cursor-pointer transition"
+                                >
+                                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                                  <span>재배일정 등록하기</span>
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
 
-                          {/* 5) 사진 추가 */}
-                          <div>
-                            <label className="w-[112px] h-[94px] rounded-[14px] border border-[#D1D5DB] hover:border-[#0E712F] bg-white flex flex-col items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition relative overflow-hidden">
-                              {taskDetailPhotoDataUrl ? (
-                                <img
-                                  src={taskDetailPhotoDataUrl}
-                                  alt={taskDetailPhotoName || '첨부 사진'}
-                                  className="w-full h-full object-cover block"
-                                />
-                              ) : (
-                                <>
-                                  <svg
-                                    viewBox="0 0 24 24"
-                                    className="w-7 h-7 text-[#111827]"
-                                    fill="none"
-                                  >
-                                    <path
-                                      d="M4 8.5C4 7.4 4.9 6.5 6 6.5H7.8L9.2 4.5H14.8L16.2 6.5H18C19.1 6.5 20 7.4 20 8.5V17.5C20 18.6 19.1 19.5 18 19.5H6C4.9 19.5 4 18.6 4 17.5V8.5Z"
-                                      stroke="currentColor"
-                                      strokeWidth="1.8"
-                                      strokeLinejoin="round"
-                                    />
-                                    <circle
-                                      cx="12"
-                                      cy="13"
-                                      r="3.2"
-                                      stroke="currentColor"
-                                      strokeWidth="1.8"
-                                    />
-                                  </svg>
-                                  <span className="text-[13.5px] font-medium text-[#111827] truncate max-w-[96px]">
-                                    {taskDetailPhotoName ? '사진 첨부됨' : '사진 추가'}
-                                  </span>
-                                </>
+                        const currentReqLogs = Array.isArray(
+                          cropWorkLogs[activeCropItem.request_no]
+                        )
+                          ? cropWorkLogs[activeCropItem.request_no]
+                          : [];
+                        const logByItemIdMap = new Map<string, any>();
+                        currentReqLogs.forEach((lg) => {
+                          if (lg?.itemId && !logByItemIdMap.has(lg.itemId)) {
+                            logByItemIdMap.set(lg.itemId, lg);
+                          }
+                        });
+
+                        // 생육단계별 그룹 구성
+                        const cultStages = activeCropItem.cropCultStages || [];
+                        const cultStageCount = Math.max(1, cultStages.length);
+                        const activeCropProfileForJournal = resolveCropAgronomicProfile(
+                          activeCropItem.shortName,
+                          undefined,
+                          activeCropItem.cultivationMethod
+                        );
+                        const isGarlicJournal = activeCropProfileForJournal.cropKey === '마늘';
+
+                        const resolveJournalPhaseBucketIndex = (stepOrd: number): number => {
+                          if (isGarlicJournal) {
+                            if (stepOrd <= 3) return 0;
+                            if (stepOrd <= 7) return 1;
+                            if (stepOrd <= 11) return 2;
+                            if (stepOrd <= 14) return 3;
+                            return 4;
+                          }
+                          if (stepOrd <= 6) return 0;
+                          if (cultStageCount === 4) {
+                            if (stepOrd <= 8) return 1;
+                            if (stepOrd <= 10) return 2;
+                            if (stepOrd <= 14) return 3;
+                            return 4;
+                          }
+                          if (stepOrd <= 8) return 1;
+                          if (stepOrd >= 15) return cultStageCount;
+                          const ratio = (stepOrd - 8) / 8;
+                          const mappedIdx = Math.min(
+                            cultStageCount - 1,
+                            Math.max(0, Math.floor(ratio * cultStageCount))
+                          );
+                          return mappedIdx + 1;
+                        };
+
+                        const formatShortMd = (ymd: string) => {
+                          if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return '';
+                          const [, m, d] = ymd.split('-').map(Number);
+                          return `${m}월 ${d}일`;
+                        };
+
+                        const totalBuckets = cultStageCount + 1;
+                        const allSortedTasks = [...activeCropItem.allTasks].sort(
+                          (a, b) => Number(a.stepOrder) - Number(b.stepOrder)
+                        );
+
+                        const journalStageGroups: Array<{
+                          bucketKey: string;
+                          bucketIdx: number;
+                          phaseTitle: string;
+                          periodLabel: string;
+                          isCurrentPhase: boolean;
+                          totalCount: number;
+                          recordedCount: number;
+                          tasks: any[];
+                        }> = [];
+
+                        for (let b = 0; b < totalBuckets; b++) {
+                          const tasksInBucket = allSortedTasks.filter(
+                            (tk) =>
+                              resolveJournalPhaseBucketIndex(Number(tk.stepOrder || 1)) === b
+                          );
+                          if (tasksInBucket.length === 0) continue;
+                          const isPrep = b === 0;
+                          const cultStageObj = !isPrep ? cultStages[b - 1] : null;
+                          const phaseTitle = isPrep
+                            ? activeCropProfileForJournal.prepPhaseTitle || '정식·파종 준비'
+                            : cultStageObj?.stage_name || `${b}단계`;
+                          const startYmd = tasksInBucket[0]?.effDate || activeCropItem.basePlantingYmd;
+                          const endYmd =
+                            tasksInBucket[tasksInBucket.length - 1]?.effDate || startYmd;
+                          const periodLabel = `${formatShortMd(startYmd)} ~ ${formatShortMd(
+                            endYmd
+                          )}`;
+                          const isCurrentPhase =
+                            !isPrep && b - 1 === activeCropItem.activeStepIdx;
+                          const recordedCount = tasksInBucket.filter((tk) =>
+                            logByItemIdMap.has(tk.itemId)
+                          ).length;
+
+                          const statusFilteredTasks = tasksInBucket.filter((tk) => {
+                            const hasRecord = logByItemIdMap.has(tk.itemId);
+                            if (mobileJournalStatusFilter === 'RECORDED') return hasRecord;
+                            if (mobileJournalStatusFilter === 'UNRECORDED') return !hasRecord;
+                            return true;
+                          });
+
+                          journalStageGroups.push({
+                            bucketKey: `STAGE_${b}`,
+                            bucketIdx: b,
+                            phaseTitle,
+                            periodLabel,
+                            isCurrentPhase,
+                            totalCount: tasksInBucket.length,
+                            recordedCount,
+                            tasks: statusFilteredTasks,
+                          });
+                        }
+
+                        const visibleStageGroups = journalStageGroups.filter((grp) => {
+                          if (
+                            mobileJournalStageFilter !== 'ALL' &&
+                            grp.bucketKey !== mobileJournalStageFilter
+                          ) {
+                            return false;
+                          }
+                          return grp.tasks.length > 0;
+                        });
+
+                        const totalTaskCount = allSortedTasks.length;
+                        const totalRecordedCount = allSortedTasks.filter((tk) =>
+                          logByItemIdMap.has(tk.itemId)
+                        ).length;
+                        const unrecordedCount = Math.max(0, totalTaskCount - totalRecordedCount);
+
+                        return (
+                          <div className="mt-2.5 flex-1 flex flex-col justify-between space-y-4">
+                            <div className="space-y-3.5">
+                              {/* 1) 상단 헤더: 영농일지 타이틀 + 전체 일정 보기 이동 버튼 */}
+                              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#E5E7EB]">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-1.5 h-5 rounded-full bg-[#0E712F] shrink-0" />
+                                  <h1 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
+                                    영농일지 · 작업일정 기록
+                                  </h1>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => goToScheduleStep('tasks')}
+                                  className="px-3 py-1.5 rounded-full bg-[#EFF8F1] hover:bg-[#DCFCE7] border border-[#86EFAC] text-[#0E712F] text-[12.5px] font-extrabold cursor-pointer transition shrink-0"
+                                >
+                                  전체 일정표 ›
+                                </button>
+                              </div>
+
+                              {/* 저장 완료 알림 배너 */}
+                              {mobileJournalToast && (
+                                <div className="rounded-[14px] bg-[#0F291A] text-white px-3.5 py-2.5 flex items-center gap-2 text-[13.5px] font-bold shadow-sm">
+                                  <CheckCircle2 className="w-4 h-4 text-[#4ADE80] shrink-0" />
+                                  <span className="flex-1 break-keep">{mobileJournalToast}</span>
+                                </div>
                               )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                  const f = e.target.files?.[0];
-                                  if (!f) return;
-                                  setTaskDetailPhotoName(f.name);
-                                  const reader = new FileReader();
-                                  reader.onload = () => {
-                                    const rawUrl = String(reader.result || '');
-                                    if (!rawUrl) return;
-                                    const img = new Image();
-                                    img.onload = () => {
-                                      try {
-                                        const maxDim = 480;
-                                        const scale = Math.min(
-                                          1,
-                                          maxDim / Math.max(img.width || 1, img.height || 1)
-                                        );
-                                        const canvas = document.createElement('canvas');
-                                        canvas.width = Math.max(1, Math.round(img.width * scale));
-                                        canvas.height = Math.max(1, Math.round(img.height * scale));
-                                        const ctx = canvas.getContext('2d');
-                                        if (ctx) {
-                                          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                          setTaskDetailPhotoDataUrl(
-                                            canvas.toDataURL('image/jpeg', 0.78)
-                                          );
-                                          return;
-                                        }
-                                      } catch {
-                                        // fallback to rawUrl
-                                      }
-                                      setTaskDetailPhotoDataUrl(rawUrl);
-                                    };
-                                    img.onerror = () => setTaskDetailPhotoDataUrl(rawUrl);
-                                    img.src = rawUrl;
-                                  };
-                                  reader.readAsDataURL(f);
-                                }}
-                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                              />
-                            </label>
-                          </div>
-                        </div>
 
-                        {/* 하단 [✓ 기록 저장] 버튼 */}
-                        <div className="pt-4">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const finalYmd =
-                                taskDetailActualDate ||
-                                selectedTaskItem?.effDate ||
-                                todayKstYmd;
-                              if (selectedTaskItem) {
-                                const draftKey = `${activeCropItem.request_no}__${selectedTaskItem.itemId}`;
-                                saveInlineStageDateDrafts((prev) => ({
-                                  ...prev,
-                                  [draftKey]: finalYmd,
-                                }));
-                                handleSaveStageCompleted(
-                                  activeCropItem.request_no,
-                                  {
-                                    item_id: selectedTaskItem.itemId,
-                                    step_order: selectedTaskItem.stepOrder,
-                                    stage_group_name:
-                                      selectedTaskItem.stageGroupName,
-                                    sub_item_name: selectedTaskItem.subItemName,
-                                    start_date: finalYmd,
-                                  },
-                                  { explicitDate: finalYmd }
-                                );
-                              }
+                              {/* 2) 현재 들어와 있는 재배일정(작물·필지) 가로 선택 탭 */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between text-[12.5px] font-extrabold text-[#4B5563] px-0.5">
+                                  <span>등록된 재배일정 선택 ({combinedMobileCrops.length}건)</span>
+                                  <span className="text-[#0E712F]">
+                                    기록 {totalRecordedCount} / 전체 {totalTaskCount}건
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                  {combinedMobileCrops.map((crop) => {
+                                    const isSelectedCrop =
+                                      crop.request_no === activeCropItem.request_no;
+                                    const cropLogs = Array.isArray(
+                                      cropWorkLogs[crop.request_no]
+                                    )
+                                      ? cropWorkLogs[crop.request_no]
+                                      : [];
+                                    const cropRecCnt = crop.allTasks.filter((t: any) =>
+                                      cropLogs.some((l) => l.itemId === t.itemId)
+                                    ).length;
 
-                              const newLogEntry = {
-                                id: `WLOG-${Date.now()}`,
-                                itemId: selectedTaskItem?.itemId || '',
-                                workDate: finalYmd,
-                                stageLabel:
-                                  selectedTaskItem?.stageGroupName ||
-                                  currentStageTitle,
-                                taskTitle: `${
-                                  selectedTaskItem?.shortTitle || '농작업'
-                                } · ${workLogSelectedMaterialName} (${
-                                  taskDetailActualAmount || '50'
-                                }${workLogUnit})`,
-                                materialName: workLogSelectedMaterialName,
-                                materialThumb: workLogSelectedMaterialThumb,
-                                actualAmount: taskDetailActualAmount || '50',
-                                unit: workLogUnit || 'kg',
-                                memo: taskDetailMemo.trim(),
-                                photoDataUrl: taskDetailPhotoDataUrl || '',
-                                photoName: taskDetailPhotoName || '',
-                                createdAt: new Date().toISOString(),
-                              };
+                                    return (
+                                      <button
+                                        key={crop.request_no}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedRequestNo(crop.request_no);
+                                          setMobileJournalStageFilter('ALL');
+                                          if (
+                                            !provisionData ||
+                                            provisionData?.activeRequest?.request_no !==
+                                              crop.request_no
+                                          ) {
+                                            loadScheduleProvision(crop.request_no, {
+                                              gdd_mode: patentGddMode,
+                                            }).catch(() => {});
+                                          }
+                                        }}
+                                        className={`px-3 py-2 rounded-[14px] border flex items-center gap-2.5 shrink-0 cursor-pointer transition ${
+                                          isSelectedCrop
+                                            ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-xs'
+                                            : 'bg-white border-[#E5E7EB] text-[#111827] hover:bg-[#F9FAFB]'
+                                        }`}
+                                      >
+                                        <img
+                                          src={crop.thumbUrl}
+                                          alt={crop.shortName}
+                                          className="w-8 h-8 rounded-[9px] object-cover bg-white shrink-0"
+                                        />
+                                        <div className="text-left">
+                                          <div
+                                            className={`text-[14px] font-black leading-tight whitespace-nowrap ${
+                                              isSelectedCrop ? 'text-white' : 'text-[#111827]'
+                                            }`}
+                                          >
+                                            {crop.shortName} ({crop.cultivarName})
+                                          </div>
+                                          <div
+                                            className={`text-[11.5px] font-bold whitespace-nowrap ${
+                                              isSelectedCrop
+                                                ? 'text-[#BBF7D0]'
+                                                : 'text-[#6B7280]'
+                                            }`}
+                                          >
+                                            {crop.cultivationMethod} · {crop.areaPyeong}평 · 기록{' '}
+                                            {cropRecCnt}/{crop.allTasks.length}
+                                          </div>
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
 
-                              setCropWorkLogs((prev) => {
-                                const prevList = Array.isArray(
-                                  prev[activeCropItem.request_no]
-                                )
-                                  ? prev[activeCropItem.request_no]
-                                  : [];
-                                const next = {
-                                  ...prev,
-                                  [activeCropItem.request_no]: [
-                                    newLogEntry,
-                                    ...prevList,
-                                  ],
-                                };
-                                try {
-                                  localStorage.setItem(
-                                    'hanfarm_crop_work_logs_v1',
-                                    JSON.stringify(next)
+                              {/* 3) 선택된 재배일정 요약 카드 */}
+                              <div className="rounded-[18px] bg-[#EFF8F1] border border-[#CBEAD3] p-3.5 flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <img
+                                    src={activeCropItem.thumbUrl}
+                                    alt={activeCropItem.shortName}
+                                    className="w-[52px] h-[52px] rounded-[13px] object-cover border border-white shadow-2xs shrink-0"
+                                  />
+                                  <div className="min-w-0 space-y-0.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[17.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                        {activeCropItem.shortName} ({activeCropItem.cultivarName})
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[11px] font-extrabold">
+                                        {currentStageTitle}
+                                      </span>
+                                    </div>
+                                    <div className="text-[12.5px] font-semibold text-[#374151] truncate">
+                                      {activeCropItem.region} · {activeCropItem.cultivationMethod} ·{' '}
+                                      {activeCropItem.areaPyeong.toLocaleString()}평
+                                    </div>
+                                    <div className="text-[12px] font-bold text-[#0E712F]">
+                                      재배기간: {activeCropItem.periodDotLabel}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextTarget =
+                                      activeCropItem.primaryNextTask ||
+                                      activeCropItem.allTasks[0] ||
+                                      null;
+                                    if (nextTarget) {
+                                      prepareTaskForExecAndLog(
+                                        nextTarget,
+                                        activeCropItem.request_no
+                                      );
+                                      setMobileWorkLogReturnStep('work_log_list');
+                                      goToScheduleStep('work_log');
+                                    }
+                                  }}
+                                  className="px-3 py-2 rounded-xl bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[12.5px] font-black shrink-0 cursor-pointer shadow-2xs transition"
+                                >
+                                  + 빠른 기록
+                                </button>
+                              </div>
+
+                              {/* 4) 기록 상태 필터 탭 (전체 작업일정 / 작성완료 / 미작성) */}
+                              <div className="rounded-full bg-[#F3F4F6] border border-[#E5E7EB] p-1 grid grid-cols-3 gap-1">
+                                {(
+                                  [
+                                    {
+                                      key: 'ALL',
+                                      label: `전체 일정 (${totalTaskCount})`,
+                                    },
+                                    {
+                                      key: 'RECORDED',
+                                      label: `기록완료 (${totalRecordedCount})`,
+                                    },
+                                    {
+                                      key: 'UNRECORDED',
+                                      label: `미작성 (${unrecordedCount})`,
+                                    },
+                                  ] as const
+                                ).map((stTab) => {
+                                  const isAct = mobileJournalStatusFilter === stTab.key;
+                                  return (
+                                    <button
+                                      key={stTab.key}
+                                      type="button"
+                                      onClick={() => setMobileJournalStatusFilter(stTab.key)}
+                                      className={`h-[36px] rounded-full text-[13px] font-extrabold tracking-[-0.02em] transition cursor-pointer ${
+                                        isAct
+                                          ? 'bg-[#0E712F] text-white shadow-2xs'
+                                          : 'bg-transparent text-[#374151] hover:bg-white'
+                                      }`}
+                                    >
+                                      {stTab.label}
+                                    </button>
                                   );
-                                } catch {
-                                  // ignore
-                                }
-                                fetch('/api/client-sync-state', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    email:
-                                      loggedInUser.email || 'CloudBae@naver.com',
-                                    state_key: 'crop_work_logs_v1',
-                                    state_value: next,
-                                  }),
-                                }).catch(() => {});
-                                return next;
-                              });
+                                })}
+                              </div>
 
-                              // 작업 기록 페이지 닫고 이전 페이지인 '{작업명} (실행하기)' 페이지로 돌아가 리스트 리프레시
-                              loadScheduleProvision(activeCropItem.request_no, {
-                                gdd_mode: patentGddMode,
-                              }).catch(() => {});
+                              {/* 5) 생육단계별 필터 칩 바 */}
+                              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setMobileJournalStageFilter('ALL')}
+                                  className={`px-3 py-1.5 rounded-full text-[12.5px] font-extrabold whitespace-nowrap cursor-pointer transition ${
+                                    mobileJournalStageFilter === 'ALL'
+                                      ? 'bg-[#111827] text-white'
+                                      : 'bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]'
+                                  }`}
+                                >
+                                  전체 생육단계
+                                </button>
+                                {journalStageGroups.map((grp) => {
+                                  const isActStage =
+                                    mobileJournalStageFilter === grp.bucketKey;
+                                  return (
+                                    <button
+                                      key={grp.bucketKey}
+                                      type="button"
+                                      onClick={() =>
+                                        setMobileJournalStageFilter(grp.bucketKey)
+                                      }
+                                      className={`px-3 py-1.5 rounded-full text-[12.5px] font-extrabold whitespace-nowrap cursor-pointer transition ${
+                                        isActStage
+                                          ? 'bg-[#0E712F] text-white'
+                                          : grp.isCurrentPhase
+                                          ? 'bg-[#EFF8F1] border border-[#86EFAC] text-[#0E712F]'
+                                          : 'bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]'
+                                      }`}
+                                    >
+                                      {grp.phaseTitle} ({grp.recordedCount}/{grp.totalCount})
+                                    </button>
+                                  );
+                                })}
+                              </div>
 
-                              if (typeof window !== 'undefined') {
-                                const curIdx = navIndexRef.current;
-                                const prevSnap =
-                                  curIdx > 0
-                                    ? navStackRef.current[curIdx - 1]
-                                    : null;
-                                if (
-                                  prevSnap &&
-                                  prevSnap.activeMenu === '재배일정 확인' &&
-                                  prevSnap.mobileScheduleStep === 'task_exec'
-                                ) {
-                                  window.history.back();
-                                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  return;
-                                }
-                              }
-                              goToScheduleStep('task_exec');
-                            }}
-                            className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-extrabold text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(14,113,47,0.24)] cursor-pointer transition"
-                          >
-                            <Check className="w-5 h-5 stroke-[2.8]" />
-                            <span>기록 저장</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                              {/* 6) 생육단계별 작업일정 리스트업 & 각 항목별 작업기록 작성/조회 */}
+                              <div className="space-y-4 pt-1">
+                                {visibleStageGroups.length === 0 ? (
+                                  <div className="rounded-[18px] border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-center space-y-2">
+                                    <div className="text-[15px] font-extrabold text-[#374151]">
+                                      해당 조건의 작업일정 항목이 없습니다.
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setMobileJournalStatusFilter('ALL');
+                                        setMobileJournalStageFilter('ALL');
+                                      }}
+                                      className="px-4 py-1.5 rounded-full bg-white border border-[#D1D5DB] text-[13px] font-bold text-[#111827] cursor-pointer"
+                                    >
+                                      전체 일정 보기
+                                    </button>
+                                  </div>
+                                ) : (
+                                  visibleStageGroups.map((grp) => (
+                                    <div
+                                      key={grp.bucketKey}
+                                      className="rounded-[18px] border border-[#E5E7EB] bg-white overflow-hidden shadow-2xs"
+                                    >
+                                      {/* 생육단계 헤더 */}
+                                      <div
+                                        className={`px-4 py-3 flex items-center justify-between gap-2 border-b ${
+                                          grp.isCurrentPhase
+                                            ? 'bg-[#EFF8F1] border-[#CBEAD3]'
+                                            : 'bg-[#F8FAFC] border-[#E5E7EB]'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em] truncate">
+                                            {grp.phaseTitle}
+                                          </span>
+                                          {grp.isCurrentPhase && (
+                                            <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[10.5px] font-extrabold shrink-0">
+                                              현재 단계
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <span className="text-[12.5px] font-semibold text-[#6B7280]">
+                                            {grp.periodLabel}
+                                          </span>
+                                          <span className="px-2 py-0.5 rounded-full bg-white border border-[#D1D5DB] text-[11.5px] font-extrabold text-[#0E712F]">
+                                            기록 {grp.recordedCount}/{grp.totalCount}
+                                          </span>
+                                        </div>
+                                      </div>
+
+                                      {/* 해당 생육단계의 작업일정 항목 리스트 */}
+                                      <div className="divide-y divide-[#F1F5F9]">
+                                        {grp.tasks.map((task) => {
+                                          const savedLog = logByItemIdMap.get(task.itemId);
+                                          const cleanTaskTitle =
+                                            String(task.shortTitle || '')
+                                              .replace(/\s*\([^)]*\)/g, '')
+                                              .trim() || task.shortTitle;
+                                          const isPest = task.iconType === 'PEST';
+                                          const isFert = task.iconType === 'FERTILIZER';
+                                          const typeBadgeLabel = isPest
+                                            ? '병해충'
+                                            : isFert
+                                            ? '시비관리'
+                                            : '농작업';
+                                          const typeBadgeClass = isPest
+                                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                            : isFert
+                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                            : 'bg-sky-50 text-sky-800 border-sky-200';
+
+                                          return (
+                                            <div
+                                              key={task.itemId}
+                                              className={`p-3.5 space-y-2.5 transition ${
+                                                savedLog ? 'bg-[#F9FEFB]' : 'bg-white'
+                                              }`}
+                                            >
+                                              <div className="flex items-start justify-between gap-2.5">
+                                                {/* 좌측: 작업번호/유형/작업명/권장일/권장자재 */}
+                                                <div
+                                                  onClick={() => {
+                                                    setMobileHighlightedTaskId(task.itemId);
+                                                    prepareTaskForExecAndLog(
+                                                      task,
+                                                      activeCropItem.request_no
+                                                    );
+                                                    goToScheduleStep('task_exec');
+                                                  }}
+                                                  className="min-w-0 flex-1 space-y-1 cursor-pointer"
+                                                >
+                                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="px-2 py-0.5 rounded-md bg-[#F3F4F6] text-[#374151] text-[11px] font-extrabold">
+                                                      일정 {task.stepOrder}
+                                                    </span>
+                                                    <span
+                                                      className={`px-2 py-0.5 rounded-md border text-[11px] font-extrabold ${typeBadgeClass}`}
+                                                    >
+                                                      {typeBadgeLabel}
+                                                    </span>
+                                                    <span className="text-[12.5px] font-bold text-[#4B5563]">
+                                                      예정일: {formatShortMd(task.effDate)} (
+                                                      {task.ddayLabel})
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="text-[16.5px] font-black text-[#111827] tracking-[-0.03em] leading-snug">
+                                                    {cleanTaskTitle}
+                                                  </div>
+
+                                                  <div className="text-[12.5px] font-semibold text-[#6B7280] line-clamp-1">
+                                                    권장 농자재: {task.materialName}
+                                                  </div>
+                                                </div>
+
+                                                {/* 우측: 작업기록 작성 / 수정 버튼 + 세부보기 버튼 */}
+                                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      prepareTaskForExecAndLog(
+                                                        task,
+                                                        activeCropItem.request_no
+                                                      );
+                                                      setMobileWorkLogReturnStep(
+                                                        'work_log_list'
+                                                      );
+                                                      goToScheduleStep('work_log');
+                                                    }}
+                                                    className={`px-3 py-1.5 rounded-full text-[12.5px] font-black inline-flex items-center gap-1 cursor-pointer transition shadow-2xs ${
+                                                      savedLog
+                                                        ? 'bg-[#DCFCE7] hover:bg-[#BBF7D0] border border-[#86EFAC] text-[#0E712F]'
+                                                        : 'bg-[#0E712F] hover:bg-[#0B5D26] text-white'
+                                                    }`}
+                                                  >
+                                                    {savedLog ? (
+                                                      <>
+                                                        <Check className="w-3.5 h-3.5 stroke-[2.8]" />
+                                                        <span>기록 수정</span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <span>✎ 작업기록 작성</span>
+                                                      </>
+                                                    )}
+                                                  </button>
+
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                      setMobileHighlightedTaskId(
+                                                        task.itemId
+                                                      );
+                                                      prepareTaskForExecAndLog(
+                                                        task,
+                                                        activeCropItem.request_no
+                                                      );
+                                                      goToScheduleStep('task_exec');
+                                                    }}
+                                                    className="text-[11.5px] font-extrabold text-[#4B5563] hover:text-[#0E712F] inline-flex items-center gap-0.5 cursor-pointer"
+                                                  >
+                                                    <span>세부보기·농자재 구매</span>
+                                                    <ChevronRight className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {/* 이미 작성된 작업기록이 있을 경우 상세 박스 노출 */}
+                                              {savedLog && (
+                                                <div className="rounded-[12px] bg-[#EFF8F1] border border-[#BDE3C6] px-3 py-2.5 flex items-start justify-between gap-2.5">
+                                                  <div className="min-w-0 flex-1 space-y-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                      <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[10.5px] font-extrabold">
+                                                        작업기록 완료
+                                                      </span>
+                                                      <span className="text-[12.5px] font-extrabold text-[#0E712F]">
+                                                        실제 작업일: {savedLog.workDate}
+                                                      </span>
+                                                    </div>
+                                                    <div className="text-[13.5px] font-extrabold text-[#111827]">
+                                                      사용 자재: {savedLog.materialName} ·{' '}
+                                                      {savedLog.actualAmount}
+                                                      {savedLog.unit}
+                                                    </div>
+                                                    {savedLog.memo && (
+                                                      <div className="text-[12.5px] font-medium text-[#374151] break-keep">
+                                                        메모: {savedLog.memo}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                  {savedLog.photoDataUrl && (
+                                                    <img
+                                                      src={savedLog.photoDataUrl}
+                                                      alt="작업 사진"
+                                                      className="w-12 h-12 rounded-[8px] object-cover border border-white shadow-2xs shrink-0"
+                                                    />
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                     {/* ==================== [생육단계 정보변경 모달리스 폼 (페이지 이동 없이 현재 페이지 위에 열림)] ==================== */}
                     {growthConfirmModalTarget &&
@@ -32727,7 +33573,10 @@ export default function UserIntroPage() {
 
             {/* 2. 재배관리 (재배일정 확인) */}
             {(() => {
-              const isScheduleActive = activeMenu === '재배일정 확인';
+              const isScheduleActive =
+                activeMenu === '재배일정 확인' &&
+                mobileScheduleStep !== 'work_log' &&
+                mobileScheduleStep !== 'work_log_list';
               return (
                 <button
                   type="button"
@@ -32815,16 +33664,20 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* 4. 영농일지 (작업 기록 페이지) */}
+            {/* 4. 영농일지 (현재 재배일정에 대한 생육단계·작업일정별 리스트업 및 작업기록 관리) */}
             {(() => {
               const isWorkLogActive =
-                activeMenu === '재배일정 확인' && mobileScheduleStep === 'work_log';
+                activeMenu === '재배일정 확인' &&
+                (mobileScheduleStep === 'work_log' ||
+                  mobileScheduleStep === 'work_log_list');
               return (
                 <button
                   type="button"
                   onClick={() => {
                     setActiveMenu('재배일정 확인');
-                    setMobileScheduleStep('work_log');
+                    setMobileJournalStatusFilter('ALL');
+                    setMobileJournalStageFilter('ALL');
+                    setMobileScheduleStep('work_log_list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
