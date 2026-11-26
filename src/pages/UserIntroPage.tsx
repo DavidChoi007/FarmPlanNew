@@ -13584,43 +13584,78 @@ export default function UserIntroPage() {
                                   )}
                                 </div>
 
-                                {/* 생육단계 및 일정 항목 선택 드롭다운 */}
-                                <div className="space-y-1">
+                                {/* 생육단계 및 일정 항목 선택 (생육단계 명칭: 초록색 / 영농일지 작업일정 내용: 기존 폰트 유지) */}
+                                <div className="space-y-1.5">
                                   <label className="block text-[12.5px] font-extrabold text-[#0E712F]">
                                     기록할 생육단계 · 작업일정 항목 선택
                                   </label>
-                                  <select
-                                    value={curTask?.itemId || ''}
-                                    onChange={(e) => {
-                                      const nextId = e.target.value;
-                                      const foundTask = activeCropItem.allTasks.find(
-                                        (t) => t.itemId === nextId
-                                      );
-                                      if (foundTask) {
-                                        prepareTaskForExecAndLog(
-                                          foundTask,
-                                          activeCropItem.request_no
-                                        );
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setIsWorkLogTaskDropdownOpen((prev) => !prev)
                                       }
-                                    }}
-                                    className="w-full h-[44px] px-3 rounded-[12px] border border-[#86EFAC] bg-white text-[14.5px] font-extrabold text-[#111827] focus:outline-none cursor-pointer"
-                                  >
-                                    {activeCropItem.allTasks.map((tk) => {
-                                      const cleanName =
-                                        String(tk.shortTitle || '')
-                                          .replace(/\s*\([^)]*\)/g, '')
-                                          .trim() || tk.shortTitle;
-                                      const hasLog = (
-                                        cropWorkLogs[activeCropItem.request_no] || []
-                                      ).some((lg) => lg.itemId === tk.itemId);
-                                      return (
-                                        <option key={tk.itemId} value={tk.itemId}>
-                                          [{tk.stageGroupName}] {tk.stepOrder}. {cleanName} (
-                                          {tk.effDate}){hasLog ? ' · ✓기록됨' : ''}
-                                        </option>
-                                      );
-                                    })}
-                                  </select>
+                                      className="w-full min-h-[46px] px-3 py-2 rounded-[12px] border border-[#86EFAC] bg-white hover:bg-[#F9FBF9] flex items-center justify-between gap-2 text-left cursor-pointer transition"
+                                    >
+                                      <div className="min-w-0 flex-1 flex flex-wrap items-center gap-1.5">
+                                        <span className="text-[14.5px] font-extrabold text-[#0E712F] whitespace-nowrap shrink-0">
+                                          [{curTask?.stageGroupName || currentStageTitle}]
+                                        </span>
+                                        <span className="text-[14.5px] font-extrabold text-[#111827] leading-snug break-keep">
+                                          {curTask?.stepOrder ? `${curTask.stepOrder}. ` : ''}
+                                          {cleanCurTaskTitle} ({curTask?.effDate || todayKstYmd})
+                                          {existingItemLog ? ' · ✓기록됨' : ''}
+                                        </span>
+                                      </div>
+                                      <ChevronDown
+                                        className={`w-4 h-4 text-[#0E712F] stroke-[2.4] shrink-0 transition-transform ${
+                                          isWorkLogTaskDropdownOpen ? 'rotate-180' : ''
+                                        }`}
+                                      />
+                                    </button>
+
+                                    {isWorkLogTaskDropdownOpen && (
+                                      <div className="mt-1.5 rounded-[14px] border border-[#86EFAC] bg-white p-1.5 space-y-1 max-h-[250px] overflow-y-auto shadow-md">
+                                        {activeCropItem.allTasks.map((tk) => {
+                                          const cleanName =
+                                            String(tk.shortTitle || '')
+                                              .replace(/\s*\([^)]*\)/g, '')
+                                              .trim() || tk.shortTitle;
+                                          const hasLog = (
+                                            cropWorkLogs[activeCropItem.request_no] || []
+                                          ).some((lg) => lg.itemId === tk.itemId);
+                                          const isCurrentSelected =
+                                            curTask?.itemId === tk.itemId;
+                                          return (
+                                            <button
+                                              key={tk.itemId}
+                                              type="button"
+                                              onClick={() => {
+                                                prepareTaskForExecAndLog(
+                                                  tk,
+                                                  activeCropItem.request_no
+                                                );
+                                                setIsWorkLogTaskDropdownOpen(false);
+                                              }}
+                                              className={`w-full px-2.5 py-2 rounded-[10px] flex flex-wrap items-center gap-1.5 text-left cursor-pointer transition ${
+                                                isCurrentSelected
+                                                  ? 'bg-[#EFF8F1] border border-[#86EFAC]'
+                                                  : 'bg-white hover:bg-[#F9FBF9]'
+                                              }`}
+                                            >
+                                              <span className="text-[14px] font-extrabold text-[#0E712F] whitespace-nowrap shrink-0">
+                                                [{tk.stageGroupName}]
+                                              </span>
+                                              <span className="text-[14px] font-extrabold text-[#111827] leading-snug break-keep">
+                                                {tk.stepOrder}. {cleanName} ({tk.effDate})
+                                                {hasLog ? ' · ✓기록됨' : ''}
+                                              </span>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
 
