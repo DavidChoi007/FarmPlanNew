@@ -4395,6 +4395,14 @@ export default function UserIntroPage() {
     cartIdsToRemove: string[];
     stageNoticePayload?: any;
     isCompleted?: boolean;
+    completedReceipt?: {
+      orderNo: string;
+      orderedAt: string;
+      expectedDeliveryDate: string;
+      deliveryAddress: string;
+      itemCount: number;
+      totalPaid: number;
+    };
   } | null>(null);
   const [bankAccountCopied, setBankAccountCopied] = useState<boolean>(false);
 
@@ -4990,11 +4998,48 @@ export default function UserIntroPage() {
       })
       .catch(() => {});
 
-    setCheckoutConfirmPageData(null);
-    setActiveMenu('마이페이지');
-    setMyPageTab('AGRO_PURCHASE');
+    const nowDt = new Date();
+    const nextDayDt = new Date(nowDt.getTime() + 86400000);
+    const wkNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const orderedAtDisplay =
+      firstItem.purchasedAt ||
+      `${nowDt.getFullYear()}.${String(nowDt.getMonth() + 1).padStart(2, '0')}.${String(
+        nowDt.getDate()
+      ).padStart(2, '0')} ${String(nowDt.getHours()).padStart(2, '0')}:${String(
+        nowDt.getMinutes()
+      ).padStart(2, '0')}`;
+    const deliveryExpectedDisplay = `${nextDayDt.getFullYear()}.${String(
+      nextDayDt.getMonth() + 1
+    ).padStart(2, '0')}.${String(nextDayDt.getDate()).padStart(2, '0')} (${
+      wkNames[nextDayDt.getDay()]
+    })`;
+    const orderNoDisplay = String(firstItem.orderNo || `HF-${Date.now()}`)
+      .replace(/^ORD-/, 'HF-')
+      .replace(/-CART|-DIR|-STG/g, '-');
+    const deliveryAddrDisplay =
+      firstItem.region_address ||
+      firstItem.region ||
+      loggedInUser.road_address ||
+      '충북 충주시 봉방동';
+
+    setCheckoutConfirmPageData((prev) =>
+      prev
+        ? {
+            ...prev,
+            isCompleted: true,
+            completedReceipt: {
+              orderNo: orderNoDisplay,
+              orderedAt: orderedAtDisplay,
+              expectedDeliveryDate: deliveryExpectedDisplay,
+              deliveryAddress: deliveryAddrDisplay,
+              itemCount: confirmedItems.length,
+              totalPaid,
+            },
+          }
+        : null
+    );
     setMyPageToast(
-      `선택하신 제품 ${confirmedItems.length}건 (총 ${totalPaid.toLocaleString()}원) 최종 구매 진행이 완료되어 [마이페이지 > 농자재 구매]에 등록되었습니다.`
+      `선택하신 제품 ${confirmedItems.length}건 (총 ${totalPaid.toLocaleString()}원) 주문이 완료되었습니다.`
     );
     setTimeout(() => setMyPageToast(''), 4500);
   };
@@ -26194,7 +26239,7 @@ export default function UserIntroPage() {
           </div>
         )}
 
-        {/* ==================== [마이페이지 > 농자재 장바구니 > 구매 신청 완료 및 기본 입금계좌 안내 폼] ==================== */}
+        {/* ==================== [마이페이지 > 농자재 장바구니 > 구매 신청 완료 및 기본 입금계좌 안내 폼 / 최종 주문완료 감사 페이지] ==================== */}
         {checkoutConfirmPageData && (() => {
           const confirmItems = checkoutConfirmPageData.items || [];
           const totalConfirmQty = confirmItems.reduce(
@@ -26214,6 +26259,184 @@ export default function UserIntroPage() {
             (sum: number, it: any) => sum + Number(it.totalPrice ?? it.final_subtotal ?? 0),
             0
           );
+
+          // 최종 구매 진행 완료 시 첨부 이미지 1:1 스타일의 "주문이 완료되었습니다!" 감사 페이지 렌더링
+          if (checkoutConfirmPageData.isCompleted) {
+            const receipt = checkoutConfirmPageData.completedReceipt;
+            const firstEntry = confirmItems[0] || {};
+            const orderNoText =
+              receipt?.orderNo ||
+              String(firstEntry.orderNo || 'HF-20261120-001').replace(/^ORD-/, 'HF-');
+            const orderedAtText = receipt?.orderedAt || firstEntry.purchasedAt || '2026.11.18 14:32';
+            const deliveryDateText = receipt?.expectedDeliveryDate || '2026.11.19 (수)';
+            const deliveryAddrText =
+              receipt?.deliveryAddress ||
+              firstEntry.region_address ||
+              firstEntry.region ||
+              loggedInUser.road_address ||
+              '충북 충주시 봉방동';
+
+            return (
+              <div
+                style={{ zIndex: 10050 }}
+                className="fixed inset-0 z-[10050] bg-white sm:bg-slate-900/55 sm:backdrop-blur-xs flex items-center justify-center p-0 sm:p-5 overflow-y-auto select-none"
+              >
+                <div className="bg-white w-full max-w-[440px] min-h-screen sm:min-h-0 sm:rounded-[32px] sm:border sm:border-slate-200 sm:shadow-[0_24px_64px_rgba(15,23,42,0.22)] px-6 py-10 flex flex-col justify-between">
+                  {/* 상단 체크 아이콘 + 타이틀 + 주문 요약 박스 */}
+                  <div className="pt-4 space-y-7">
+                    {/* 상단 빛나는 초록 원형 체크 아이콘 + 감사 타이틀 */}
+                    <div className="flex flex-col items-center text-center space-y-4">
+                      <div className="relative w-[132px] h-[88px] flex items-center justify-center">
+                        {/* 좌측 방사형 노란 빛줄기 */}
+                        <span className="absolute left-2 top-2.5 w-3.5 h-1 rounded-full bg-[#FACC15] rotate-[28deg]" />
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-3.5 h-1 rounded-full bg-[#FACC15]" />
+                        <span className="absolute left-2 bottom-2.5 w-3.5 h-1 rounded-full bg-[#FACC15] -rotate-[28deg]" />
+                        {/* 우측 방사형 노란 빛줄기 */}
+                        <span className="absolute right-2 top-2.5 w-3.5 h-1 rounded-full bg-[#FACC15] -rotate-[28deg]" />
+                        <span className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-1 rounded-full bg-[#FACC15]" />
+                        <span className="absolute right-2 bottom-2.5 w-3.5 h-1 rounded-full bg-[#FACC15] rotate-[28deg]" />
+
+                        {/* 중앙 초록 원형 체크 */}
+                        <div className="w-[74px] h-[74px] rounded-full bg-gradient-to-b from-[#4ADE80] to-[#16A34A] shadow-[0_10px_24px_rgba(22,163,74,0.32)] flex items-center justify-center">
+                          <Check className="w-10 h-10 text-white stroke-[3.2]" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <h2 className="text-[27px] font-black text-[#111827] tracking-[-0.03em]">
+                          주문이 완료되었습니다!
+                        </h2>
+                        <p className="text-[14px] font-bold text-[#15803D]">
+                          구매해 주셔서 감사합니다. 작업 일정에 맞춰 안전하게 배송해 드립니다.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 주문 정보 4행 카드 (주문번호 / 주문일시 / 배송예정일 / 배송지) */}
+                    <div className="rounded-[22px] bg-[#F8FAF8] border border-[#E5ECE7] px-5 py-5 space-y-4 shadow-2xs">
+                      {/* 1. 주문번호 */}
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-7 h-7 flex items-center justify-center text-[#15803D] shrink-0">
+                          <ShoppingCart className="w-[22px] h-[22px] stroke-[2.2]" />
+                        </div>
+                        <span className="w-[82px] text-[16px] font-extrabold text-[#111827] tracking-[-0.02em] shrink-0">
+                          주문번호
+                        </span>
+                        <span className="flex-1 text-[16px] font-bold text-[#1F2937] tracking-[-0.01em] truncate">
+                          {orderNoText}
+                        </span>
+                      </div>
+
+                      {/* 2. 주문일시 */}
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-7 h-7 flex items-center justify-center text-[#15803D] shrink-0">
+                          <Calendar className="w-[22px] h-[22px] stroke-[2.2]" />
+                        </div>
+                        <span className="w-[82px] text-[16px] font-extrabold text-[#111827] tracking-[-0.02em] shrink-0">
+                          주문일시
+                        </span>
+                        <span className="flex-1 text-[16px] font-bold text-[#1F2937] tracking-[-0.01em] truncate">
+                          {orderedAtText}
+                        </span>
+                      </div>
+
+                      {/* 3. 배송예정일 */}
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-7 h-7 flex items-center justify-center text-[#15803D] shrink-0">
+                          <svg viewBox="0 0 24 24" className="w-[23px] h-[23px]" fill="none">
+                            <path
+                              d="M2.5 6.5H14.5V16.5H2.5V6.5Z"
+                              stroke="currentColor"
+                              strokeWidth="2.1"
+                              strokeLinejoin="round"
+                            />
+                            <path
+                              d="M14.5 9.5H18.3L21.5 12.8V16.5H14.5V9.5Z"
+                              stroke="currentColor"
+                              strokeWidth="2.1"
+                              strokeLinejoin="round"
+                            />
+                            <circle cx="6.5" cy="17.5" r="2" fill="white" stroke="currentColor" strokeWidth="2" />
+                            <circle cx="17.5" cy="17.5" r="2" fill="white" stroke="currentColor" strokeWidth="2" />
+                          </svg>
+                        </div>
+                        <span className="w-[82px] text-[16px] font-extrabold text-[#111827] tracking-[-0.02em] shrink-0">
+                          배송예정일
+                        </span>
+                        <span className="flex-1 text-[16px] font-bold text-[#1F2937] tracking-[-0.01em] truncate">
+                          {deliveryDateText}
+                        </span>
+                      </div>
+
+                      {/* 4. 배송지 */}
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-7 h-7 flex items-center justify-center text-[#15803D] shrink-0">
+                          <MapPin className="w-[22px] h-[22px] stroke-[2.2]" />
+                        </div>
+                        <span className="w-[82px] text-[16px] font-extrabold text-[#111827] tracking-[-0.02em] shrink-0">
+                          배송지
+                        </span>
+                        <span className="flex-1 text-[16px] font-bold text-[#1F2937] tracking-[-0.01em] truncate">
+                          {deliveryAddrText}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 하단 액션 버튼 2개: [주문내역 보기] / [← 작업화면으로 돌아가기] */}
+                  <div className="pt-8 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCheckoutConfirmPageData(null);
+                        setActiveMenu('마이페이지');
+                        setMyPageTab('AGRO_PURCHASE');
+                        if (typeof window !== 'undefined') {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                      }}
+                      className="w-full h-[54px] rounded-full bg-white hover:bg-[#F2FBF5] active:scale-[0.99] border-[1.8px] border-[#15803D] text-[#0E712F] font-black text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2.5 cursor-pointer transition shadow-2xs"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-[21px] h-[21px]" fill="none">
+                        <rect
+                          x="5"
+                          y="3.5"
+                          width="14"
+                          height="17"
+                          rx="2.5"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                        />
+                        <path
+                          d="M8.5 8.5H15.5M8.5 12.5H15.5M8.5 16.5H12.5"
+                          stroke="currentColor"
+                          strokeWidth="2.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <span>주문내역 보기</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCheckoutConfirmPageData(null);
+                        setActiveMenu('재배일정 확인');
+                        setMobileScheduleStep('task_exec');
+                        if (typeof window !== 'undefined') {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }
+                      }}
+                      className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] tracking-[-0.02em] flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_6px_18px_rgba(14,113,47,0.28)]"
+                    >
+                      <ArrowLeft className="w-[21px] h-[21px] stroke-[2.6]" />
+                      <span>작업화면으로 돌아가기</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           return (
             <div
