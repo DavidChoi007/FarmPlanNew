@@ -1083,6 +1083,57 @@ export default function UserIntroPage() {
     });
   };
 
+  const handleSaveStageCompleted = (
+    reqNoInput: string,
+    item: any,
+    opts?: { explicitDate?: string }
+  ) => {
+    if (!item) return;
+    const rNo =
+      reqNoInput ||
+      provisionData?.activeRequest?.request_no ||
+      selectedRequestNo ||
+      'REQ-20261106-009';
+    const itemId = resolveStageItemId(item);
+    const targetYmd =
+      opts?.explicitDate ||
+      item?.start_date ||
+      new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    const meta = STANDARD_16_STAGE_META.find((m) => m.itemId === itemId);
+    const stepOrder = Number(item.step_order || item.stepOrder || meta?.stepOrder || 1);
+    const stageGroupName =
+      item.stage_group_name || item.stageGroupName || meta?.stageGroupName || '생육 관리';
+    const cleanSubName =
+      String(item.sub_item_name || item.subItemName || meta?.subItemName || '생육과정')
+        .replace(/\s*\([^)]*\)/g, '')
+        .trim() || '생육과정';
+
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(
+      now.getDate()
+    ).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes()
+    ).padStart(2, '0')}`;
+
+    saveStageItemCompletions((prev) => {
+      const curReq = { ...(prev[rNo] || {}) };
+      curReq[itemId] = {
+        itemId,
+        stepOrder,
+        stageGroupName,
+        subItemName: cleanSubName,
+        completed: true,
+        confirmedDate: targetYmd,
+        completedAt: nowStr,
+        isSeeded: false,
+      };
+      return {
+        ...prev,
+        [rNo]: curReq,
+      };
+    });
+  };
+
   const resolveStageItemId = (item: any, fallbackIdx = 0): string => {
     if (!item) return `SCH-${String(fallbackIdx + 1).padStart(2, '0')}`;
     if (item.item_id && /^SCH-\d+/i.test(String(item.item_id))) {
@@ -3452,17 +3503,74 @@ export default function UserIntroPage() {
           setStageGrowthConfirmStatuses({});
         }
         if (states.crop_work_logs_v1 && typeof states.crop_work_logs_v1 === 'object') {
-          setCropWorkLogs(states.crop_work_logs_v1);
+          setCropWorkLogs((prev) => {
+            let localSaved: Record<string, any[]> = {};
+            try {
+              const raw = localStorage.getItem('hanfarm_crop_work_logs_v1');
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') localSaved = parsed;
+              }
+            } catch {
+              // ignore
+            }
+            const remoteObj = states.crop_work_logs_v1 as Record<string, any[]>;
+            const allReqKeys = new Set([
+              ...Object.keys(remoteObj || {}),
+              ...Object.keys(localSaved || {}),
+              ...Object.keys(prev || {}),
+            ]);
+            const merged: Record<string, any[]> = {};
+            allReqKeys.forEach((reqNo) => {
+              const byKey = new Map<string, any>();
+              const pushEntries = (list: any[]) => {
+                if (!Array.isArray(list)) return;
+                list.forEach((item) => {
+                  if (!item || typeof item !== 'object') return;
+                  const k = String(item.itemId || item.id || `${item.workDate}_${item.taskTitle}`);
+                  const existing = byKey.get(k);
+                  if (
+                    !existing ||
+                    String(item.createdAt || '') >= String(existing.createdAt || '')
+                  ) {
+                    byKey.set(k, item);
+                  }
+                });
+              };
+              pushEntries(remoteObj[reqNo]);
+              pushEntries(localSaved[reqNo]);
+              pushEntries(prev[reqNo]);
+              merged[reqNo] = Array.from(byKey.values()).sort((a, b) =>
+                String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+              );
+            });
+            try {
+              localStorage.setItem('hanfarm_crop_work_logs_v1', JSON.stringify(merged));
+            } catch {
+              // ignore
+            }
+            return merged;
+          });
+        } else {
           try {
-            localStorage.setItem(
-              'hanfarm_crop_work_logs_v1',
-              JSON.stringify(states.crop_work_logs_v1)
-            );
+            const raw = localStorage.getItem('hanfarm_crop_work_logs_v1');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                fetch('/api/client-sync-state', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    email: emailToFetch,
+                    state_key: 'crop_work_logs_v1',
+                    state_value: parsed,
+                  }),
+                }).catch(() => {});
+              }
+            }
           } catch {
             // ignore
           }
-        } else if (!isCloudBaeTarget) {
-          setCropWorkLogs({});
         }
         if (
           states.inline_stage_date_drafts_v1 &&
@@ -13937,8 +14045,24 @@ export default function UserIntroPage() {
                           : [];
                         const logByItemIdMap = new Map<string, any>();
                         currentReqLogs.forEach((lg) => {
-                          if (lg?.itemId && !logByItemIdMap.has(lg.itemId)) {
+                          if (!lg) return;
+                          if (lg.itemId && !logByItemIdMap.has(lg.itemId)) {
                             logByItemIdMap.set(lg.itemId, lg);
+                            return;
+                          }
+                          const matchedByTitle = activeCropItem.allTasks.find((tk: any) => {
+                            const cleanName =
+                              String(tk.shortTitle || tk.subItemName || '')
+                                .replace(/\s*\([^)]*\)/g, '')
+                                .trim() || tk.shortTitle;
+                            return (
+                              cleanName &&
+                              String(lg.taskTitle || '').includes(cleanName) &&
+                              !logByItemIdMap.has(tk.itemId)
+                            );
+                          });
+                          if (matchedByTitle) {
+                            logByItemIdMap.set(matchedByTitle.itemId, lg);
                           }
                         });
 
@@ -29280,25 +29404,41 @@ export default function UserIntroPage() {
                           const materialsSummary = workLogMaterials
                             .map((m) => `${m.name} ${m.qty}${m.unit}`)
                             .join(', ');
+                          const primaryMat = workLogMaterials[0] || {
+                            name: '복합비료 (17-0-17)',
+                            qty: 25,
+                            unit: 'kg',
+                          };
                           const combinedMemo = [
                             workLogForm.memo.trim(),
                             materialsSummary ? `[사용 농자재: ${materialsSummary}]` : '',
                           ]
                             .filter(Boolean)
                             .join(' ');
+                          const targetItemId =
+                            workLogRecordMode === 'FROM_SCHEDULE' && activeSelectedTask?.itemId
+                              ? activeSelectedTask.itemId
+                              : `CUSTOM-${Date.now()}`;
                           const newEntry = {
                             id: `WLOG-${Date.now()}`,
+                            itemId: targetItemId,
                             workDate: workLogForm.workDate || getTodayKstYmd(),
                             stageLabel: curStepDef.stageTitle,
                             taskTitle: finalTaskTitle,
+                            materialName: primaryMat.name,
+                            actualAmount: String(primaryMat.qty),
+                            unit: primaryMat.unit,
                             memo: combinedMemo,
                             createdAt: new Date().toISOString(),
                           };
                           setCropWorkLogs((prev) => {
                             const prevList = Array.isArray(prev[ovReqNo]) ? prev[ovReqNo] : [];
+                            const filteredPrev = targetItemId.startsWith('SCH-')
+                              ? prevList.filter((x) => x.itemId !== targetItemId)
+                              : prevList;
                             const next = {
                               ...prev,
-                              [ovReqNo]: [newEntry, ...prevList],
+                              [ovReqNo]: [newEntry, ...filteredPrev],
                             };
                             try {
                               localStorage.setItem(
@@ -32136,11 +32276,17 @@ export default function UserIntroPage() {
             // 작업 완료 기록을 영농 작업기록(cropWorkLogs)에도 자동 저장 및 동기화
             const newLogEntry = {
               id: `WLOG-${Date.now()}`,
+              itemId: targetStageId,
               workDate: finalYmd,
               stageLabel: `${stagePhaseLabel} ${categorySuffix}`,
               taskTitle: `${stageCleanName} ${categorySuffix}${
                 taskDetailActualAmount ? ` (${taskDetailActualAmount}${unitText})` : ''
               }`,
+              materialName: productTitle || stageCleanName,
+              actualAmount: String(taskDetailActualAmount || '50'),
+              unit: unitText,
+              photoDataUrl: taskDetailPhotoDataUrl || '',
+              photoName: taskDetailPhotoName || '',
               memo: [
                 taskDetailMemo.trim(),
                 taskDetailPhotoName ? `[첨부사진: ${taskDetailPhotoName}]` : '',
@@ -32151,9 +32297,12 @@ export default function UserIntroPage() {
             };
             setCropWorkLogs((prev) => {
               const prevList = Array.isArray(prev[detailReqNo]) ? prev[detailReqNo] : [];
+              const filteredPrev = targetStageId
+                ? prevList.filter((x) => x.itemId !== targetStageId)
+                : prevList;
               const next = {
                 ...prev,
-                [detailReqNo]: [newLogEntry, ...prevList],
+                [detailReqNo]: [newLogEntry, ...filteredPrev],
               };
               try {
                 localStorage.setItem('hanfarm_crop_work_logs_v1', JSON.stringify(next));
