@@ -6471,7 +6471,11 @@ export default function UserIntroPage() {
       activeMenu === '마이페이지'
         ? `tab:${myPageTab}`
         : activeMenu === '재배일정 확인'
-        ? `step:${mobileScheduleStep}|req:${selectedRequestNo || ''}|taskTab:${mobileScheduleTaskTab}|task:${selectedScheduleTaskId || ''}|exp:${expandedScheduleRequestNo || ''}|view:${scheduleViewMode}`
+        ? `step:${mobileScheduleStep}|req:${selectedRequestNo || ''}|taskTab:${mobileScheduleTaskTab}|task:${
+            mobileScheduleStep === 'work_log_list' || mobileScheduleStep === 'work_log'
+              ? ''
+              : selectedScheduleTaskId || ''
+          }|exp:${expandedScheduleRequestNo || ''}|view:${scheduleViewMode}`
         : activeMenu === '재배일정 요청'
         ? `reqStep:${mobileReqStep}`
         : '';
@@ -6515,6 +6519,7 @@ export default function UserIntroPage() {
       activeMenu,
       myPageTab,
       mobileScheduleStep,
+      mobileWorkLogReturnStep,
       mobileScheduleTaskTab,
       selectedScheduleTaskId,
       mobileReqStep,
@@ -6542,6 +6547,7 @@ export default function UserIntroPage() {
           activeMenu: s.activeMenu,
           myPageTab: s.myPageTab,
           mobileScheduleStep: s.mobileScheduleStep,
+          mobileWorkLogReturnStep: s.mobileWorkLogReturnStep,
           mobileScheduleTaskTab: s.mobileScheduleTaskTab,
           selectedScheduleTaskId: s.selectedScheduleTaskId,
           mobileReqStep: s.mobileReqStep,
@@ -6624,6 +6630,7 @@ export default function UserIntroPage() {
     activeMenu,
     myPageTab,
     mobileScheduleStep,
+    mobileWorkLogReturnStep,
     mobileScheduleTaskTab,
     selectedScheduleTaskId,
     mobileReqStep,
@@ -6660,9 +6667,33 @@ export default function UserIntroPage() {
       isRestoringHistoryRef.current = true;
       navIndexRef.current = targetIdx;
 
+      // 영농일지 목록(work_log_list)에서 작업 기록 작성/수정(work_log) 페이지로 들어온 뒤 브라우저/휴대폰 뒤로가기를 눌렀을 때 항상 영농일지 목록(work_log_list)으로 복귀 보장
+      if (
+        prevSnap &&
+        prevSnap.activeMenu === '재배일정 확인' &&
+        prevSnap.mobileScheduleStep === 'work_log' &&
+        prevSnap.mobileWorkLogReturnStep === 'work_log_list' &&
+        targetIdx < (navStackRef.current.indexOf(prevSnap) >= 0 ? navStackRef.current.indexOf(prevSnap) : targetIdx + 1) &&
+        targetSnap.mobileScheduleStep !== 'work_log_list'
+      ) {
+        setActiveMenu('재배일정 확인');
+        setMobileScheduleStep('work_log_list');
+        if (targetSnap.selectedRequestNo) {
+          setSelectedRequestNo(targetSnap.selectedRequestNo);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => {
+          isRestoringHistoryRef.current = false;
+        }, 0);
+        return;
+      }
+
       setActiveMenu(targetSnap.activeMenu || '홈');
       setMyPageTab(targetSnap.myPageTab || 'FARMLAND');
       setMobileScheduleStep(targetSnap.mobileScheduleStep || 'list');
+      if (targetSnap.mobileWorkLogReturnStep) {
+        setMobileWorkLogReturnStep(targetSnap.mobileWorkLogReturnStep);
+      }
       setMobileScheduleTaskTab(targetSnap.mobileScheduleTaskTab || 'todo');
       if (targetSnap.selectedScheduleTaskId !== undefined) {
         setSelectedScheduleTaskId(targetSnap.selectedScheduleTaskId || '');
@@ -10765,7 +10796,7 @@ export default function UserIntroPage() {
                     return;
                   }
                   if (mobileScheduleStep === 'work_log') {
-                    setMobileScheduleStep(mobileWorkLogReturnStep || 'task_exec');
+                    setMobileScheduleStep(mobileWorkLogReturnStep || 'work_log_list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                   }
@@ -14424,14 +14455,22 @@ export default function UserIntroPage() {
                                           <div
                                             key={entry.id}
                                             onClick={() => {
-                                              if (entry.matchedTask) {
+                                              const targetTask =
+                                                entry.matchedTask ||
+                                                activeCropItem.allTasks.find(
+                                                  (tk: any) => tk.itemId === entry.itemId
+                                                ) ||
+                                                activeCropItem.primaryNextTask ||
+                                                activeCropItem.allTasks[0] ||
+                                                null;
+                                              if (targetTask) {
                                                 prepareTaskForExecAndLog(
-                                                  entry.matchedTask,
+                                                  targetTask,
                                                   activeCropItem.request_no
                                                 );
-                                                setMobileWorkLogReturnStep('work_log_list');
-                                                goToScheduleStep('work_log');
                                               }
+                                              setMobileWorkLogReturnStep('work_log_list');
+                                              goToScheduleStep('work_log');
                                             }}
                                             className="px-3.5 py-3.5 bg-white hover:bg-[#F4FBF6] space-y-2 cursor-pointer transition"
                                           >
