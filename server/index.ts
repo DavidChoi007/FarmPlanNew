@@ -6474,6 +6474,27 @@ const server = http.createServer(async (req, res) => {
         new Set([resolvedReqNo, reqNoInput, displayReqNoInput].filter(Boolean))
       );
 
+      // 삭제 대상 작물명/품종명 파악 (연관 구매 농자재 주문 매칭용)
+      const matchedCropTitles = new Set<string>();
+      for (const rNo of targetReqNos) {
+        const reqRow = db
+          .prepare('SELECT crop_name, item_name_3rd FROM member_schedule_request WHERE request_no = ?')
+          .get(rNo) as { crop_name?: string; item_name_3rd?: string } | undefined;
+        if (reqRow?.crop_name) {
+          matchedCropTitles.add(
+            reqRow.item_name_3rd ? `${reqRow.crop_name} (${reqRow.item_name_3rd})` : reqRow.crop_name
+          );
+        }
+        const planRow = db
+          .prepare('SELECT crop_name, cultivar_name FROM member_crop_plan WHERE request_no = ?')
+          .get(rNo) as { crop_name?: string; cultivar_name?: string } | undefined;
+        if (planRow?.crop_name) {
+          matchedCropTitles.add(
+            planRow.cultivar_name ? `${planRow.crop_name} (${planRow.cultivar_name})` : planRow.crop_name
+          );
+        }
+      }
+
       for (const rNo of targetReqNos) {
         if (onlyProvision) {
           // 재배일정 확인 데이터만 삭제 시: 재배일정 요청(member_schedule_request)은 삭제하지 않고 상태만 업데이트
@@ -6544,6 +6565,31 @@ const server = http.createServer(async (req, res) => {
         );
       }
 
+      // 6. 해당 재배일정과 연관된 농자재 구매 내역(member_agro_order) 및 동기화 상태(구매이력·장바구니·드래프트·작업기록) 연쇄 삭제
+      if (!onlyProvision && targetReqNos.length > 0) {
+        try {
+          const allOrders = db.prepare('SELECT order_no, crop_title, items_json FROM member_agro_order').all() as Array<{
+            order_no: string;
+            crop_title?: string;
+            items_json?: string;
+          }>;
+          for (const ord of allOrders) {
+            const itemsStr = String(ord.items_json || '');
+            const hasReqNo = targetReqNos.some((rNo) => itemsStr.includes(rNo));
+            const hasTitle = ord.crop_title && matchedCropTitles.has(String(ord.crop_title).trim());
+            if (hasReqNo || hasTitle) {
+              db.prepare('DELETE FROM member_agro_order WHERE order_no = ?').run(ord.order_no);
+              await supabaseRestDelete(
+                'member_agro_order',
+                `order_no=eq.${encodeURIComponent(ord.order_no)}`
+              );
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       sendJson(res, {
         ok: true,
         deleted_request_nos: targetReqNos,
@@ -6551,6 +6597,7 @@ const server = http.createServer(async (req, res) => {
         deleted_tables: [
           'member_schedule_request',
           'member_crop_plan',
+          'member_agro_order',
           'schedule_provision_custom_item',
           'schedule_stage_recommendation_log',
           'cultivation_history_log',
@@ -11843,7 +11890,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/mypage/crops/delete' && req.method === 'POST') {
       const { email, crop_plan_id, request_no, display_request_no, only_provision } =
         await readJsonBody(req);
-      const onlyProvision = only_provision !== false;
+      const onlyProvision = Boolean(only_provision);
       const existingPlan = crop_plan_id
         ? (db
             .prepare('SELECT * FROM member_crop_plan WHERE crop_plan_id = ?')
@@ -11852,6 +11899,24 @@ const server = http.createServer(async (req, res) => {
       const targetReqNos = Array.from(
         new Set([request_no, display_request_no, existingPlan?.request_no].filter(Boolean))
       );
+      const matchedCropTitles = new Set<string>();
+      if (existingPlan?.crop_name) {
+        matchedCropTitles.add(
+          existingPlan.cultivar_name
+            ? `${existingPlan.crop_name} (${existingPlan.cultivar_name})`
+            : existingPlan.crop_name
+        );
+      }
+      for (const rNo of targetReqNos) {
+        const reqRow = db
+          .prepare('SELECT crop_name, item_name_3rd FROM member_schedule_request WHERE request_no = ?')
+          .get(rNo) as { crop_name?: string; item_name_3rd?: string } | undefined;
+        if (reqRow?.crop_name) {
+          matchedCropTitles.add(
+            reqRow.item_name_3rd ? `${reqRow.crop_name} (${reqRow.item_name_3rd})` : reqRow.crop_name
+          );
+        }
+      }
 
       if (crop_plan_id) {
         db.prepare('DELETE FROM member_crop_plan WHERE crop_plan_id = ?').run(crop_plan_id);
@@ -11914,6 +11979,28 @@ const server = http.createServer(async (req, res) => {
         );
         if (!onlyProvision) {
           await supabaseRestDelete('schedule_request', `request_id=eq.${encodeURIComponent(rNo)}`);
+        }
+      }
+
+      if (!onlyProvision && targetReqNos.length > 0) {
+        try {
+          const allOrders = db
+            .prepare('SELECT order_no, crop_title, items_json FROM member_agro_order')
+            .all() as Array<{ order_no: string; crop_title?: string; items_json?: string }>;
+          for (const ord of allOrders) {
+            const itemsStr = String(ord.items_json || '');
+            const hasReqNo = targetReqNos.some((rNo) => itemsStr.includes(rNo));
+            const hasTitle = ord.crop_title && matchedCropTitles.has(String(ord.crop_title).trim());
+            if (hasReqNo || hasTitle) {
+              db.prepare('DELETE FROM member_agro_order WHERE order_no = ?').run(ord.order_no);
+              await supabaseRestDelete(
+                'member_agro_order',
+                `order_no=eq.${encodeURIComponent(ord.order_no)}`
+              );
+            }
+          }
+        } catch {
+          // ignore
         }
       }
 

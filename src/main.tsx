@@ -3275,6 +3275,19 @@ if (typeof window !== 'undefined') {
       );
       sr.total = sr.items.length;
       mp.scheduleRequests = sr.items;
+
+      // 2-2. 연관 농자재 구매 내역(orders) 삭제
+      const removedOrderNos: string[] = [];
+      if (Array.isArray(mp.orders)) {
+        mp.orders = mp.orders.filter((o: any) => {
+          const itemsStr = JSON.stringify(o.orderItems || o.items_json || '');
+          const matchedByReq = targetReqNos.some((rNo) => itemsStr.includes(rNo));
+          if (matchedByReq && o.order_no) {
+            removedOrderNos.push(String(o.order_no));
+          }
+          return !matchedByReq;
+        });
+      }
       persistMyPage(mp);
 
       // 3. 재배일정 제공(scheduleProvision) 내 요청 목록 삭제
@@ -3338,6 +3351,9 @@ if (typeof window !== 'undefined') {
       }
       for (const pId of targetPlanIds) {
         await sbDelete('member_crop_plan', `crop_plan_id=eq.${encodeURIComponent(pId)}`);
+      }
+      for (const ordNo of removedOrderNos) {
+        await sbDelete('member_agro_order', `order_no=eq.${encodeURIComponent(ordNo)}`);
       }
       if (nextDeleted.length > 0) {
         const nowStr = getKstNowStr();
