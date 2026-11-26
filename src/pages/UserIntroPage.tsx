@@ -14368,8 +14368,8 @@ export default function UserIntroPage() {
                                 })}
                               </div>
 
-                              {/* 5) 생육단계별 필터 칩 바 */}
-                              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                              {/* 5) 생육단계별 필터 칩 바 (가로 스크롤 없이 여러 줄로 자동 줄바꿈하여 모바일 화면에 전체 표시) */}
+                              <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
                                 <button
                                   type="button"
                                   onClick={() => setMobileJournalStageFilter('ALL')}
