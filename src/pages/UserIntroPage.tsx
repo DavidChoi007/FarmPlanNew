@@ -214,10 +214,10 @@ export default function UserIntroPage() {
     }
   }, [activeMenu, loggedInUser.isLoggedIn]);
 
-  // 로그인 폼 (기본값 CloudBae@naver.com / 1234)
+  // 로그인 폼 (비밀번호는 직접 입력해야 로그인 가능)
   const [loginForm, setLoginForm] = useState({
     email: 'CloudBae@naver.com',
-    password: '1234',
+    password: '',
     gmailAccount: 'cloudbae.farm@gmail.com',
   });
   const [showGmailPicker, setShowGmailPicker] = useState<boolean>(false);
@@ -3741,10 +3741,24 @@ export default function UserIntroPage() {
     }
   };
 
-  // 2. 이메일 로그인 핸들러 (CloudBae@naver.com / 1234 지원)
+  // 2. 이메일 로그인 핸들러 (비밀번호 필수 입력 및 검증)
   const handleEmailLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setAuthNoticeMsg(null);
+    if (!loginForm.email.trim()) {
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '이메일 주소를 입력해 주세요.',
+      });
+      return;
+    }
+    if (!loginForm.password.trim()) {
+      setAuthNoticeMsg({
+        type: 'error',
+        text: '비밀번호를 입력해 주세요.',
+      });
+      return;
+    }
     try {
       const r = await fetch('/api/auth/login', {
         method: 'POST',
@@ -3782,6 +3796,10 @@ export default function UserIntroPage() {
     } catch {
       // ignore
     }
+    setLoginForm((prev) => ({
+      ...prev,
+      password: '',
+    }));
     setLoggedInUser((prev) => ({
       ...prev,
       isLoggedIn: false,
@@ -4163,7 +4181,7 @@ export default function UserIntroPage() {
       setLoginForm((prev) => ({
         ...prev,
         email: res.email || findPwForm.email,
-        password: findPwForm.new_password.trim(),
+        password: '',
       }));
       setFindPwForm((prev) => ({
         ...prev,
@@ -26156,19 +26174,6 @@ export default function UserIntroPage() {
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="font-bold text-slate-700">이메일 주소</label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setLoginForm({
-                              ...loginForm,
-                              email: 'CloudBae@naver.com',
-                              password: '1234',
-                            })
-                          }
-                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md cursor-pointer transition"
-                        >
-                          테스트 계정 자동입력
-                        </button>
                       </div>
                       <input
                         type="text"

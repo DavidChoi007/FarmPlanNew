@@ -10955,6 +10955,15 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      if (!password) {
+        sendJson(
+          res,
+          { ok: false, message: '비밀번호를 입력해 주세요.' },
+          401
+        );
+        return;
+      }
+
       if (String(member.password) !== password) {
         sendJson(
           res,
