@@ -11772,10 +11772,10 @@ export default function UserIntroPage() {
                               </svg>
                               <div className="text-left">
                                 <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em] block leading-tight">
-                                  영농일지 · 작업기록 관리
+                                  작업일지 관리
                                 </span>
                                 <span className="text-[12.5px] font-bold text-[#0E712F] block">
-                                  생육단계·일정 항목별 작업기록 작성 및 조회 (
+                                  생육단계·일정 항목별 작업일지 작성 및 조회 (
                                   {
                                     (cropWorkLogs[activeCropItem.request_no] || []).filter(
                                       (lg) => lg && lg.itemId
@@ -12895,7 +12895,7 @@ export default function UserIntroPage() {
                               </div>
                             </div>
 
-                            {/* 해당 일정 항목에 이미 작성된 작업기록이 있는 경우 요약 카드 표시 */}
+                            {/* 해당 일정 항목에 이미 작성된 작업일지가 있는 경우 요약 카드 표시 */}
                             {(() => {
                               const existingExecLog = (
                                 cropWorkLogs[activeCropItem.request_no] || []
@@ -12906,7 +12906,7 @@ export default function UserIntroPage() {
                                   <div className="flex items-center justify-between gap-2">
                                     <span className="inline-flex items-center gap-1.5 text-[13.5px] font-black text-[#0E712F]">
                                       <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
-                                      <span>작성된 영농일지 작업기록</span>
+                                      <span>작성된 작업일지</span>
                                     </span>
                                     <span className="text-[12.5px] font-bold text-[#15803D]">
                                       작업일: {existingExecLog.workDate}
@@ -12926,7 +12926,7 @@ export default function UserIntroPage() {
                               );
                             })()}
 
-                            {/* 하단 액션 버튼 영역 (첨부 이미지 1번: 농자재 구매 / 작업기록 작성하기) */}
+                            {/* 하단 액션 버튼 영역 (첨부 이미지 1번: 농자재 구매 / 작업일지 작성하기) */}
                             <div className="pt-4 pb-2 space-y-2.5">
                               <button
                                 type="button"
@@ -12954,8 +12954,8 @@ export default function UserIntroPage() {
                                   {(cropWorkLogs[activeCropItem.request_no] || []).some(
                                     (lg) => lg.itemId === selectedTaskItem.itemId
                                   )
-                                    ? '작업기록 수정하기'
-                                    : '작업기록 작성하기'}
+                                    ? '작업일지 수정하기'
+                                    : '작업일지 작성하기'}
                                 </span>
                               </button>
                             </div>
@@ -13512,7 +13512,7 @@ export default function UserIntroPage() {
                               {/* 상단 타이틀 및 영농일지 목록/뒤로가기 */}
                               <div className="flex items-center justify-between gap-2">
                                 <h1 className="text-[25px] font-black text-[#111827] tracking-[-0.03em]">
-                                  {existingItemLog ? '작업 기록 수정' : '작업 기록 작성'}
+                                  {existingItemLog ? '작업일지 수정' : '작업일지 작성'}
                                 </h1>
                                 <button
                                   type="button"
@@ -13986,7 +13986,7 @@ export default function UserIntroPage() {
                                   }).catch(() => {});
 
                                   setMobileJournalToast(
-                                    `[${activeCropItem.shortName} · ${cleanCurTaskTitle}] 작업기록이 영농일지에 저장되었습니다.`
+                                    `[${activeCropItem.shortName} · ${cleanCurTaskTitle}] 작업일지가 저장되었습니다.`
                                   );
                                   setTimeout(() => setMobileJournalToast(''), 3500);
 
@@ -14002,7 +14002,7 @@ export default function UserIntroPage() {
                         );
                       })()}
 
-                    {/* ==================== [페이지 6: 영농일지 (현재 등록된 재배일정별 · 생육단계 및 작업일정 항목별 리스트업 및 작업기록 관리)] ==================== */}
+                    {/* ==================== [페이지 6: 작업일지 (현재 등록된 재배일정별 · 생육단계 및 작업일정 항목별 리스트업 및 작업일지 관리)] ==================== */}
                     {mobileScheduleStep === 'work_log_list' &&
                       (() => {
                         if (!activeCropItem || combinedMobileCrops.length === 0) {
@@ -14011,7 +14011,7 @@ export default function UserIntroPage() {
                               <div className="flex items-center gap-2 pb-2.5 border-b border-[#E5E7EB]">
                                 <span className="w-1.5 h-5 rounded-full bg-[#0E712F] shrink-0" />
                                 <h1 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
-                                  영농일지 · 작업기록
+                                  작업일지
                                 </h1>
                               </div>
                               <div className="rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
@@ -14183,12 +14183,12 @@ export default function UserIntroPage() {
                         return (
                           <div className="mt-2.5 flex-1 flex flex-col justify-between space-y-4">
                             <div className="space-y-3.5">
-                              {/* 1) 상단 헤더: 영농일지 타이틀 + 전체 일정 보기 이동 버튼 */}
+                              {/* 1) 상단 헤더: 작업일지 타이틀 + 전체 일정 보기 이동 버튼 */}
                               <div className="flex items-center justify-between gap-2 pb-2 border-b border-[#E5E7EB]">
                                 <div className="flex items-center gap-2">
                                   <span className="w-1.5 h-5 rounded-full bg-[#0E712F] shrink-0" />
                                   <h1 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
-                                    영농일지 · 작업일정 기록
+                                    작업일지
                                   </h1>
                                 </div>
                                 <button
@@ -14414,7 +14414,7 @@ export default function UserIntroPage() {
                                     allRecordedEntries.push({
                                       id: String(lg.id || `CUSTOM-${lg.createdAt}`),
                                       itemId: String(lg.itemId || ''),
-                                      title: String(lg.taskTitle || '영농 작업기록')
+                                      title: String(lg.taskTitle || '영농 작업일지')
                                         .split(' · ')[0]
                                         .trim(),
                                       dateText: lg.workDate || '',
@@ -29066,12 +29066,12 @@ export default function UserIntroPage() {
                           className="h-[50px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white font-extrabold text-[15px] tracking-[-0.02em] inline-flex items-center justify-center gap-2 cursor-pointer transition shadow-[0_4px_12px_rgba(14,113,47,0.24)]"
                         >
                           <FileEdit className="w-4 h-4 shrink-0" />
-                          <span>작업기록 작성</span>
+                          <span>작업일지 작성</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* ==================== [새로운 '작업기록 작성' 단독 모달리스 폼 — 첨부 이미지 media_1795347603840_fed825b5.jpg 1:1 구성] ==================== */}
+                    {/* ==================== [새로운 '작업일지 작성' 단독 모달리스 폼 — 첨부 이미지 media_1795347603840_fed825b5.jpg 1:1 구성] ==================== */}
                     {isWorkLogFormOpen &&
                       (() => {
                         const filteredScheduleTasks =
@@ -29509,7 +29509,7 @@ export default function UserIntroPage() {
                                       />
                                     </svg>
                                     <h3 className="text-[22px] font-black text-[#111827] tracking-[-0.03em]">
-                                      작업기록 작성
+                                      작업일지 작성
                                     </h3>
                                   </div>
                                   <p className="mt-1 text-[13.5px] font-medium text-[#4B5563] tracking-[-0.02em]">
@@ -29600,7 +29600,7 @@ export default function UserIntroPage() {
                                               : 'text-[#6B7280]'
                                           }`}
                                         >
-                                          (재배일정의 작업 기록)
+                                          (재배일정의 작업일지)
                                         </div>
                                       </button>
 
@@ -29635,7 +29635,7 @@ export default function UserIntroPage() {
                                               : 'text-[#6B7280]'
                                           }`}
                                         >
-                                          (일정에 없는 작업 기록)
+                                          (일정에 없는 작업일지)
                                         </div>
                                       </button>
                                     </div>
@@ -33774,7 +33774,7 @@ export default function UserIntroPage() {
                   title={
                     isWorkLogDisabled
                       ? '진행중인 작물재배 일정에서 항목을 먼저 선택해 주세요'
-                      : '영농일지 · 작업일정 기록 보기'
+                      : '작업일지 보기'
                   }
                   onClick={() => {
                     if (isWorkLogDisabled) return;
