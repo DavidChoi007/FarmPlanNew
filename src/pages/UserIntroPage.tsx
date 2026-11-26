@@ -14271,6 +14271,8 @@ export default function UserIntroPage() {
                                     itemId: string;
                                     title: string;
                                     dateText: string;
+                                    materialLine: string;
+                                    memoLine: string;
                                     contentText: string;
                                     stageName: string;
                                     executedDateText: string;
@@ -14315,6 +14317,8 @@ export default function UserIntroPage() {
                                         itemId: tk.itemId,
                                         title: cleanTitle,
                                         dateText: tk.effDate || lg.workDate || '',
+                                        materialLine: matSummary,
+                                        memoLine: memoSummary,
                                         contentText: contentSummary,
                                         stageName: grp.phaseTitle || lg.stageLabel || '생육단계',
                                         executedDateText: lg.workDate || tk.effDate || '',
@@ -14346,6 +14350,8 @@ export default function UserIntroPage() {
                                         .split(' · ')[0]
                                         .trim(),
                                       dateText: lg.workDate || '',
+                                      materialLine: matSummary,
+                                      memoLine: memoSummary,
                                       contentText:
                                         [matSummary, memoSummary].filter(Boolean).join(' · ') ||
                                         lg.taskTitle ||
@@ -14427,33 +14433,20 @@ export default function UserIntroPage() {
                                                 goToScheduleStep('work_log');
                                               }
                                             }}
-                                            className="px-3.5 py-3.5 bg-white hover:bg-[#F4FBF6] flex items-center justify-between gap-3 cursor-pointer transition"
+                                            className="px-3.5 py-3.5 bg-white hover:bg-[#F4FBF6] space-y-2 cursor-pointer transition"
                                           >
-                                            {/* 좌측: 제목 · 일자 · 내용 */}
-                                            <div className="min-w-0 flex-1 space-y-1">
-                                              <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-[16px] font-black text-[#111827] tracking-[-0.03em]">
+                                            {/* 1줄(상단): 좌측 제목·일자 / 우측 끝 생육단계 명칭·시행일 */}
+                                            <div className="flex items-start justify-between gap-2.5">
+                                              <div className="min-w-0 flex-1 space-y-0.5">
+                                                <div className="text-[16px] font-black text-[#111827] tracking-[-0.03em] leading-snug">
                                                   {entry.title}
-                                                </span>
-                                                <span className="text-[12px] font-bold text-[#6B7280]">
-                                                  일자 {entry.dateText}
-                                                </span>
+                                                </div>
+                                                <div className="text-[12px] font-bold text-[#6B7280]">
+                                                  예정일자 {entry.dateText}
+                                                </div>
                                               </div>
-                                              <div className="text-[13.5px] font-semibold text-[#374151] leading-snug break-keep">
-                                                {entry.contentText}
-                                              </div>
-                                            </div>
 
-                                            {/* 우측 끝: 생육단계 명칭 · 시행일 (+ 사진 썸네일) */}
-                                            <div className="flex items-center gap-2.5 shrink-0">
-                                              {entry.photoDataUrl && (
-                                                <img
-                                                  src={entry.photoDataUrl}
-                                                  alt="작업 사진"
-                                                  className="w-10 h-10 rounded-[8px] object-cover border border-[#E5E7EB] shrink-0"
-                                                />
-                                              )}
-                                              <div className="text-right space-y-1">
+                                              <div className="text-right shrink-0 space-y-0.5">
                                                 <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[#0E712F] text-[11.5px] font-extrabold whitespace-nowrap">
                                                   {entry.stageName}
                                                 </span>
@@ -14461,6 +14454,34 @@ export default function UserIntroPage() {
                                                   시행일 {entry.executedDateText}
                                                 </div>
                                               </div>
+                                            </div>
+
+                                            {/* 2줄(새 라인): 작성한 영농일지 정보 (사용 농자재·사용량 / 메모 / 사진) 전체 폭 표시 */}
+                                            <div className="pt-1.5 border-t border-[#F1F5F9] flex items-start justify-between gap-2.5">
+                                              <div className="min-w-0 flex-1 space-y-1">
+                                                {entry.materialLine ? (
+                                                  <div className="text-[13.5px] font-extrabold text-[#111827] leading-snug break-keep">
+                                                    사용 농자재: {entry.materialLine}
+                                                  </div>
+                                                ) : null}
+                                                {entry.memoLine ? (
+                                                  <div className="text-[13px] font-semibold text-[#374151] leading-snug break-keep">
+                                                    내용: {entry.memoLine}
+                                                  </div>
+                                                ) : !entry.materialLine ? (
+                                                  <div className="text-[13px] font-semibold text-[#374151] leading-snug break-keep">
+                                                    {entry.contentText}
+                                                  </div>
+                                                ) : null}
+                                              </div>
+
+                                              {entry.photoDataUrl && (
+                                                <img
+                                                  src={entry.photoDataUrl}
+                                                  alt="작업 사진"
+                                                  className="w-11 h-11 rounded-[8px] object-cover border border-[#E5E7EB] shrink-0"
+                                                />
+                                              )}
                                             </div>
                                           </div>
                                         ))}
