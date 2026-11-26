@@ -187,7 +187,7 @@ export default function UserIntroPage() {
 
   // 모든 메뉴 페이지(홈 제외)는 회원 전용: 비로그인 상태에서 메뉴 이동 시 로그인 폼을 즉시 표시
   const setActiveMenu = (nextMenu: string) => {
-    if (nextMenu !== '홈' && !loggedInUser.isLoggedIn) {
+    if (nextMenu !== '홈' && !loggedInUser.isLoggedIn && !loggedInUserRef.current?.isLoggedIn) {
       setIsMobileGnbDrawerOpen(false);
       setShowGmailPicker(false);
       setAuthModalTab('LOGIN');
@@ -458,6 +458,8 @@ export default function UserIntroPage() {
   const ignoreNextPopStateRef = React.useRef<boolean>(false);
   const navStackRef = React.useRef<any[]>([]);
   const navIndexRef = React.useRef<number>(0);
+  const loggedInUserRef = React.useRef(loggedInUser);
+  loggedInUserRef.current = loggedInUser;
   const [selectedCatalogMatId, setSelectedCatalogMatId] = useState<string>('FERT-PRD-01');
   const [newCustomMatForm, setNewCustomMatForm] = useState<{
     sub_type: string;
@@ -6676,7 +6678,7 @@ export default function UserIntroPage() {
         targetIdx < (navStackRef.current.indexOf(prevSnap) >= 0 ? navStackRef.current.indexOf(prevSnap) : targetIdx + 1) &&
         targetSnap.mobileScheduleStep !== 'work_log_list'
       ) {
-        setActiveMenu('재배일정 확인');
+        setActiveMenuState('재배일정 확인');
         setMobileScheduleStep('work_log_list');
         if (targetSnap.selectedRequestNo) {
           setSelectedRequestNo(targetSnap.selectedRequestNo);
@@ -6688,7 +6690,7 @@ export default function UserIntroPage() {
         return;
       }
 
-      setActiveMenu(targetSnap.activeMenu || '홈');
+      setActiveMenuState(targetSnap.activeMenu || '홈');
       setMyPageTab(targetSnap.myPageTab || 'FARMLAND');
       setMobileScheduleStep(targetSnap.mobileScheduleStep || 'list');
       if (targetSnap.mobileWorkLogReturnStep) {
