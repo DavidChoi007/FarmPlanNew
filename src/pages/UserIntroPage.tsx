@@ -3151,13 +3151,9 @@ export default function UserIntroPage() {
       const resolvedName =
         res.member.name && res.member.name !== '배클라우드' ? res.member.name : '배철민';
       setLoggedInUser((prev) => {
-        const shouldBeLoggedIn =
-          markLoggedIn === true ? true : markLoggedIn === false ? false : prev.isLoggedIn;
+        const shouldBeLoggedIn = markLoggedIn === true ? true : prev.isLoggedIn;
         if (!shouldBeLoggedIn) {
-          return {
-            ...prev,
-            isLoggedIn: false,
-          };
+          return prev;
         }
         const nextUser = {
           id: resolvedName,
@@ -6599,7 +6595,7 @@ export default function UserIntroPage() {
         .then((r) => r.json())
         .then((res) => setData(res))
         .catch(() => {});
-      loadMyPageData(loggedInUser.email || 'CloudBae@naver.com', false);
+      loadMyPageData(loggedInUser.email || 'CloudBae@naver.com');
       const targetReqNo =
         expandedScheduleRequestNo ||
         selectedRequestNo ||
