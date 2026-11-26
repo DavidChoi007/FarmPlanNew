@@ -22,6 +22,13 @@ export type CropAgronomicStageSpec = {
   dilutionText: string;
   usageMethod: string;
   usageCaution: string;
+  // 엑셀 통합 입력표 기반 확장 추천 분석 속성 (관리구분 / 적용토양 / 추천대상·기본후보 / 선정·실행조건 / 공시·등록번호)
+  managementCategory?: string;
+  targetSoilCondition?: '공통' | '산성 토양' | '연작지' | '신규 토양' | '공통·산성토양·연작지 맞춤';
+  recommendationTargetCandidate?: string;
+  selectionExecutionCondition?: string;
+  officialRegNo?: string;
+  cultivationMode?: 'OPEN_FIELD' | 'FACILITY' | 'COMMON';
 };
 
 export type CropLifecycleStageCode = {
@@ -69,441 +76,620 @@ const addDaysYmd = (ymd: string, delta: number): string => {
   return dt.toISOString().slice(0, 10);
 };
 
-// 1. 마늘 (전남·남부/중부 월동재배 실제 현장 표준 16단계 — 9월 종구소독·밑거름 -> 10월 파종 -> 11~1월 월동 -> 2~3월 생육재개·추비 -> 4월 구비대 -> 5월 관수중단·수확)
-const GARLIC_STAGES: CropAgronomicStageSpec[] = [
-  {
-    itemId: 'SCH-01',
-    stepOrder: 1,
-    stageNum: '01',
-    stageGroupId: 'STG-PREP',
-    stageGroupName: '파종 준비',
-    subItemName: '종구 선별·침지소독',
-    processCode: 'PRC-01',
-    processName: '건전 종구(씨마늘) 선별 및 침지·분의 소독',
-    offsetDays: -25,
-    spanDays: 4,
-    targetPgdd: 0,
-    iconType: 'WORK',
-    workContent:
-      '건전한 씨마늘(종구)을 쪽분리하여 상처·병반 인편을 골라내고, 마늘 등록 종구소독제(천연유황·살균·살충제)에 30분~1시간 침지 소독 후 그늘에 말려 파종을 준비합니다.',
-    usageTip:
-      '[농자재 사용팁] 아즈모엠지(천연유황 80%) 또는 종구 전용 소독제로 파종 전 1회 30분 침지·분의 처리하면 흑색썩음균핵병과 뿌리응애·선충 초기 감염을 원천 차단합니다.',
-    climateRule: '종구 소독 후 직사광선을 피하고 통풍이 잘되는 그늘에서 물기를 건조한 뒤 파종합니다.',
-    preferredMaterialIds: ['MAT-PEST-04', 'MAT-SEED-01'],
-    materialName: '아즈모엠지 (500g)',
-    materialSubLabel: '천연유황 80% 종구소독제 (공시-2-4-156)',
-    materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500g (1개)',
-    dilutionText: '분의 처리 또는 1,000배액 1회 30분 침지 처리',
-    usageMethod: '종구 쪽분리 후 침지·분의 소독 및 음건',
-    usageCaution: '소독 직후 젖은 상태로 밀폐 보관하면 부패 우려가 있으므로 즉시 통풍 건조',
-  },
-  {
-    itemId: 'SCH-02',
-    stepOrder: 2,
-    stageNum: '01',
-    stageGroupId: 'STG-PREP',
-    stageGroupName: '파종 준비',
-    subItemName: '토양검정·배수 및 토양해충 방제',
-    processCode: 'PRC-02',
-    processName: '토양검정(pH·EC)·배수 점검 및 토양해충 입제 살포',
-    offsetDays: -20,
-    spanDays: 4,
-    targetPgdd: 0,
-    iconType: 'PEST',
-    workContent:
-      '포장 pH·EC·양분 및 배수로 상태를 점검하고, 고자리파리·뿌리응애·거세미나방 등 토양 서식 해충 방제를 위해 계피·고삼 추출물 기반 토양해충 관리 자재를 전층 살포합니다.',
-    usageTip:
-      '[농자재 사용팁] 땅 해충싹(계피추출물 7%+고삼추출물 3%, 2kg/100평) 또는 포스 입제를 경운 전 토양 표면에 고르게 살포하여 토양 속 월동 해충 밀도를 낮추세요.',
-    climateRule: '강우 직후 과습 상태를 피하고 토양 수분이 적정할 때 토양 살포 및 배수로 정비를 수행합니다.',
-    preferredMaterialIds: ['MAT-PEST-17', 'FERT-PRD-04'],
-    materialName: '땅 해충싹 (2kg)',
-    materialSubLabel: '계피7%·고삼3% 토양해충 관리제 (공시-3-5-105)',
-    materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
-    usageAmountPer100Pyeong: '100평당 2kg (1포)',
-    dilutionText: '원제 그대로 토양 전면 살포 (무희석)',
-    usageMethod: '로터리 경운 전 토양 전면 균일 살포 후 혼화',
-    usageCaution: '고자리파리·뿌리응애 피해 상습지와 미숙 유기물 시용 포장은 필수 처리',
-  },
-  {
-    itemId: 'SCH-03',
-    stepOrder: 3,
-    stageNum: '01',
-    stageGroupId: 'STG-PREP',
-    stageGroupName: '파종 준비',
-    subItemName: '밑거름·석회고토·미생물 투입',
-    processCode: 'PRC-03',
-    processName: '밑거름(완숙퇴비·구아노)·석회고토(산성토양)·토양미생물(연작지) 투입',
-    offsetDays: -14,
-    spanDays: 6,
-    targetPgdd: 0,
-    iconType: 'FERTILIZER',
-    workContent:
-      '파종 2주 전 토양검정 결과에 맞춰 완숙 유기질 밑거름(엔비올 트리플 20kg/30평), 산성 토양 교정용 석회고토(돌로마이트·칼슘·마그네슘 20kg), 연작지 토양개량 미생물(토생이 2kg/100평)을 투입하고 심경 로터리합니다.',
-    usageTip:
-      '[농자재 사용팁] 엔비올 트리플(질소질구아노 85.5%+랑베나이트 7.6%)과 석회고토, 연작지용 토생이(미생물+점토광물)를 파종 14일 전에 시비·혼화하여 가스 피해를 예방하세요.',
-    climateRule: '미숙 퇴비는 고자리파리와 뿌리 부패를 유발하므로 반드시 파종 2주 전에 완전 부숙 자재로 시비합니다.',
-    preferredMaterialIds: ['FERT-PRD-05', 'FERT-PRD-01'],
-    materialName: '엔비올 트리플 (20kg) + 석회고토·토생이',
-    materialSubLabel: '질소질구아노 85.5% 밑거름 (공시-2-3-287)',
-    materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
-    usageAmountPer100Pyeong: '엔비올 트리플 3포 + 토생이 1포 / 100평',
-    dilutionText: '입상 원제 토양 살포 후 심경 로터리',
-    usageMethod: '파종 2주 전 전층 살포 후 15~20cm 깊이 경운',
-    usageCaution: '산성토양은 석회고토 병행, 연작지는 토생이(공시-2-3-398) 병행 투입',
-  },
-  {
-    itemId: 'SCH-04',
-    stepOrder: 4,
-    stageNum: '02',
-    stageGroupId: 'STG-PLANT',
-    stageGroupName: '파종·발아기',
-    subItemName: '종구 파종·멀칭 비닐 피복',
-    processCode: 'PRC-07',
-    processName: '본밭 종구 파종(5~7cm 복토) 및 0.02mm 멀칭 비닐 피복',
-    offsetDays: 0,
-    spanDays: 4,
-    targetPgdd: 25,
-    iconType: 'WORK',
-    workContent:
-      '소독된 씨마늘(종구)의 뿌리 부분이 아래로 향하도록 파종 깊이 5~7cm, 주간 12~15cm 간격으로 파종·복토한 뒤 충분한 수분 공급 후 0.02mm 유공 멀칭 비닐을 피복합니다.',
-    usageTip:
-      '[농자재 사용팁] 파종 직후 토양 수분이 충분해야 초기 발근이 균일하게 이루어지며, 0.02mm 멀칭 비닐로 피복하여 지온 유지와 잡초 억제를 수행하세요.',
-    climateRule: '난지형·시설 마늘의 파종 적온(평균기온 15~20℃) 도달 및 토양 적습일에 파종을 완료합니다.',
-    preferredMaterialIds: ['MAT-NUTR-03', 'FERT-PRD-03'],
-    materialName: '0.02mm 마늘 전용 멀칭 비닐',
-    materialSubLabel: '지온 유지·수분 보존 피복 자재',
-    materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
-    usageAmountPer100Pyeong: '100평당 멀칭 비닐 1~2롤',
-    dilutionText: '두둑 규격에 맞춘 유공 비닐 피복',
-    usageMethod: '종구 파종 및 5~7cm 복토·관수 직후 두둑 밀착 피복',
-    usageCaution: '인편을 거꾸로 심거나 너무 얕게 심으면 동해 및 벌마늘 발생이 증가하므로 깊이 준수',
-  },
-  {
-    itemId: 'SCH-05',
-    stepOrder: 5,
-    stageNum: '02',
-    stageGroupId: 'STG-PLANT',
-    stageGroupName: '발아·초기생육기',
-    subItemName: '발아·초기 토양병해(흑색썩음균핵병) 점검',
-    processCode: 'PRC-09',
-    processName: '발아·맹아 유인 및 흑색썩음균핵병 초기 토양관주 방제',
-    offsetDays: 7,
-    spanDays: 5,
-    targetPgdd: 95,
-    iconType: 'PEST',
-    workContent:
-      '파종 후 싹이 비닐 구멍 위로 고르게 출아하는지 확인(비닐 속에 걸린 싹 꺼내주기)하고, 흑색썩음균핵병 등 초기 토양병해 예방을 위해 천연유황 자재를 1,000배 희석하여 엽면 및 토양 관주합니다.',
-    usageTip:
-      '[농자재 사용팁] 발아 초기 아즈모엠지(천연유황 80%, 1,000배액)를 엽면 및 토양 관주하면 지제부 흑색썩음균핵병과 초기 곰팡이 병해를 효과적으로 예방합니다.',
-    climateRule: '발아기 비닐 내부 고온 장해를 막기 위해 비닐 밑에 눌린 싹을 즉시 구멍 밖으로 유도합니다.',
-    preferredMaterialIds: ['MAT-PEST-04', 'MAT-NUTR-08'],
-    materialName: '아즈모엠지 (500g)',
-    materialSubLabel: '천연유황 80% 흑색썩음균핵병 예방 (공시-2-4-156)',
-    materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500g (1,000배 희석)',
-    dilutionText: '물 500L에 500g (1,000배액)',
-    usageMethod: '출아 직후 엽면 및 지제부 토양 관주 처리',
-    usageCaution: '월동 전·후 기상과 토양 과습 여부에 따라 예방 관주 실시',
-  },
-  {
-    itemId: 'SCH-06',
-    stepOrder: 6,
-    stageNum: '03',
-    stageGroupId: 'STG-PEST',
-    stageGroupName: '초기생육기',
-    subItemName: '초기 병해충(고자리파리·뿌리응애) 예찰',
-    processCode: 'PRC-11',
-    processName: '초기생육기 고자리파리·뿌리응애 정밀 예찰 및 관주 방제',
-    offsetDays: 21,
-    spanDays: 5,
-    targetPgdd: 210,
-    iconType: 'PEST',
-    workContent:
-      '본엽 2~3매 전개 시기에 아랫잎 끝이 노랗게 마르거나 생육이 부진한 포기를 뽑아 고자리파리 유충 및 뿌리응애 감염 여부를 예찰하고 등록 자재(1,000배액)를 지제부에 관주합니다.',
-    usageTip:
-      '[농자재 사용팁] 해충싹(Limonene+Cinnamaldehyde, 공시-2-5-311) 1,000배액을 엽면 및 뿌리권 토양에 관주하여 월동 전 고자리파리·뿌리응애 피해를 차단하세요.',
-    climateRule: '가을철 지온이 15℃ 내외로 유지될 때 고자리파리 산란 및 유충 활동이 활발하므로 집중 예찰합니다.',
-    preferredMaterialIds: ['MAT-PEST-18', 'MAT-PEST-09'],
-    materialName: '해충싹 (500ml)',
-    materialSubLabel: '고자리파리·뿌리응애 관리제 (공시-2-5-311)',
-    materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500ml (1병)',
-    dilutionText: '물 500L에 500ml (1,000배 희석)',
-    usageMethod: '엽면 살포 및 뿌리 지제부 토양 관주',
-    usageCaution: '약액이 마늘 밑둥(뿌리권)까지 충분히 스며들도록 관주량 확보',
-  },
-  {
-    itemId: 'SCH-07',
-    stepOrder: 7,
-    stageNum: '03',
-    stageGroupId: 'STG-GROWTH',
-    stageGroupName: '초기생육기',
-    subItemName: '초기 생육상태 점검·월동전 추비',
-    processCode: 'PRC-13',
-    processName: '월동 전 초세 확보를 위한 질산태 NK칼슘 추비 시비',
-    offsetDays: 31,
-    spanDays: 5,
-    targetPgdd: 310,
-    iconType: 'FERTILIZER',
-    workContent:
-      '월동 진입 전 뿌리 활착과 본엽 3~5매 초세를 확보하기 위해 초세·토양검정·시설 온도를 확인하고 질산태 NK칼슘복합비료(야라 유니칼슘 10kg/100평)를 시비합니다.',
-    usageTip:
-      '[농자재 사용팁] 야라 유니칼슘(14-0-15+17CaO+0.2B)을 100평당 10kg 시비하면 저온기에도 흡수가 빠른 질산태 질소와 칼슘·붕소가 공급되어 내한성이 강화됩니다.',
-    climateRule: '본격적인 한파 도래 3~4주 전에 시비하여 월동 전 건실한 뿌리와 엽초를 형성시킵니다.',
-    preferredMaterialIds: ['FERT-PRD-02', 'MAT-NUTR-08'],
-    materialName: '야라 유니칼슘 (10kg)',
-    materialSubLabel: '질산태 NK칼슘복합비료 14-0-15+17CaO+0.2B',
-    materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
-    usageAmountPer100Pyeong: '100평당 10kg (1포)',
-    dilutionText: '고랑·포기 사이 토양 살포 또는 관주 시비',
-    usageMethod: '월동 전 초세 확인 후 균일 살포 및 가벼운 관수',
-    usageCaution: '초세가 과도하게 웃자란 포장은 질소 시비량을 줄여 동해 예방',
-  },
-  {
-    itemId: 'SCH-08',
-    stepOrder: 8,
-    stageNum: '03',
-    stageGroupId: 'STG-GROWTH',
-    stageGroupName: '월동기',
-    subItemName: '월동 보온(부직포 피복)·환기·관수 점검',
-    processCode: 'PRC-14',
-    processName: '월동기 부직포(20g) 보온 피복 및 시설 환기·결로 관리',
-    offsetDays: 56,
-    spanDays: 10,
-    targetPgdd: 410,
-    iconType: 'WORK',
-    workContent:
-      '본격적인 겨울 한파에 대비하여 월동용 부직포(20g)를 피복하여 동해와 건조해를 예방하고, 시설 재배지의 경우 주간 과습·고온·결로 방지를 위한 환기 및 수분 관리를 실시합니다.',
-    usageTip:
-      '[농자재 사용팁] 월동 전 20g 규격 부직포를 덮어주면 한겨울 최저기온 급강하 시 생장점 동해를 막고 이른 봄 생육재개를 앞당깁니다.',
-    climateRule: '일평균기온이 4~5℃ 이하로 내려가는 초겨울 시점에 보온 피복을 완료하고 시설 내 과습 결로를 차단합니다.',
-    preferredMaterialIds: ['MAT-NUTR-16', 'MAT-NUTR-13'],
-    materialName: '월동 보온용 부직포 (20g)',
-    materialSubLabel: '동해·건조해 방지 보온 피복 자재',
-    materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
-    usageAmountPer100Pyeong: '100평 면적 규격 부직포 피복',
-    dilutionText: '포장 두둑 전면 피복 및 고정핀 고정',
-    usageMethod: '월동 한파 전 피복 및 시설 주간 환기 관리',
-    usageCaution: '시설 내부 과습·고온 시 잿빛곰팡이병·균핵병이 발생하므로 낮 시간 환기 필수',
-  },
-  {
-    itemId: 'SCH-09',
-    stepOrder: 9,
-    stageNum: '04',
-    stageGroupId: 'STG-PEST',
-    stageGroupName: '월동기',
-    subItemName: '월동기 잎마름병·흑색썩음균핵병 예찰',
-    processCode: 'PRC-15',
-    processName: '월동기 잎마름병·흑색썩음균핵병 예찰 및 예방 방제',
-    offsetDays: 92,
-    spanDays: 7,
-    targetPgdd: 480,
-    iconType: 'PEST',
-    workContent:
-      '월동기 시설 내 습도 상승이나 온난한 날에 발생하는 잎마름병·흑색썩음균핵병·춘부병 증상을 예찰하고, 증상 및 발생 환경 확인 후 등록 자재(잰닥터6 500배액)를 살포합니다.',
-    usageTip:
-      '[농자재 사용팁] 잰닥터6(공시-3-6-063) 500배액을 맑고 포근한 날 낮 시간대에 살포하여 월동기 병원균 확산을 억제하세요.',
-    climateRule: '겨울철 살포 시 동해를 입지 않도록 기온이 영상 10℃ 이상 오르는 맑은 날 정오 무렵에 살포합니다.',
-    preferredMaterialIds: ['MAT-PEST-03', 'MAT-PEST-04'],
-    materialName: '잰닥터6 (500ml)',
-    materialSubLabel: '잎마름병·균핵병 관리 자재 (공시-3-6-063)',
-    materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500ml (1병)',
-    dilutionText: '물 250L에 500ml (500배 희석)',
-    usageMethod: '경엽 및 지제부 균일 살포',
-    usageCaution: '살포 후 해가 지기 전에 약액이 완전히 마르도록 오전~정오 살포 및 환기',
-  },
-  {
-    itemId: 'SCH-10',
-    stepOrder: 10,
-    stageNum: '04',
-    stageGroupId: 'STG-GROWTH',
-    stageGroupName: '생육재개기',
-    subItemName: '생육재개기 1차 웃거름(추비) 시비',
-    processCode: 'PRC-16',
-    processName: '해동 직후 생육재개기 1차 웃거름(질소·칼리·칼슘) 시비',
-    offsetDays: 123,
-    spanDays: 6,
-    targetPgdd: 590,
-    iconType: 'FERTILIZER',
-    workContent:
-      '2월 중순 기온 상승과 함께 새 뿌리와 새잎 생장이 재개되는 시기에 토양 양분과 초세를 확인하여 1차 웃거름(야라 유니칼슘 등 질소·칼리·칼슘 함유 비료)을 시비합니다.',
-    usageTip:
-      '[농자재 사용팁] 생육재개 직후 1차 웃거름으로 유니칼슘(10kg/100평)을 시비하고 가볍게 관수하면 비료가 뿌리권으로 신속히 흡수되어 봄철 초기 경엽 신장이 빨라집니다.',
-    climateRule: '일평균기온이 5~7℃ 이상 회복되는 해동기에 시비하며 강우 직전이나 가뭄 후 일시 과다 시비를 피합니다.',
-    preferredMaterialIds: ['FERT-PRD-02', 'MAT-NUTR-11'],
-    materialName: '야라 유니칼슘 (10kg)',
-    materialSubLabel: '생육재개기 1차 웃거름 (14-0-15+17CaO+0.2B)',
-    materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
-    usageAmountPer100Pyeong: '100평당 10kg (1포)',
-    dilutionText: '포기 사이 균일 살포 후 관수',
-    usageMethod: '2월 중순 생육재개 확인 즉시 1차 추비',
-    usageCaution: '비닐 위에 뿌릴 경우 비닐 구멍 안으로 비료가 들어가도록 털어주고 관수 실시',
-  },
-  {
-    itemId: 'SCH-11',
-    stepOrder: 11,
-    stageNum: '04',
-    stageGroupId: 'STG-PEST',
-    stageGroupName: '생육재개기',
-    subItemName: '생육재개기 잎마름병·춘부병 예방 방제',
-    processCode: 'PRC-17',
-    processName: '생육재개기 잎마름병·세균성 무름병 예방 방제',
-    offsetDays: 133,
-    spanDays: 5,
-    targetPgdd: 670,
-    iconType: 'PEST',
-    workContent:
-      '해동 후 기온과 습도가 올라가면서 급증하는 잎마름병·춘부병(봄철 세균성 무름병) 예방을 위해 식물추출물 기반 등록 자재(쓰리킹 500배액)를 경엽 살포합니다.',
-    usageTip:
-      '[농자재 사용팁] 쓰리킹(식물추출물, 공시-2-6-115) 500배액을 월동 직후 생육재개기에 예방 살포하면 봄비 전후 잎마름병 감염을 선제 차단합니다.',
-    climateRule: '봄철 강우 예보 1~2일 전 맑은 날에 예방 살포하여 잎 표면에 보호막을 형성합니다.',
-    preferredMaterialIds: ['MAT-PEST-03', 'MAT-PEST-12'],
-    materialName: '쓰리킹 (500ml)',
-    materialSubLabel: '식물추출물 잎마름병 예방자재 (공시-2-6-115)',
-    materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500ml (1병)',
-    dilutionText: '물 250L에 500ml (500배 희석)',
-    usageMethod: '잎 앞뒷면 및 줄기 밑둥 충분 살포',
-    usageCaution: '전착제를 혼용하면 마늘 잎의 왁스층에 약액이 고르게 부착되어 효과 증대',
-  },
-  {
-    itemId: 'SCH-12',
-    stepOrder: 12,
-    stageNum: '05',
-    stageGroupId: 'STG-GROWTH',
-    stageGroupName: '잎·구 비대기',
-    subItemName: '2차 웃거름(마감 추비) 시비',
-    processCode: 'PRC-18',
-    processName: '잎·구 비대 초기 2차 웃거름(칼슘·붕소·질소) 마감 시비',
-    offsetDays: 147,
-    spanDays: 5,
-    targetPgdd: 790,
-    iconType: 'FERTILIZER',
-    workContent:
-      '경엽 신장 및 인편 분화·구 비대 진입기에 맞춰 2차 웃거름(나이트라보 10kg/100평: N 15.4%, CaO 25.6%, B 0.3%)을 시비합니다. 벌마늘(이차생장) 방지를 위해 3월 중하순 이후 추비는 금지합니다.',
-    usageTip:
-      '[농자재 사용팁] 나이트라보(질산칼슘+붕소, 10kg/100평)를 월동 후 2차 마감 웃거름으로 시비하면 구 비대기 세포벽 강화와 구중 증대에 탁월합니다.',
-    climateRule: '3월 하순 이후 늦은 질소 추비는 벌마늘(2차 생장)과 저장성 저하의 원인이 되므로 반드시 적기에 마감합니다.',
-    preferredMaterialIds: ['FERT-PRD-20', 'MAT-NUTR-02'],
-    materialName: '나이트라보 (10kg)',
-    materialSubLabel: '칼슘·붕소 함유 2차 웃거름 (N 15.4%·CaO 25.6%·B 0.3%)',
-    materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
-    usageAmountPer100Pyeong: '100평당 10kg (1포)',
-    dilutionText: '고랑·포기 사이 살포 후 관수',
-    usageMethod: '3월 상·중순 2차 웃거름 시비 (최종 마감 추비)',
-    usageCaution: '과잉 질소 시비 및 3월 말 이후 늦은 추비 절대 금지 (벌마늘 예방)',
-  },
-  {
-    itemId: 'SCH-13',
-    stepOrder: 13,
-    stageNum: '05',
-    stageGroupId: 'STG-PEST',
-    stageGroupName: '잎·구 비대기',
-    subItemName: '녹병·잎마름병 예찰 및 방제',
-    processCode: 'PRC-20',
-    processName: '경엽·구 비대기 녹병·잎마름병 정밀 예찰 및 방제',
-    offsetDays: 157,
-    spanDays: 6,
-    targetPgdd: 890,
-    iconType: 'PEST',
-    workContent:
-      '봄철 기온 상승과 강우·시설 습도 증가에 따라 잎에 주황색 돌기가 생기는 녹병과 잎마름병 발생 밀도를 예찰하고 아즈모엠지(천연유황 1,000배액)를 엽면 및 토양에 살포합니다.',
-    usageTip:
-      '[농자재 사용팁] 녹병·잎마름병 초기 예찰 시 아즈모엠지(천연유황 80%, 1,000배액)를 엽면 살포하면 동화엽(광합성 잎)을 끝까지 건전하게 유지할 수 있습니다.',
-    climateRule: '봄비가 잦거나 시설 내 상대습도가 75% 이상 지속될 때 7~10일 간격으로 집중 예찰합니다.',
-    preferredMaterialIds: ['MAT-PEST-03', 'MAT-PEST-04'],
-    materialName: '아즈모엠지 (500g)',
-    materialSubLabel: '천연유황 80% 녹병·잎마름병 관리 (공시-2-4-156)',
-    materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500g (1개)',
-    dilutionText: '물 500L에 500g (1,000배 희석)',
-    usageMethod: '엽면 및 지제부 토양 관주 살포',
-    usageCaution: '고온기 한낮 살포를 피하고 오전 또는 해질 무렵 선선할 때 살포',
-  },
-  {
-    itemId: 'SCH-14',
-    stepOrder: 14,
-    stageNum: '05',
-    stageGroupId: 'STG-PEST',
-    stageGroupName: '구 비대기',
-    subItemName: '총채벌레 예찰·방제 및 구비대 수분·칼슘 관리',
-    processCode: 'PRC-22',
-    processName: '구 비대기 총채벌레·고자리파리 방제 및 구비대 적습·칼슘 관리',
-    offsetDays: 173,
-    spanDays: 15,
-    targetPgdd: 1050,
-    iconType: 'PEST',
-    workContent:
-      '4월 기온 상승기 엽초 사이에 숨어 즙액을 빨아먹는 총채벌레를 예찰하여 가루지기 골드(1,000배액)로 방제하고, 구 비대 최성기 수분 공급(점적관수) 및 스토피트(칼슘 35% 유기피막보조제 1,000배액) 엽면 시비를 실시합니다.',
-    usageTip:
-      '[농자재 사용팁] 총채벌레 방제용 가루지기 골드(데리스추출물+식물성오일, 공시-2-5-303) 1,000배액과 구 비대 강화용 스토피트(칼슘 35%) 1,000배액을 적기 처리하세요.',
-    climateRule: '4월 구 비대 최성기에 토양이 건조하면 수량이 30% 이상 급감하므로 7~10일 간격으로 충분한 점적관수를 실시합니다.',
-    preferredMaterialIds: ['MAT-PEST-10', 'MAT-NUTR-02'],
-    materialName: '가루지기 골드 (500ml) + 스토피트',
-    materialSubLabel: '총채벌레 방제(공시-2-5-303) · 칼슘 35% 구비대제',
-    materialThumb: '/images/fertilizers/MAT-PEST-06-thumb.png',
-    usageAmountPer100Pyeong: '가루지기 골드 500ml + 스토피트 500ml / 100평',
-    dilutionText: '물 500L에 각 500ml (1,000배 희석)',
-    usageMethod: '총채벌레 엽초 살포 및 구 비대기 점적관수·칼슘 엽면살포',
-    usageCaution: '마늘종(주아)이 올라오는 품종은 구 비대를 위해 마늘종을 적기에 뽑아주기(제거)',
-  },
-  {
-    itemId: 'SCH-15',
-    stepOrder: 15,
-    stageNum: '06',
-    stageGroupId: 'STG-HARVEST',
-    stageGroupName: '성숙기',
-    subItemName: '수확 전 관수 중단 및 구 성숙도 점검',
-    processCode: 'PRC-28',
-    processName: '성숙기 관수 중단(수확 2주 전) 및 표피 경화·숙기 점검',
-    offsetDays: 208,
-    spanDays: 8,
-    targetPgdd: 1290,
-    iconType: 'WORK',
-    workContent:
-      '수확 예정일 약 10~15일 전부터 관수를 완전히 중단하여 마늘 구의 수분 함량을 낮추고, 스토피트(칼슘 35% 유기피막보조제 1,000배액) 엽면 살포로 구 표피 경화 및 저장 중 부패 저항성을 높입니다.',
-    usageTip:
-      '[농자재 사용팁] 수확 전 성숙기에 관수를 중단하고 스토피트(칼슘 35%, 1,000배액)를 엽면 살포하면 마늘 조직이 단단해져 수확 후 장기 저장성이 크게 향상됩니다.',
-    climateRule: '수확 직전 과습이나 강우는 열구(마늘 터짐)와 저장 중 부패를 유발하므로 배수로를 정비하고 관수를 중단합니다.',
-    preferredMaterialIds: ['MAT-NUTR-04', 'MAT-NUTR-14'],
-    materialName: '스토피트 (칼슘 35% 유기피막보조제)',
-    materialSubLabel: '성숙기 구 표피 강화 및 저장성 향상제',
-    materialThumb: '/images/fertilizers/MAT-NUTR-02-thumb.png',
-    usageAmountPer100Pyeong: '100평당 500ml (1개)',
-    dilutionText: '물 500L에 500ml (1,000배 희석)',
-    usageMethod: '관수 중단과 함께 경엽 전면 엽면 살포',
-    usageCaution: '수확 2주 전부터는 관수를 중단하여 토양을 건조하게 유지',
-  },
-  {
-    itemId: 'SCH-16',
-    stepOrder: 16,
-    stageNum: '06',
-    stageGroupId: 'STG-HARVEST',
-    stageGroupName: '수확·건조기',
-    subItemName: '수확·선별·예건(건조) 및 저장',
-    processCode: 'PRC-29',
-    processName: '적기 수확(잎 50~70% 황화) 및 현장 예건·선별·건조망 보관',
-    offsetDays: 223,
-    spanDays: 7,
-    targetPgdd: 1450,
-    iconType: 'WORK',
-    workContent:
-      '지상부 잎의 1/2~2/3(50~70%)가 황화되었을 때 맑은 날을 택해 상처 없이 수확하고, 밭 또는 통풍이 잘되는 그늘에서 3~5일간 예건 후 줄기·뿌리를 정리하여 등급별 선별 및 건조망에 저장합니다.',
-    usageTip:
-      '[농자재 사용팁] 수확 직전 스토피트 마감 처리 후 맑은 날 수확하여 38~40℃ 통풍 열풍건조 또는 음건 큐어링을 실시하면 저장 중 감모와 부패를 최소화합니다.',
-    climateRule: '비 온 직후 수확은 피하고 맑고 건조한 날 수확하며, 예건 중 강한 직사광선에 마늘 구가 직접 노출되지 않도록 주의합니다.',
-    preferredMaterialIds: ['MAT-NUTR-14', 'MAT-NUTR-24'],
-    materialName: '스토피트 + 마늘 건조망·보관 자재',
-    materialSubLabel: '수확·예건·장기저장 마감 자재',
-    materialThumb: '/images/fertilizers/MAT-NUTR-02-thumb.png',
-    usageAmountPer100Pyeong: '100평 수확량 기준 건조망 및 스토피트 1,000배',
-    dilutionText: '수확 후 통풍 예건(수분 65% 이하) 및 등급 선별',
-    usageMethod: '맑은 날 굴취 수확 -> 그늘 예건 -> 주대·뿌리 절단 -> 망 포장 저장',
-    usageCaution: '수확 시기가 너무 늦으면 벌마늘 및 열구가 증가하므로 잎 50~70% 황화 시 적기 수확',
-  },
-];
+// 1. 마늘 (전남 마늘 시설재배 & 노지재배 — 한들아그로 추천상품 통합 입력표 기반 16단계 빌더)
+// 예시 기준: 10-15 파종 · 10-01 밑거름·토양개량자재 투입 · 품종·지역·강우/시설온도·토양 상태(공통/산성토양/연작지)에 따라 추천 분석 적용
+function buildGarlicStagesByCultivationMode(mode: 'OPEN_FIELD' | 'FACILITY'): CropAgronomicStageSpec[] {
+  const isFacility = mode === 'FACILITY';
+  return [
+    {
+      itemId: 'SCH-01',
+      stepOrder: 1,
+      stageNum: '01',
+      stageGroupId: 'STG-PREP',
+      stageGroupName: '파종 준비',
+      subItemName: '종구 선별·소독 검토',
+      processCode: 'PRC-01',
+      processName: '건전 종구(씨마늘) 선별 및 침지·분의 소독 검토',
+      offsetDays: -25,
+      spanDays: 4,
+      targetPgdd: 0,
+      iconType: 'WORK',
+      managementCategory: '종구·육묘',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '건전 종구·마늘 등록 종구소독제',
+      selectionExecutionCondition: '품종·종구 상태·등록 사용기준 확인',
+      officialRegNo: '공시-2-4-156',
+      cultivationMode: mode,
+      workContent:
+        '건전한 씨마늘(종구)을 쪽분리하여 상처·병반 인편을 골라내고, 품종·종구 상태·등록 사용기준을 확인한 뒤 마늘 등록 종구소독제(아즈모엠지: 천연유황 80%+보조제 20%, 공시-2-4-156)로 1회 30분 침지 또는 분의 소독 후 그늘에 말려 파종을 준비합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 종구·육묘 | 적용토양: 공통 | 추천대상: 건전 종구·마늘 등록 종구소독제 | 선정·실행조건: 품종·종구 상태·등록 사용기준 확인 → 아즈모엠지(500g, 천연유황 80%·보조제 20%, 공시-2-4-156, 단가 10,000원)를 분의 처리 또는 1회 30분 침지 처리하면 흑색썩음균핵병과 뿌리응애 초기 감염을 원천 차단합니다.',
+      climateRule: '종구 소독 후 직사광선을 피하고 통풍이 잘되는 그늘에서 물기를 건조한 뒤 파종합니다.',
+      preferredMaterialIds: ['MAT-PEST-26', 'MAT-PEST-04'],
+      materialName: '아즈모엠지 (500g)',
+      materialSubLabel: '천연유황 80%·보조제 20% 종구소독제 (공시-2-4-156)',
+      materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500g (1개 · 10,000원)',
+      dilutionText: '분의 처리 또는 1,000배액 1회 30분 침지 처리',
+      usageMethod: '소독 (1회 30분 침지처리 또는 분의 처리 후 음건)',
+      usageCaution: '품종·종구 상태 및 마늘 등록·공시 사용기준 확인 후 처리',
+    },
+    {
+      itemId: 'SCH-02',
+      stepOrder: 2,
+      stageNum: '01',
+      stageGroupId: 'STG-PREP',
+      stageGroupName: '파종 준비',
+      subItemName: '토양검정·배수 점검',
+      processCode: 'PRC-02',
+      processName: '토양검정(pH·EC·양분)·배수 점검 및 토양해충 관리',
+      offsetDays: -20,
+      spanDays: 4,
+      targetPgdd: 0,
+      iconType: 'PEST',
+      managementCategory: '토양관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '토양검정·배수개선 자재',
+      selectionExecutionCondition: 'pH·EC·양분 및 배수 상태 확인',
+      officialRegNo: '공시-3-5-105',
+      cultivationMode: mode,
+      workContent:
+        '포장 토양의 pH·EC·양분 및 배수 상태를 확인하고, 고자리파리·뿌리응애·선충 등 토양 해충 관리를 위해 땅 해충싹(계피추출물 7%+고삼추출물 3%+보조제 90%, 공시-3-5-105)을 100평당 2kg 토양 전면 살포합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 토양관리 | 적용토양: 공통 | 추천대상: 토양검정·배수개선 자재 | 선정·실행조건: pH·EC·양분 및 배수 상태 확인 → 땅 해충싹(2kg, 계피추출물 7%·고삼추출물 3%, 공시-3-5-105, 단가 20,000원)을 100평당 2kg 토양 살포하여 월동 토양해충 밀도를 낮추세요.',
+      climateRule: '강우 직후 과습 상태를 피하고 토양 수분이 적정할 때 토양 살포 및 배수로 정비를 수행합니다.',
+      preferredMaterialIds: ['MAT-PEST-27', 'MAT-PEST-17'],
+      materialName: '땅 해충싹 (2kg)',
+      materialSubLabel: '계피추출물 7%·고삼추출물 3% 토양관리제 (공시-3-5-105)',
+      materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
+      usageAmountPer100Pyeong: '토양 처리 2kg / 100평 (1개 · 20,000원)',
+      dilutionText: '원제 그대로 토양 살포 (2kg / 100평)',
+      usageMethod: '로터리 경운 전 토양 살포 후 혼화',
+      usageCaution: 'pH·EC·양분 및 배수 상태를 먼저 확인한 후 토양 전면 살포',
+    },
+    {
+      itemId: 'SCH-03',
+      stepOrder: 3,
+      stageNum: '01',
+      stageGroupId: 'STG-PREP',
+      stageGroupName: '파종 준비',
+      subItemName: '밑거름·토양개량·미생물 자재 투입',
+      processCode: 'PRC-03',
+      processName: '밑거름(공통)·토양개량자재(산성토양)·유기물 미생물(연작지) 맞춤 투입',
+      offsetDays: -14,
+      spanDays: 6,
+      targetPgdd: 0,
+      iconType: 'FERTILIZER',
+      managementCategory: '밑거름용',
+      targetSoilCondition: '공통·산성토양·연작지 맞춤',
+      recommendationTargetCandidate: '완숙퇴비·토양검정 기반 밑거름 + 석회질 자재(산성토양) + 미생물 토양관리 자재(연작지)',
+      selectionExecutionCondition: '토양검정 결과 반영(중복시비 주의); 산성토양 pH 확인 후 석회고토 결정; 연작장해 진단 후 토생이 선택',
+      officialRegNo: '공시-2-3-287 / 공시-2-3-398',
+      cultivationMode: mode,
+      workContent:
+        '파종 2주 전(10-01 기준) 토양검정 결과를 반영하여 ① [공통 토양] 엔비올 트리플(질소질구아노 85.5%·랑베나이트 7.6%·토탄 5%·해조류추출물 1.9%, 공시-2-3-287, 20kg/30평), ② [산성 토양(pH 6.0 미만)] 석회고토(돌로마이트·칼슘·마그네슘 20kg), ③ [연작지] 토생이(미생물추출물+점토광물, 공시-2-3-398, 2kg/100평)를 토양 조건에 맞춰 투입하고 심경 로터리합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 밑거름용 | 토양조건별 3단 맞춤 추천: ① [공통] 엔비올 트리플(20kg/30평, 공시-2-3-287, 25,000원) 기본 투입(중복시비 주의) + ② [산성 토양] 토양 pH 확인 후 석회고토(20kg, 돌로마이트·Ca·Mg) 추가 + ③ [연작지] 연작장해 진단 후 토생이(2kg/100평, 공시-2-3-398, 20,000원) 추가 살포.',
+      climateRule: '미숙 퇴비는 고자리파리와 뿌리 부패를 유발하므로 반드시 파종 2주 전에 완전 부숙·공시 자재로 시비합니다.',
+      preferredMaterialIds: ['FERT-PRD-26', 'FERT-PRD-27', 'FERT-PRD-28'],
+      materialName: '엔비올 트리플 (20kg) + 석회고토·토생이',
+      materialSubLabel: '구아노 85.5% 밑거름(공시-2-3-287) + 산성토양(석회고토)·연작지(토생이)',
+      materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
+      usageAmountPer100Pyeong: '엔비올 트리플 20kg/30평(100평 3포) + 산성토양 석회고토 + 연작지 토생이 2kg/100평',
+      dilutionText: '토양 살포 (엔비올 트리플 20kg/30평 · 토생이 2kg/100평)',
+      usageMethod: '파종 2주 전 토양 살포 후 15~20cm 심경 로터리',
+      usageCaution: '토양검정 결과를 반영하여 중복시비를 피하고, 산성토양(석회고토)·연작지(토생이) 여부에 따라 맞춤 조합',
+    },
+    {
+      itemId: 'SCH-04',
+      stepOrder: 4,
+      stageNum: '02',
+      stageGroupId: 'STG-PLANT',
+      stageGroupName: '파종·발아기',
+      subItemName: '종구 파종·피복',
+      processCode: 'PRC-07',
+      processName: '본밭 종구 파종(깊이·간격·수분 관리) 및 0.02mm 멀칭 비닐 피복',
+      offsetDays: 0,
+      spanDays: 4,
+      targetPgdd: 25,
+      iconType: 'WORK',
+      managementCategory: '파종',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '종구·멀칭자재',
+      selectionExecutionCondition: '파종 깊이·간격·수분 관리',
+      officialRegNo: '재배피복자재',
+      cultivationMode: mode,
+      workContent:
+        '소독된 씨마늘(종구)의 뿌리 부분이 아래로 향하도록 파종 깊이(5~7cm)·간격(주간 12~15cm) 및 토양 수분을 관리하여 파종·복토한 뒤 0.02mm 멀칭 비닐을 피복합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 파종 | 적용토양: 공통 | 추천대상: 종구·멀칭자재 | 선정·실행조건: 파종 깊이·간격·수분 관리 → 0.02mm 마늘 전용 멀칭 비닐로 피복하여 지온 유지, 토양 수분 보존 및 잡초 억제를 수행하세요.',
+      climateRule: isFacility
+        ? '전남·남부 가을 파종 시설마늘 적온(15~20℃) 및 토양 수분 확인 후 파종·멀칭을 완료합니다.'
+        : '전남·남부 가을 파종 노지마늘 적온(15~20℃) 및 강우 전후 토양 적습일에 파종·멀칭을 완료합니다.',
+      preferredMaterialIds: ['FERT-PRD-31', 'MAT-NUTR-03'],
+      materialName: '0.02 멀칭 비닐',
+      materialSubLabel: '파종 깊이·간격·수분 보존용 0.02mm 피복 자재',
+      materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
+      usageAmountPer100Pyeong: '100평당 0.02mm 멀칭 비닐 1~2롤',
+      dilutionText: '두둑 규격에 맞춘 0.02mm 유공 멀칭 비닐 피복',
+      usageMethod: '종구 파종 및 5~7cm 복토·수분 관리 직후 비닐 피복',
+      usageCaution: '인편을 거꾸로 심거나 너무 얕게 심으면 동해 및 벌마늘 발생이 증가하므로 깊이 준수',
+    },
+    {
+      itemId: 'SCH-05',
+      stepOrder: 5,
+      stageNum: '02',
+      stageGroupId: 'STG-PLANT',
+      stageGroupName: '발아·초기생육기',
+      subItemName: '발아·토양병해 점검',
+      processCode: 'PRC-09',
+      processName: '발아·초기 토양병해(흑색썩음균핵병 등) 점검 및 관주',
+      offsetDays: 7,
+      spanDays: 5,
+      targetPgdd: 95,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '흑색썩음균핵병 등 등록 자재 후보',
+      selectionExecutionCondition: '예방 가능 여부·사용시기 등록사항 확인',
+      officialRegNo: '공시-2-4-156',
+      cultivationMode: mode,
+      workContent:
+        '파종 1주 후(10-22 기준) 발아 상태와 흑색썩음균핵병 등 초기 토양병해를 점검하고, 예방 가능 여부·사용시기 등록사항을 확인한 뒤 아즈모엠지(천연유황 80%·보조제 20%, 공시-2-4-156) 1,000배액을 엽면 및 토양 관주합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 병해충 관리 | 적용토양: 공통 | 추천대상: 흑색썩음균핵병 등 등록 자재 후보 | 선정·실행조건: 예방 가능 여부·사용시기 등록사항 확인 → 아즈모엠지(500g, 공시-2-4-156, 10,000원)를 1,000배 희석하여 월동 전·후 필요에 따라 엽면 및 토양 관주합니다.',
+      climateRule: '발아기 비닐 밑에 걸린 싹을 구멍 밖으로 유도하고 지제부 초기 병원균 감염을 차단합니다.',
+      preferredMaterialIds: ['MAT-PEST-26', 'MAT-PEST-04'],
+      materialName: '아즈모엠지 (500g)',
+      materialSubLabel: '천연유황 80% 흑색썩음균핵병 관리 (공시-2-4-156)',
+      materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500g (1개 · 10,000원)',
+      dilutionText: '1,000배 희석 (물 500L에 500g)',
+      usageMethod: '엽면 및 토양 관주 (월동 전·후 필요에 따라)',
+      usageCaution: '예방 가능 여부 및 사용시기 등록·공시 사항 확인 후 처리',
+    },
+    {
+      itemId: 'SCH-06',
+      stepOrder: 6,
+      stageNum: '03',
+      stageGroupId: 'STG-PEST',
+      stageGroupName: '초기생육기',
+      subItemName: '병해충 예찰 (고자리파리·뿌리응애)',
+      processCode: 'PRC-11',
+      processName: '초기생육기 고자리파리·뿌리응애 등 병해충 예찰 및 관주',
+      offsetDays: 21,
+      spanDays: 5,
+      targetPgdd: 210,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '고자리파리·뿌리응애 등 예찰자재',
+      selectionExecutionCondition: '발생 확인 후 등록 자재 검토',
+      officialRegNo: '공시-2-5-311',
+      cultivationMode: mode,
+      workContent:
+        '본엽 2~3매 전개 시기(11-05 기준)에 고자리파리·뿌리응애 등 초기 해충 발생을 정밀 예찰하고, 발생 확인 후 해충싹(Limonene+Cinnamaldehyde, 공시-2-5-311, 500ml) 1,000배액을 엽면 및 토양에 관주합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 병해충 관리 | 적용토양: 공통 | 추천대상: 고자리파리·뿌리응애 등 예찰자재 | 선정·실행조건: 발생 확인 후 등록 자재 검토 → 해충싹(500ml, 리모넨·시남알데하이드, 공시-2-5-311, 단가 35,000원)을 1,000배 희석하여 월동 전·후 필요에 따라 엽면 및 토양 관주하세요.',
+      climateRule: '가을철 지온이 15℃ 내외로 유지될 때 고자리파리 유충 및 뿌리응애 활동이 활발하므로 집중 예찰합니다.',
+      preferredMaterialIds: ['MAT-PEST-28', 'MAT-PEST-18'],
+      materialName: '해충싹 (500ml)',
+      materialSubLabel: 'Limonene·Cinnamaldehyde 고자리파리·뿌리응애 관리 (공시-2-5-311)',
+      materialThumb: '/images/fertilizers/MAT-PEST-01-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500ml (1개 · 35,000원)',
+      dilutionText: '1,000배 희석 (물 500L에 500ml)',
+      usageMethod: '엽면 및 토양 관주 (월동 전·후 필요에 따라)',
+      usageCaution: '포장 내 해충 발생 확인 후 약액이 뿌리권(인편 밑둥)까지 스며들도록 관주',
+    },
+    {
+      itemId: 'SCH-07',
+      stepOrder: 7,
+      stageNum: '03',
+      stageGroupId: 'STG-GROWTH',
+      stageGroupName: '초기생육기',
+      subItemName: isFacility
+        ? '생육상태·추비 필요성 검토'
+        : '생육상태·추비 필요성 검토 (1차 웃거름)',
+      processCode: 'PRC-13',
+      processName: isFacility
+        ? '초기생육기 생육상태·추비 필요성 검토 (초세·토양검정·시설 온도 확인)'
+        : '초기생육기 생육상태·추비 필요성 검토 (1차 웃거름 · 월동 전후 추비)',
+      offsetDays: 31,
+      spanDays: 5,
+      targetPgdd: 310,
+      iconType: 'FERTILIZER',
+      managementCategory: '시비',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '질소·칼리 비료 후보',
+      selectionExecutionCondition: '초세·토양검정·시설 온도 확인',
+      officialRegNo: '질산태 NK칼슘복합비료',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '파종 1개월 후(11-15 기준) 초기 초세·토양검정·시설 온도를 확인하여 월동 전후 추비 필요성을 검토하고, 질산태 NK칼슘복합비료인 야라 유니칼슘(14-0-15+17CaO+0.2B, 10kg/100평)을 시비합니다.'
+        : '파종 1개월 후(11-15 기준) 초기 초세·토양검정 결과를 확인하여 월동 전 1차 웃거름(추비) 필요성을 검토하고, 질산태 NK칼슘복합비료인 야라 유니칼슘(14-0-15+17CaO+0.2B, 10kg/100평)을 시비합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 시비 | 적용토양: 공통 | 추천대상: 질소·칼리 비료 후보 | 선정·실행조건: 초세·토양검정·시설 온도 확인 → 야라 유니칼슘 10kg(질산태 NK칼슘복합비료 14-0-15+17CaO+0.2B, 단가 23,000원)을 100평당 10kg(1개) 월동 전후 추비로 시비하여 저온기 빠른 흡수와 내한성을 확보합니다.',
+      climateRule: '본격적인 한파 도래 전 초세와 온도를 확인하여 월동 전 건실한 뿌리와 엽초를 형성시킵니다.',
+      preferredMaterialIds: ['FERT-PRD-29', 'FERT-PRD-02'],
+      materialName: '야라 유니칼슘 (10kg)',
+      materialSubLabel: '질산태 NK칼슘복합비료 14-0-15+17CaO+0.2B',
+      materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
+      usageAmountPer100Pyeong: '10kg / 100평 (1개 · 23,000원)',
+      dilutionText: '100평당 10kg 토양 살포 또는 관주',
+      usageMethod: '월동 전후 추비 (초세·토양검정·온도 확인 후 시비)',
+      usageCaution: '초세가 과도하게 웃자란 포장은 질소 시비량을 조절하여 동해 예방',
+    },
+    {
+      itemId: 'SCH-08',
+      stepOrder: 8,
+      stageNum: '03',
+      stageGroupId: 'STG-GROWTH',
+      stageGroupName: '월동기',
+      subItemName: isFacility
+        ? '보온·환기·관수 점검 (시설환경 관리)'
+        : '멀칭·배수·한파 피해 점검 (월동 관리)',
+      processCode: 'PRC-14',
+      processName: isFacility
+        ? '[시설환경 관리] 월동기 부직포(20g) 보온·환기·관수 점검 (과습·고온·결로 방지)'
+        : '[노지 월동 관리] 월동기 부직포(20g) 멀칭·배수·한파 피해 점검 (동해·습해 예방)',
+      offsetDays: 56,
+      spanDays: 10,
+      targetPgdd: 410,
+      iconType: 'WORK',
+      managementCategory: isFacility ? '시설환경 관리' : '월동 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: isFacility ? '보온·환기 관리 자재' : '멀칭 보수·배수로 관리 자재',
+      selectionExecutionCondition: isFacility ? '과습·고온·결로 방지' : '동해·습해 예방, 강우 후 배수로 확인',
+      officialRegNo: '보온피복자재 20g',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '[시설재배 전용 - 시설환경 관리] 12월 월동기(12-10 기준) 월동 전 보온용 부직포(20g)를 피복하고, 하우스 내부의 과습·고온·결로 방지를 위해 주간 환기 및 관수 상태를 정밀 점검합니다.'
+        : '[노지재배 전용 - 월동 관리] 12월 월동기(12-10 기준) 월동 전 한파에 대비해 부직포(20g) 피복 및 비닐 멀칭 들뜸을 보수하고, 동해·습해 예방을 위해 강우·강설 후 배수로 물빠짐을 점검합니다.',
+      usageTip: isFacility
+        ? '[농자재 추천 분석] • 관리구분: 시설환경 관리 | 적용토양: 공통 | 추천대상: 보온·환기 관리 자재 | 선정·실행조건: 과습·고온·결로 방지 → 월동 전 부직포(20g)를 피복하여 야간 동해를 막고, 낮 시간에는 하우스 환기로 결로와 고온 과습을 반드시 차단하세요.'
+        : '[농자재 추천 분석] • 관리구분: 월동 관리 | 적용토양: 공통 | 추천대상: 멀칭 보수·배수로 관리 자재 | 선정·실행조건: 동해·습해 예방, 강우 후 배수로 확인 → 월동 전 부직포(20g)를 피복·고정하여 한파 동해를 막고 겨울비 직후 고랑 배수로를 정비하여 습해를 예방하세요.',
+      climateRule: isFacility
+        ? '시설 내 주간 고온·다습 및 야간 결로가 발생하지 않도록 환기창 개폐와 보온 피복을 병행합니다.'
+        : '한파 도래 전 부직포(20g) 피복을 완료하고 겨울철 강우·강설 후 고랑에 물이 고이지 않도록 배수로를 확인합니다.',
+      preferredMaterialIds: ['FERT-PRD-31', 'MAT-NUTR-16'],
+      materialName: '부직포 20g',
+      materialSubLabel: isFacility
+        ? '시설환경 보온·환기·결로 방지 자재'
+        : '노지 월동 동해·습해 예방 및 멀칭 보수 자재',
+      materialThumb: '/images/fertilizers/FERT-PRD-01-thumb.png',
+      usageAmountPer100Pyeong: '100평 면적 규격 부직포(20g) 피복',
+      dilutionText: '월동 전 두둑 전면 피복 및 고정',
+      usageMethod: isFacility
+        ? '월동 전 부직포 피복 및 주간 하우스 환기·결로 관리'
+        : '월동 전 부직포 피복·멀칭 보수 및 강우 후 배수로 확인',
+      usageCaution: isFacility
+        ? '시설 내부 과습·고온·결로 시 잎마름병·균핵병이 급증하므로 주간 환기 필수'
+        : '강풍에 부직포와 멀칭 비닐이 벗겨지지 않도록 고정핀·흙덮기 보수 철저',
+    },
+    {
+      itemId: 'SCH-09',
+      stepOrder: 9,
+      stageNum: '04',
+      stageGroupId: 'STG-PEST',
+      stageGroupName: '월동기',
+      subItemName: isFacility
+        ? '잎마름병·흑색썩음균핵병 예찰'
+        : '월동기 토양병해·생육 예찰',
+      processCode: 'PRC-15',
+      processName: isFacility
+        ? '[시설 월동기] 잎마름병·흑색썩음균핵병 예찰 (증상·발생환경 확인 후 적용)'
+        : '[노지 월동기] 월동기 토양병해(흑색썩음균핵병 등)·생육 예찰 (발생이력 확인·임의 예방살포 금지)',
+      offsetDays: 92,
+      spanDays: 7,
+      targetPgdd: 480,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: isFacility
+        ? '해당 병해 등록 방제자재 후보'
+        : '흑색썩음균핵병 등 예찰 및 등록자재 후보',
+      selectionExecutionCondition: isFacility
+        ? '증상·발생환경 확인 후 적용'
+        : '발생 이력·포장 상태 확인, 임의 예방살포 금지',
+      officialRegNo: '공시-3-6-063',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '[시설재배 월동기 병해충 관리] 1월 중순(01-15 기준) 시설 내부 온·습도 상승에 따른 잎마름병·흑색썩음균핵병 증상 및 발생 환경을 확인한 후 잰닥터6(특허 미생물, 공시-3-6-063, 500ml) 500배액을 적용합니다.'
+        : '[노지재배 월동기 병해충 관리] 1월 중순(01-15 기준) 월동기 흑색썩음균핵병 등 토양병해와 생육 상태를 예찰합니다. 노지 한겨울 임의 예방살포는 금지(동해 우려)하며, 발생 이력·포장 상태 확인 후 포근한 날 잰닥터6(공시-3-6-063, 500ml) 500배액을 제한 적용합니다.',
+      usageTip: isFacility
+        ? '[농자재 추천 분석] • 관리구분: 병해충 관리(시설) | 추천대상: 잎마름병·흑색썩음균핵병 등록 방제자재 | 선정·실행조건: 증상·발생환경 확인 후 적용 → 잰닥터6 500ml(공시-3-6-063, 500배 희석, 단가 32,000원)를 맑은 날 낮 시간대 살포 후 충분히 환기하세요.'
+        : '[농자재 추천 분석] • 관리구분: 병해충 관리(노지) | 추천대상: 흑색썩음균핵병 등 예찰 및 등록자재 후보 | 선정·실행조건: 발생 이력·포장 상태 확인, 임의 예방살포 금지 → 발생 포장 확인 시에만 기온 10℃ 이상 포근한 낮에 잰닥터6 500ml(공시-3-6-063, 500배, 32,000원)를 처리하세요.',
+      climateRule: '겨울철 약액 동해를 입지 않도록 기온이 영상 10℃ 이상 오르는 맑은 날 정오 무렵에만 살포합니다.',
+      preferredMaterialIds: ['MAT-PEST-29', 'MAT-PEST-03'],
+      materialName: '잰닥터6 (500ml)',
+      materialSubLabel: '월동기 흑색썩음균핵병·잎마름병 관리 (공시-3-6-063)',
+      materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500ml (1개 · 32,000원)',
+      dilutionText: '500배 희석 (물 250L에 500ml)',
+      usageMethod: isFacility
+        ? '증상·발생환경 확인 후 500배 희석 살포 및 시설 환기'
+        : '발생 이력·포장 상태 확인 후 포근한 날 500배 살포 (임의 예방살포 금지)',
+      usageCaution: isFacility
+        ? '살포 후 해가 지기 전 약액이 완전히 마르도록 주간 환기 철저'
+        : '노지 월동기 영하권 추위 시 임의 약제 살포는 동해를 유발하므로 주의',
+    },
+    {
+      itemId: 'SCH-10',
+      stepOrder: 10,
+      stageNum: '04',
+      stageGroupId: 'STG-GROWTH',
+      stageGroupName: '생육재개기',
+      subItemName: '1차 웃거름 검토',
+      processCode: 'PRC-16',
+      processName: '해동 후 생육재개기 1차 웃거름(질소·칼리·칼슘) 검토 및 시비',
+      offsetDays: 123,
+      spanDays: 6,
+      targetPgdd: 590,
+      iconType: 'FERTILIZER',
+      managementCategory: '시비',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '질소·칼리 함유 비료',
+      selectionExecutionCondition: '생육재개·토양 양분 확인 후 조절 (11-15 월동전 추비와 연계 조절)',
+      officialRegNo: '질산태 NK칼슘복합비료',
+      cultivationMode: mode,
+      workContent:
+        '2월 중순(02-15 기준) 해동과 함께 생육이 재개되는 시기에 생육재개 상태와 토양 양분을 확인(11-15 초기생육기 1차 웃거름 시비량과 연계 조절)하여 야라 유니칼슘(14-0-15+17CaO+0.2B, 10kg/100평)을 시비합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 시비 | 적용토양: 공통 | 추천대상: 질소·칼리 함유 비료 | 선정·실행조건: 생육재개·토양 양분 확인 후 조절(초기생육기 추비와 연계) → 야라 유니칼슘(10kg/100평, 23,000원)을 생육재개기에 맞춰 조절 시비하고 가볍게 관수하세요.',
+      climateRule: '일평균기온이 5~7℃ 이상 회복되는 해동기에 시비하며 강우 직전이나 가뭄 후 일시 과다 시비를 피합니다.',
+      preferredMaterialIds: ['FERT-PRD-29', 'FERT-PRD-02'],
+      materialName: '야라 유니칼슘 (10kg)',
+      materialSubLabel: '생육재개기 1차 웃거름 검토·조절 (14-0-15+17CaO+0.2B)',
+      materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
+      usageAmountPer100Pyeong: '10kg / 100평 (토양 양분 확인 후 시비량 조절)',
+      dilutionText: '포기 사이 균일 살포 후 관수',
+      usageMethod: '2월 중순 생육재개·토양 양분 확인 후 조절 시비',
+      usageCaution: '11월 월동 전 추비를 충분히 시비한 포장은 초세를 보아 시비량을 감량 조절',
+    },
+    {
+      itemId: 'SCH-11',
+      stepOrder: 11,
+      stageNum: '04',
+      stageGroupId: 'STG-PEST',
+      stageGroupName: '생육재개기',
+      subItemName: isFacility
+        ? '예방 방제 검토 (잎마름병 등)'
+        : '잎마름병 등 예방 방제 검토',
+      processCode: 'PRC-17',
+      processName: isFacility
+        ? '[시설 생육재개기] 예방 방제 검토 (등록 예방 사용 허용 여부 확인)'
+        : '[노지 생육재개기] 잎마름병 등 예방 방제 검토 (기상·병 발생 위험 및 예방기준 확인)',
+      offsetDays: 133,
+      spanDays: 5,
+      targetPgdd: 670,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: isFacility
+        ? '잎마름병 등 등록 자재 후보'
+        : '마늘 등록 병해 방제자재 후보',
+      selectionExecutionCondition: isFacility
+        ? '등록 예방 사용 허용 여부 확인'
+        : '기상·병 발생 위험 및 등록 예방사용 기준 확인',
+      officialRegNo: '공시-2-6-115',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '2월 하순(02-25 기준) 생육재개기에 잎마름병 등 등록 자재의 예방 사용 허용 여부를 확인한 뒤 쓰리킹(식물추출물, 공시-2-6-115, 500ml) 500배액을 경엽 살포합니다.'
+        : '2월 하순(02-25 기준) 해동 후 봄비 기상·병 발생 위험 및 등록 예방사용 기준을 확인한 뒤 잎마름병 등 예방을 위해 쓰리킹(식물추출물, 공시-2-6-115, 500ml) 500배액을 살포합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 병해충 관리 | 적용토양: 공통 | 추천대상: 잎마름병 등 마늘 등록 병해 방제자재 후보 | 선정·실행조건: 기상·병 발생 위험 및 등록 예방사용 허용 여부 확인 → 쓰리킹 500ml(식물추출물, 공시-2-6-115, 500배 희석, 단가 30,000원)를 월동 전후 생육재개기에 살포합니다.',
+      climateRule: '봄철 강우 예보 1~2일 전 맑은 날에 예방 살포하여 잎 표면에 보호막을 형성합니다.',
+      preferredMaterialIds: ['MAT-PEST-30', 'MAT-PEST-03'],
+      materialName: '쓰리킹 (500ml)',
+      materialSubLabel: '식물추출물 잎마름병 등 예방 방제 (공시-2-6-115)',
+      materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500ml (1개 · 30,000원)',
+      dilutionText: '500배 희석 (물 250L에 500ml)',
+      usageMethod: '월동 전후 경엽 균일 살포',
+      usageCaution: '기상·병 발생 위험 및 해당 자재의 예방 사용 기준 확인 후 처리',
+    },
+    {
+      itemId: 'SCH-12',
+      stepOrder: 12,
+      stageNum: '05',
+      stageGroupId: 'STG-GROWTH',
+      stageGroupName: '잎·구 비대기',
+      subItemName: '2차 웃거름 검토 (월동후 마감 추비)',
+      processCode: 'PRC-18',
+      processName: '잎·구 비대기 2차 웃거름 검토 (나이트라보 · 과잉 질소·늦은 추비 주의)',
+      offsetDays: 147,
+      spanDays: 5,
+      targetPgdd: 790,
+      iconType: 'FERTILIZER',
+      managementCategory: '시비',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '칼리·칼슘 중심 비료 후보',
+      selectionExecutionCondition: '과잉 질소·늦은 추비 주의',
+      officialRegNo: 'N 15.4% · CaO 25.6% · B 0.3%',
+      cultivationMode: mode,
+      workContent:
+        '3월 상중순(03-10 기준) 잎·구 비대 진입기에 맞춰 월동 후 2차 웃거름으로 나이트라보(N 15.4%, CaO 25.6%, B 0.3%, 10kg/100평)를 시비합니다. 벌마늘(2차 생장) 예방을 위해 과잉 질소 및 3월 하순 이후 늦은 추비는 엄격히 제한합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 시비 | 적용토양: 공통 | 추천대상: 비대기 비료 후보 | 선정·실행조건: 과잉 질소·늦은 추비 주의 → 나이트라보 10kg(N 15.4%, CaO 25.6%, B 0.3%, 단가 17,000원)을 100평당 10kg(1개) 월동 후 2차 마감 웃거름으로 시비하여 세포벽 강화와 구 비대를 촉진하세요.',
+      climateRule: '3월 하순 이후 늦은 질소 추비는 벌마늘(이차생장)과 저장성 저하의 원인이 되므로 적기에 추비를 마감합니다.',
+      preferredMaterialIds: ['FERT-PRD-30', 'FERT-PRD-20'],
+      materialName: '나이트라보 (10kg)',
+      materialSubLabel: '월동후 2차 웃거름 (N 15.4% · CaO 25.6% · B 0.3%)',
+      materialThumb: '/images/fertilizers/FERT-PRD-02-thumb.png',
+      usageAmountPer100Pyeong: '10kg / 100평 (1개 · 17,000원)',
+      dilutionText: '100평당 10kg 고랑·포기 사이 살포 후 관수',
+      usageMethod: '월동 후 2차 웃거름 (3월 상·중순 최종 마감 추비)',
+      usageCaution: '과잉 질소 시비 및 3월 말 이후 늦은 추비 절대 주의 (벌마늘 방지)',
+    },
+    {
+      itemId: 'SCH-13',
+      stepOrder: 13,
+      stageNum: '05',
+      stageGroupId: 'STG-PEST',
+      stageGroupName: '잎·구 비대기',
+      subItemName: '녹병·잎마름병 예찰',
+      processCode: 'PRC-20',
+      processName: isFacility
+        ? '[시설 잎·구 비대기] 녹병·잎마름병 예찰 (시설 습도·발생 밀도 반영)'
+        : '[노지 잎·구 비대기] 녹병·잎마름병 예찰 (강우·습도·발생 밀도 반영)',
+      offsetDays: 157,
+      spanDays: 6,
+      targetPgdd: 890,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '녹병·잎마름병 등록 자재 후보',
+      selectionExecutionCondition: isFacility
+        ? '시설 습도·발생 밀도 반영'
+        : '강우·습도·발생 밀도 반영',
+      officialRegNo: '공시-2-4-156',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '3월 하순(03-20 기준) 잎·구 비대기에 시설 내 상대습도와 병 발생 밀도를 반영하여 녹병·잎마름병을 예찰하고, 아즈모엠지(천연유황 80%·보조제 20%, 공시-2-4-156) 1,000배액을 엽면 및 토양 관주합니다.'
+        : '3월 하순(03-20 기준) 잎·구 비대기에 봄철 강우·대기 습도 및 병 발생 밀도를 반영하여 녹병·잎마름병을 예찰하고, 아즈모엠지(천연유황 80%·보조제 20%, 공시-2-4-156) 1,000배액을 엽면 및 토양 관주합니다.',
+      usageTip: isFacility
+        ? '[농자재 추천 분석] • 관리구분: 병해충 관리(시설) | 추천대상: 녹병·잎마름병 등록 자재 후보 | 선정·실행조건: 시설 습도·발생 밀도 반영 → 아즈모엠지(500g, 천연유황 80%, 공시-2-4-156, 1,000배, 단가 10,000원)를 엽면 및 토양 관주하고 시설 환기로 습도를 낮추세요.'
+        : '[농자재 추천 분석] • 관리구분: 병해충 관리(노지) | 추천대상: 녹병·잎마름병 등록 자재 후보 | 선정·실행조건: 강우·습도·발생 밀도 반영 → 봄비 전후 아즈모엠지(500g, 천연유황 80%, 공시-2-4-156, 1,000배, 단가 10,000원)를 엽면 및 토양 관주하여 광합성 동화엽을 보호하세요.',
+      climateRule: isFacility
+        ? '시설 내 상대습도가 75% 이상 지속되지 않도록 측창 환기를 실시하며 7~10일 간격 예찰합니다.'
+        : '봄철 강우가 잦고 다습할 때 녹병·잎마름병이 급증하므로 강우 전후 집중 예찰합니다.',
+      preferredMaterialIds: ['MAT-PEST-26', 'MAT-PEST-03'],
+      materialName: '아즈모엠지 (500g)',
+      materialSubLabel: '천연유황 80% 녹병·잎마름병 관리 (공시-2-4-156)',
+      materialThumb: '/images/fertilizers/MAT-PEST-03-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500g (1개 · 10,000원)',
+      dilutionText: '1,000배 희석 (물 500L에 500g)',
+      usageMethod: '엽면 및 토양 관주',
+      usageCaution: isFacility
+        ? '시설 습도·발생 밀도를 반영하여 오전 살포 후 환기 실시'
+        : '강우·습도·발생 밀도를 반영하여 무강우 맑은 날 살포',
+    },
+    {
+      itemId: 'SCH-14',
+      stepOrder: 14,
+      stageNum: '05',
+      stageGroupId: 'STG-PEST',
+      stageGroupName: '구 비대기',
+      subItemName: isFacility
+        ? '총채벌레 예찰 및 구 비대기 점적 수분관리'
+        : '총채벌레 예찰 및 구 비대기 수분·배수 관리',
+      processCode: 'PRC-22',
+      processName: isFacility
+        ? '[시설 구 비대기] 총채벌레 예찰(04-05) 및 점적관수·수분관리(04-20)'
+        : '[노지 구 비대기] 총채벌레 예찰(04-05) 및 강우량 확인 수분·과습 방지 배수관리(04-20)',
+      offsetDays: 173,
+      spanDays: 15,
+      targetPgdd: 1050,
+      iconType: 'PEST',
+      managementCategory: '병해충 관리 · 관수 관리',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: isFacility
+        ? '총채벌레 등록 자재 후보 + 점적관수·수분관리 자재'
+        : '총채벌레 등록 자재 후보 + 관수·배수 관리 자재',
+      selectionExecutionCondition: isFacility
+        ? '실제 발생 및 등록 확인(가루지기 골드) / 토양 수분·기상에 따라 점적관수 조정(스토피트)'
+        : '실제 발생 및 등록 확인(가루지기 골드) / 강우량·토양수분 확인, 과습 방지(스토피트)',
+      officialRegNo: '공시-2-5-303 / 칼슘 35% 유기피막보조제',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '[시설 구 비대기 통합 관리] ① 4월 초(04-05 기준) 총채벌레 등 실제 발생을 확인하여 가루지기 골드(데리스추출물+식물성오일, 공시-2-5-303, 500ml) 1,000배액을 엽면·토양 관주하고, ② 4월 중하순(04-20 기준) 토양 수분·기상에 따라 점적관수를 조정하며 스토피트(칼슘 35% 유기피막보조제) 1,000배액을 엽면 시비합니다.'
+        : '[노지 구 비대기 통합 관리] ① 4월 초(04-05 기준) 총채벌레 등 실제 발생을 확인하여 가루지기 골드(데리스추출물+식물성오일, 공시-2-5-303, 500ml) 1,000배액을 엽면·토양 관주하고, ② 4월 중하순(04-20 기준) 강우량·토양수분을 확인하여 가뭄 시 관수·강우 시 과습 방지 배수 관리를 수행하며 스토피트(칼슘 35% 유기피막보조제) 1,000배액을 엽면 시비합니다.',
+      usageTip: isFacility
+        ? '[농자재 추천 분석] • ① 병해충 관리(04-05): 실제 발생 확인 후 가루지기 골드 500ml(공시-2-5-303, 1,000배, 50,000원) 엽면·토양 관주 + ② 관수 관리(04-20 · 시설): 점적관수·토양수분 조정과 함께 스토피트(칼슘 35% 유기피막보조제, 1,000배, 20,000원) 엽면 살포로 구 비대를 극대화합니다.'
+        : '[농자재 추천 분석] • ① 병해충 관리(04-05): 실제 발생 확인 후 가루지기 골드 500ml(공시-2-5-303, 1,000배, 50,000원) 엽면·토양 관주 + ② 관수 관리(04-20 · 노지): 강우량·토양수분 확인 및 과습 방지 배수 관리와 함께 스토피트(칼슘 35% 유기피막보조제, 1,000배, 20,000원)를 엽면 살포합니다.',
+      climateRule: isFacility
+        ? '4월 구 비대 최성기 시설 내 토양 수분과 기상에 따라 7~10일 간격 점적관수량을 정밀 조정합니다.'
+        : '4월 구 비대 최성기 강우량과 토양 수분을 확인하여 건조 시 관수하고 집중강우 시 배수로를 열어 과습을 방지합니다.',
+      preferredMaterialIds: ['MAT-PEST-31', 'MAT-NUTR-26'],
+      materialName: '가루지기 골드 (500ml) + 스토피트',
+      materialSubLabel: '총채벌레 방제(공시-2-5-303) + 칼슘 35% 유기피막 구비대제',
+      materialThumb: '/images/fertilizers/MAT-PEST-06-thumb.png',
+      usageAmountPer100Pyeong: '가루지기 골드 500ml(50,000원) + 스토피트 500ml(20,000원) / 100평',
+      dilutionText: '각 1,000배 희석 (가루지기 골드: 엽면·토양 관주 / 스토피트: 엽면)',
+      usageMethod: isFacility
+        ? '총채벌레 방제(04-05) 및 점적관수 수분조절·스토피트 엽면살포(04-20)'
+        : '총채벌레 방제(04-05) 및 강우량 확인 과습방지·스토피트 엽면살포(04-20)',
+      usageCaution: '구 비대기~성숙기~수확기(엑셀 22~24행)는 스토피트(칼슘 35% 유기피막보조제)로 연속 관리 가능',
+    },
+    {
+      itemId: 'SCH-15',
+      stepOrder: 15,
+      stageNum: '06',
+      stageGroupId: 'STG-HARVEST',
+      stageGroupName: '성숙기',
+      subItemName: '관수 중단 시기 검토 (수확 준비)',
+      processCode: 'PRC-28',
+      processName: isFacility
+        ? '[시설 성숙기] 관수 중단 시기 검토 (잎 황화·구 성숙도 확인)'
+        : '[노지 성숙기] 관수 중단 시기 검토 (잎 황화·구 성숙도 확인 · 저장 용도까지 고려)',
+      offsetDays: 208,
+      spanDays: 8,
+      targetPgdd: 1290,
+      iconType: 'WORK',
+      managementCategory: '수확 준비',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '수확·건조 관련 자재',
+      selectionExecutionCondition: isFacility
+        ? '잎 황화·구 성숙도 확인'
+        : '잎 황화·구 성숙도 확인 저장 용도까지',
+      officialRegNo: '칼슘 35% 유기피막보조제',
+      cultivationMode: mode,
+      workContent: isFacility
+        ? '5월 상중순(05-10 기준) 수확 약 2주 전 잎 황화 정도와 구 성숙도를 확인하여 관수 중단 시기를 확정하고, 스토피트(칼슘 35% 유기피막보조제, 1,000배액)를 엽면 살포하여 마늘 구 표피를 경화시킵니다.'
+        : '5월 상중순(05-10 기준) 수확 약 2주 전 잎 황화·구 성숙도 및 장기 저장 용도까지 확인하여 관수를 중단·배수로를 정비하고, 스토피트(칼슘 35% 유기피막보조제, 1,000배액)를 엽면 살포하여 저장 중 부패 저항성을 높입니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 수확 준비 | 적용토양: 공통 | 추천대상: 수확·건조 관련 자재 | 선정·실행조건: 잎 황화·구 성숙도 확인(저장 용도까지) → 스토피트(칼슘 35% 유기피막보조제, 1,000배 희석 엽면, 단가 20,000원)를 관수 중단 시점에 엽면 살포하면 구 조직이 치밀해져 장기 저장성이 향상됩니다.',
+      climateRule: '수확 10~15일 전부터 관수를 중단하고 강우 시 물이 즉시 빠지도록 배수로를 관리하여 열구(터짐)를 예방합니다.',
+      preferredMaterialIds: ['MAT-NUTR-26', 'MAT-NUTR-04'],
+      materialName: '스토피트 (칼슘 35% 유기피막보조제)',
+      materialSubLabel: '성숙기 관수 중단기 구 표피 강화·저장성 향상제',
+      materialThumb: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+      usageAmountPer100Pyeong: '100평당 500ml (1개 · 20,000원)',
+      dilutionText: '1,000배 희석 (물 500L에 500ml 엽면 살포)',
+      usageMethod: '관수 중단 시기 검토 후 경엽 전면 엽면 살포',
+      usageCaution: '구 비대기(04-20)~성숙기(05-10)~수확기(05-25)는 스토피트로 한번에 연계 관리 가능',
+    },
+    {
+      itemId: 'SCH-16',
+      stepOrder: 16,
+      stageNum: '06',
+      stageGroupId: 'STG-HARVEST',
+      stageGroupName: '수확·건조기',
+      subItemName: '수확·선별·건조',
+      processCode: 'PRC-29',
+      processName: '적기 수확·선별·건조 (품종·성숙도 따라 수확일 조정 · 스토피트 마감)',
+      offsetDays: 223,
+      spanDays: 7,
+      targetPgdd: 1450,
+      iconType: 'WORK',
+      managementCategory: '수확',
+      targetSoilCondition: '공통',
+      recommendationTargetCandidate: '건조망·보관 자재',
+      selectionExecutionCondition: '품종·성숙도 따라 수확일 조정 (22~24단계는 스토피트로 한번에 가능)',
+      officialRegNo: '칼슘 35% 유기피막보조제 + 건조망',
+      cultivationMode: mode,
+      workContent:
+        '5월 하순(05-25 기준, 파종 후 223일) 품종·성숙도(지상부 잎 50~70% 황화)에 따라 수확일을 조정하여 맑은 날 수확·선별·건조를 실시합니다. 수확 전 스토피트(칼슘 35% 유기피막보조제 1,000배 엽면) 마감 처리 및 통풍 건조망·보관 자재로 예건·저장합니다.',
+      usageTip:
+        '[농자재 추천 분석] • 관리구분: 수확 | 적용토양: 공통 | 추천대상: 건조망·보관 자재 및 스토피트 | 선정·실행조건: 품종·성숙도 따라 수확일 조정(구 비대기~성숙기~수확기 22~24행은 스토피트 1,000배 엽면처리로 한번에 관리 가능) → 수확 후 통풍 예건 및 건조망 보관으로 저장 중 감모와 부패를 최소화하세요.',
+      climateRule: '비 온 직후 수확은 피하고 맑고 건조한 날 수확하며, 예건 중 강한 직사광선에 마늘 구가 직접 노출되지 않도록 주의합니다.',
+      preferredMaterialIds: ['MAT-NUTR-26', 'MAT-NUTR-14'],
+      materialName: '스토피트 + 건조망·보관 자재',
+      materialSubLabel: '칼슘 35% 유기피막보조제 마감 및 수확·선별·건조 자재',
+      materialThumb: '/images/fertilizers/MAT-NUTR-02-thumb.png',
+      usageAmountPer100Pyeong: '스토피트 500ml(20,000원, 22~24단계 통합 가능) + 건조망·보관 자재',
+      dilutionText: '스토피트 1,000배 엽면 마감 및 수확 후 통풍 건조(수분 65% 이하)',
+      usageMethod: '품종·성숙도 확인 적기 수확 -> 선별 -> 예건(건조) 및 건조망 저장',
+      usageCaution: '구 비대기(04-20)~성숙기(05-10)~수확기(05-25) 3개 시기는 스토피트로 한번에 통합 관리 가능',
+    },
+  ];
+}
+
+export const GARLIC_OPEN_FIELD_STAGES: CropAgronomicStageSpec[] =
+  buildGarlicStagesByCultivationMode('OPEN_FIELD');
+export const GARLIC_FACILITY_STAGES: CropAgronomicStageSpec[] =
+  buildGarlicStagesByCultivationMode('FACILITY');
+const GARLIC_STAGES: CropAgronomicStageSpec[] = GARLIC_OPEN_FIELD_STAGES;
 
 // 공통 스테이지 빌더 (작물별 실제 생육일수·번식방식·대표 병해충·핵심 작업을 정밀 반영하여 16단계 생성)
 function buildTailoredCropStages(opts: {
@@ -1990,14 +2176,29 @@ export const CROP_AGRONOMIC_PROFILES: Record<string, CropAgronomicProfile> = {
 
 export function resolveCropAgronomicProfile(
   cropNameInput?: string | null,
-  cropIdInput?: string | null
+  cropIdInput?: string | null,
+  cultivationTypeInput?: string | null
 ): CropAgronomicProfile {
   const rawName = String(cropNameInput || '').trim();
   const rawId = String(cropIdInput || '').trim().toUpperCase();
+  const rawCultType = String(cultivationTypeInput || '').trim();
+  const isFacilityMode =
+    rawCultType.includes('시설') ||
+    rawCultType.includes('하우스') ||
+    rawCultType.includes('온실') ||
+    rawCultType.toUpperCase().includes('GREENHOUSE') ||
+    rawCultType.toUpperCase().includes('FACILITY') ||
+    rawName.includes('시설');
 
   if (rawName === '봄배추' || rawId === 'CRP-SPR-CABBAGE') return CROP_AGRONOMIC_PROFILES['봄배추'];
   if (rawName === '월동배추' || rawId === 'CRP-WIN-CABBAGE') return CROP_AGRONOMIC_PROFILES['월동배추'];
-  if (rawName.includes('마늘') || rawId === 'CRP-GARLIC') return CROP_AGRONOMIC_PROFILES['마늘'];
+  if (rawName.includes('마늘') || rawId === 'CRP-GARLIC') {
+    const baseGarlic = CROP_AGRONOMIC_PROFILES['마늘'];
+    return {
+      ...baseGarlic,
+      stages: isFacilityMode ? GARLIC_FACILITY_STAGES : GARLIC_OPEN_FIELD_STAGES,
+    };
+  }
   if (rawName.includes('양파') || rawId === 'CRP-ONION') return CROP_AGRONOMIC_PROFILES['양파'];
   if (rawName.includes('시금치') || rawId === 'CRP-SPINACH') return CROP_AGRONOMIC_PROFILES['시금치'];
   if (rawName.includes('상추') || rawId === 'CRP-LETTUCE') return CROP_AGRONOMIC_PROFILES['상추'];
@@ -2020,8 +2221,9 @@ export function resolveCropAgronomicProfile(
 export function computeCropExpectedHarvestDate(
   plantingDateYmd: string,
   cropNameInput?: string | null,
-  cropIdInput?: string | null
+  cropIdInput?: string | null,
+  cultivationTypeInput?: string | null
 ): string {
-  const profile = resolveCropAgronomicProfile(cropNameInput, cropIdInput);
+  const profile = resolveCropAgronomicProfile(cropNameInput, cropIdInput, cultivationTypeInput);
   return addDaysYmd(plantingDateYmd || profile.defaultPlantingDate, profile.defaultCultivationDays);
 }

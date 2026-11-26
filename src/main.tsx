@@ -3986,7 +3986,8 @@ if (typeof window !== 'undefined') {
 
       const cropProfile = resolveCropAgronomicProfile(
         String(activeReq.crop_name || '가을배추'),
-        String(activeReq.crop_id || '')
+        String(activeReq.crop_id || ''),
+        String(activeReq.cultivation_type || activeReq.system_name || '노지')
       );
       const basePlantingYmd = String(activeReq.desired_start_date || cropProfile.defaultPlantingDate || '2026-08-25');
       const desiredStartDeltaDays = calcDiffDaysFromBase('2026-08-25', basePlantingYmd);

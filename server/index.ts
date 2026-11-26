@@ -6275,13 +6275,17 @@ const server = http.createServer(async (req, res) => {
         cultivation_type: body.cultivation_type || '노지',
         land_category: body.land_category || '전(밭)',
         planting_method: body.planting_method || '육묘정식',
-        desired_start_date: body.desired_start_date || resolveCropAgronomicProfile(crop_name, crop_id).defaultPlantingDate,
+        desired_start_date:
+          body.desired_start_date ||
+          resolveCropAgronomicProfile(crop_name, crop_id, body.cultivation_type || system_name).defaultPlantingDate,
         expected_harvest_date:
           body.expected_harvest_date ||
           computeCropExpectedHarvestDate(
-            body.desired_start_date || resolveCropAgronomicProfile(crop_name, crop_id).defaultPlantingDate,
+            body.desired_start_date ||
+              resolveCropAgronomicProfile(crop_name, crop_id, body.cultivation_type || system_name).defaultPlantingDate,
             crop_name,
-            crop_id
+            crop_id,
+            body.cultivation_type || system_name
           ),
         mulching_yn:
           body.mulching_yn !== undefined
@@ -8384,8 +8388,11 @@ const server = http.createServer(async (req, res) => {
         },
       ];
 
-      // [18개 전 작물 생리·재배주기·파종방식·병해충 맞춤형 16단계 프로필 적용]
-      const cropProfile = resolveCropAgronomicProfile(cropDisplayName, reqCropId);
+      // [18개 전 작물 생리·재배주기·파종방식·병해충 + 시설재배/노지재배 구분 맞춤형 16단계 프로필 적용]
+      const activeCultivationType = String(
+        activeRequest.cultivation_type || activeRequest.system_name || '노지'
+      ).trim();
+      const cropProfile = resolveCropAgronomicProfile(cropDisplayName, reqCropId, activeCultivationType);
       const profileAnchorDate =
         Math.abs(
           Math.round(
@@ -8536,19 +8543,63 @@ const server = http.createServer(async (req, res) => {
           const curatedStageMats = Array.isArray(schItem.materials) ? schItem.materials : [];
           if (curatedStageMats.length > 0) {
             const profStg = (schItem as any).profile_stage_spec;
-            schItem.materials = curatedStageMats.map((cm: any, idx: number) => ({
-              ...topRationaleTemplate,
-              ...cm,
-              product_name: idx === 0 && profStg?.materialName ? profStg.materialName : cm.product_name,
-              sub_type: idx === 0 && profStg?.materialSubLabel ? profStg.materialSubLabel : cm.sub_type,
-              image_url: idx === 0 && profStg?.materialThumb ? profStg.materialThumb : cm.image_url,
-              usage_amount_per_100pyeong: idx === 0 && profStg?.usageAmountPer100Pyeong ? profStg.usageAmountPer100Pyeong : undefined,
-              dilution_text: idx === 0 && profStg?.dilutionText ? profStg.dilutionText : undefined,
-              usage_method: idx === 0 && profStg?.usageMethod ? profStg.usageMethod : undefined,
-              usage_caution: idx === 0 && profStg?.usageCaution ? profStg.usageCaution : undefined,
-              match_score: idx === 0 ? Number(topRationaleTemplate?.match_score || 98) : 95,
-              is_top1_recommended: idx === 0,
-            }));
+            const isAcidicSoil = Number(scheduleSoilInput.soil_ph || 6.2) < 6.0;
+            const isContinuousCropping =
+              String(activeRequest.etc_notes || '').includes('연작') ||
+              String(activeRequest.soil_condition || '').includes('연작') ||
+              Number(scheduleSoilInput.soil_ec || 1.1) >= 1.8;
+            const soilAdaptNote =
+              profStg?.targetSoilCondition === '공통·산성토양·연작지 맞춤'
+                ? `[토양 조건별 맞춤 조합: 공통(엔비올 트리플 20kg/30평) + ${
+                    isAcidicSoil
+                      ? `산성토양(pH ${scheduleSoilInput.soil_ph} → 석회고토 20kg 필수 투입)`
+                      : `산도 적정(pH ${scheduleSoilInput.soil_ph} → 석회고토 선택 검토)`
+                  } + ${
+                    isContinuousCropping
+                      ? '연작지(토생이 2kg/100평 필수 투입)'
+                      : '연작장해 예방(토생이 2kg/100평 권장)'
+                  }]`
+                : profStg?.targetSoilCondition
+                ? `[적용 토양: ${profStg.targetSoilCondition}]`
+                : '';
+
+            schItem.materials = curatedStageMats.map((cm: any, idx: number) => {
+              const excelAnalysisBullet = profStg?.managementCategory
+                ? `• [${activeCultivationType.includes('시설') || activeCultivationType.includes('하우스') ? '시설재배' : '노지재배'} · ${
+                    profStg.managementCategory
+                  } 추천 분석] 추천대상(${profStg.recommendationTargetCandidate || cm.sub_type}) | 선정·실행조건(${
+                    profStg.selectionExecutionCondition || '생육단계 및 등록기준 확인'
+                  }) ${soilAdaptNote} | 공시·규격(${profStg.officialRegNo || cm.organic_label || '표준규격'})`
+                : null;
+              const baseBullets = Array.isArray(topRationaleTemplate?.rationale_bullets)
+                ? topRationaleTemplate.rationale_bullets
+                : [];
+              const mergedBullets = excelAnalysisBullet
+                ? [baseBullets[0], excelAnalysisBullet, ...baseBullets.slice(1)].filter(Boolean)
+                : baseBullets;
+
+              return {
+                ...topRationaleTemplate,
+                ...cm,
+                product_name: idx === 0 && profStg?.materialName ? profStg.materialName : cm.product_name,
+                sub_type: idx === 0 && profStg?.materialSubLabel ? profStg.materialSubLabel : cm.sub_type,
+                image_url: idx === 0 && profStg?.materialThumb ? profStg.materialThumb : cm.image_url,
+                usage_amount_per_100pyeong:
+                  idx === 0 && profStg?.usageAmountPer100Pyeong ? profStg.usageAmountPer100Pyeong : cm.dosage_per_100pyeong,
+                dilution_text: idx === 0 && profStg?.dilutionText ? profStg.dilutionText : undefined,
+                usage_method: idx === 0 && profStg?.usageMethod ? profStg.usageMethod : undefined,
+                usage_caution: idx === 0 && profStg?.usageCaution ? profStg.usageCaution : undefined,
+                management_category: profStg?.managementCategory,
+                target_soil_condition: profStg?.targetSoilCondition,
+                recommendation_target_candidate: profStg?.recommendationTargetCandidate,
+                selection_execution_condition: profStg?.selectionExecutionCondition,
+                official_reg_no: profStg?.officialRegNo,
+                rationale_bullets: mergedBullets,
+                selection_rationale: mergedBullets.join('\n'),
+                match_score: idx === 0 ? Number(topRationaleTemplate?.match_score || 98) : 95,
+                is_top1_recommended: idx === 0,
+              };
+            });
           } else {
             schItem.materials = dynamicallyRecommended;
           }

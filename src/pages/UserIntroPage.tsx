@@ -1554,7 +1554,8 @@ export default function UserIntroPage() {
       myCropPlans.find((cp: any) => cp.request_no === rNo);
     const summaryCropProfile = resolveCropAgronomicProfile(
       matchedReqForSummary?.crop_name || matchedReqForSummary?.crop_short || '배추',
-      matchedReqForSummary?.crop_id
+      matchedReqForSummary?.crop_id,
+      matchedReqForSummary?.cultivation_type || matchedReqForSummary?.system_name || matchedReqForSummary?.badge
     );
     const totalCount = 16;
     const basePlantingYmd =
@@ -1657,6 +1658,8 @@ export default function UserIntroPage() {
       crop_title: sr.crop_title || `${cropName} (${cultivarName})`,
       crop_short: cropName,
       cultivar_name: cultivarName,
+      cultivation_type: sr.cultivation_type || (String(sr.system_name || sr.badge || '').includes('시설') ? '시설하우스' : '노지'),
+      system_name: sr.system_name || '',
       badge: sr.badge || (isSeed ? '노지 직파(씨)' : '노지 정식(모종)'),
       region,
       sido: sr.sido || '충청북도',
@@ -1719,6 +1722,8 @@ export default function UserIntroPage() {
       crop_title: sr.crop_title || `${cropName} (${cultivarName})`,
       crop_short: cropName,
       cultivar_name: cultivarName,
+      cultivation_type: sr.cultivation_type || (String(sr.system_name || sr.badge || '').includes('시설') ? '시설하우스' : '노지'),
+      system_name: sr.system_name || '',
       badge: sr.badge || (isSeed ? '노지 직파(씨)' : '노지 정식(모종)'),
       region,
       sido: sr.sido || '충청북도',
@@ -9785,7 +9790,11 @@ export default function UserIntroPage() {
                 const rawShort = String(crop.crop_short || crop.crop_name || '배추').trim();
                 const shortName =
                   rawShort === '가을배추' || rawShort === '봄배추' ? '배추' : rawShort;
-                const cropProfile = resolveCropAgronomicProfile(rawShort, crop.crop_id);
+                const cropProfile = resolveCropAgronomicProfile(
+                  rawShort,
+                  crop.crop_id,
+                  crop.cultivation_type || crop.system_name || crop.badge
+                );
                 const basePlantingYmd =
                   crop.planting_date && /^\d{4}-\d{2}-\d{2}$/.test(crop.planting_date)
                     ? crop.planting_date
@@ -10135,9 +10144,31 @@ export default function UserIntroPage() {
 
                   const usageTableRows = profStg
                     ? [
+                        ...(profStg.managementCategory
+                          ? [
+                              {
+                                label: '관리·토양',
+                                val: `${profStg.managementCategory} · 적용토양: ${profStg.targetSoilCondition || '공통'}${
+                                  profStg.officialRegNo ? ` (${profStg.officialRegNo})` : ''
+                                }`,
+                              },
+                            ]
+                          : []),
+                        ...(profStg.recommendationTargetCandidate
+                          ? [
+                              {
+                                label: '추천·조건',
+                                val: `${profStg.recommendationTargetCandidate}${
+                                  profStg.selectionExecutionCondition
+                                    ? ` (${profStg.selectionExecutionCondition})`
+                                    : ''
+                                }`,
+                              },
+                            ]
+                          : []),
                         {
                           label: '사용량',
-                          val: `${areaPyeongVal.toLocaleString()}평 기준 · 100평당 ${profStg.usageAmountPer100Pyeong}`,
+                          val: `${areaPyeongVal.toLocaleString()}평 기준 · ${profStg.usageAmountPer100Pyeong}`,
                         },
                         {
                           label: isPest ? '희석배수' : isFert ? '시비기준' : '적용기준',
