@@ -81,7 +81,8 @@ type AdminTab =
   | 'addresses_road'
   | 'addresses'
   | 'member_management'
-  | 'agro_sales_management';
+  | 'agro_sales_management'
+  | 'crop_purchase_management';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -5681,12 +5682,61 @@ export default function AdminDashboardPage() {
   const [salesCategory1stFilter, setSalesCategory1stFilter] = useState<string>('ALL');
   const [salesCategory2ndFilter, setSalesCategory2ndFilter] = useState<string>('ALL');
   const [salesProductNameFilter, setSalesProductNameFilter] = useState<string>('');
+  const [cropPurScheduleFilter, setCropPurScheduleFilter] = useState<string>('ALL');
+  const [cropPurStageFilter, setCropPurStageFilter] = useState<string>('ALL');
+  const [cropPurStatusFilter, setCropPurStatusFilter] = useState<string>('ALL');
+  const [editingCropPurchaseItem, setEditingCropPurchaseItem] = useState<any | null>(null);
+  const [isCreatingCropPurchase, setIsCreatingCropPurchase] = useState<boolean>(false);
 
   useEffect(() => {
-    if (activeTab === 'agro_sales_management') {
+    if (activeTab === 'agro_sales_management' || activeTab === 'crop_purchase_management') {
       setAdminAgroSalesList(loadMergedAdminAgroSales());
     }
   }, [activeTab]);
+
+  const handleSaveCropPurchaseModal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCropPurchaseItem) return;
+    const item = editingCropPurchaseItem;
+    const qty = Math.max(1, Number(item.qty) || 1);
+    const unitPrice = Math.max(0, Number(item.unitPrice) || 18000);
+    const totalPrice = Number(item.totalPrice) > 0 ? Number(item.totalPrice) : Math.round(unitPrice * qty * 0.95);
+    const normalizedItem = {
+      ...item,
+      id: item.id || item.orderNo || `ORD-${Date.now()}`,
+      orderNo: item.orderNo || item.id || `HF-${Date.now()}`,
+      purchasedAt:
+        item.purchasedAt ||
+        new Date(Date.now() + 9 * 3600 * 1000)
+          .toISOString()
+          .slice(0, 16)
+          .replace('T', ' '),
+      qty,
+      unitPrice,
+      totalPrice,
+    };
+
+    setAdminAgroSalesList((prev) => {
+      const exists = prev.some((it) => it.id === normalizedItem.id);
+      const next = exists
+        ? prev.map((it) => (it.id === normalizedItem.id ? normalizedItem : it))
+        : [normalizedItem, ...prev];
+      try {
+        localStorage.setItem(ADMIN_AGRO_SALES_STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(USER_STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    setEditingCropPurchaseItem(null);
+    setIsCreatingCropPurchase(false);
+    showToast(
+      isCreatingCropPurchase
+        ? `신규 구매 내역 [${normalizedItem.orderNo}]이 등록되었습니다.`
+        : `구매 내역 [${normalizedItem.orderNo}] 정보가 수정되었습니다.`
+    );
+  };
 
   const handleUpdateAdminSaleStatus = (targetId: string, nextStatus: string) => {
     setAdminAgroSalesList((prev) => {
@@ -5763,7 +5813,8 @@ export default function AdminDashboardPage() {
     { id: 'purchase_intent_status', label: '11. 구매의향서 관리 > 구매의향서 수집 현황', sub: '접수된 구매·구독의향서 응답 수집 현황 · 통계 · CSV 다운로드', icon: ListChecks },
     { id: 'member_management', label: '12. 회원정보 관리', sub: '회원가입 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 관리', icon: Users },
     { id: 'agro_sales_management', label: '13. 농자재 판매 관리', sub: '회원ID · 농자재 1/2차 구분 · 농자재명 검색 및 판매내역 관리', icon: ShoppingBag },
-    { id: 'settings', label: '14. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
+    { id: 'crop_purchase_management', label: '14. 농작물 구매 관리', sub: '회원 재배일정 및 생육단계별 농작물·농자재 구매 정보 통합 관리', icon: ShoppingBag },
+    { id: 'settings', label: '15. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
   ];
 
   // 1단계(작물군) & 2단계(작물 및 세부 품종) 통합 관리 섹션 렌더러 (기초 코드 관리 > 농작물 기초 코드 및 2. 농작물 3단계 마스터 공용)
@@ -34514,6 +34565,895 @@ export default function AdminDashboardPage() {
                     </table>
                   </div>
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* ==================== 14. 농작물 구매 관리 (회원들의 재배일정 및 생육단계별 농작물·농자재 구매 정보 통합 관리) ==================== */}
+          {activeTab === 'crop_purchase_management' && (() => {
+            const scheduleOptions = Array.from(
+              new Set(
+                adminAgroSalesList
+                  .map((it) => String(it.cropTitle || '가을배추 (불암3호)').trim())
+                  .filter(Boolean)
+              )
+            );
+            const stageOptions = Array.from(
+              new Set(
+                adminAgroSalesList
+                  .map((it) => String(it.stageGroupName || '본밭 생육단계').trim())
+                  .filter(Boolean)
+              )
+            );
+
+            const filteredPurchases = adminAgroSalesList.filter((item) => {
+              const memberIdStr = String(item.member_id || item.email || 'CloudBae@naver.com').toLowerCase();
+              const memberNameStr = String(item.member_name || '').toLowerCase();
+              const cropTitleStr = String(item.cropTitle || '가을배추 (불암3호)').trim();
+              const stageGroupStr = String(item.stageGroupName || '본밭 생육단계').trim();
+              const subItemStr = String(item.subItemName || item.processName || '').toLowerCase();
+              const prodName = String(item.productName || item.product_name || '').toLowerCase();
+              const statusStr = String(item.deliveryStatus || '입금대기 · 산지발송 준비').trim();
+
+              if (salesMemberIdFilter.trim()) {
+                const qMember = salesMemberIdFilter.trim().toLowerCase();
+                if (!memberIdStr.includes(qMember) && !memberNameStr.includes(qMember)) {
+                  return false;
+                }
+              }
+              if (cropPurScheduleFilter !== 'ALL' && cropTitleStr !== cropPurScheduleFilter) {
+                return false;
+              }
+              if (cropPurStageFilter !== 'ALL' && stageGroupStr !== cropPurStageFilter) {
+                return false;
+              }
+              if (cropPurStatusFilter !== 'ALL' && !statusStr.includes(cropPurStatusFilter)) {
+                return false;
+              }
+              if (salesProductNameFilter.trim()) {
+                const qProd = salesProductNameFilter.trim().toLowerCase();
+                if (
+                  !prodName.includes(qProd) &&
+                  !subItemStr.includes(qProd) &&
+                  !cropTitleStr.toLowerCase().includes(qProd)
+                ) {
+                  return false;
+                }
+              }
+              return true;
+            });
+
+            // 재배일정(회원 + 작물 + 재배지) 및 생육단계별 집계 요약
+            const scheduleSummaryMap = new Map<
+              string,
+              {
+                key: string;
+                memberId: string;
+                memberName: string;
+                cropTitle: string;
+                region: string;
+                requestNo: string;
+                stages: Set<string>;
+                itemCount: number;
+                totalQty: number;
+                totalAmount: number;
+              }
+            >();
+
+            filteredPurchases.forEach((it) => {
+              const memberId = String(it.member_id || it.email || 'CloudBae@naver.com');
+              const cropTitle = String(it.cropTitle || '가을배추 (불암3호)');
+              const region = String(it.region || it.region_address || '충청북도 충주시 단월동 · 300평');
+              const reqNo = String(it.requestNo || it.request_no || 'REQ-20261106-009');
+              const key = `${memberId}__${cropTitle}__${reqNo}`;
+              const qty = Math.max(1, Number(it.qty) || 1);
+              const amt = Number(it.totalPrice ?? (Number(it.unitPrice) || 0) * qty);
+              const existing = scheduleSummaryMap.get(key);
+              if (existing) {
+                existing.stages.add(String(it.stageGroupName || '본밭 생육단계'));
+                existing.itemCount += 1;
+                existing.totalQty += qty;
+                existing.totalAmount += amt;
+              } else {
+                scheduleSummaryMap.set(key, {
+                  key,
+                  memberId,
+                  memberName: String(it.member_name || '배철민'),
+                  cropTitle,
+                  region,
+                  requestNo: reqNo,
+                  stages: new Set([String(it.stageGroupName || '본밭 생육단계')]),
+                  itemCount: 1,
+                  totalQty: qty,
+                  totalAmount: amt,
+                });
+              }
+            });
+
+            const scheduleSummaries = Array.from(scheduleSummaryMap.values());
+            const totalPurchaseCount = filteredPurchases.length;
+            const totalPurchaseQty = filteredPurchases.reduce(
+              (sum, it) => sum + Math.max(1, Number(it.qty) || 1),
+              0
+            );
+            const totalPurchaseAmount = filteredPurchases.reduce(
+              (sum, it) => sum + Number(it.totalPrice ?? (Number(it.unitPrice) || 0) * Math.max(1, Number(it.qty) || 1)),
+              0
+            );
+
+            return (
+              <div className="space-y-6 w-full">
+                {/* 1. 상단 헤더 배너 */}
+                <div className="bg-emerald-950 text-white rounded-2xl p-6 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-extrabold border border-emerald-400/30">
+                        14. 농작물 구매 관리 · 회원 재배일정 및 생육단계별 구매 통합 관제
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+                        회원별 · 재배일정(작물/필지)별 · 생육단계 및 세부 생육과정별 구매 내역 관리
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-extrabold mt-2">
+                      14. 농작물 구매 관리 (회원 재배일정 및 생육단계별 농작물·농자재 구매 정보 관리)
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      회원들이 각 재배일정과 생육단계(파종 준비·정식·생육기·비대기·병해충 방제 등)에서 구매한 농작물(종자·모종) 및 맞춤 농자재(비료·영양제·병해충관리제) 정보를 일정·단계별로 통합 조회·등록·수정·삭제합니다.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreatingCropPurchase(true);
+                        setEditingCropPurchaseItem({
+                          id: `ORD-${Date.now()}`,
+                          orderNo: `HF-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${String(
+                            adminAgroSalesList.length + 1
+                          ).padStart(3, '0')}`,
+                          purchasedAt: new Date(Date.now() + 9 * 3600 * 1000)
+                            .toISOString()
+                            .slice(0, 16)
+                            .replace('T', ' '),
+                          member_id: 'CloudBae@naver.com',
+                          member_name: '배철민',
+                          requestNo: 'REQ-20261106-009',
+                          cropTitle: '마늘 (남도마늘)',
+                          region: '충청북도 충주시 봉방동 · 500평',
+                          stageGroupName: '01. 파종 준비',
+                          subItemName: '토양 개량 및 밑거름 시비',
+                          processCode: 'SCH-02',
+                          startDate: '2026-10-08',
+                          targetPgdd: 120,
+                          category_1st: '비료',
+                          category_2nd: '밑거름·복합비료',
+                          productName: '마늘·양파 전용 완효성 밑거름 복합비료',
+                          manufacturer: '남해화학(주)',
+                          unitSpec: '20kg × 1포',
+                          unitPrice: 21500,
+                          qty: 3,
+                          unitLabel: '포',
+                          totalPrice: 61275,
+                          paymentMethod: 'NH농협은행 301-0348-9120-81 ((주)한팜)',
+                          deliveryStatus: '입금확인 · 출고중',
+                        });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      신규 구매정보 등록
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdminAgroSalesList(loadMergedAdminAgroSales());
+                        showToast('최신 회원 재배일정·생육단계별 구매 정보를 동기화했습니다.');
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      구매정보 동기화
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. 상단 4대 KPI 요약 카드 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500">구매 연동 재배일정 수</div>
+                    <div className="text-2xl font-black text-slate-900 mt-1">
+                      {scheduleSummaries.length.toLocaleString()}개 일정
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                      회원별 작물 재배일정 · 필지 연동
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500">생육단계별 구매 건수</div>
+                    <div className="text-2xl font-black text-slate-900 mt-1">
+                      {totalPurchaseCount.toLocaleString()}건
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                      전체 누적 {adminAgroSalesList.length}건 중 조건 일치
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-emerald-700">총 구매 수량</div>
+                    <div className="text-2xl font-black text-emerald-800 mt-1">
+                      {totalPurchaseQty.toLocaleString()}개
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      생육단계 맞춤 종자·모종·비료·영양제·방제제
+                    </div>
+                  </div>
+                  <div className="bg-emerald-950 text-white rounded-2xl p-4 shadow-xs">
+                    <div className="text-xs font-bold text-emerald-300">총 구매 결제금액</div>
+                    <div className="text-2xl font-black text-white mt-1">
+                      {totalPurchaseAmount.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-emerald-200 mt-0.5">
+                      회원 5% 할인 적용 실결제액 합계
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. 회원별 · 재배일정별 생육단계 구매 현황 요약 카드 그리드 */}
+                {scheduleSummaries.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Sprout className="w-4 h-4 text-emerald-600" />
+                        <h3 className="text-sm font-extrabold text-slate-900">
+                          회원 재배일정별 생육단계 구매 요약 ({scheduleSummaries.length}개 재배일정)
+                        </h3>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-500">
+                        카드를 클릭하면 해당 재배일정의 생육단계별 구매 내역만 필터링됩니다
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                      {scheduleSummaries.map((sum) => {
+                        const isSelectedSchedule = cropPurScheduleFilter === sum.cropTitle;
+                        return (
+                          <div
+                            key={sum.key}
+                            onClick={() =>
+                              setCropPurScheduleFilter((prev) =>
+                                prev === sum.cropTitle ? 'ALL' : sum.cropTitle
+                              )
+                            }
+                            className={`rounded-2xl border p-4 cursor-pointer transition space-y-2.5 ${
+                              isSelectedSchedule
+                                ? 'bg-emerald-50/80 border-2 border-emerald-600 shadow-xs'
+                                : 'bg-slate-50/70 hover:bg-white border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white text-[11px] font-extrabold">
+                                    {sum.cropTitle}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-900 border border-indigo-200 font-mono text-[11px] font-extrabold">
+                                    {sum.memberId} ({sum.memberName})
+                                  </span>
+                                </div>
+                                <div className="text-xs font-bold text-slate-600 mt-1">
+                                  📍 {sum.region}
+                                </div>
+                              </div>
+                              <span className="px-2.5 py-1 rounded-full bg-white border border-emerald-200 text-emerald-800 text-xs font-black shrink-0">
+                                {sum.itemCount}건 · {sum.totalQty}개
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-1">
+                              {Array.from(sum.stages).map((stg) => (
+                                <span
+                                  key={stg}
+                                  className="px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 text-[11px] font-bold"
+                                >
+                                  {stg}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-500">
+                                구매 생육단계 {sum.stages.size}개 구간
+                              </span>
+                              <span className="text-sm font-black text-emerald-700">
+                                합계 {sum.totalAmount.toLocaleString()}원
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. 상세 검색 및 필터 바 (회원ID / 재배작물·재배일정 / 생육단계 구분 / 배송·입금 상태 / 구매 제품·생육과정명) */}
+                <div className="bg-white rounded-2xl border-2 border-emerald-600/30 p-5 shadow-xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Search className="w-4 h-4 text-emerald-600" />
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        재배일정 및 생육단계별 농작물 구매 상세 검색
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSalesMemberIdFilter('');
+                        setCropPurScheduleFilter('ALL');
+                        setCropPurStageFilter('ALL');
+                        setCropPurStatusFilter('ALL');
+                        setSalesProductNameFilter('');
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      필터 초기화
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1.5">
+                        ① 회원ID / 회원명
+                      </label>
+                      <input
+                        type="text"
+                        value={salesMemberIdFilter}
+                        onChange={(e) => setSalesMemberIdFilter(e.target.value)}
+                        placeholder="예: CloudBae@naver.com"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-emerald-800 mb-1.5">
+                        ② 재배일정 (작물·품종)
+                      </label>
+                      <select
+                        value={cropPurScheduleFilter}
+                        onChange={(e) => setCropPurScheduleFilter(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-extrabold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="ALL">전체 재배일정 작물</option>
+                        {scheduleOptions.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-teal-800 mb-1.5">
+                        ③ 생육단계 구분
+                      </label>
+                      <select
+                        value={cropPurStageFilter}
+                        onChange={(e) => setCropPurStageFilter(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      >
+                        <option value="ALL">전체 생육단계</option>
+                        {stageOptions.map((stg) => (
+                          <option key={stg} value={stg}>
+                            {stg}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1.5">
+                        ④ 입금 / 적기배송 상태
+                      </label>
+                      <select
+                        value={cropPurStatusFilter}
+                        onChange={(e) => setCropPurStatusFilter(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        <option value="ALL">전체 상태</option>
+                        <option value="입금대기">입금대기 · 산지발송 준비</option>
+                        <option value="입금확인">입금확인 · 출고중</option>
+                        <option value="배송중">배송중</option>
+                        <option value="배송완료">배송완료</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1.5">
+                        ⑤ 구매 품목명 / 세부 작업명
+                      </label>
+                      <input
+                        type="text"
+                        value={salesProductNameFilter}
+                        onChange={(e) => setSalesProductNameFilter(e.target.value)}
+                        placeholder="품목명 또는 생육작업 검색..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. 재배일정 및 생육단계별 농작물 구매 상세 테이블 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        회원 재배일정 · 생육단계별 농작물 구매 리스트 (총 {filteredPurchases.length}건)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        각 회원의 재배일정(작물·재배지·평수), 생육단계 및 세부 작업일정(권장 투입일·적산온도), 구매 제품 정보 및 배송 상태를 통합 관리합니다.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-900 text-white border-b border-slate-800">
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">주문번호 / 주문일시</th>
+                          <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">회원 정보</th>
+                          <th className="py-3.5 px-3 font-extrabold">재배일정 정보 (작물·품종 · 재배지 · 면적)</th>
+                          <th className="py-3.5 px-3 font-extrabold">생육단계 · 세부 작업일정 · 권장 투입일</th>
+                          <th className="py-3.5 px-3 font-extrabold">구매 품목 구분 · 제품명 · 규격</th>
+                          <th className="py-3.5 px-3 font-extrabold text-right whitespace-nowrap">구매수량 / 결제금액</th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap">배송상태 · 관리</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {filteredPurchases.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-slate-500 font-bold">
+                              조회 조건에 일치하는 재배일정·생육단계별 구매 내역이 없습니다.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredPurchases.map((sale, idx) => {
+                            const cat1 = inferAgroCategory1st(sale);
+                            const cat2 = inferAgroCategory2nd(sale, cat1);
+                            const qty = Math.max(1, Number(sale.qty) || 1);
+                            const totalPrice = Number(
+                              sale.totalPrice ?? (Number(sale.unitPrice) || 0) * qty
+                            );
+                            const memberId = sale.member_id || sale.email || 'CloudBae@naver.com';
+
+                            return (
+                              <tr key={sale.id || idx} className="hover:bg-slate-50/90 transition">
+                                {/* 1. 주문번호 / 일시 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <div className="font-mono font-extrabold text-slate-900">
+                                    #{idx + 1} · {sale.orderNo || sale.id}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
+                                    주문: {sale.purchasedAt || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 2. 회원 정보 */}
+                                <td className="py-3.5 px-3 whitespace-nowrap align-top">
+                                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-900 border border-indigo-200 font-mono font-extrabold text-xs inline-block">
+                                    {memberId}
+                                  </span>
+                                  <div className="text-[11px] font-bold text-slate-700 mt-1">
+                                    회원명: {sale.member_name || '배철민'}
+                                  </div>
+                                </td>
+
+                                {/* 3. 재배일정 정보 */}
+                                <td className="py-3.5 px-3 align-top min-w-[200px]">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-800 text-white text-[11px] font-extrabold">
+                                      {sale.cropTitle || '가을배추 (불암3호)'}
+                                    </span>
+                                    {(sale.requestNo || sale.request_no) && (
+                                      <span className="text-[10.5px] font-mono font-bold text-slate-500">
+                                        ({sale.requestNo || sale.request_no})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11.5px] font-bold text-slate-700 mt-1">
+                                    📍 {sale.region || sale.region_address || '충청북도 충주시 단월동 · 300평'}
+                                  </div>
+                                  {sale.plantingDate && (
+                                    <div className="text-[11px] text-slate-500 mt-0.5">
+                                      기준 정식/파종일: {sale.plantingDate}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 4. 생육단계 · 세부 작업일정 */}
+                                <td className="py-3.5 px-3 align-top min-w-[220px]">
+                                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-900 font-extrabold text-[11.5px]">
+                                    <span>{sale.stageGroupName || '본밭 생육단계'}</span>
+                                  </div>
+                                  <div className="font-extrabold text-slate-900 mt-1">
+                                    └ {sale.subItemName || sale.processName || '생육과정 맞춤 농작업'}
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-slate-600 font-semibold mt-0.5">
+                                    {sale.startDate && <span>작업 예정일: {sale.startDate}</span>}
+                                    {Number(sale.targetPgdd) > 0 && (
+                                      <span className="text-emerald-700 font-bold">
+                                        · 목표 {sale.targetPgdd} GDD
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* 5. 구매 품목 구분 · 제품명 · 규격 */}
+                                <td className="py-3.5 px-3 align-top min-w-[240px]">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-extrabold text-[10.5px]">
+                                      {cat1}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-teal-50 text-teal-900 border border-teal-200 font-extrabold text-[10.5px]">
+                                      {cat2}
+                                    </span>
+                                  </div>
+                                  <div className="font-black text-slate-900 text-xs sm:text-sm leading-snug">
+                                    {sale.productName || sale.product_name}
+                                  </div>
+                                  <div className="text-[11px] text-slate-600 mt-0.5">
+                                    규격: <strong className="text-slate-800">{sale.unitSpec || '1개'}</strong> · 제조사:{' '}
+                                    <strong className="text-slate-800">{sale.manufacturer || '한팜인증'}</strong>
+                                  </div>
+                                </td>
+
+                                {/* 6. 구매수량 / 결제금액 */}
+                                <td className="py-3.5 px-3 text-right whitespace-nowrap align-top">
+                                  <div className="font-extrabold text-slate-800">
+                                    {qty}
+                                    {sale.unitLabel || '개'}
+                                  </div>
+                                  <div className="text-sm font-black text-emerald-700 mt-0.5">
+                                    {totalPrice.toLocaleString()}원
+                                  </div>
+                                  <div className="text-[10.5px] text-slate-400">
+                                    단가 {Number(sale.unitPrice || 0).toLocaleString()}원
+                                  </div>
+                                </td>
+
+                                {/* 7. 배송상태 · 수정/삭제 */}
+                                <td className="py-3.5 px-3 text-center whitespace-nowrap align-top">
+                                  <div className="flex flex-col items-center gap-1.5">
+                                    <select
+                                      value={sale.deliveryStatus || '입금대기 · 산지발송 준비'}
+                                      onChange={(e) => handleUpdateAdminSaleStatus(sale.id, e.target.value)}
+                                      className="px-2.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50/70 text-emerald-900 font-extrabold text-[11px] cursor-pointer"
+                                    >
+                                      <option value="입금대기 · 산지발송 준비">입금대기 · 산지발송 준비</option>
+                                      <option value="입금확인 · 출고중">입금확인 · 출고중</option>
+                                      <option value="배송중">배송중</option>
+                                      <option value="배송완료">배송완료</option>
+                                    </select>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setIsCreatingCropPurchase(false);
+                                          setEditingCropPurchaseItem({ ...sale });
+                                        }}
+                                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                        수정
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteAdminSaleItem(sale.id)}
+                                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        삭제
+                                      </button>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* 6. 재배일정·생육단계별 구매 정보 등록/수정 모달 */}
+                {editingCropPurchaseItem && (
+                  <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+                    <div className="bg-white rounded-2xl border-2 border-emerald-600 shadow-2xl max-w-2xl w-full overflow-hidden">
+                      <div className="bg-emerald-950 text-white px-6 py-4 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] font-bold text-emerald-300 uppercase">
+                            14. 농작물 구매 관리
+                          </span>
+                          <h3 className="text-base font-extrabold mt-0.5">
+                            {isCreatingCropPurchase
+                              ? '재배일정 · 생육단계별 구매 정보 신규 등록'
+                              : `재배일정 · 생육단계별 구매 정보 수정 (${editingCropPurchaseItem.orderNo})`}
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCropPurchaseItem(null);
+                            setIsCreatingCropPurchase(false);
+                          }}
+                          className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSaveCropPurchaseModal} className="p-6 space-y-4 text-xs">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">주문번호</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.orderNo || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  orderNo: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">회원ID (이메일)</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.member_id || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  member_id: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">회원명</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.member_name || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  member_name: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block font-extrabold text-emerald-800 mb-1">
+                              재배일정 작물·품종명
+                            </label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.cropTitle || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  cropTitle: e.target.value,
+                                })
+                              }
+                              placeholder="예: 마늘 (남도마늘), 가을배추 (불암3호)"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-emerald-800 mb-1">
+                              재배지 주소 · 면적(평)
+                            </label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.region || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  region: e.target.value,
+                                })
+                              }
+                              placeholder="예: 충청북도 충주시 봉방동 · 500평"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block font-extrabold text-teal-800 mb-1">생육단계 명칭</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.stageGroupName || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  stageGroupName: e.target.value,
+                                })
+                              }
+                              placeholder="예: 01. 파종 준비, 03. 정식·활착기"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-teal-800 mb-1">세부 작업일정명</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.subItemName || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  subItemName: e.target.value,
+                                })
+                              }
+                              placeholder="예: 본밭 정식 및 멀칭·관수"
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-teal-800 mb-1">작업 예정일</label>
+                            <input
+                              type="date"
+                              value={editingCropPurchaseItem.startDate || '2026-10-15'}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  startDate: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">품목 1차 구분</label>
+                            <select
+                              value={editingCropPurchaseItem.category_1st || '비료'}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  category_1st: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            >
+                              <option value="비료">비료</option>
+                              <option value="영양제">영양제</option>
+                              <option value="병해충관리제">병해충관리제</option>
+                              <option value="씨">씨</option>
+                              <option value="모종">모종</option>
+                            </select>
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block font-extrabold text-slate-800 mb-1">구매 제품명</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.productName || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  productName: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">포장규격</label>
+                            <input
+                              type="text"
+                              value={editingCropPurchaseItem.unitSpec || ''}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  unitSpec: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">단가(원)</label>
+                            <input
+                              type="number"
+                              value={editingCropPurchaseItem.unitPrice || 0}
+                              onChange={(e) => {
+                                const up = Number(e.target.value) || 0;
+                                const q = Math.max(1, Number(editingCropPurchaseItem.qty) || 1);
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  unitPrice: up,
+                                  totalPrice: Math.round(up * q * 0.95),
+                                });
+                              }}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-slate-800 mb-1">수량</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={editingCropPurchaseItem.qty || 1}
+                              onChange={(e) => {
+                                const q = Math.max(1, Number(e.target.value) || 1);
+                                const up = Number(editingCropPurchaseItem.unitPrice) || 0;
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  qty: q,
+                                  totalPrice: Math.round(up * q * 0.95),
+                                });
+                              }}
+                              className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-extrabold text-emerald-800 mb-1">결제금액(원)</label>
+                            <input
+                              type="number"
+                              value={editingCropPurchaseItem.totalPrice || 0}
+                              onChange={(e) =>
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  totalPrice: Number(e.target.value) || 0,
+                                })
+                              }
+                              className="w-full px-3 py-2 rounded-xl border border-emerald-400 bg-emerald-50/50 font-black text-emerald-900"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingCropPurchaseItem(null);
+                              setIsCreatingCropPurchase(false);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold cursor-pointer"
+                          >
+                            취소
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>저장하기</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}
