@@ -26059,14 +26059,16 @@ export default function UserIntroPage() {
                     </div>
                   ) : (
                     <>
-                      {/* 모바일 전용: 가로 스크롤 없이 화면에 딱 맞는 세련된 카드 리스트 (번호 · 재배작물 · 생육단계 · 제품명 · 가격 · 갯수 · 비용) */}
+                      {/* 모바일 전용: 가로 스크롤 없이 화면에 딱 맞는 세련된 카드 리스트 (번호 · 재배작물 · 생육단계 · 제품명 · 소비자가격 · 판매가격 · 갯수 · 비용) */}
                       <div className="md:hidden space-y-2.5">
                         {stagePurchaseHistory.map((item: any, idx: number) => {
                           const qty = Math.max(1, Number(item.qty) || 1);
-                          const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0);
+                          const consumerUnitPrice = Number(item.unitPrice ?? item.unit_price ?? 0);
                           const totalCost = Number(
-                            item.totalPrice ?? item.final_subtotal ?? unitPrice * qty
+                            item.totalPrice ?? item.final_subtotal ?? Math.round(consumerUnitPrice * qty * 0.95)
                           );
+                          const sellingUnitPrice =
+                            qty > 0 ? Math.round(totalCost / qty) : Math.round(consumerUnitPrice * 0.95);
                           const stageLabel = String(
                             item.stageGroupName || item.stage_group_name || '생육 관리'
                           )
@@ -26122,24 +26124,30 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 3줄: 가격 · 갯수 · 비용 3분할 요약 박스 */}
-                              <div className="rounded-xl bg-slate-50/95 border border-slate-200/80 px-3 py-2 grid grid-cols-3 divide-x divide-slate-200/90 text-center">
-                                <div className="pr-2">
-                                  <div className="text-[11px] font-bold text-slate-500">가격</div>
-                                  <div className="text-[13px] font-extrabold text-slate-800 mt-0.5 whitespace-nowrap">
-                                    {unitPrice.toLocaleString()}원
+                              {/* 3줄: 소비자가격 · 판매가격 · 갯수 · 비용 4분할 요약 박스 */}
+                              <div className="rounded-xl bg-slate-50/95 border border-slate-200/80 px-2.5 py-2 grid grid-cols-4 divide-x divide-slate-200/90 text-center">
+                                <div className="pr-1">
+                                  <div className="text-[10.5px] font-bold text-slate-400">소비자가격</div>
+                                  <div className="text-[12px] font-bold text-slate-400 line-through mt-0.5 whitespace-nowrap">
+                                    {consumerUnitPrice.toLocaleString()}원
                                   </div>
                                 </div>
-                                <div className="px-2">
-                                  <div className="text-[11px] font-bold text-slate-500">갯수</div>
-                                  <div className="text-[13px] font-extrabold text-slate-900 mt-0.5 whitespace-nowrap">
+                                <div className="px-1">
+                                  <div className="text-[10.5px] font-extrabold text-slate-600">판매가격</div>
+                                  <div className="text-[12.5px] font-extrabold text-slate-900 mt-0.5 whitespace-nowrap">
+                                    {sellingUnitPrice.toLocaleString()}원
+                                  </div>
+                                </div>
+                                <div className="px-1">
+                                  <div className="text-[10.5px] font-bold text-slate-500">갯수</div>
+                                  <div className="text-[12.5px] font-extrabold text-slate-900 mt-0.5 whitespace-nowrap">
                                     {qty}
                                     {item.unitLabel || item.unit_label || '개'}
                                   </div>
                                 </div>
-                                <div className="pl-2">
-                                  <div className="text-[11px] font-extrabold text-emerald-700">비용</div>
-                                  <div className="text-[13.5px] font-black text-[#0E712F] mt-0.5 whitespace-nowrap">
+                                <div className="pl-1">
+                                  <div className="text-[10.5px] font-extrabold text-emerald-700">비용</div>
+                                  <div className="text-[13px] font-black text-[#0E712F] mt-0.5 whitespace-nowrap">
                                     {totalCost.toLocaleString()}원
                                   </div>
                                 </div>
@@ -26149,7 +26157,7 @@ export default function UserIntroPage() {
                         })}
                       </div>
 
-                      {/* 태블릿·PC 전용: 깔끔한 7열 테이블 */}
+                      {/* 태블릿·PC 전용: 깔끔한 8열 테이블 (소비자가격 · 판매가격 함께 표시) */}
                       <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200">
                         <table className="w-full text-left border-collapse text-xs sm:text-sm">
                           <thead>
@@ -26158,7 +26166,8 @@ export default function UserIntroPage() {
                               <th className="py-3 px-3 font-extrabold whitespace-nowrap">재배작물</th>
                               <th className="py-3 px-3 font-extrabold whitespace-nowrap">생육단계</th>
                               <th className="py-3 px-3 font-extrabold">제품명</th>
-                              <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">가격</th>
+                              <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">소비자가격</th>
+                              <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">판매가격</th>
                               <th className="py-3 px-3 font-extrabold text-center whitespace-nowrap">갯수</th>
                               <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">비용</th>
                               <th className="py-3 px-2.5 font-extrabold text-center whitespace-nowrap">삭제</th>
@@ -26167,10 +26176,12 @@ export default function UserIntroPage() {
                           <tbody className="divide-y divide-slate-200 bg-white">
                             {stagePurchaseHistory.map((item: any, idx: number) => {
                               const qty = Math.max(1, Number(item.qty) || 1);
-                              const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0);
+                              const consumerUnitPrice = Number(item.unitPrice ?? item.unit_price ?? 0);
                               const totalCost = Number(
-                                item.totalPrice ?? item.final_subtotal ?? unitPrice * qty
+                                item.totalPrice ?? item.final_subtotal ?? Math.round(consumerUnitPrice * qty * 0.95)
                               );
+                              const sellingUnitPrice =
+                                qty > 0 ? Math.round(totalCost / qty) : Math.round(consumerUnitPrice * 0.95);
                               const stageLabel = String(
                                 item.stageGroupName || item.stage_group_name || '생육 관리'
                               )
@@ -26204,18 +26215,23 @@ export default function UserIntroPage() {
                                     {item.productName || item.product_name}
                                   </td>
 
-                                  {/* 5. 가격 (단가) */}
-                                  <td className="py-3 px-3 text-right font-bold text-slate-700 whitespace-nowrap">
-                                    {unitPrice.toLocaleString()}원
+                                  {/* 5. 소비자가격 (정가) */}
+                                  <td className="py-3 px-3 text-right font-bold text-slate-400 line-through whitespace-nowrap">
+                                    {consumerUnitPrice.toLocaleString()}원
                                   </td>
 
-                                  {/* 6. 갯수 */}
+                                  {/* 6. 판매가격 (할인 적용 단가) */}
+                                  <td className="py-3 px-3 text-right font-extrabold text-slate-900 whitespace-nowrap">
+                                    {sellingUnitPrice.toLocaleString()}원
+                                  </td>
+
+                                  {/* 7. 갯수 */}
                                   <td className="py-3 px-3 text-center font-extrabold text-slate-900 whitespace-nowrap">
                                     {qty}
                                     {item.unitLabel || item.unit_label || '개'}
                                   </td>
 
-                                  {/* 7. 비용 (합계 결제금액) */}
+                                  {/* 8. 비용 (판매가격 × 갯수 = 합계 결제금액) */}
                                   <td className="py-3 px-3 text-right font-black text-emerald-700 whitespace-nowrap">
                                     {totalCost.toLocaleString()}원
                                   </td>
