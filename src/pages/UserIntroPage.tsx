@@ -26000,7 +26000,7 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* ④ 마이페이지 > 농자재 구매 (회원 아이디 제외 + 생육과정 구분 정보들 + 제품명 리스트) */}
+            {/* ④ 마이페이지 > 농자재 구매 (필수 항목: 번호 · 재배작물 · 생육단계 · 제품명 · 가격 · 갯수 · 비용) */}
             {(myPageTab === 'ALL' || myPageTab === 'AGRO_PURCHASE') && (() => {
               const totalPurchasedQty = stagePurchaseHistory.reduce(
                 (sum: number, item: any) => sum + (Number(item.qty) || 1),
@@ -26014,62 +26014,40 @@ export default function UserIntroPage() {
               return (
                 <section
                   id="mypage-agro-purchase-section"
-                  className="bg-white rounded-3xl border border-emerald-200 p-4 sm:p-6 shadow-xs space-y-5"
+                  className="bg-white rounded-3xl border border-emerald-200 p-4 sm:p-6 shadow-xs space-y-4"
                 >
                   {/* 헤더 */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[11px] font-extrabold">
-                          ④ 농자재 구매 (생육과정별 구매 상품 리스트)
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold">
-                          생육과정 구분 정보 · 제품명 · 규격 · 수량 · 결제금액
-                        </span>
-                      </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3.5">
+                    <div>
                       <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                         농자재 구매 리스트 ({stagePurchaseHistory.length}건 · 총 {totalPurchasedQty}개 ·{' '}
                         {totalPurchasedAmount.toLocaleString()}원)
                       </h3>
-                      <p className="text-xs text-slate-600">
-                        구매하신 농자재 상품을 생육과정 구분 정보(재배작물·생육단계 대분류·세부 생육과정·권장 투입일·적산온도·농자재 구분) 및 제품명과 함께 확인하실 수 있습니다.
-                      </p>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
                       <button
                         type="button"
                         onClick={() => setMyPageTab('CART')}
-                        className="px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1.5"
+                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1.5"
                       >
                         <ShoppingCart className="w-3.5 h-3.5" />
-                        <span>농자재 장바구니 ({myCartItems.length}건)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveMenu('재배일정 확인');
-                          setMobileScheduleStep('list');
-                        }}
-                        className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <Sprout className="w-3.5 h-3.5" />
-                        <span>생육과정 농자재 추가 구매</span>
+                        <span>장바구니 ({myCartItems.length}건)</span>
                       </button>
                       {stagePurchaseHistory.length > 0 && (
                         <button
                           type="button"
                           onClick={handleDeleteAllStagePurchases}
-                          className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1"
+                          className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
-                          <span>전체 내역 삭제</span>
+                          <span>전체 삭제</span>
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* 리스트 본문 */}
+                  {/* 리스트 본문 (필수 7개 항목: 번호 · 재배작물 · 생육단계 · 제품명 · 가격 · 갯수 · 비용) */}
                   {stagePurchaseHistory.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-8 text-center space-y-2">
                       <div className="text-sm font-extrabold text-slate-700">
@@ -26080,155 +26058,95 @@ export default function UserIntroPage() {
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {/* PC 테이블 헤더 */}
-                      <div className="hidden lg:grid lg:grid-cols-12 gap-3 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-extrabold items-center">
-                        <div className="col-span-4">생육과정 구분 정보 (작물 · 생육단계 · 세부과정 · 시기)</div>
-                        <div className="col-span-2">농자재 1·2차 구분</div>
-                        <div className="col-span-4">구매 상품 정보 (사진 · 제품명 · 포장규격 · 제조사)</div>
-                        <div className="col-span-2 text-right">수량 · 결제금액 · 관리</div>
-                      </div>
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                      <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                          <tr className="bg-slate-900 text-white border-b border-slate-800">
+                            <th className="py-3 px-3 font-extrabold text-center whitespace-nowrap">번호</th>
+                            <th className="py-3 px-3 font-extrabold whitespace-nowrap">재배작물</th>
+                            <th className="py-3 px-3 font-extrabold whitespace-nowrap">생육단계</th>
+                            <th className="py-3 px-3 font-extrabold">제품명</th>
+                            <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">가격</th>
+                            <th className="py-3 px-3 font-extrabold text-center whitespace-nowrap">갯수</th>
+                            <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">비용</th>
+                            <th className="py-3 px-2.5 font-extrabold text-center whitespace-nowrap">삭제</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {stagePurchaseHistory.map((item: any, idx: number) => {
+                            const qty = Math.max(1, Number(item.qty) || 1);
+                            const unitPrice = Number(item.unitPrice ?? item.unit_price ?? 0);
+                            const totalCost = Number(
+                              item.totalPrice ?? item.final_subtotal ?? unitPrice * qty
+                            );
+                            const stageLabel = String(
+                              item.stageGroupName || item.stage_group_name || '생육 관리'
+                            )
+                              .replace(/^\d+\.\s*/, '')
+                              .trim();
 
-                      {stagePurchaseHistory.map((item: any, idx: number) => {
-                        const cat1 = item.category_1st || resolveAgroCategory1stLabel(item);
-                        const cat2 =
-                          item.category_2nd ||
-                          item.subItemName ||
-                          item.processName ||
-                          item.stageGroupName ||
-                          '생육과정 맞춤자재';
-                        const qty = Math.max(1, Number(item.qty) || 1);
-                        const totalPrice = Number(
-                          item.totalPrice ?? (Number(item.unitPrice) || 0) * qty
-                        );
+                            return (
+                              <tr
+                                key={item.id || `agro-purchase-${idx}`}
+                                className="hover:bg-emerald-50/40 transition"
+                              >
+                                {/* 1. 번호 */}
+                                <td className="py-3 px-3 text-center font-mono font-extrabold text-slate-700 whitespace-nowrap">
+                                  {idx + 1}
+                                </td>
 
-                        return (
-                          <div
-                            key={item.id || `agro-purchase-${idx}`}
-                            className="rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:border-emerald-300 p-3.5 sm:p-4 transition shadow-2xs"
-                          >
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-center">
-                              {/* 1. 생육과정 구분 정보들 (회원 아이디 제외) */}
-                              <div className="lg:col-span-4 space-y-1.5 bg-white rounded-xl border border-slate-200/90 p-3">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-mono font-extrabold">
-                                    NO.{idx + 1}
+                                {/* 2. 재배작물 */}
+                                <td className="py-3 px-3 font-extrabold text-slate-900 whitespace-nowrap">
+                                  {item.cropTitle || item.crop_title || '재배작물'}
+                                </td>
+
+                                {/* 3. 생육단계 */}
+                                <td className="py-3 px-3 whitespace-nowrap">
+                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-extrabold">
+                                    {stageLabel}
                                   </span>
-                                  <span className="px-2 py-0.5 rounded bg-emerald-700 text-white text-[11px] font-extrabold">
-                                    {item.cropTitle || '재배작물'}
-                                  </span>
-                                  {item.region && (
-                                    <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10.5px] font-bold">
-                                      {item.region}
-                                    </span>
-                                  )}
-                                </div>
+                                </td>
 
-                                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-900 border border-emerald-200 text-[11px] font-extrabold">
-                                    생육단계: {item.stageGroupName || '본밭 생육관리'}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-extrabold">
-                                    세부 생육과정: {item.subItemName || item.processName || '생육 맞춤 공정'}
-                                  </span>
-                                </div>
+                                {/* 4. 제품명 */}
+                                <td className="py-3 px-3 font-black text-slate-900 min-w-[160px] break-keep">
+                                  {item.productName || item.product_name}
+                                </td>
 
-                                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11px] text-slate-600 pt-0.5">
-                                  {item.processCode && (
-                                    <span>
-                                      공정코드: <strong className="text-slate-800">{item.processCode}</strong>
-                                    </span>
-                                  )}
-                                  {item.startDate && (
-                                    <span>
-                                      권장 투입일: <strong className="text-emerald-700">{item.startDate}</strong>
-                                    </span>
-                                  )}
-                                  {item.targetPgdd !== undefined && (
-                                    <span>
-                                      목표 적산온도: <strong className="text-slate-800">{item.targetPgdd}°C·일</strong>
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
+                                {/* 5. 가격 (단가) */}
+                                <td className="py-3 px-3 text-right font-bold text-slate-700 whitespace-nowrap">
+                                  {unitPrice.toLocaleString()}원
+                                </td>
 
-                              {/* 2. 농자재 1차·2차 구분 */}
-                              <div className="lg:col-span-2 flex lg:flex-col items-center lg:items-start gap-2">
-                                <span className="px-2.5 py-1 rounded-lg bg-teal-600 text-white text-xs font-extrabold">
-                                  1차: {cat1}
-                                </span>
-                                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 text-xs font-bold break-keep">
-                                  2차: {cat2}
-                                </span>
-                              </div>
+                                {/* 6. 갯수 */}
+                                <td className="py-3 px-3 text-center font-extrabold text-slate-900 whitespace-nowrap">
+                                  {qty}
+                                  {item.unitLabel || item.unit_label || '개'}
+                                </td>
 
-                              {/* 3. 구매 상품 정보 (사진 + 제품명 + 포장규격 + 제조사) */}
-                              <div className="lg:col-span-4 flex items-center gap-3 min-w-0">
-                                <img
-                                  src={resolveAgroProductThumbUrl(item)}
-                                  alt={item.productName}
-                                  onError={handleAgroThumbImgError}
-                                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-contain p-1 bg-white border border-slate-200 shrink-0 shadow-2xs"
-                                />
-                                <div className="min-w-0 flex-1 space-y-1">
-                                  <div className="text-sm sm:text-base font-black text-slate-900 leading-snug break-keep">
-                                    {item.productName}
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-600">
-                                    <span>
-                                      포장규격:{' '}
-                                      <strong className="text-slate-800 font-bold">
-                                        {item.unitSpec || '1개'}
-                                      </strong>
-                                    </span>
-                                    <span className="text-slate-300">|</span>
-                                    <span>
-                                      제조사:{' '}
-                                      <strong className="text-slate-800 font-bold">
-                                        {item.manufacturer || '한팜인증'}
-                                      </strong>
-                                    </span>
-                                  </div>
-                                  <div className="text-[11px] text-slate-500 font-medium">
-                                    구매일시: {item.purchasedAt || '-'} · 주문번호: {item.orderNo || item.id}
-                                  </div>
-                                </div>
-                              </div>
+                                {/* 7. 비용 (합계 결제금액) */}
+                                <td className="py-3 px-3 text-right font-black text-emerald-700 whitespace-nowrap">
+                                  {totalCost.toLocaleString()}원
+                                </td>
 
-                              {/* 4. 구매수량 · 결제금액 · 삭제 */}
-                              <div className="lg:col-span-2 flex lg:flex-col items-center lg:items-end justify-between gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-200/80">
-                                <div className="text-left lg:text-right">
-                                  <div className="text-xs font-extrabold text-slate-700">
-                                    수량:{' '}
-                                    <span className="text-emerald-700">
-                                      {qty}
-                                      {item.unitLabel || '개'}
-                                    </span>
-                                  </div>
-                                  <div className="text-base font-black text-emerald-700 mt-0.5">
-                                    {totalPrice.toLocaleString()}원
-                                  </div>
-                                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10.5px] font-extrabold">
-                                    {item.deliveryStatus || '입금대기 · 산지발송 준비'}
-                                  </span>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteStagePurchaseItem(item, idx);
-                                  }}
-                                  className="px-2.5 py-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-extrabold cursor-pointer inline-flex items-center gap-1 transition"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>내역 삭제</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                                {/* 삭제 버튼 */}
+                                <td className="py-3 px-2.5 text-center whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteStagePurchaseItem(item, idx);
+                                    }}
+                                    title="내역 삭제"
+                                    className="p-1.5 rounded-lg border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 cursor-pointer inline-flex items-center justify-center transition"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </section>
