@@ -26105,10 +26105,20 @@ export default function UserIntroPage() {
                                 </button>
                               </div>
 
-                              {/* 2줄: 제품명 */}
-                              <div className="px-0.5">
-                                <div className="text-[15.5px] font-black text-slate-900 leading-snug tracking-[-0.02em] break-keep">
-                                  {item.productName || item.product_name}
+                              {/* 2줄: 제품 사진 썸네일 + 제품명 */}
+                              <div className="flex items-center gap-3 px-0.5">
+                                <div className="w-[56px] h-[56px] rounded-xl bg-white border border-slate-200/90 p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                                  <img
+                                    src={resolveAgroProductThumbUrl(item)}
+                                    alt={item.productName || item.product_name || '농자재 제품'}
+                                    onError={handleAgroThumbImgError}
+                                    className="w-full h-full object-contain block"
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[15.5px] font-black text-slate-900 leading-snug tracking-[-0.02em] break-keep">
+                                    {item.productName || item.product_name}
+                                  </div>
                                 </div>
                               </div>
 
