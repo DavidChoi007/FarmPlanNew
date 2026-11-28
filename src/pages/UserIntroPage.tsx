@@ -126,7 +126,6 @@ function diffDaysBetweenYmd(startYmd: string, endYmd: string): number {
 
 export default function UserIntroPage() {
   const [data, setData] = useState<OverviewData | null>(null);
-  const [activeMenu, setActiveMenuState] = useState<string>('홈');
   const [loggedInUser, setLoggedInUser] = useState<{
     id: string;
     email: string;
@@ -172,12 +171,39 @@ export default function UserIntroPage() {
       isLoggedIn: false,
     };
     try {
-      // 자동 로그인 해제: 페이지 최초 진입 시 항상 비로그인(isLoggedIn: false) 상태로 시작하고, 이전 로컬 스토리지 자동 로그인 세션을 제거
-      localStorage.removeItem('hanfarm_auth_session_v1');
+      const savedRaw = localStorage.getItem('hanfarm_auth_session_v1');
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && parsed.isLoggedIn && parsed.email) {
+          return {
+            ...baseUser,
+            ...parsed,
+            isLoggedIn: true,
+          };
+        }
+      }
     } catch {
       // ignore
     }
     return baseUser;
+  });
+
+  const [activeMenu, setActiveMenuState] = useState<string>(() => {
+    try {
+      const savedRaw = localStorage.getItem('hanfarm_auth_session_v1');
+      if (savedRaw) {
+        const parsed = JSON.parse(savedRaw);
+        if (parsed && parsed.isLoggedIn) {
+          const savedMenu = sessionStorage.getItem('hanfarm_last_active_menu_v1');
+          if (savedMenu && typeof savedMenu === 'string') {
+            return savedMenu;
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return '홈';
   });
 
   // ==================== 로그인 / 회원가입 (이메일 · Google Gmail) / 비밀번호 찾기 & 마이페이지 상태 ====================
@@ -211,8 +237,26 @@ export default function UserIntroPage() {
         text: '회원 전용 서비스입니다. 로그인 후 이용해 주세요.',
       });
       setIsAuthModalOpen(true);
+      return;
+    }
+    if (loggedInUser.isLoggedIn) {
+      try {
+        sessionStorage.setItem('hanfarm_last_active_menu_v1', activeMenu);
+      } catch {
+        // ignore
+      }
     }
   }, [activeMenu, loggedInUser.isLoggedIn]);
+
+  useEffect(() => {
+    try {
+      if (loggedInUser.isLoggedIn && loggedInUser.email) {
+        localStorage.setItem('hanfarm_auth_session_v1', JSON.stringify(loggedInUser));
+      }
+    } catch {
+      // ignore
+    }
+  }, [loggedInUser]);
 
   // 로그인 폼 (비밀번호는 직접 입력해야 로그인 가능)
   const [loginForm, setLoginForm] = useState({
@@ -3238,6 +3282,11 @@ export default function UserIntroPage() {
           farmTitle: `${resolvedName} 님의 농장`,
           isLoggedIn: true,
         };
+        try {
+          localStorage.setItem('hanfarm_auth_session_v1', JSON.stringify(nextUser));
+        } catch {
+          // ignore
+        }
         return nextUser;
       });
     }
@@ -3799,6 +3848,7 @@ export default function UserIntroPage() {
   const handleLogout = () => {
     try {
       localStorage.removeItem('hanfarm_auth_session_v1');
+      sessionStorage.removeItem('hanfarm_last_active_menu_v1');
     } catch {
       // ignore
     }
