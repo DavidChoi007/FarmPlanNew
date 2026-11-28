@@ -2179,6 +2179,8 @@ export default function UserIntroPage() {
 
   // 재배일정 삭제 확인용 모달리스 창 타겟 상태 ("정말 삭제하시겠습니까?")
   const [scheduleDeleteConfirmTarget, setScheduleDeleteConfirmTarget] = useState<any | null>(null);
+  // 모바일 재배일정 확인 목록(list)에서 항목 미선택 상태로 하단 [작업일지] 클릭 시 안내 모달리스 확인창 상태
+  const [isWorkLogSelectAlertOpen, setIsWorkLogSelectAlertOpen] = useState(false);
 
   // [재배일정 요청] 및 [마이페이지 > 재배일정 확인]에서 삭제 버튼 클릭 시 브라우저 기본 confirm 팝업 없이 "정말 삭제하시겠습니까?" 모달리스 창 오픈
   const handleDeleteScheduleAndCascade = (cropInput: any, e?: React.MouseEvent) => {
@@ -11564,6 +11566,7 @@ export default function UserIntroPage() {
                                       <div
                                         key={item.id}
                                         onClick={() => {
+                                          setIsWorkLogSelectAlertOpen(false);
                                           setSelectedRequestNo(item.request_no);
                                           if (
                                             !provisionData ||
@@ -34656,39 +34659,40 @@ export default function UserIntroPage() {
               );
             })()}
 
-            {/* 4. 영농일지 (현재 재배일정에 대한 생육단계·작업일정별 리스트업 및 작업기록 관리) */}
+            {/* 4. 작업일지 (현재 재배일정에 대한 생육단계·작업일정별 리스트업 및 작업일지 관리) */}
             {(() => {
               const isWorkLogActive =
                 activeMenu === '재배일정 확인' &&
                 (mobileScheduleStep === 'work_log' ||
                   mobileScheduleStep === 'work_log_list');
-              // 재배일정 확인 목록(list) 페이지에서는 재배일정 항목이 아직 결정되지 않았으므로 영농일지 버튼 비활성화
-              const isWorkLogDisabled =
+              // 재배일정 확인 목록(list) 페이지에서는 재배일정 항목이 아직 선택되지 않았으므로 클릭 시 안내 모달리스 확인창 표시
+              const isWorkLogItemUnselected =
                 (activeMenu === '재배일정 확인' && mobileScheduleStep === 'list') ||
                 cloudBaeCropList.length === 0;
               return (
                 <button
                   type="button"
-                  disabled={isWorkLogDisabled}
                   title={
-                    isWorkLogDisabled
-                      ? '진행중인 작물재배 일정에서 항목을 먼저 선택해 주세요'
+                    isWorkLogItemUnselected
+                      ? '재배일정 항목을 먼저 선택해 주십시요.'
                       : '작업일지 보기'
                   }
                   onClick={() => {
-                    if (isWorkLogDisabled) return;
+                    if (isWorkLogItemUnselected) {
+                      setIsWorkLogSelectAlertOpen(true);
+                      return;
+                    }
+                    setIsWorkLogSelectAlertOpen(false);
                     setActiveMenu('재배일정 확인');
                     setMobileJournalStatusFilter('ALL');
                     setMobileJournalStageFilter('ALL');
                     setMobileScheduleStep('work_log_list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1.5 transition-all ${
-                    isWorkLogDisabled
-                      ? 'pt-1 pb-1.5 px-1 rounded-[20px] opacity-45 cursor-not-allowed pointer-events-none select-none'
-                      : isWorkLogActive
-                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)] cursor-pointer'
-                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70 cursor-pointer'
+                  className={`flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    isWorkLogActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)]'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70'
                   }`}
                 >
                   <div
@@ -34725,7 +34729,7 @@ export default function UserIntroPage() {
                       isWorkLogActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
-                    영농일지
+                    작업일지
                   </span>
                 </button>
               );
@@ -34781,6 +34785,36 @@ export default function UserIntroPage() {
             })()}
           </div>
         </nav>
+      )}
+
+      {/* ==================== [재배일정 항목 미선택 시 작업일지 안내 모달리스 확인창] ==================== */}
+      {isWorkLogSelectAlertOpen && (
+        <div className="fixed inset-0 z-[10095] pointer-events-none flex items-center justify-center p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="pointer-events-auto w-full max-w-[330px] rounded-3xl bg-white border-2 border-[#BFD2C7] shadow-[0_24px_60px_rgba(15,23,42,0.28)] p-6 text-center space-y-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#EFF8F1] border border-[#CBEAD3] text-[#0E712F] flex items-center justify-center mx-auto">
+              <FileEdit className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="text-[17px] font-black text-[#111827] tracking-[-0.03em] leading-snug break-keep">
+                재배일정 항목을 먼저 선택해 주십시요.
+              </div>
+            </div>
+
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setIsWorkLogSelectAlertOpen(false)}
+                className="w-full py-3 px-4 rounded-2xl bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[15px] shadow-xs cursor-pointer transition"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ==================== [재배일정 삭제 확인 모달리스 창: "정말 삭제하시겠습니까?"] ==================== */}
