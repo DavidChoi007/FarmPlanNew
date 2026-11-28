@@ -34450,18 +34450,18 @@ export default function UserIntroPage() {
           );
         })()}
 
-      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 첨부 시안 5개 탭 1:1 스타일) ==================== */}
+      {/* ==================== 모바일 전용 하단 고정 탭바 (메인 '홈' 및 '재배일정 요청' 마법사 페이지에서는 숨김, 내부 서브 페이지에서만 노출 · 가시성 강화 v3 시안 1:1 스타일) ==================== */}
       {activeMenu !== '홈' && activeMenu !== '재배일정 요청' && (
         <nav
           aria-label="모바일 하단 주 메뉴"
-          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200/90 shadow-[0_-4px_16px_rgba(15,23,42,0.04)]"
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white rounded-t-[26px] border-t border-slate-200/90 shadow-[0_-8px_26px_rgba(15,23,42,0.09)]"
           style={{
             paddingBottom: isLegacyAndroidWebView
-              ? 'max(14px, env(safe-area-inset-bottom, 14px))'
+              ? 'max(10px, env(safe-area-inset-bottom, 10px))'
               : 'env(safe-area-inset-bottom, 0px)',
           }}
         >
-          <div className="grid grid-cols-5 h-[66px] max-w-lg mx-auto px-1 items-center">
+          <div className="grid grid-cols-5 max-w-lg mx-auto px-2.5 pt-3 pb-1.5 gap-1.5 items-center">
             {/* 1. 홈 */}
             {(() => {
               const isHomeActive = activeMenu === '홈';
@@ -34472,19 +34472,29 @@ export default function UserIntroPage() {
                     setActiveMenu('홈');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                  className={`flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    isHomeActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)]'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70'
+                  }`}
                 >
-                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
-                    <path
-                      d="M4.5 12.2L14 4.5L23.5 12.2V22.5C23.5 23.3 22.8 24 22 24H17V17.5C17 16.7 16.3 16 15.5 16H12.5C11.7 16 11 16.7 11 17.5V24H6C5.2 24 4.5 23.3 4.5 22.5V12.2Z"
-                      stroke={isHomeActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.9"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <div
+                    className={`w-[44px] h-[44px] rounded-[15px] flex items-center justify-center transition-colors ${
+                      isHomeActive ? 'bg-white/15' : 'bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                      <path
+                        d="M5 12.4L14 5L23 12.4V22.2C23 23.1 22.3 23.8 21.4 23.8H16.8V17.6C16.8 16.8 16.2 16.2 15.4 16.2H12.6C11.8 16.2 11.2 16.8 11.2 17.6V23.8H6.6C5.7 23.8 5 23.1 5 22.2V12.4Z"
+                        stroke={isHomeActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                   <span
-                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isHomeActive ? 'font-extrabold text-[#0E712F]' : 'font-medium text-[#4B5563]'
+                    className={`text-[12.5px] tracking-[-0.02em] leading-none font-extrabold ${
+                      isHomeActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
                     홈
@@ -34507,22 +34517,52 @@ export default function UserIntroPage() {
                     setMobileScheduleStep('list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                  className={`flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    isScheduleActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)]'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70'
+                  }`}
                 >
-                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
-                    <path
-                      d="M14 23.5V11.5M14 16C14 11.5 10.5 8.5 6 8.5C6 13 9.5 16 14 16ZM14 14C14 9.5 17.5 6.5 22 6.5C22 11 18.5 14 14 14Z"
-                      stroke={isScheduleActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="2.1"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <div
+                    className={`w-[44px] h-[44px] rounded-[15px] flex items-center justify-center transition-colors ${
+                      isScheduleActive ? 'bg-white/15' : 'bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                      <rect
+                        x="5"
+                        y="6.5"
+                        width="18"
+                        height="16.5"
+                        rx="3"
+                        fill={isScheduleActive ? '#FFFFFF' : 'none'}
+                        stroke={isScheduleActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M9.5 4.5V7.5M18.5 4.5V7.5"
+                        stroke={isScheduleActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M5.5 10.5H22.5"
+                        stroke={isScheduleActive ? '#0E712F' : '#1E293B'}
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M14 20.2V14.5M14 17.5C14 15 11.8 13.5 9.6 13.5C9.6 16 11.6 17.5 14 17.5ZM14 16.5C14 14 16.2 12.5 18.4 12.5C18.4 15 16.4 16.5 14 16.5Z"
+                        stroke={isScheduleActive ? '#0E712F' : '#1E293B'}
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                   <span
-                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isScheduleActive
-                        ? 'font-extrabold text-[#0E712F]'
-                        : 'font-medium text-[#4B5563]'
+                    className={`text-[12.5px] tracking-[-0.02em] leading-none font-extrabold ${
+                      isScheduleActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
                     재배관리
@@ -34550,34 +34590,49 @@ export default function UserIntroPage() {
                     setActiveMenu('농작물 구매');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                  className={`flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    isAgroActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)]'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70'
+                  }`}
                 >
-                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
-                    <path
-                      d="M4.5 6.5H8L10.4 17.5H21L23.2 9.5H9"
-                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    <circle
-                      cx="11.5"
-                      cy="22"
-                      r="1.7"
-                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.8"
-                    />
-                    <circle
-                      cx="19.5"
-                      cy="22"
-                      r="1.7"
-                      stroke={isAgroActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.8"
-                    />
-                  </svg>
+                  <div
+                    className={`w-[44px] h-[44px] rounded-[15px] flex items-center justify-center transition-colors ${
+                      isAgroActive ? 'bg-white/15' : 'bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                      <path
+                        d="M5.5 13H22.5V21.5C22.5 22.6 21.6 23.5 20.5 23.5H7.5C6.4 23.5 5.5 22.6 5.5 21.5V13Z"
+                        stroke={isAgroActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M4.5 13L7 9.5H21L23.5 13"
+                        stroke={isAgroActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M11 17.5H17"
+                        stroke={isAgroActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M14 9.5V5.5M14 8.5C14 6.2 11.5 4.8 9 4.8C9 7.1 11.3 8.5 14 8.5ZM14 8.5C14 6.2 16.5 4.8 19 4.8C19 7.1 16.7 8.5 14 8.5Z"
+                        stroke={isAgroActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                   <span
-                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isAgroActive ? 'font-extrabold text-[#0E712F]' : 'font-medium text-[#4B5563]'
+                    className={`text-[12.5px] tracking-[-0.02em] leading-none font-extrabold ${
+                      isAgroActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
                     농자재
@@ -34613,61 +34668,46 @@ export default function UserIntroPage() {
                     setMobileScheduleStep('work_log_list');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 py-1.5 transition ${
+                  className={`flex flex-col items-center justify-center gap-1.5 transition-all ${
                     isWorkLogDisabled
-                      ? 'opacity-40 cursor-not-allowed pointer-events-none select-none'
-                      : 'cursor-pointer'
+                      ? 'pt-1 pb-1.5 px-1 rounded-[20px] opacity-45 cursor-not-allowed pointer-events-none select-none'
+                      : isWorkLogActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)] cursor-pointer'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70 cursor-pointer'
                   }`}
                 >
-                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
-                    <rect
-                      x="6.5"
-                      y="5.5"
-                      width="15"
-                      height="18"
-                      rx="2.5"
-                      stroke={
-                        isWorkLogDisabled
-                          ? '#9CA3AF'
-                          : isWorkLogActive
-                          ? '#0E712F'
-                          : '#6B7280'
-                      }
-                      strokeWidth="1.9"
-                    />
-                    <path
-                      d="M10.5 4.2H17.5V7.2H10.5V4.2Z"
-                      fill="#FFFFFF"
-                      stroke={
-                        isWorkLogDisabled
-                          ? '#9CA3AF'
-                          : isWorkLogActive
-                          ? '#0E712F'
-                          : '#6B7280'
-                      }
-                      strokeWidth="1.7"
-                    />
-                    <path
-                      d="M11 15L13.2 17.2L17.5 12.8"
-                      stroke={
-                        isWorkLogDisabled
-                          ? '#9CA3AF'
-                          : isWorkLogActive
-                          ? '#0E712F'
-                          : '#6B7280'
-                      }
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <div
+                    className={`w-[44px] h-[44px] rounded-[15px] flex items-center justify-center transition-colors ${
+                      isWorkLogActive ? 'bg-white/15' : 'bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                      <rect
+                        x="7.5"
+                        y="5"
+                        width="14.5"
+                        height="18"
+                        rx="2.6"
+                        stroke={isWorkLogActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M5.5 8.5H8.5M5.5 12.2H8.5M5.5 15.8H8.5M5.5 19.5H8.5"
+                        stroke={isWorkLogActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                      />
+                      <path
+                        d="M12 10.5H18M12 14.2H18M12 17.8H16"
+                        stroke={isWorkLogActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
                   <span
-                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isWorkLogDisabled
-                        ? 'font-medium text-[#9CA3AF]'
-                        : isWorkLogActive
-                        ? 'font-extrabold text-[#0E712F]'
-                        : 'font-medium text-[#4B5563]'
+                    className={`text-[12.5px] tracking-[-0.02em] leading-none font-extrabold ${
+                      isWorkLogActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
                     영농일지
@@ -34687,28 +34727,36 @@ export default function UserIntroPage() {
                     setMyPageTab('FARMLAND');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="flex flex-col items-center justify-center gap-1 py-1.5 cursor-pointer transition"
+                  className={`flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                    isMyPageActive
+                      ? 'bg-[#0E712F] text-white rounded-[20px] pt-2 pb-2.5 px-1 shadow-[0_6px_16px_rgba(14,113,47,0.28)]'
+                      : 'pt-1 pb-1.5 px-1 rounded-[20px] hover:bg-slate-50/70'
+                  }`}
                 >
-                  <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
-                    <circle
-                      cx="14"
-                      cy="9.5"
-                      r="4.2"
-                      stroke={isMyPageActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.9"
-                    />
-                    <path
-                      d="M6.5 22.5C6.5 18.6 9.8 16 14 16C18.2 16 21.5 18.6 21.5 22.5"
-                      stroke={isMyPageActive ? '#0E712F' : '#6B7280'}
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <div
+                    className={`w-[44px] h-[44px] rounded-[15px] flex items-center justify-center transition-colors ${
+                      isMyPageActive ? 'bg-white/15' : 'bg-[#F1F5F9]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 28 28" className="w-[24px] h-[24px]" fill="none">
+                      <circle
+                        cx="14"
+                        cy="9.5"
+                        r="4.2"
+                        stroke={isMyPageActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                      />
+                      <path
+                        d="M6.5 22.5C6.5 18.6 9.8 16 14 16C18.2 16 21.5 18.6 21.5 22.5"
+                        stroke={isMyPageActive ? '#FFFFFF' : '#1E293B'}
+                        strokeWidth="2.1"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
                   <span
-                    className={`text-[11.5px] tracking-[-0.02em] leading-none ${
-                      isMyPageActive
-                        ? 'font-extrabold text-[#0E712F]'
-                        : 'font-medium text-[#4B5563]'
+                    className={`text-[12.5px] tracking-[-0.02em] leading-none font-extrabold ${
+                      isMyPageActive ? 'text-white' : 'text-[#111827]'
                     }`}
                   >
                     MY
