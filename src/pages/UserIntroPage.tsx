@@ -13633,65 +13633,8 @@ export default function UserIntroPage() {
                               );
                             })()}
 
-                            {/* 하단 액션 버튼 영역 (농자재 구매 / 작업일지 작성하기) */}
+                            {/* 하단 액션 버튼 영역 (작업일지 작성하기) */}
                             <div className="pt-4 pb-2 space-y-2.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const stageRecProducts =
-                                    buildStageRecommendedAgroProducts(selectedTaskItem);
-                                  const checkedRecProducts = stageRecProducts.filter(
-                                    (prd) =>
-                                      !isStageAgroProductPurchased(prd) &&
-                                      Boolean(mobileTaskAgroCheckedMap[prd.material_id])
-                                  );
-                                  const targetList =
-                                    checkedRecProducts.length > 0
-                                      ? checkedRecProducts
-                                      : stageRecProducts
-                                          .filter((prd) => !isStageAgroProductPurchased(prd))
-                                          .slice(0, 1);
-                                  if (targetList.length === 0) return;
-                                  targetList.forEach((prd) => {
-                                    handleAddStageProductToCart({
-                                      cropObj: {
-                                        request_no: activeCropItem.request_no,
-                                        crop_name: activeCropItem.shortName,
-                                        cultivar_name: activeCropItem.cultivarName,
-                                        crop_title: `${activeCropItem.shortName} (${activeCropItem.cultivarName})`,
-                                        region: activeCropItem.region,
-                                        area_pyeong: activeCropItem.areaPyeong,
-                                        planting_label: activeCropItem.basePlantingYmd,
-                                        expected_harvest_date: activeCropItem.expectedHarvestYmd,
-                                      },
-                                      stageItem: {
-                                        item_id: selectedTaskItem.itemId,
-                                        process_code: selectedTaskItem.itemId,
-                                        stage_group_name: selectedTaskItem.stageGroupName,
-                                        sub_item_name: cleanExecTitle,
-                                        process_name: cleanExecTitle,
-                                        start_date: selectedTaskItem.effDate,
-                                        work_content: selectedTaskItem.taskDescription,
-                                      },
-                                      mat: prd,
-                                      qty: 1,
-                                    });
-                                  });
-                                  setMyPageToast(
-                                    `[${cleanExecTitle}] 추천 농자재 ${targetList.length}건이 장바구니에 담겼습니다.`
-                                  );
-                                  setActiveMenu('마이페이지');
-                                  setMyPageTab('CART');
-                                  if (typeof window !== 'undefined') {
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                  }
-                                }}
-                                className="w-full h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-black text-[18px] tracking-[-0.03em] shadow-sm flex items-center justify-center gap-2 cursor-pointer transition"
-                              >
-                                <ShoppingCart className="w-[21px] h-[21px] stroke-[2.3]" />
-                                <span>선택 농자재 구매하기</span>
-                              </button>
-
                               <button
                                 type="button"
                                 onClick={() => {
