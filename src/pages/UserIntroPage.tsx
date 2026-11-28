@@ -11,6 +11,13 @@ import {
   computeCropExpectedHarvestDate,
 } from '../utils/cropAgronomicProfiles.ts';
 import {
+  resolveStageMaterialUsageGuide,
+  ensureDefaultStageMaterialUsageGuidesSeeded,
+  loadSavedStageMaterialUsageGuides,
+  STAGE_MATERIAL_USAGE_STORAGE_KEY,
+  type StageMaterialUsageGuide,
+} from '../utils/stageMaterialUsageGuides.ts';
+import {
   Sprout,
   Calendar,
   FileEdit,
@@ -441,6 +448,10 @@ export default function UserIntroPage() {
   >('INFO');
   const [mobileTaskAgroToast, setMobileTaskAgroToast] = useState<string>('');
   const [isTaskExecAgroExpanded, setIsTaskExecAgroExpanded] = useState<boolean>(false);
+  const [selectedUsageAgroMaterialId, setSelectedUsageAgroMaterialId] = useState<string>('');
+  const [stageMaterialUsageGuidesMap, setStageMaterialUsageGuidesMap] = useState<
+    Record<string, StageMaterialUsageGuide>
+  >(() => ensureDefaultStageMaterialUsageGuidesSeeded());
   const [mobileScheduleTaskTab, setMobileScheduleTaskTab] = useState<'todo' | 'done'>('todo');
   const [mobileFullScheduleFilterTab, setMobileFullScheduleFilterTab] = useState<
     'WORK' | 'FERTILIZER' | 'PEST' | 'ALL'
@@ -11235,12 +11246,78 @@ export default function UserIntroPage() {
                     dosageCalc.soilReasonShort
                   }) · 기후(${dosageCalc.climateReasonShort || '적산온도 연동'})`;
 
+                  const stageUsageGuide = resolveStageMaterialUsageGuide({
+                    stageCode: String(task.itemId || task.process_code || 'SCH-01'),
+                    stageGroupName: String(task.stageGroupName || '생육 관리'),
+                    subItemName: String(task.subItemName || task.shortTitle || '생육단계 맞춤 작업'),
+                    stepOrder: Number(task.stepOrder || 1),
+                    cropName: cropShort,
+                    areaPyeong: areaPyeongVal,
+                    soilPh: Number(
+                      provisionData?.activeRequest?.soil_ph || activeCropCard?.soil_ph || 6.2
+                    ),
+                    soilEc: Number(
+                      provisionData?.activeRequest?.soil_ec || activeCropCard?.soil_ec || 1.1
+                    ),
+                    soilCondition: String(
+                      provisionData?.activeRequest?.soil_condition ||
+                        activeCropCard?.soil_condition ||
+                        '양토'
+                    ),
+                    targetPgdd: Number(task.targetPgdd || matchedProvisionStage?.target_pgdd || 120),
+                    material: {
+                      ...raw,
+                      material_id: matId,
+                      material_category: cat,
+                      product_name: productName,
+                      sub_type: subType,
+                      unit_spec: rawSpec || '500 mL',
+                      unit_label: resolvedUnitLabel,
+                      recommendedQty,
+                      totalCapacityLabel,
+                    },
+                    savedGuidesMap: stageMaterialUsageGuidesMap,
+                  });
+
+                  const stageUsageTableRows: Array<{ label: string; val: string }> = [
+                    {
+                      label: '처방·근거',
+                      val: stageUsageGuide.rationaleBasis,
+                    },
+                    {
+                      label: '사용량',
+                      val: stageUsageGuide.dosageRate,
+                    },
+                    {
+                      label:
+                        cat === 'PESTICIDE'
+                          ? '희석배수'
+                          : cat === 'NUTRIENT'
+                          ? '희석·적용'
+                          : '시비기준',
+                      val: stageUsageGuide.applicationStandard,
+                    },
+                    {
+                      label:
+                        cat === 'PESTICIDE'
+                          ? '살포방법'
+                          : cat === 'NUTRIENT'
+                          ? '엽면·관주법'
+                          : '시비방법',
+                      val: stageUsageGuide.applicationMethod,
+                    },
+                    {
+                      label: '주의사항',
+                      val: stageUsageGuide.cautionText,
+                    },
+                  ];
+
                   const recommendedUsageBoxText = `${areaPyeongVal.toLocaleString()}평 · 토양(${
                     dosageCalc.soilReasonShort
                   }) · 기후(${
                     dosageCalc.climateReasonShort || '적온·적습 표준'
-                  }) 종합 산출\n• 포장용량 및 권장갯수: ${rawSpec} × 권장 ${recommendedQty}${resolvedUnitLabel} (총 ${totalCapacityLabel})${
-                    task.dilutionText ? `\n• 적용기준: ${task.dilutionText}` : ''
+                  }) 종합 산출\n• 포장용량 및 권장갯수: ${rawSpec} × 권장 ${recommendedQty}${resolvedUnitLabel} (총 ${totalCapacityLabel})\n• 적용기준: ${
+                    stageUsageGuide.applicationStandard
                   }`;
 
                   return {
@@ -11264,24 +11341,11 @@ export default function UserIntroPage() {
                     targetCropsText,
                     activeIngredient,
                     packagingUnit: `${rawSpec || '500 mL'} (권장 ${recommendedQty}${resolvedUnitLabel} · 총 ${totalCapacityLabel})`,
-                    usageMethodText:
-                      task.usageMethod ||
-                      raw.usage_note ||
-                      (cat === 'PESTICIDE'
-                        ? '잎 앞뒷면 및 줄기 지제부에 약액이 골고루 묻도록 충분량 살포'
-                        : cat === 'NUTRIENT'
-                        ? '물 500L당 정량을 희석하여 잎 앞뒷면에 고르게 엽면시비 또는 관주'
-                        : '이랑 또는 고랑에 균일하게 살포 후 토양 수분과 결합되도록 관리'),
-                    dilutionText:
-                      task.dilutionText ||
-                      (cat === 'PESTICIDE'
-                        ? '물 500 L에 500 mL (1,000배 희석)'
-                        : cat === 'NUTRIENT'
-                        ? '물 500 L에 500~1,000 mL (500~1,000배 희석)'
-                        : `${areaPyeongVal.toLocaleString()}평 기준 총 ${totalCapacityLabel} (${recommendedQty}${resolvedUnitLabel}) 균일 시비`),
-                    cautionText:
-                      task.usageCaution ||
-                      '강우 직전이나 한낮 고온기를 피하여 이른 오전 또는 해질 무렵에 사용하고, PLS 안전사용기준 및 희석배수를 준수하세요.',
+                    usageMethodText: stageUsageGuide.applicationMethod,
+                    dilutionText: stageUsageGuide.applicationStandard,
+                    cautionText: stageUsageGuide.cautionText,
+                    stageUsageGuide,
+                    stageUsageTableRows,
                     recommendedUsageBoxText,
                     isPrimary,
                   };
@@ -11530,6 +11594,7 @@ export default function UserIntroPage() {
 
                 setSelectedScheduleTaskId(task.itemId);
                 setIsTaskExecAgroExpanded(false);
+                setStageMaterialUsageGuidesMap(loadSavedStageMaterialUsageGuides());
                 const recForTask = buildStageRecommendedAgroProducts(task);
                 const initCheckMap: Record<string, boolean> = {};
                 const firstAvail = recForTask.find((p) => !isStageAgroProductPurchased(p));
@@ -11537,6 +11602,8 @@ export default function UserIntroPage() {
                   initCheckMap[firstAvail.material_id] = true;
                 }
                 setMobileTaskAgroCheckedMap(initCheckMap);
+                const firstUsageTarget = recForTask[0] || firstAvail || null;
+                setSelectedUsageAgroMaterialId(firstUsageTarget?.material_id || '');
                 setTaskDetailActualDate(matchedLog?.workDate || task.effDate);
                 setTaskExecDraftDateYmd(matchedLog?.workDate || task.effDate);
                 setIsTaskExecDateChangeOpen(false);
@@ -13236,9 +13303,20 @@ export default function UserIntroPage() {
                             ? '완료'
                             : `D+${Math.abs(rawDiffFromToday)}`;
 
+                        const stageRecProducts = buildStageRecommendedAgroProducts(selectedTaskItem);
+                        const activeUsageProduct =
+                          stageRecProducts.find(
+                            (p) => p.material_id === selectedUsageAgroMaterialId
+                          ) ||
+                          stageRecProducts[0] ||
+                          null;
+
                         const usageRows: Array<{ label: string; val: string }> =
-                          Array.isArray(selectedTaskItem.usageTableRows) &&
-                          selectedTaskItem.usageTableRows.length > 0
+                          Array.isArray(activeUsageProduct?.stageUsageTableRows) &&
+                          activeUsageProduct.stageUsageTableRows.length > 0
+                            ? activeUsageProduct.stageUsageTableRows
+                            : Array.isArray(selectedTaskItem.usageTableRows) &&
+                              selectedTaskItem.usageTableRows.length > 0
                             ? selectedTaskItem.usageTableRows
                             : [
                                 {
@@ -13456,9 +13534,8 @@ export default function UserIntroPage() {
                                 </p>
                               </div>
 
-                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 기본 1개 표시, 펼치면 해당 생육단계 전체 추천 농자재 표시 · 좌측 선택 체크박스 · 구매완료 제품 비활성화 및 우측 끝 (구매) 표시 + 체크한 제품 바로 장바구니 담아 이동하는 [구매하기] 버튼) */}
+                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 구매완료 제품도 클릭·선택 가능하며, 선택한 제품의 생육단계별 맞춤 사용방법이 하단 사용방법 영역에 실시간 업데이트됨) */}
                               {(() => {
-                                const stageRecProducts = buildStageRecommendedAgroProducts(selectedTaskItem);
                                 const visibleRecProducts = isTaskExecAgroExpanded
                                   ? stageRecProducts
                                   : stageRecProducts.slice(0, 1);
@@ -13475,6 +13552,25 @@ export default function UserIntroPage() {
                                       Math.max(1, Number(prd.recommendedQty || 1)),
                                   0
                                 );
+
+                                const selectProductForUsageAndWorkLog = (
+                                  prd: any,
+                                  togglePurchaseCheck = false
+                                ) => {
+                                  setSelectedUsageAgroMaterialId(prd.material_id);
+                                  setWorkLogSelectedMaterialName(prd.product_name);
+                                  setWorkLogSelectedMaterialThumb(prd.thumbnail_url);
+                                  setWorkLogUnit(
+                                    prd.material_category === 'FERTILIZER' ? 'kg' : 'L'
+                                  );
+                                  const isPurchased = isStageAgroProductPurchased(prd);
+                                  if (togglePurchaseCheck && !isPurchased) {
+                                    setMobileTaskAgroCheckedMap((prev) => ({
+                                      ...prev,
+                                      [prd.material_id]: !prev[prd.material_id],
+                                    }));
+                                  }
+                                };
 
                                 const handleBuyCheckedRecAgroProducts = () => {
                                   if (checkedRecProducts.length === 0) return;
@@ -13552,7 +13648,7 @@ export default function UserIntroPage() {
                                         <span className="px-2 py-0.5 rounded-full bg-white/90 border border-[#86EFAC] text-[#0E712F] text-[11.5px] font-extrabold">
                                           총 {stageRecProducts.length}종
                                           {checkedRecCount > 0
-                                            ? ` · 선택 ${checkedRecCount}`
+                                            ? ` · 구매선택 ${checkedRecCount}`
                                             : ''}
                                         </span>
                                       </div>
@@ -13573,69 +13669,50 @@ export default function UserIntroPage() {
                                       )}
                                     </button>
 
+                                    <div className="px-3.5 py-1.5 bg-[#E6F5EA] border-t border-[#D5EAD9] text-[11.5px] font-bold text-[#0E712F] flex items-center justify-between gap-2">
+                                      <span>💡 제품(구매완료 포함)을 터치하면 하단 사용방법이 해당 제품 기준으로 변경됩니다.</span>
+                                    </div>
+
                                     <div className="divide-y divide-[#E2F0E5] border-t border-[#E2F0E5] bg-white">
                                       {visibleRecProducts.map((prd) => {
                                         const isPurchased = isStageAgroProductPurchased(prd);
                                         const isChecked =
                                           !isPurchased &&
                                           Boolean(mobileTaskAgroCheckedMap[prd.material_id]);
+                                        const isUsageSelected =
+                                          activeUsageProduct?.material_id === prd.material_id;
 
                                         return (
                                           <div
                                             key={prd.material_id}
-                                            onClick={() => {
-                                              if (isPurchased) return;
-                                              setMobileTaskAgroCheckedMap((prev) => ({
-                                                ...prev,
-                                                [prd.material_id]: !prev[prd.material_id],
-                                              }));
-                                              setWorkLogSelectedMaterialName(prd.product_name);
-                                              setWorkLogSelectedMaterialThumb(prd.thumbnail_url);
-                                              setWorkLogUnit(
-                                                prd.material_category === 'FERTILIZER'
-                                                  ? 'kg'
-                                                  : 'L'
-                                              );
-                                            }}
-                                            className={`w-full px-3.5 py-3 flex items-center justify-between gap-2.5 transition ${
-                                              isPurchased
-                                                ? 'bg-[#F8FAFC] opacity-65 cursor-not-allowed select-none'
+                                            onClick={() =>
+                                              selectProductForUsageAndWorkLog(prd, !isPurchased)
+                                            }
+                                            className={`w-full px-3.5 py-3 flex items-center justify-between gap-2.5 cursor-pointer transition ${
+                                              isUsageSelected
+                                                ? 'bg-[#EAF8EE] ring-2 ring-inset ring-[#0E712F]'
                                                 : isChecked
-                                                ? 'bg-[#F2FBF5] cursor-pointer hover:bg-[#EAF8EE]'
-                                                : 'bg-white cursor-pointer hover:bg-[#FAFDFB]'
+                                                ? 'bg-[#F2FBF5] hover:bg-[#EAF8EE]'
+                                                : 'bg-white hover:bg-[#FAFDFB]'
                                             }`}
                                           >
                                             {/* 좌측 체크박스 + 썸네일 + 제품명/분류 */}
                                             <div className="flex items-center gap-3 min-w-0 flex-1">
                                               <button
                                                 type="button"
-                                                disabled={isPurchased}
                                                 onClick={(e) => {
                                                   e.stopPropagation();
-                                                  if (isPurchased) return;
-                                                  setMobileTaskAgroCheckedMap((prev) => ({
-                                                    ...prev,
-                                                    [prd.material_id]: !prev[prd.material_id],
-                                                  }));
-                                                  setWorkLogSelectedMaterialName(
-                                                    prd.product_name
-                                                  );
-                                                  setWorkLogSelectedMaterialThumb(
-                                                    prd.thumbnail_url
-                                                  );
-                                                  setWorkLogUnit(
-                                                    prd.material_category === 'FERTILIZER'
-                                                      ? 'kg'
-                                                      : 'L'
-                                                  );
+                                                  selectProductForUsageAndWorkLog(prd, true);
                                                 }}
                                                 aria-label={`${prd.product_name} 선택`}
-                                                className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center shrink-0 transition ${
+                                                className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center shrink-0 cursor-pointer transition ${
                                                   isPurchased
-                                                    ? 'bg-[#E5E7EB] border border-[#D1D5DB] text-[#9CA3AF] cursor-not-allowed'
+                                                    ? isUsageSelected
+                                                      ? 'bg-[#0E712F] border border-[#0E712F] text-white'
+                                                      : 'bg-[#F3F4F6] border border-[#9CA3AF] text-[#6B7280]'
                                                     : isChecked
-                                                    ? 'bg-[#0E712F] border border-[#0E712F] text-white cursor-pointer'
-                                                    : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent cursor-pointer'
+                                                    ? 'bg-[#0E712F] border border-[#0E712F] text-white'
+                                                    : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent'
                                                 }`}
                                               >
                                                 <Check className="w-3.5 h-3.5 stroke-[3]" />
@@ -13654,16 +13731,15 @@ export default function UserIntroPage() {
                                               </div>
 
                                               <div className="min-w-0 flex-1 space-y-0.5">
-                                                <div className="flex items-baseline gap-1.5 min-w-0">
-                                                  <span
-                                                    className={`text-[15.5px] font-black tracking-[-0.03em] truncate ${
-                                                      isPurchased
-                                                        ? 'text-[#6B7280] line-through'
-                                                        : 'text-[#111827]'
-                                                    }`}
-                                                  >
+                                                <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                                                  <span className="text-[15.5px] font-black tracking-[-0.03em] truncate text-[#111827]">
                                                     {prd.product_name}
                                                   </span>
+                                                  {isUsageSelected && (
+                                                    <span className="px-2 py-0.5 rounded-full bg-[#0E712F] text-white text-[10.5px] font-extrabold whitespace-nowrap shrink-0">
+                                                      사용방법 표시중
+                                                    </span>
+                                                  )}
                                                 </div>
                                                 <div className="text-[12.5px] font-bold text-[#0E712F] truncate">
                                                   {prd.unit_spec} × 권장 {prd.recommendedQty || 1}
@@ -13683,27 +13759,27 @@ export default function UserIntroPage() {
                                               </div>
                                             </div>
 
-                                            {/* 우측 끝: 이미 구매한 제품은 (구매) 표시 및 비활성화, 미구매 제품은 상세보기 버튼 */}
-                                            <div className="shrink-0 flex items-center gap-1.5">
-                                              {isPurchased ? (
-                                                <span className="px-2.5 py-1 rounded-full bg-[#E5E7EB] border border-[#D1D5DB] text-[#4B5563] text-[12px] font-extrabold whitespace-nowrap">
-                                                  (구매)
+                                            {/* 우측 끝: 이미 구매한 제품은 (구매완료) 표시 + 상세보기 버튼 */}
+                                            <div className="shrink-0 flex items-center gap-1">
+                                              {isPurchased && (
+                                                <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[#0E712F] text-[11px] font-extrabold whitespace-nowrap">
+                                                  구매완료
                                                 </span>
-                                              ) : (
-                                                <button
-                                                  type="button"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setMobileTaskAgroSelectedProduct(prd);
-                                                    setMobileTaskAgroDetailTab('INFO');
-                                                    goToScheduleStep('task_agro_detail');
-                                                  }}
-                                                  aria-label={`${prd.product_name} 상세보기`}
-                                                  className="p-1.5 rounded-full hover:bg-[#EFF8F1] text-[#374151] cursor-pointer transition"
-                                                >
-                                                  <ChevronRight className="w-4 h-4 stroke-[2.3]" />
-                                                </button>
                                               )}
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedUsageAgroMaterialId(prd.material_id);
+                                                  setMobileTaskAgroSelectedProduct(prd);
+                                                  setMobileTaskAgroDetailTab('INFO');
+                                                  goToScheduleStep('task_agro_detail');
+                                                }}
+                                                aria-label={`${prd.product_name} 상세보기`}
+                                                className="p-1.5 rounded-full hover:bg-[#EFF8F1] text-[#374151] cursor-pointer transition"
+                                              >
+                                                <ChevronRight className="w-4 h-4 stroke-[2.3]" />
+                                              </button>
                                             </div>
                                           </div>
                                         );
@@ -13759,47 +13835,114 @@ export default function UserIntroPage() {
                                 );
                               })()}
 
-                              {/* 3) 사용방법 테이블 섹션 */}
+                              {/* 3) 사용방법 테이블 섹션 (선택한 추천/구매완료 농자재의 생육단계별 맞춤 사용방법 실시간 연동) */}
                               <div className="space-y-2.5 pt-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-6 h-6 inline-flex items-center justify-center text-[#16A34A] shrink-0">
-                                    <svg
-                                      viewBox="0 0 24 24"
-                                      className="w-[21px] h-[21px]"
-                                      fill="none"
-                                    >
-                                      <rect
-                                        x="3"
-                                        y="4"
-                                        width="18"
-                                        height="16"
-                                        rx="3"
-                                        stroke="#16A34A"
-                                        strokeWidth="2.1"
-                                      />
-                                      <path
-                                        d="M7 9h2M12 9h5M7 13h2M12 13h5M7 17h2M12 17h5"
-                                        stroke="#16A34A"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                      />
-                                    </svg>
-                                  </span>
-                                  <span className="text-[18.5px] font-black text-[#111827] tracking-[-0.03em]">
-                                    사용방법
-                                  </span>
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-6 h-6 inline-flex items-center justify-center text-[#16A34A] shrink-0">
+                                      <svg
+                                        viewBox="0 0 24 24"
+                                        className="w-[21px] h-[21px]"
+                                        fill="none"
+                                      >
+                                        <rect
+                                          x="3"
+                                          y="4"
+                                          width="18"
+                                          height="16"
+                                          rx="3"
+                                          stroke="#16A34A"
+                                          strokeWidth="2.1"
+                                        />
+                                        <path
+                                          d="M7 9h2M12 9h5M7 13h2M12 13h5M7 17h2M12 17h5"
+                                          stroke="#16A34A"
+                                          strokeWidth="2"
+                                          strokeLinecap="round"
+                                        />
+                                      </svg>
+                                    </span>
+                                    <span className="text-[18.5px] font-black text-[#111827] tracking-[-0.03em]">
+                                      사용방법
+                                    </span>
+                                  </div>
+                                  {activeUsageProduct && (
+                                    <span className="px-2.5 py-1 rounded-full bg-[#EFF8F1] border border-[#86EFAC] text-[#0E712F] text-[12px] font-extrabold truncate max-w-[240px]">
+                                      선택 자재: {activeUsageProduct.product_name}
+                                    </span>
+                                  )}
                                 </div>
 
+                                {/* 생육단계 내 추천·구매 농자재 빠른 선택 탭 (구매한 제품도 선택하여 해당 제품의 단계별 사용방법 즉시 확인) */}
+                                {stageRecProducts.length > 1 && (
+                                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                                    {stageRecProducts.map((prd) => {
+                                      const isSel =
+                                        activeUsageProduct?.material_id === prd.material_id;
+                                      const isPur = isStageAgroProductPurchased(prd);
+                                      return (
+                                        <button
+                                          key={`usage-tab-${prd.material_id}`}
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedUsageAgroMaterialId(prd.material_id);
+                                            setWorkLogSelectedMaterialName(prd.product_name);
+                                            setWorkLogSelectedMaterialThumb(prd.thumbnail_url);
+                                            setWorkLogUnit(
+                                              prd.material_category === 'FERTILIZER' ? 'kg' : 'L'
+                                            );
+                                          }}
+                                          className={`px-3 py-1.5 rounded-full text-[12.5px] font-extrabold whitespace-nowrap border transition cursor-pointer shrink-0 flex items-center gap-1 ${
+                                            isSel
+                                              ? 'bg-[#0E712F] text-white border-[#0E712F] shadow-2xs'
+                                              : 'bg-[#F8FAFC] hover:bg-[#EFF8F1] text-[#374151] border-[#D1D5DB]'
+                                          }`}
+                                        >
+                                          <span>{prd.product_name}</span>
+                                          {isPur && (
+                                            <span
+                                              className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                                isSel
+                                                  ? 'bg-white/25 text-white'
+                                                  : 'bg-[#DCFCE7] text-[#0E712F]'
+                                              }`}
+                                            >
+                                              구매완료
+                                            </span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
                                 <div className="rounded-[16px] border border-[#E5E7EB] bg-white overflow-hidden divide-y divide-[#F1F5F9] shadow-2xs">
+                                  {activeUsageProduct && (
+                                    <div className="bg-[#F2FBF5] px-3.5 py-2.5 flex items-center justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <div className="text-[11.5px] font-extrabold text-[#0E712F]">
+                                          [{cleanExecTitle}] 단계 맞춤 처방 사용방법
+                                        </div>
+                                        <div className="text-[14px] font-black text-[#111827] truncate mt-0.5">
+                                          {activeUsageProduct.product_name} ({activeUsageProduct.unit_spec} × 권장 {activeUsageProduct.recommendedQty || 1}{activeUsageProduct.unit_label || '개'})
+                                        </div>
+                                      </div>
+                                      {isStageAgroProductPurchased(activeUsageProduct) && (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-[#0E712F] text-white text-[11px] font-extrabold shrink-0">
+                                          ✓ 구매한 제품
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                   {usageRows.map((row) => (
                                     <div
                                       key={row.label}
-                                      className="flex items-center text-[15px]"
+                                      className="flex items-stretch text-[14.5px]"
                                     >
-                                      <div className="w-[92px] bg-[#F8FAFC] px-3.5 py-3 font-extrabold text-[#111827] shrink-0 text-center">
+                                      <div className="w-[92px] bg-[#F8FAFC] px-3 py-3 font-extrabold text-[#111827] shrink-0 flex items-center justify-center text-center">
                                         {row.label}
                                       </div>
-                                      <div className="px-3.5 py-3 font-semibold text-[#111827] tracking-[-0.02em] flex-1 break-keep">
+                                      <div className="px-3.5 py-3 font-semibold text-[#111827] tracking-[-0.02em] flex-1 break-keep leading-snug">
                                         {row.val}
                                       </div>
                                     </div>
@@ -20100,11 +20243,17 @@ export default function UserIntroPage() {
                 </div>
               </div>
 
-              {/* ---------- 선택한 생육과정 핵심 요약 & 추천 제품 바로구매 카드 (모바일 + PC 공통 지원) ---------- */}
+              {/* ---------- 선택한 생육과정 핵심 요약 & 추천 제품 바로구매 및 제품별 맞춤 사용방법 카드 (모바일 + PC 공통 지원) ---------- */}
               {detailItem && (() => {
-                const topMat = [...(detailItem.materials || [])].sort(
+                const sortedStageMats = [...(detailItem.materials || [])].sort(
                   (a: any, b: any) => Number(b?.match_score || 0) - Number(a?.match_score || 0)
-                )[0];
+                );
+                const topMat =
+                  sortedStageMats.find(
+                    (m: any) => String(m?.material_id || '') === selectedUsageAgroMaterialId
+                  ) ||
+                  sortedStageMats[0] ||
+                  null;
                 const reqArea = Number(provisionData?.activeRequest?.area_pyeong || 300);
                 const reqNo =
                   provisionData?.activeRequest?.request_no ||
@@ -20119,6 +20268,32 @@ export default function UserIntroPage() {
                 const purchasedInfo = topMat
                   ? getPurchasedStageProductInfo(reqNo, detailItem, topMat)
                   : { isPurchased: false, totalQty: 0, purchaseCount: 0, lastEntry: null, entries: [] };
+
+                const topMatUsageGuide = topMat
+                  ? resolveStageMaterialUsageGuide({
+                      stageCode: String(detailItem.item_id || detailItem.process_code || 'SCH-01'),
+                      stageGroupName: String(detailItem.stage_group_name || '생육단계'),
+                      subItemName: String(detailItem.sub_item_name || detailItem.process_name || '생육과정'),
+                      stepOrder: Number(detailItem.step_order || 1),
+                      cropName: String(
+                        provisionData?.activeRequest?.crop_name || activeCropCard?.crop_short || '배추'
+                      ),
+                      areaPyeong: reqArea,
+                      soilPh: Number(provisionData?.activeRequest?.soil_ph || 6.2),
+                      soilEc: Number(provisionData?.activeRequest?.soil_ec || 1.1),
+                      soilCondition: String(
+                        provisionData?.activeRequest?.soil_condition || '양토'
+                      ),
+                      targetPgdd: Number(detailItem.target_pgdd || 120),
+                      material: {
+                        ...topMat,
+                        unit_spec: unitSpec,
+                        unit_label: unitLabel,
+                        recommendedQty: neededQty,
+                      },
+                      savedGuidesMap: stageMaterialUsageGuidesMap,
+                    })
+                  : null;
 
                 return (
                   <div className="bg-white rounded-3xl border-2 border-emerald-500/70 p-4 sm:p-5 shadow-xs space-y-4">
@@ -20212,7 +20387,7 @@ export default function UserIntroPage() {
                           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/80 pb-2">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span className="text-xs font-extrabold text-emerald-950">
-                                🧪 선택 생육과정 추천 제품
+                                🧪 선택 생육과정 추천 농자재 ({sortedStageMats.length}종 · 구매완료 제품도 선택 시 하단 사용방법 연동)
                               </span>
                               <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
                                 추천 {topMat.match_score || 98}점
@@ -20231,6 +20406,47 @@ export default function UserIntroPage() {
                               </span>
                             )}
                           </div>
+
+                          {/* 해당 생육단계의 추천(또는 구매한) 농자재 선택 탭 바 */}
+                          {sortedStageMats.length > 1 && (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {sortedStageMats.map((mItem: any, mIdx: number) => {
+                                const mPur = getPurchasedStageProductInfo(reqNo, detailItem, mItem);
+                                const isSel =
+                                  String(topMat?.material_id || '') ===
+                                  String(mItem?.material_id || '');
+                                return (
+                                  <button
+                                    key={`pc-stg-mat-${mItem.material_id || mIdx}`}
+                                    type="button"
+                                    onClick={() =>
+                                      setSelectedUsageAgroMaterialId(String(mItem.material_id || ''))
+                                    }
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                                      isSel
+                                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                                        : 'bg-white hover:bg-emerald-50 text-slate-800 border-slate-300'
+                                    }`}
+                                  >
+                                    <span>
+                                      {mIdx + 1}. {mItem.product_name}
+                                    </span>
+                                    {mPur.isPurchased && (
+                                      <span
+                                        className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                                          isSel
+                                            ? 'bg-white/25 text-white'
+                                            : 'bg-emerald-100 text-emerald-800'
+                                        }`}
+                                      >
+                                        ✓ 구매완료
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           <div className="flex items-start gap-3">
                             <img
@@ -20363,6 +20579,61 @@ export default function UserIntroPage() {
                               </button>
                             </div>
                           </div>
+
+                          {topMatUsageGuide && (
+                            <div className="rounded-xl border border-emerald-300 bg-white overflow-hidden divide-y divide-slate-100 text-xs">
+                              <div className="bg-emerald-50/90 px-3 py-2 flex items-center justify-between gap-2">
+                                <span className="font-extrabold text-emerald-950">
+                                  📋 [{detailItem.sub_item_name}] 단계 · [{topMat.product_name}] 전용 사용방법
+                                </span>
+                                <span className="text-[10.5px] font-bold text-emerald-700">
+                                  {topMatUsageGuide.updatedByAdmin
+                                    ? `관리자 직접 등록 (${topMatUsageGuide.updatedAt || '저장됨'})`
+                                    : '생육단계·평수·토양·기후 근거 맞춤 처방'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-[88px_1fr]">
+                                <div className="bg-slate-50 px-2.5 py-2 font-extrabold text-slate-800 flex items-center justify-center text-center">
+                                  처방·근거
+                                </div>
+                                <div className="px-3 py-2 font-semibold text-slate-800 leading-snug">
+                                  {topMatUsageGuide.rationaleBasis}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-[88px_1fr]">
+                                <div className="bg-slate-50 px-2.5 py-2 font-extrabold text-slate-800 flex items-center justify-center text-center">
+                                  사용량
+                                </div>
+                                <div className="px-3 py-2 font-bold text-emerald-800 leading-snug">
+                                  {topMatUsageGuide.dosageRate}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-[88px_1fr]">
+                                <div className="bg-slate-50 px-2.5 py-2 font-extrabold text-slate-800 flex items-center justify-center text-center">
+                                  시비·희석기준
+                                </div>
+                                <div className="px-3 py-2 font-semibold text-slate-800 leading-snug">
+                                  {topMatUsageGuide.applicationStandard}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-[88px_1fr]">
+                                <div className="bg-slate-50 px-2.5 py-2 font-extrabold text-slate-800 flex items-center justify-center text-center">
+                                  시비·살포방법
+                                </div>
+                                <div className="px-3 py-2 font-semibold text-slate-800 leading-snug">
+                                  {topMatUsageGuide.applicationMethod}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-[88px_1fr]">
+                                <div className="bg-slate-50 px-2.5 py-2 font-extrabold text-rose-700 flex items-center justify-center text-center">
+                                  주의사항
+                                </div>
+                                <div className="px-3 py-2 font-semibold text-slate-700 leading-snug">
+                                  {topMatUsageGuide.cautionText}
+                                </div>
+                              </div>
+                            </div>
+                          )}
 
                           {stageDetailPurchaseNotice &&
                             stageDetailPurchaseNotice.key ===

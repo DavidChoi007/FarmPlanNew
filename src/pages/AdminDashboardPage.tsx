@@ -10,6 +10,13 @@ import {
   normalizeScheduleGenerationModuleConfig,
 } from '../utils/scheduleGenerationModule.ts';
 import {
+  resolveStageMaterialUsageGuide,
+  generateEvidenceBasedStageMaterialUsageGuide,
+  upsertSingleStageMaterialUsageGuide,
+  ensureDefaultStageMaterialUsageGuidesSeeded,
+  type StageMaterialUsageGuide,
+} from '../utils/stageMaterialUsageGuides.ts';
+import {
   LayoutDashboard,
   Layers,
   ListChecks,
@@ -2758,6 +2765,35 @@ export default function AdminDashboardPage() {
       window.alert('1단계 적용군, 2단계 적용 작물분류, 3단계 제품명 및 생육과정명을 선택해 주세요.');
       return;
     }
+    const stageCodeForCgp = `SCH-${String(cgpForm.step_order || 1).padStart(2, '0')}`;
+    const cgpMats = Array.isArray(cgpForm.required_materials) ? cgpForm.required_materials : [];
+    cgpMats.forEach((mat: any) => {
+      const matGuide =
+        mat.stage_usage_guide ||
+        resolveStageMaterialUsageGuide({
+          stageCode: stageCodeForCgp,
+          stageName: cgpForm.process_name || '생육 단계',
+          materialId: mat.material_id,
+          productName: mat.product_name,
+          materialCategory: mat.sub_type || mat.material_category,
+          nutrientRatioSummary: mat.nutrient_ratio_summary || '',
+          unitSpec: mat.weight_spec || mat.unit_spec || '',
+          recommendedForArea: mat.dosage_per_100pyeong
+            ? `100평당 ${mat.dosage_per_100pyeong}`
+            : '',
+          targetGdd: Number(cgpForm.target_gdd || 0),
+        });
+      upsertSingleStageMaterialUsageGuide({
+        ...matGuide,
+        stageCode: stageCodeForCgp,
+        stageName: cgpForm.process_name || matGuide.stageName,
+        materialId: mat.material_id,
+        productName: mat.product_name,
+        updatedByAdmin: true,
+        updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      });
+    });
+
     const res = await fetch('/api/crop-growth-process-plans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4040,6 +4076,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     setSelectedSurveyUnitId(null);
+    ensureDefaultStageMaterialUsageGuidesSeeded();
   }, []);
 
   // 기존 WORK/STAGE 캐시 또는 HMR로 인해 영양제·병해충관리제 기초 코드가 누락된 경우 즉시 최신 데이터 갱신
@@ -12266,6 +12303,34 @@ export default function AdminDashboardPage() {
                       recommended_date_with_weekday: formatYmdWithWeekday(curStart),
                       bar_label: editDetailForm.bar_label || editDetailForm.sub_item_name,
                     };
+                    // 생육단계별 개별 추천 농자재 사용방법 저장 동기화
+                    if (Array.isArray(updatedCurrent.materials)) {
+                      updatedCurrent.materials.forEach((mat: any) => {
+                        const matGuide =
+                          mat.stage_usage_guide ||
+                          resolveStageMaterialUsageGuide({
+                            stageCode: updatedCurrent.item_id || 'SCH-01',
+                            stageName: updatedCurrent.sub_item_name || '생육 단계',
+                            materialId: mat.material_id,
+                            productName: mat.product_name,
+                            materialCategory: mat.sub_type || mat.material_category,
+                            nutrientRatioSummary: mat.nutrient_ratio_summary || '',
+                            unitSpec: mat.unit_spec || '',
+                            recommendedForArea: mat.recommended_for_area || '',
+                            areaPyeong: Number(provisionData?.activeRequest?.area_pyeong || 300),
+                            targetGdd: Number(updatedCurrent.required_gdd || 0),
+                          });
+                        upsertSingleStageMaterialUsageGuide({
+                          ...matGuide,
+                          stageCode: updatedCurrent.item_id || matGuide.stageCode,
+                          stageName: updatedCurrent.sub_item_name || matGuide.stageName,
+                          materialId: mat.material_id,
+                          productName: mat.product_name,
+                          updatedByAdmin: true,
+                          updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                        });
+                      });
+                    }
                     const itemsToSave = [
                       updatedCurrent,
                       ...(cascadeDeltaDays !== 0 ? cascadedSubsequentPreview : []),
@@ -13024,6 +13089,238 @@ export default function AdminDashboardPage() {
                                     </div>
                                   </div>
                                 )}
+
+                                {/* 생육단계별 추천 농자재 개별 사용방법 직접 입력 · 근거 기반 자동생성 · 저장 영역 */}
+                                {(() => {
+                                  const reqAreaVal = Number(
+                                    provisionData.activeRequest?.area_pyeong || 500
+                                  );
+                                  const resolvedUsage = resolveStageMaterialUsageGuide({
+                                    stageCode: String(
+                                      detailItem.item_id || detailItem.process_code || 'SCH-01'
+                                    ),
+                                    stageGroupName: String(
+                                      detailItem.stage_group_name || '생육단계'
+                                    ),
+                                    subItemName: String(
+                                      detailItem.sub_item_name ||
+                                        detailItem.process_name ||
+                                        '생육과정'
+                                    ),
+                                    stepOrder: Number(detailItem.step_order || 1),
+                                    cropName: String(
+                                      provisionData.activeRequest?.crop_name || '배추'
+                                    ),
+                                    areaPyeong: reqAreaVal,
+                                    targetPgdd: Number(detailItem.target_pgdd || 120),
+                                    material: {
+                                      ...mat,
+                                      recommendedQty:
+                                        mat.recommended_qty || mat.recommendedQty || 1,
+                                    },
+                                  });
+                                  const curGuide = mat.stage_usage_guide || resolvedUsage;
+
+                                  const updateMatUsageField = (
+                                    field: keyof StageMaterialUsageGuide,
+                                    val: string
+                                  ) => {
+                                    setEditDetailForm((prev: any) => {
+                                      const nextMats = [...(prev.materials || [])];
+                                      const baseG =
+                                        nextMats[mIdx]?.stage_usage_guide || resolvedUsage;
+                                      nextMats[mIdx] = {
+                                        ...nextMats[mIdx],
+                                        stage_usage_guide: {
+                                          ...baseG,
+                                          [field]: val,
+                                          updatedByAdmin: true,
+                                        },
+                                      };
+                                      return { ...prev, materials: nextMats };
+                                    });
+                                  };
+
+                                  return (
+                                    <div className="mt-2 p-3 rounded-xl bg-emerald-50/70 border-2 border-emerald-400/80 space-y-2.5">
+                                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200 pb-2">
+                                        <div>
+                                          <div className="font-extrabold text-emerald-950 text-xs flex items-center gap-1.5">
+                                            <span>
+                                              🛠️ [{detailItem.sub_item_name}] 생육단계 내 [{mat.product_name}] 전용 사용방법 관리
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black">
+                                              생육단계별 제품 맞춤 사용방법
+                                            </span>
+                                          </div>
+                                          <p className="text-[10.5px] text-emerald-800 font-semibold mt-0.5">
+                                            일반 쇼핑몰 공통 설명이 아닌, 현재 생육단계에서 이 추천 농자재를 사용할 때의 전용 사용방법입니다. 저장 시 사용자 재배일정 화면 하단 사용방법에 즉시 반영됩니다.
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const autoG =
+                                                generateEvidenceBasedStageMaterialUsageGuide({
+                                                  stageCode: String(
+                                                    detailItem.item_id ||
+                                                      detailItem.process_code ||
+                                                      'SCH-01'
+                                                  ),
+                                                  stageGroupName: String(
+                                                    detailItem.stage_group_name || '생육단계'
+                                                  ),
+                                                  subItemName: String(
+                                                    detailItem.sub_item_name ||
+                                                      detailItem.process_name ||
+                                                      '생육과정'
+                                                  ),
+                                                  stepOrder: Number(detailItem.step_order || 1),
+                                                  cropName: String(
+                                                    provisionData.activeRequest?.crop_name ||
+                                                      '배추'
+                                                  ),
+                                                  areaPyeong: reqAreaVal,
+                                                  targetPgdd: Number(
+                                                    detailItem.target_pgdd || 120
+                                                  ),
+                                                  material: {
+                                                    ...mat,
+                                                    recommendedQty:
+                                                      mat.recommended_qty ||
+                                                      mat.recommendedQty ||
+                                                      1,
+                                                  },
+                                                });
+                                              setEditDetailForm((prev: any) => {
+                                                const nextMats = [...(prev.materials || [])];
+                                                nextMats[mIdx] = {
+                                                  ...nextMats[mIdx],
+                                                  stage_usage_guide: autoG,
+                                                };
+                                                return { ...prev, materials: nextMats };
+                                              });
+                                              upsertSingleStageMaterialUsageGuide(autoG);
+                                              showToast(
+                                                `[${mat.product_name}] 생육단계·평수·토양·기후 근거 맞춤 사용방법이 자동 생성·저장되었습니다.`
+                                              );
+                                            }}
+                                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-400 font-extrabold text-[10.5px] cursor-pointer transition"
+                                          >
+                                            ✨ 근거 맞춤 사용방법 자동작성
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const toSave: StageMaterialUsageGuide = {
+                                                ...resolvedUsage,
+                                                ...curGuide,
+                                                stageCode: String(
+                                                  detailItem.item_id ||
+                                                    detailItem.process_code ||
+                                                    'SCH-01'
+                                                ),
+                                                stageName: String(
+                                                  detailItem.sub_item_name ||
+                                                    detailItem.process_name ||
+                                                    '생육과정'
+                                                ),
+                                                materialId: String(
+                                                  mat.material_id || `MAT-${mIdx + 1}`
+                                                ),
+                                                productName: String(
+                                                  mat.product_name || '추천 농자재'
+                                                ),
+                                              };
+                                              upsertSingleStageMaterialUsageGuide(toSave);
+                                              showToast(
+                                                `[${detailItem.sub_item_name} - ${mat.product_name}] 전용 사용방법이 저장되었습니다.`
+                                              );
+                                            }}
+                                            className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-[10.5px] cursor-pointer shadow-2xs transition"
+                                          >
+                                            💾 이 농자재 사용방법 저장
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                                        <div className="sm:col-span-2">
+                                          <label className="block font-extrabold text-emerald-950 mb-0.5">
+                                            ① 생육단계·토양·기후 처방 근거 (처방·근거)
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={curGuide.rationaleBasis || ''}
+                                            onChange={(e) =>
+                                              updateMatUsageField('rationaleBasis', e.target.value)
+                                            }
+                                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 font-semibold text-slate-900"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-extrabold text-emerald-950 mb-0.5">
+                                            ② 사용량 (평수·포장용량·권장갯수 기준)
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={curGuide.dosageRate || ''}
+                                            onChange={(e) =>
+                                              updateMatUsageField('dosageRate', e.target.value)
+                                            }
+                                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 font-bold text-emerald-900"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="block font-extrabold text-emerald-950 mb-0.5">
+                                            ③ 시비기준 / 희석배수 (단계별 적용기준)
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={curGuide.applicationStandard || ''}
+                                            onChange={(e) =>
+                                              updateMatUsageField(
+                                                'applicationStandard',
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 font-semibold text-slate-900"
+                                          />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                          <label className="block font-extrabold text-emerald-950 mb-0.5">
+                                            ④ 시비방법 / 살포방법 (이 생육단계에서의 구체적 사용방법)
+                                          </label>
+                                          <textarea
+                                            rows={2}
+                                            value={curGuide.applicationMethod || ''}
+                                            onChange={(e) =>
+                                              updateMatUsageField(
+                                                'applicationMethod',
+                                                e.target.value
+                                              )
+                                            }
+                                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-emerald-300 font-semibold text-slate-900 leading-snug"
+                                          />
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                          <label className="block font-extrabold text-rose-800 mb-0.5">
+                                            ⑤ 주의사항 (생육단계·혼용·기상·PLS 안전주의사항)
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={curGuide.cautionText || ''}
+                                            onChange={(e) =>
+                                              updateMatUsageField('cautionText', e.target.value)
+                                            }
+                                            className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-rose-300 font-semibold text-slate-800"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </div>
                           ))}
@@ -19017,43 +19314,232 @@ export default function AdminDashboardPage() {
                               위에서 필요한 농자재를 선택하고 [농자재 추가] 버튼을 클릭해 주세요.
                             </div>
                           ) : (
-                            <div className="grid sm:grid-cols-2 gap-2">
-                              {(cgpForm.required_materials || []).map((mat: any) => (
-                                <div
-                                  key={mat.material_id}
-                                  className="flex items-center gap-2.5 p-2 rounded-xl bg-amber-50/40 border border-amber-200"
-                                >
-                                  <img
-                                    src={
-                                      mat.thumbnail_url ||
-                                      `/api/agro-materials/image/${encodeURIComponent(
-                                        mat.material_id
-                                      )}/thumb`
-                                    }
-                                    alt={mat.product_name}
-                                    className="w-11 h-11 rounded-lg object-contain bg-white border border-slate-200 shrink-0"
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="text-[10px] font-bold text-amber-800 truncate">
-                                      {mat.sub_type}
+                            <div className="space-y-3">
+                              {(cgpForm.required_materials || []).map((mat: any, matIdx: number) => {
+                                const resolvedCgpUsage = resolveStageMaterialUsageGuide({
+                                  stageCode: String(cgpForm.process_code || 'SCH-01'),
+                                  stageGroupName: String(cgpForm.process_name || '생육과정'),
+                                  subItemName: String(cgpForm.process_name || '생육과정'),
+                                  stepOrder: Number(cgpForm.step_order || 1),
+                                  cropName: String(cgpForm.crop_name || '배추'),
+                                  areaPyeong: 500,
+                                  targetPgdd: Number(cgpForm.target_pgdd || 120),
+                                  material: mat,
+                                });
+                                const curMatGuide = mat.stage_usage_guide || resolvedCgpUsage;
+                                const updateCgpMatGuideField = (
+                                  field: keyof StageMaterialUsageGuide,
+                                  val: string
+                                ) => {
+                                  setCgpForm((prev: any) => {
+                                    const nextList = [...(prev.required_materials || [])];
+                                    const baseG =
+                                      nextList[matIdx]?.stage_usage_guide || resolvedCgpUsage;
+                                    nextList[matIdx] = {
+                                      ...nextList[matIdx],
+                                      stage_usage_guide: {
+                                        ...baseG,
+                                        [field]: val,
+                                        updatedByAdmin: true,
+                                      },
+                                    };
+                                    return {
+                                      ...prev,
+                                      required_materials: nextList,
+                                    };
+                                  });
+                                };
+
+                                return (
+                                  <div
+                                    key={mat.material_id}
+                                    className="p-3 rounded-xl bg-amber-50/40 border-2 border-amber-200 space-y-2.5"
+                                  >
+                                    <div className="flex items-center justify-between gap-2.5">
+                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                        <img
+                                          src={
+                                            mat.thumbnail_url ||
+                                            `/api/agro-materials/image/${encodeURIComponent(
+                                              mat.material_id
+                                            )}/thumb`
+                                          }
+                                          alt={mat.product_name}
+                                          className="w-11 h-11 rounded-lg object-contain bg-white border border-slate-200 shrink-0"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                          <div className="text-[10px] font-bold text-amber-800 truncate">
+                                            {mat.sub_type} · 생육단계[{cgpForm.process_name}] 전용 사용방법
+                                          </div>
+                                          <div className="font-extrabold text-slate-900 truncate">
+                                            [{mat.manufacturer || '한팜'}] {mat.product_name}
+                                          </div>
+                                          <div className="text-[10px] text-emerald-800 font-bold truncate">
+                                            100평 기준: {mat.dosage_per_100pyeong}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const autoG =
+                                              generateEvidenceBasedStageMaterialUsageGuide({
+                                                stageCode: String(
+                                                  cgpForm.process_code || 'SCH-01'
+                                                ),
+                                                stageGroupName: String(
+                                                  cgpForm.process_name || '생육과정'
+                                                ),
+                                                subItemName: String(
+                                                  cgpForm.process_name || '생육과정'
+                                                ),
+                                                stepOrder: Number(cgpForm.step_order || 1),
+                                                cropName: String(cgpForm.crop_name || '배추'),
+                                                areaPyeong: 500,
+                                                targetPgdd: Number(cgpForm.target_pgdd || 120),
+                                                material: mat,
+                                              });
+                                            setCgpForm((prev: any) => {
+                                              const nextList = [
+                                                ...(prev.required_materials || []),
+                                              ];
+                                              nextList[matIdx] = {
+                                                ...nextList[matIdx],
+                                                stage_usage_guide: autoG,
+                                              };
+                                              return {
+                                                ...prev,
+                                                required_materials: nextList,
+                                              };
+                                            });
+                                            upsertSingleStageMaterialUsageGuide(autoG);
+                                            showToast(
+                                              `[${mat.product_name}] 생육단계 근거 맞춤 사용방법이 자동 생성·저장되었습니다.`
+                                            );
+                                          }}
+                                          className="px-2 py-1 rounded-lg bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-300 font-extrabold text-[10.5px] cursor-pointer"
+                                        >
+                                          ✨ 근거 맞춤 자동작성
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const toSave: StageMaterialUsageGuide = {
+                                              ...resolvedCgpUsage,
+                                              ...curMatGuide,
+                                              stageCode: String(
+                                                cgpForm.process_code || 'SCH-01'
+                                              ),
+                                              stageName: String(
+                                                cgpForm.process_name || '생육과정'
+                                              ),
+                                              materialId: String(mat.material_id),
+                                              productName: String(mat.product_name),
+                                            };
+                                            upsertSingleStageMaterialUsageGuide(toSave);
+                                            showToast(
+                                              `[${cgpForm.process_name} - ${mat.product_name}] 전용 사용방법이 저장되었습니다.`
+                                            );
+                                          }}
+                                          className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-[10.5px] cursor-pointer"
+                                        >
+                                          💾 사용방법 저장
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleRemoveMaterialFromCgpForm(mat.material_id)
+                                          }
+                                          className="p-1 rounded hover:bg-rose-100 text-rose-600 cursor-pointer shrink-0"
+                                          title="제거"
+                                        >
+                                          <X className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
-                                    <div className="font-extrabold text-slate-900 truncate">
-                                      [{mat.manufacturer || '한팜'}] {mat.product_name}
-                                    </div>
-                                    <div className="text-[10px] text-emerald-800 font-bold truncate">
-                                      100평: {mat.dosage_per_100pyeong}
+
+                                    {/* 이 추천 농자재의 해당 생육단계 전용 사용방법 5대 항목 입력 */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2.5 rounded-xl border border-amber-200 text-[11px]">
+                                      <div className="sm:col-span-2">
+                                        <label className="block font-extrabold text-emerald-900 mb-0.5">
+                                          ① 생육단계·토양·기후 처방 근거
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={curMatGuide.rationaleBasis || ''}
+                                          onChange={(e) =>
+                                            updateCgpMatGuideField(
+                                              'rationaleBasis',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold text-slate-900"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block font-extrabold text-emerald-900 mb-0.5">
+                                          ② 사용량 (평수·포장용량·권장갯수)
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={curMatGuide.dosageRate || ''}
+                                          onChange={(e) =>
+                                            updateCgpMatGuideField('dosageRate', e.target.value)
+                                          }
+                                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-emerald-900"
+                                        />
+                                      </div>
+                                      <div>
+                                        <label className="block font-extrabold text-emerald-900 mb-0.5">
+                                          ③ 시비기준 / 희석배수
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={curMatGuide.applicationStandard || ''}
+                                          onChange={(e) =>
+                                            updateCgpMatGuideField(
+                                              'applicationStandard',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold text-slate-900"
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <label className="block font-extrabold text-emerald-900 mb-0.5">
+                                          ④ 시비방법 / 살포방법 (이 생육단계에서의 구체적 사용방법)
+                                        </label>
+                                        <textarea
+                                          rows={2}
+                                          value={curMatGuide.applicationMethod || ''}
+                                          onChange={(e) =>
+                                            updateCgpMatGuideField(
+                                              'applicationMethod',
+                                              e.target.value
+                                            )
+                                          }
+                                          className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 font-semibold text-slate-900 leading-snug"
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-2">
+                                        <label className="block font-extrabold text-rose-800 mb-0.5">
+                                          ⑤ 주의사항 (생육단계·혼용·기상·PLS 안전주의사항)
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={curMatGuide.cautionText || ''}
+                                          onChange={(e) =>
+                                            updateCgpMatGuideField('cautionText', e.target.value)
+                                          }
+                                          className="w-full px-2.5 py-1.5 rounded-lg border border-rose-300 font-semibold text-slate-800"
+                                        />
+                                      </div>
                                     </div>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveMaterialFromCgpForm(mat.material_id)}
-                                    className="p-1 rounded hover:bg-rose-100 text-rose-600 cursor-pointer shrink-0"
-                                    title="제거"
-                                  >
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
