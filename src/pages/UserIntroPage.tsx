@@ -11899,7 +11899,7 @@ export default function UserIntroPage() {
                                           aria-hidden="true"
                                         />
 
-                                        {/* 카드 상단 분리형 헤더 바: [01/02/03 순번 배지 + 재배지 위치] + [현재 생육단계(D+일수) 배지] */}
+                                        {/* 카드 상단 분리형 헤더 바: [01/02/03 순번 배지 + 재배지 위치] */}
                                         <div className="bg-[#F2F7F4] border-b border-[#DCE7E0] pl-4 pr-3.5 py-2.5 flex items-center justify-between gap-2">
                                           <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                             <span className="px-2 py-0.5 rounded-md bg-[#D6E6DD] text-[#1E3A2F] text-[12px] font-black tracking-tight leading-tight shrink-0">
@@ -11910,12 +11910,6 @@ export default function UserIntroPage() {
                                               <span className="truncate">{shortRegion}</span>
                                             </span>
                                           </div>
-                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold whitespace-nowrap shadow-2xs shrink-0">
-                                            <span>🌱</span>
-                                            <span>
-                                              {currentStageName} (D+{item.elapsedDays}일)
-                                            </span>
-                                          </span>
                                         </div>
 
                                         {/* 카드 본문 영역 */}
@@ -11963,7 +11957,7 @@ export default function UserIntroPage() {
                                             </button>
                                           </div>
 
-                                          {/* 카드 진행률 바 섹션: 재배 진행률 % (완료/전체 공정) + 기상 적산온도 GDD */}
+                                          {/* 카드 진행률 바 섹션: 재배 진행률 % (완료/전체 공정) */}
                                           <div className="space-y-1.5 pt-0.5">
                                             <div className="flex items-center justify-between gap-2 text-[12px]">
                                               <span className="font-extrabold text-[#111827]">
@@ -11975,39 +11969,12 @@ export default function UserIntroPage() {
                                                   ({doneStepCnt}/{totalStepCnt} 공정 완료)
                                                 </span>
                                               </span>
-                                              <span className="font-bold text-[#374151] whitespace-nowrap">
-                                                적산온도{' '}
-                                                <strong className="text-[#0E712F] font-extrabold">
-                                                  {estimatedGdd} GDD
-                                                </strong>
-                                              </span>
                                             </div>
                                             <div className="w-full h-2.5 rounded-full bg-[#E5E7EB] overflow-hidden">
                                               <div
                                                 style={{ width: `${progressPct}%` }}
                                                 className="h-full rounded-full bg-gradient-to-r from-[#16A34A] to-[#0E712F] transition-all duration-300"
                                               />
-                                            </div>
-                                          </div>
-
-                                          {/* 카드 하단: 다음 작업 하이라이트 요약 박스 */}
-                                          <div className="rounded-[14px] bg-[#EFF8F1] border border-[#CBEAD3] px-3 py-2.5 flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                              <span className="text-[13px] shrink-0">📌</span>
-                                              <span className="text-[13px] font-extrabold text-[#111827] truncate">
-                                                다음 작업: {cleanNextTaskTitle}
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 shrink-0">
-                                              <span className="text-[12px] font-bold text-[#374151] whitespace-nowrap">
-                                                {String(item.nextTaskDateLabel || '').replace(
-                                                  /\([^)]*\)/g,
-                                                  ''
-                                                )}
-                                              </span>
-                                              <span className="px-2 py-0.5 rounded-full bg-[#FDE047] text-[#111827] text-[11.5px] font-black whitespace-nowrap shadow-2xs">
-                                                {item.nextTaskDdayLabel}
-                                              </span>
                                             </div>
                                           </div>
                                         </div>
