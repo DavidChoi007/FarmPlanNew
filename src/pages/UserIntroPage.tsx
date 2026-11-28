@@ -11645,20 +11645,20 @@ export default function UserIntroPage() {
                             return (
                               <div className="space-y-3.5">
                                 {/* 2) 상단 3칸 농장 요약 KPI 바 (총 재배면적 / 진행중 작물 / 이번 주 작업 - 클릭 시 가장 가까운 일정 카드로 스크롤) */}
-                                <div className="rounded-[18px] bg-[#F2FBF5] border border-[#CBEAD3] px-3 py-3 grid grid-cols-3 divide-x divide-[#CBEAD3] text-center shadow-2xs">
-                                  <div className="px-1">
-                                    <div className="text-[11.5px] font-bold text-[#374151]">
+                                <div className="rounded-[18px] bg-[#F2FBF5] border border-[#CBEAD3] px-3 py-3 grid grid-cols-3 divide-x divide-[#CBEAD3] items-center text-center shadow-2xs">
+                                  <div className="px-1 flex flex-col items-center justify-center">
+                                    <div className="text-[11.5px] font-bold text-[#374151] leading-tight">
                                       총 재배면적
                                     </div>
-                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] leading-tight mt-1 whitespace-nowrap">
                                       {totalFarmAreaPyeong.toLocaleString()}평
                                     </div>
                                   </div>
-                                  <div className="px-1">
-                                    <div className="text-[11.5px] font-bold text-[#374151]">
+                                  <div className="px-1 flex flex-col items-center justify-center">
+                                    <div className="text-[11.5px] font-bold text-[#374151] leading-tight">
                                       진행중 작물
                                     </div>
-                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] leading-tight mt-1 whitespace-nowrap">
                                       {combinedMobileCrops.length}종
                                     </div>
                                   </div>
@@ -11671,16 +11671,16 @@ export default function UserIntroPage() {
                                         ? '클릭 시 현재 기준으로 일정이 가장 가까운 작물 항목으로 이동합니다'
                                         : undefined
                                     }
-                                    className={`px-1 rounded-r-[14px] transition ${
+                                    className={`px-1 py-0 m-0 flex flex-col items-center justify-center rounded-r-[14px] transition ${
                                       displayedWeekTaskCount >= 1
                                         ? 'cursor-pointer hover:bg-[#E3F5E8] active:scale-[0.98]'
                                         : 'cursor-default'
                                     }`}
                                   >
-                                    <div className="text-[11.5px] font-bold text-[#374151] inline-flex items-center justify-center gap-0.5">
-                                      <span>이번 주 작업</span>
+                                    <div className="text-[11.5px] font-bold text-[#374151] leading-tight">
+                                      이번 주 작업
                                     </div>
-                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap underline decoration-[#0E712F]/40 underline-offset-2">
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] leading-tight mt-1 whitespace-nowrap underline decoration-[#0E712F]/40 underline-offset-2">
                                       {displayedWeekTaskCount}건
                                     </div>
                                   </button>
