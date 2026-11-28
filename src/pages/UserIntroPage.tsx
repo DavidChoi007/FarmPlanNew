@@ -11564,7 +11564,7 @@ export default function UserIntroPage() {
                               className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[14.5px] font-extrabold shadow-xs cursor-pointer transition"
                             >
                               <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>새로운 작물 재배일정 등록하기</span>
+                              <span>재배작물 추가</span>
                             </button>
                           </div>
                         ) : (
@@ -11611,6 +11611,19 @@ export default function UserIntroPage() {
                                     </div>
                                   </div>
                                 </div>
+
+                                {/* 2-B) 리스트 상단 [+ 재배작물 추가] 버튼 */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMobileReqStep(1);
+                                    setActiveMenu('재배일정 요청');
+                                  }}
+                                  className="w-full py-3.5 px-4 rounded-[18px] border-2 border-dashed border-[#4ADE80] bg-[#F7FCF8] hover:bg-[#EFF8F1] active:scale-[0.99] text-[#0E712F] font-black text-[15px] tracking-[-0.02em] flex items-center justify-center gap-1.5 cursor-pointer transition shadow-2xs"
+                                >
+                                  <Plus className="w-4 h-4 stroke-[2.8]" />
+                                  <span>재배작물 추가</span>
+                                </button>
 
                                 {/* 3) 입체형 작물 재배 현황 카드 리스트 (항목 간 명확한 구분을 위한 세이지 그레이 배경 컨테이너 + 상단 헤더 바 + 순번 배지 + 좌측 그린 포인트 바) */}
                                 <div className="-mx-2.5 px-2.5 py-3 rounded-[24px] bg-[#EBF1EE] space-y-3.5">
@@ -11791,7 +11804,7 @@ export default function UserIntroPage() {
                                   })}
                                 </div>
 
-                                {/* 4) 하단 점선 테두리 [+ 새로운 작물 재배일정 등록하기] 배너 카드 */}
+                                {/* 4) 리스트 하단 점선 테두리 [+ 재배작물 추가] 배너 카드 */}
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -11801,7 +11814,7 @@ export default function UserIntroPage() {
                                   className="w-full py-3.5 px-4 rounded-[18px] border-2 border-dashed border-[#4ADE80] bg-[#F7FCF8] hover:bg-[#EFF8F1] active:scale-[0.99] text-[#0E712F] font-black text-[15px] tracking-[-0.02em] flex items-center justify-center gap-1.5 cursor-pointer transition shadow-2xs"
                                 >
                                   <Plus className="w-4 h-4 stroke-[2.8]" />
-                                  <span>새로운 작물 재배일정 등록하기</span>
+                                  <span>재배작물 추가</span>
                                 </button>
                               </div>
                             );
