@@ -7842,7 +7842,7 @@ export default function UserIntroPage() {
 
   return (
     <div
-      className={`min-h-screen w-full max-w-full overflow-x-hidden ${
+      className={`min-h-dvh lg:min-h-screen w-full max-w-full overflow-x-hidden ${
         activeMenu === '홈' || activeMenu === '재배일정 확인' || activeMenu === '재배일정 요청'
           ? 'bg-white lg:bg-[#F8FAFC]'
           : 'bg-[#F8FAFC]'
@@ -11519,8 +11519,16 @@ export default function UserIntroPage() {
               ];
 
               return (
-                <div className="lg:hidden w-full min-h-screen bg-white flex justify-center select-none pb-24">
-                  <div className="w-full max-w-[460px] min-h-screen bg-white flex flex-col px-5 pt-0 pb-10">
+                <div
+                  className={`lg:hidden w-full bg-white flex justify-center select-none ${
+                    mobileScheduleStep === 'detail' ? 'pb-4' : 'pb-24'
+                  }`}
+                >
+                  <div
+                    className={`w-full max-w-[460px] bg-white flex flex-col px-5 pt-0 ${
+                      mobileScheduleStep === 'detail' ? 'pb-2' : 'pb-6'
+                    }`}
+                  >
                     {/* ==================== [페이지 1: 재배작물 목록 페이지 (시안 이미지 기반 대시보드형 카드 UI)] ==================== */}
                     {mobileScheduleStep === 'list' && (
                       <div className="mt-2.5 flex-1 space-y-3.5">
