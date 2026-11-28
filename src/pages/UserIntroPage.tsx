@@ -11575,9 +11575,10 @@ export default function UserIntroPage() {
                               0
                             );
                             const upcomingWeekTaskCount = combinedMobileCrops.filter((c) => {
+                              if (c.isAllCompleted) return false;
                               const nextEff = c.primaryNextTask?.effDate;
                               if (!nextEff || !/^\d{4}-\d{2}-\d{2}$/.test(nextEff)) {
-                                return !c.isAllCompleted;
+                                return false;
                               }
                               const diff = diffDaysBetweenYmd(todayKstYmd, nextEff);
                               return diff >= -3 && diff <= 7;
@@ -11587,37 +11588,33 @@ export default function UserIntroPage() {
                                 ? Math.max(1, upcomingWeekTaskCount)
                                 : 0;
 
-                            // 현재 시점(todayKstYmd) 기준으로 일정이 가장 가까운 작물 카드 산출
+                            // 현재 시점(todayKstYmd) 기준으로 카드에 표시된 '다음 작업' 일정이 가장 가까운 작물 카드 산출
                             const nearestScheduleCropItem = (() => {
                               if (combinedMobileCrops.length === 0) return null;
                               const scored = combinedMobileCrops.map((c, idx) => {
-                                const uncompletedTasks = (c.allTasks || []).filter(
-                                  (t: any) =>
-                                    !t.isRecognized &&
-                                    t.effDate &&
-                                    /^\d{4}-\d{2}-\d{2}$/.test(t.effDate)
+                                const primaryEff =
+                                  c.primaryNextTask?.effDate &&
+                                  /^\d{4}-\d{2}-\d{2}$/.test(c.primaryNextTask.effDate)
+                                    ? String(c.primaryNextTask.effDate)
+                                    : '';
+                                const ddayNumMatch = String(c.nextTaskDdayLabel || '').match(
+                                  /D-(\d+)/
                                 );
-                                const candidateDates: string[] =
-                                  uncompletedTasks.length > 0
-                                    ? uncompletedTasks.map((t: any) => String(t.effDate))
-                                    : c.primaryNextTask?.effDate &&
-                                      /^\d{4}-\d{2}-\d{2}$/.test(c.primaryNextTask.effDate)
-                                    ? [String(c.primaryNextTask.effDate)]
-                                    : (c.allTasks || [])
-                                        .map((t: any) => String(t.effDate || ''))
-                                        .filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d));
-                                let minAbsDiff = 999999;
-                                for (const d of candidateDates) {
-                                  const absDiff = Math.abs(diffDaysBetweenYmd(todayKstYmd, d));
-                                  if (absDiff < minAbsDiff) {
-                                    minAbsDiff = absDiff;
-                                  }
-                                }
-                                // 미완료 공정이 남아있는 작물을 우선하되, 현재 날짜와의 일수 차이가 가장 작은 항목 선택
+                                const ddayNum = ddayNumMatch ? Number(ddayNumMatch[1]) : null;
+                                const absDiff = primaryEff
+                                  ? Math.abs(diffDaysBetweenYmd(todayKstYmd, primaryEff))
+                                  : ddayNum !== null
+                                  ? ddayNum
+                                  : 999999;
+                                // 미완료(진행중) 작물을 최우선으로 하고, 현재 날짜와 가장 가까운(또는 D-day가 가장 작은) 항목 선택
                                 const completionPenalty = c.isAllCompleted ? 100000 : 0;
+                                const effectiveDistance =
+                                  !c.isAllCompleted && ddayNum !== null
+                                    ? Math.min(absDiff, ddayNum)
+                                    : absDiff;
                                 return {
                                   crop: c,
-                                  score: completionPenalty + minAbsDiff,
+                                  score: completionPenalty + effectiveDistance,
                                   idx,
                                 };
                               });
@@ -11630,15 +11627,25 @@ export default function UserIntroPage() {
                               const targetCardId = String(nearestScheduleCropItem.id);
                               setHighlightedMobileCropCardId(targetCardId);
                               if (typeof window !== 'undefined') {
-                                const el = document.getElementById(
-                                  `mobile-crop-schedule-card-${targetCardId}`
-                                );
-                                if (el) {
-                                  el.scrollIntoView({
+                                setTimeout(() => {
+                                  const el = document.getElementById(
+                                    `mobile-crop-schedule-card-${targetCardId}`
+                                  );
+                                  if (!el) return;
+                                  const headerEl = document.querySelector('header');
+                                  const headerHeight = headerEl
+                                    ? headerEl.getBoundingClientRect().height
+                                    : 60;
+                                  const rect = el.getBoundingClientRect();
+                                  const targetTop = Math.max(
+                                    0,
+                                    window.scrollY + rect.top - headerHeight - 10
+                                  );
+                                  window.scrollTo({
+                                    top: targetTop,
                                     behavior: 'smooth',
-                                    block: 'center',
                                   });
-                                }
+                                }, 40);
                               }
                             };
 
@@ -11700,7 +11707,11 @@ export default function UserIntroPage() {
                                 </button>
 
                                 {/* 3) 입체형 작물 재배 현황 카드 리스트 (항목 간 명확한 구분을 위한 세이지 그레이 배경 컨테이너 + 상단 헤더 바 + 순번 배지 + 좌측 그린 포인트 바) */}
-                                <div className="-mx-2.5 px-2.5 py-3 rounded-[24px] bg-[#EBF1EE] space-y-3.5">
+                                <div
+                                  className={`-mx-2.5 px-2.5 py-3 rounded-[24px] bg-[#EBF1EE] space-y-3.5 ${
+                                    highlightedMobileCropCardId ? 'pb-[48vh]' : ''
+                                  }`}
+                                >
                                   {combinedMobileCrops.map((item, cardIdx) => {
                                     const totalStepCnt = Math.max(1, item.allTasks.length || 16);
                                     const doneStepCnt = item.doneTasks.length;
