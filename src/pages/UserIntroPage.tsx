@@ -11526,9 +11526,9 @@ export default function UserIntroPage() {
                                   </div>
                                 </div>
 
-                                {/* 3) 입체형 작물 재배 현황 카드 리스트 */}
-                                <div className="space-y-3.5">
-                                  {combinedMobileCrops.map((item) => {
+                                {/* 3) 입체형 작물 재배 현황 카드 리스트 (항목 간 명확한 구분을 위한 세이지 그레이 배경 컨테이너 + 상단 헤더 바 + 순번 배지 + 좌측 그린 포인트 바) */}
+                                <div className="-mx-2.5 px-2.5 py-3 rounded-[24px] bg-[#EBF1EE] space-y-3.5">
+                                  {combinedMobileCrops.map((item, cardIdx) => {
                                     const totalStepCnt = Math.max(1, item.allTasks.length || 16);
                                     const doneStepCnt = item.doneTasks.length;
                                     const progressPct = Math.min(
@@ -11558,6 +11558,7 @@ export default function UserIntroPage() {
                                       String(item.nextTaskTitle || '생육 맞춤 농작업')
                                         .replace(/\s*\([^)]*\)/g, '')
                                         .trim() || item.nextTaskTitle;
+                                    const orderBadgeLabel = String(cardIdx + 1).padStart(2, '0');
 
                                     return (
                                       <div
@@ -11578,15 +11579,26 @@ export default function UserIntroPage() {
                                           }
                                           goToScheduleStep('detail');
                                         }}
-                                        className="w-full rounded-[22px] border border-[#D5E6DA] bg-white hover:border-[#0E712F] active:scale-[0.99] p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.05)] space-y-3 cursor-pointer transition"
+                                        className="relative overflow-hidden w-full rounded-[22px] border-[1.5px] border-[#BFD2C7] bg-white hover:border-[#0E712F] active:scale-[0.99] shadow-[0_6px_16px_rgba(15,23,42,0.07)] cursor-pointer transition"
                                       >
-                                        {/* 카드 상단: 재배지 위치 배지 + 현재 생육단계(D+일수) 배지 */}
-                                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                                          <span className="inline-flex items-center gap-1 text-[12.5px] font-extrabold text-[#374151] truncate">
-                                            <span className="text-rose-500">📍</span>
-                                            <span className="truncate">{shortRegion}</span>
-                                          </span>
-                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold whitespace-nowrap shadow-2xs">
+                                        {/* 좌측 세로 그린 액센트 바 (4.5px) */}
+                                        <span
+                                          className="pointer-events-none absolute inset-y-0 left-0 w-[4.5px] bg-[#0E712F]"
+                                          aria-hidden="true"
+                                        />
+
+                                        {/* 카드 상단 분리형 헤더 바: [01/02/03 순번 배지 + 재배지 위치] + [현재 생육단계(D+일수) 배지] */}
+                                        <div className="bg-[#F2F7F4] border-b border-[#DCE7E0] pl-4 pr-3.5 py-2.5 flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                            <span className="px-2 py-0.5 rounded-md bg-[#D6E6DD] text-[#1E3A2F] text-[12px] font-black tracking-tight leading-tight shrink-0">
+                                              {orderBadgeLabel}
+                                            </span>
+                                            <span className="inline-flex items-center gap-1 text-[13px] font-extrabold text-[#1F2937] truncate">
+                                              <span className="text-rose-500 shrink-0">📍</span>
+                                              <span className="truncate">{shortRegion}</span>
+                                            </span>
+                                          </div>
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold whitespace-nowrap shadow-2xs shrink-0">
                                             <span>🌱</span>
                                             <span>
                                               {currentStageName} (D+{item.elapsedDays}일)
@@ -11594,94 +11606,97 @@ export default function UserIntroPage() {
                                           </span>
                                         </div>
 
-                                        {/* 카드 중단: 작물 썸네일 + 작물명(품종) · 재배방식/면적/기간 + 우측 삭제 버튼 */}
-                                        <div className="flex items-center justify-between gap-3">
-                                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <div className="w-[70px] h-[70px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 shadow-2xs">
-                                              <img
-                                                src={item.thumbUrl}
-                                                alt={item.shortName}
-                                                className="w-full h-full object-cover block"
+                                        {/* 카드 본문 영역 */}
+                                        <div className="pl-4 pr-3.5 pt-3 pb-3.5 space-y-3">
+                                          {/* 카드 중단: 작물 썸네일 + 작물명(품종) · 재배방식/면적/기간 + 우측 삭제 버튼 */}
+                                          <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                              <div className="w-[70px] h-[70px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 shadow-2xs">
+                                                <img
+                                                  src={item.thumbUrl}
+                                                  alt={item.shortName}
+                                                  className="w-full h-full object-cover block"
+                                                />
+                                              </div>
+                                              <div className="min-w-0 flex-1 space-y-0.5">
+                                                <div className="flex items-baseline gap-1.5 truncate">
+                                                  <span className="text-[20px] font-black text-[#111827] tracking-[-0.03em]">
+                                                    {item.shortName}
+                                                  </span>
+                                                  <span className="text-[16px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
+                                                    ({item.cultivarName})
+                                                  </span>
+                                                </div>
+                                                <div className="text-[13.5px] font-bold text-[#374151] tracking-[-0.02em] flex items-center gap-1.5">
+                                                  <span>{item.cultivationMethod}</span>
+                                                  <span className="text-[#D1D5DB]">|</span>
+                                                  <span>{item.areaPyeong.toLocaleString()}평</span>
+                                                </div>
+                                                <div className="text-[12.5px] font-semibold text-[#4B5563] tracking-[-0.01em] truncate">
+                                                  {item.periodDotLabel}
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <button
+                                              type="button"
+                                              onClick={(e) =>
+                                                handleDeleteScheduleAndCascade(item, e)
+                                              }
+                                              title="재배일정 및 요청·구매농자재·연관 데이터 일괄 삭제"
+                                              className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 font-extrabold text-[12px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                              <span>삭제</span>
+                                            </button>
+                                          </div>
+
+                                          {/* 카드 진행률 바 섹션: 재배 진행률 % (완료/전체 공정) + 기상 적산온도 GDD */}
+                                          <div className="space-y-1.5 pt-0.5">
+                                            <div className="flex items-center justify-between gap-2 text-[12px]">
+                                              <span className="font-extrabold text-[#111827]">
+                                                재배 진행률{' '}
+                                                <strong className="text-[#0E712F] font-black">
+                                                  {progressPct}%
+                                                </strong>{' '}
+                                                <span className="text-[#4B5563] font-bold">
+                                                  ({doneStepCnt}/{totalStepCnt} 공정 완료)
+                                                </span>
+                                              </span>
+                                              <span className="font-bold text-[#374151] whitespace-nowrap">
+                                                적산온도{' '}
+                                                <strong className="text-[#0E712F] font-extrabold">
+                                                  {estimatedGdd} GDD
+                                                </strong>
+                                              </span>
+                                            </div>
+                                            <div className="w-full h-2.5 rounded-full bg-[#E5E7EB] overflow-hidden">
+                                              <div
+                                                style={{ width: `${progressPct}%` }}
+                                                className="h-full rounded-full bg-gradient-to-r from-[#16A34A] to-[#0E712F] transition-all duration-300"
                                               />
                                             </div>
-                                            <div className="min-w-0 flex-1 space-y-0.5">
-                                              <div className="flex items-baseline gap-1.5 truncate">
-                                                <span className="text-[20px] font-black text-[#111827] tracking-[-0.03em]">
-                                                  {item.shortName}
-                                                </span>
-                                                <span className="text-[16px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
-                                                  ({item.cultivarName})
-                                                </span>
-                                              </div>
-                                              <div className="text-[13.5px] font-bold text-[#374151] tracking-[-0.02em] flex items-center gap-1.5">
-                                                <span>{item.cultivationMethod}</span>
-                                                <span className="text-[#D1D5DB]">|</span>
-                                                <span>{item.areaPyeong.toLocaleString()}평</span>
-                                              </div>
-                                              <div className="text-[12.5px] font-semibold text-[#4B5563] tracking-[-0.01em] truncate">
-                                                {item.periodDotLabel}
-                                              </div>
-                                            </div>
                                           </div>
 
-                                          <button
-                                            type="button"
-                                            onClick={(e) =>
-                                              handleDeleteScheduleAndCascade(item, e)
-                                            }
-                                            title="재배일정 및 요청·구매농자재·연관 데이터 일괄 삭제"
-                                            className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 font-extrabold text-[12px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                            <span>삭제</span>
-                                          </button>
-                                        </div>
-
-                                        {/* 카드 진행률 바 섹션: 재배 진행률 % (완료/전체 공정) + 기상 적산온도 GDD */}
-                                        <div className="space-y-1.5 pt-0.5">
-                                          <div className="flex items-center justify-between gap-2 text-[12px]">
-                                            <span className="font-extrabold text-[#111827]">
-                                              재배 진행률{' '}
-                                              <strong className="text-[#0E712F] font-black">
-                                                {progressPct}%
-                                              </strong>{' '}
-                                              <span className="text-[#4B5563] font-bold">
-                                                ({doneStepCnt}/{totalStepCnt} 공정 완료)
+                                          {/* 카드 하단: 다음 작업 하이라이트 요약 박스 */}
+                                          <div className="rounded-[14px] bg-[#EFF8F1] border border-[#CBEAD3] px-3 py-2.5 flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                              <span className="text-[13px] shrink-0">📌</span>
+                                              <span className="text-[13px] font-extrabold text-[#111827] truncate">
+                                                다음 작업: {cleanNextTaskTitle}
                                               </span>
-                                            </span>
-                                            <span className="font-bold text-[#374151] whitespace-nowrap">
-                                              적산온도{' '}
-                                              <strong className="text-[#0E712F] font-extrabold">
-                                                {estimatedGdd} GDD
-                                              </strong>
-                                            </span>
-                                          </div>
-                                          <div className="w-full h-2.5 rounded-full bg-[#E5E7EB] overflow-hidden">
-                                            <div
-                                              style={{ width: `${progressPct}%` }}
-                                              className="h-full rounded-full bg-gradient-to-r from-[#16A34A] to-[#0E712F] transition-all duration-300"
-                                            />
-                                          </div>
-                                        </div>
-
-                                        {/* 카드 하단: 다음 작업 하이라이트 요약 박스 */}
-                                        <div className="rounded-[14px] bg-[#EFF8F1] border border-[#CBEAD3] px-3 py-2.5 flex items-center justify-between gap-2">
-                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                            <span className="text-[13px] shrink-0">📌</span>
-                                            <span className="text-[13px] font-extrabold text-[#111827] truncate">
-                                              다음 작업: {cleanNextTaskTitle}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-1.5 shrink-0">
-                                            <span className="text-[12px] font-bold text-[#374151] whitespace-nowrap">
-                                              {String(item.nextTaskDateLabel || '').replace(
-                                                /\([^)]*\)/g,
-                                                ''
-                                              )}
-                                            </span>
-                                            <span className="px-2 py-0.5 rounded-full bg-[#FDE047] text-[#111827] text-[11.5px] font-black whitespace-nowrap shadow-2xs">
-                                              {item.nextTaskDdayLabel}
-                                            </span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5 shrink-0">
+                                              <span className="text-[12px] font-bold text-[#374151] whitespace-nowrap">
+                                                {String(item.nextTaskDateLabel || '').replace(
+                                                  /\([^)]*\)/g,
+                                                  ''
+                                                )}
+                                              </span>
+                                              <span className="px-2 py-0.5 rounded-full bg-[#FDE047] text-[#111827] text-[11.5px] font-black whitespace-nowrap shadow-2xs">
+                                                {item.nextTaskDdayLabel}
+                                              </span>
+                                            </div>
                                           </div>
                                         </div>
                                       </div>
