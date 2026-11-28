@@ -82,7 +82,8 @@ type AdminTab =
   | 'addresses'
   | 'member_management'
   | 'agro_sales_management'
-  | 'crop_purchase_management';
+  | 'crop_purchase_management'
+  | 'revenue_management';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -5642,8 +5643,127 @@ export default function AdminDashboardPage() {
       totalPrice: 133000,
       paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
       deliveryStatus: '배송완료',
+      isDepositConfirmed: true,
+      depositConfirmedAt: '2026-08-22 11:05',
+    },
+    {
+      id: 'ORD-20260925-07',
+      orderNo: 'ORD-20260925-07',
+      purchasedAt: '2026-09-25 14:15',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '04. 생육 중기 (결구 시작기)',
+      subItemName: '배추 결구기 진딧물 · 배추좀나방 방제',
+      processCode: 'STAGE-04-03',
+      startDate: '2026-09-26',
+      targetPgdd: 520,
+      category_1st: '병해충관리제',
+      category_2nd: '살충제',
+      productName: '애니충 나방·진딧물 동시방제 액상수화제',
+      manufacturer: '팜한농(주)',
+      unitSpec: '250ml × 1병 (500평분)',
+      unitPrice: 22000,
+      qty: 1,
+      unitLabel: '병',
+      totalPrice: 20900,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '입금대기 · 산지발송 준비',
+      isDepositConfirmed: false,
+      depositConfirmedAt: '',
+    },
+    {
+      id: 'ORD-20261012-08',
+      orderNo: 'ORD-20261012-08',
+      purchasedAt: '2026-10-12 09:50',
+      member_id: 'park_farm@naver.com',
+      member_name: '박성진',
+      cropTitle: '월동무 (청운무)',
+      region: '제주특별자치도 서귀포시 성산읍 고성리 · 800평',
+      stageGroupName: '03. 본밭 생육 · 근비대기',
+      subItemName: '뿌리 비대 촉진 인산·가리 웃거름 시비',
+      processCode: 'STAGE-03-04',
+      startDate: '2026-10-14',
+      targetPgdd: 680,
+      category_1st: '비료',
+      category_2nd: '웃거름·NK비료',
+      productName: '고농도 NK 플러스 웃거름 비료 (비대촉진)',
+      manufacturer: '남해화학(주)',
+      unitSpec: '20kg × 1포',
+      unitPrice: 23000,
+      qty: 4,
+      unitLabel: '포',
+      totalPrice: 87400,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+      isDepositConfirmed: true,
+      depositConfirmedAt: '2026-10-12 10:20',
+    },
+    {
+      id: 'ORD-20261028-09',
+      orderNo: 'ORD-20261028-09',
+      purchasedAt: '2026-10-28 15:40',
+      member_id: 'kimfarm88@hanmail.net',
+      member_name: '김영호',
+      cropTitle: '가을배추 (휘파람골드)',
+      region: '충청북도 충주시 산척면 송강리 · 600평',
+      stageGroupName: '04. 생육 후기 (결구 비대기)',
+      subItemName: '후기 결구 비대 및 냉해 예방 영양 공급',
+      processCode: 'STAGE-04-05',
+      startDate: '2026-10-30',
+      targetPgdd: 860,
+      category_1st: '영양제',
+      category_2nd: '생육·비대 촉진제',
+      productName: '메가칼 파워 결구비대 영양제 (고농축 규산+칼리)',
+      manufacturer: '(주)대유',
+      unitSpec: '1L × 1병 (500평분)',
+      unitPrice: 28000,
+      qty: 2,
+      unitLabel: '병',
+      totalPrice: 53200,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '입금대기 · 산지발송 준비',
+      isDepositConfirmed: false,
+      depositConfirmedAt: '',
+    },
+    {
+      id: 'ORD-20251105-10',
+      orderNo: 'ORD-20251105-10',
+      purchasedAt: '2025-11-05 10:15',
+      member_id: 'CloudBae@naver.com',
+      member_name: '배철민',
+      cropTitle: '가을배추 (불암3호)',
+      region: '경기도 수원시 장안구 파장동 · 300평',
+      stageGroupName: '01. 재배 준비 (토양 관리)',
+      subItemName: '토양 개량 및 밑거름 퇴비 시비',
+      processCode: 'STAGE-01-01',
+      startDate: '2025-11-08',
+      targetPgdd: 0,
+      category_1st: '비료',
+      category_2nd: '유기질 퇴비',
+      productName: '흙살림 입상 완숙 유박퇴비 1등급 (유기물 70%)',
+      manufacturer: '(주)흙살림바이오',
+      unitSpec: '20kg × 1포',
+      unitPrice: 13500,
+      qty: 10,
+      unitLabel: '포',
+      totalPrice: 128250,
+      paymentMethod: '농협 무통장입금 (301-0348-9120-81)',
+      deliveryStatus: '배송완료',
+      isDepositConfirmed: true,
+      depositConfirmedAt: '2025-11-05 11:00',
     },
   ];
+
+  const inferIsDepositConfirmed = (raw: any): boolean => {
+    if (typeof raw?.isDepositConfirmed === 'boolean') return raw.isDepositConfirmed;
+    const statusStr = String(raw?.deliveryStatus || '');
+    if (statusStr.includes('입금대기') || statusStr.includes('미입금') || statusStr.includes('취소')) {
+      return false;
+    }
+    return true;
+  };
 
   const loadMergedAdminAgroSales = (): any[] => {
     try {
@@ -5653,22 +5773,30 @@ export default function AdminDashboardPage() {
       const userItems: any[] = savedUserRaw ? JSON.parse(savedUserRaw) : [];
 
       const byId = new Map<string, any>();
-      const allSource = [...userItems, ...adminItems, ...DEFAULT_ADMIN_AGRO_SALES];
+      // adminItems first so admin's deposit confirmation toggles take precedence over userItems
+      const allSource = [...adminItems, ...userItems, ...DEFAULT_ADMIN_AGRO_SALES];
       for (const raw of allSource) {
         if (!raw) continue;
         const key = String(raw.id || raw.orderNo || Math.random());
         if (byId.has(key)) continue;
         const cat1 = inferAgroCategory1st(raw);
         const cat2 = inferAgroCategory2nd(raw, cat1);
+        const isConfirmed = inferIsDepositConfirmed(raw);
+        const normalizedPurchasedAt = String(raw.purchasedAt || '2026-08-10 09:00').replace(/\./g, '-');
         byId.set(key, {
           ...raw,
           id: key,
           orderNo: raw.orderNo || key,
+          purchasedAt: normalizedPurchasedAt,
           member_id: raw.member_id || raw.email || 'CloudBae@naver.com',
           member_name: raw.member_name || '배철민',
           category_1st: cat1,
           category_2nd: cat2,
           productName: raw.productName || raw.product_name || '농자재 상품',
+          isDepositConfirmed: isConfirmed,
+          depositConfirmedAt: isConfirmed
+            ? String(raw.depositConfirmedAt || normalizedPurchasedAt).replace(/\./g, '-')
+            : '',
         });
       }
       return Array.from(byId.values());
@@ -5682,14 +5810,27 @@ export default function AdminDashboardPage() {
   const [salesCategory1stFilter, setSalesCategory1stFilter] = useState<string>('ALL');
   const [salesCategory2ndFilter, setSalesCategory2ndFilter] = useState<string>('ALL');
   const [salesProductNameFilter, setSalesProductNameFilter] = useState<string>('');
+  const [salesDepositFilter, setSalesDepositFilter] = useState<'ALL' | 'CONFIRMED' | 'UNCONFIRMED'>('ALL');
   const [cropPurScheduleFilter, setCropPurScheduleFilter] = useState<string>('ALL');
   const [cropPurStageFilter, setCropPurStageFilter] = useState<string>('ALL');
   const [cropPurStatusFilter, setCropPurStatusFilter] = useState<string>('ALL');
+  const [cropPurDepositFilter, setCropPurDepositFilter] = useState<'ALL' | 'CONFIRMED' | 'UNCONFIRMED'>('ALL');
   const [editingCropPurchaseItem, setEditingCropPurchaseItem] = useState<any | null>(null);
   const [isCreatingCropPurchase, setIsCreatingCropPurchase] = useState<boolean>(false);
 
+  // 15. 매출 관리 (입금확인 완료 항목 전용 일별·주별·월별·년도별 매출 집계 상태)
+  const [revenuePeriodUnit, setRevenuePeriodUnit] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('MONTHLY');
+  const [revenueCategoryFilter, setRevenueCategoryFilter] = useState<string>('ALL');
+  const [revenueMemberFilter, setRevenueMemberFilter] = useState<string>('');
+  const [revenueYearFilter, setRevenueYearFilter] = useState<string>('ALL');
+  const [selectedRevenuePeriodKey, setSelectedRevenuePeriodKey] = useState<string>('ALL');
+
   useEffect(() => {
-    if (activeTab === 'agro_sales_management' || activeTab === 'crop_purchase_management') {
+    if (
+      activeTab === 'agro_sales_management' ||
+      activeTab === 'crop_purchase_management' ||
+      activeTab === 'revenue_management'
+    ) {
       setAdminAgroSalesList(loadMergedAdminAgroSales());
     }
   }, [activeTab]);
@@ -5701,19 +5842,27 @@ export default function AdminDashboardPage() {
     const qty = Math.max(1, Number(item.qty) || 1);
     const unitPrice = Math.max(0, Number(item.unitPrice) || 18000);
     const totalPrice = Number(item.totalPrice) > 0 ? Number(item.totalPrice) : Math.round(unitPrice * qty * 0.95);
+    const nowStr = new Date(Date.now() + 9 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 16)
+      .replace('T', ' ');
+    const purchasedAtStr = String(item.purchasedAt || nowStr).replace(/\./g, '-');
+    const isConfirmed =
+      typeof item.isDepositConfirmed === 'boolean'
+        ? item.isDepositConfirmed
+        : !String(item.deliveryStatus || '').includes('입금대기');
     const normalizedItem = {
       ...item,
       id: item.id || item.orderNo || `ORD-${Date.now()}`,
       orderNo: item.orderNo || item.id || `HF-${Date.now()}`,
-      purchasedAt:
-        item.purchasedAt ||
-        new Date(Date.now() + 9 * 3600 * 1000)
-          .toISOString()
-          .slice(0, 16)
-          .replace('T', ' '),
+      purchasedAt: purchasedAtStr,
       qty,
       unitPrice,
       totalPrice,
+      isDepositConfirmed: isConfirmed,
+      depositConfirmedAt: isConfirmed
+        ? String(item.depositConfirmedAt || purchasedAtStr).replace(/\./g, '-')
+        : '',
     };
 
     setAdminAgroSalesList((prev) => {
@@ -5738,13 +5887,68 @@ export default function AdminDashboardPage() {
     );
   };
 
-  const handleUpdateAdminSaleStatus = (targetId: string, nextStatus: string) => {
+  const handleToggleAdminSaleDepositConfirm = (targetId: string, explicitConfirmed?: boolean) => {
+    const nowStr = new Date(Date.now() + 9 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 16)
+      .replace('T', ' ');
+    let nextFlag = true;
     setAdminAgroSalesList((prev) => {
-      const next = prev.map((it) =>
-        it.id === targetId ? { ...it, deliveryStatus: nextStatus } : it
-      );
+      const next = prev.map((it) => {
+        if (it.id !== targetId) return it;
+        const confirmed =
+          typeof explicitConfirmed === 'boolean' ? explicitConfirmed : !Boolean(it.isDepositConfirmed);
+        nextFlag = confirmed;
+        const currStatus = String(it.deliveryStatus || '');
+        let updatedStatus = currStatus;
+        if (confirmed && (currStatus.includes('입금대기') || !currStatus)) {
+          updatedStatus = '입금확인 · 출고중';
+        } else if (!confirmed && currStatus.includes('입금확인')) {
+          updatedStatus = '입금대기 · 산지발송 준비';
+        }
+        return {
+          ...it,
+          isDepositConfirmed: confirmed,
+          depositConfirmedAt: confirmed ? it.depositConfirmedAt || nowStr : '',
+          deliveryStatus: updatedStatus,
+        };
+      });
       try {
         localStorage.setItem(ADMIN_AGRO_SALES_STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(USER_STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    showToast(
+      nextFlag
+        ? `[${targetId}] 계좌이체 입금확인 완료 처리되었습니다. (매출관리 집계 반영)`
+        : `[${targetId}] 미입금(입금대기) 상태로 전환되었습니다. (매출관리 집계 제외)`
+    );
+  };
+
+  const handleUpdateAdminSaleStatus = (targetId: string, nextStatus: string) => {
+    const nowStr = new Date(Date.now() + 9 * 3600 * 1000)
+      .toISOString()
+      .slice(0, 16)
+      .replace('T', ' ');
+    setAdminAgroSalesList((prev) => {
+      const next = prev.map((it) => {
+        if (it.id !== targetId) return it;
+        const isPendingOrCancel =
+          nextStatus.includes('입금대기') || nextStatus.includes('취소') || nextStatus.includes('미입금');
+        const nextConfirmed = !isPendingOrCancel;
+        return {
+          ...it,
+          deliveryStatus: nextStatus,
+          isDepositConfirmed: nextConfirmed,
+          depositConfirmedAt: nextConfirmed ? it.depositConfirmedAt || nowStr : '',
+        };
+      });
+      try {
+        localStorage.setItem(ADMIN_AGRO_SALES_STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(USER_STAGE_PURCHASE_STORAGE_KEY, JSON.stringify(next));
       } catch {
         // ignore
       }
@@ -5812,9 +6016,10 @@ export default function AdminDashboardPage() {
     { id: 'purchase_intent_content', label: '11. 구매의향서 관리 > 구매의향서 내용', sub: '한팜 맞춤형 재배관리 플랫폼 구독의향서 본문 · 최종 확인 폼 · URL 배포', icon: ClipboardList },
     { id: 'purchase_intent_status', label: '11. 구매의향서 관리 > 구매의향서 수집 현황', sub: '접수된 구매·구독의향서 응답 수집 현황 · 통계 · CSV 다운로드', icon: ListChecks },
     { id: 'member_management', label: '12. 회원정보 관리', sub: '회원가입 기본정보 · 나의 작물 재배지 · 나의 재배작물 통합 관리', icon: Users },
-    { id: 'agro_sales_management', label: '13. 농자재 판매 관리', sub: '회원ID · 농자재 1/2차 구분 · 농자재명 검색 및 판매내역 관리', icon: ShoppingBag },
-    { id: 'crop_purchase_management', label: '14. 농작물 구매 관리', sub: '회원 재배일정 및 생육단계별 농작물·농자재 구매 정보 통합 관리', icon: ShoppingBag },
-    { id: 'settings', label: '15. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
+    { id: 'agro_sales_management', label: '13. 농자재 판매 관리', sub: '회원ID · 농자재 1/2차 구분 · 농자재명 검색 및 계좌이체 입금확인·판매내역 관리', icon: ShoppingBag },
+    { id: 'crop_purchase_management', label: '14. 농작물 구매 관리', sub: '회원 재배일정 및 생육단계별 농작물·농자재 구매·계좌이체 입금확인 통합 관리', icon: ShoppingBag },
+    { id: 'revenue_management', label: '15. 매출 관리', sub: '계좌이체 입금확인 완료 구매항목 기준 일별 · 주별 · 월별 · 년도별 매출 통합 관리', icon: Layers },
+    { id: 'settings', label: '16. 시스템 관리', sub: '이상기후 알림 템플릿 · 권한', icon: Settings },
   ];
 
   // 1단계(작물군) & 2단계(작물 및 세부 품종) 통합 관리 섹션 렌더러 (기초 코드 관리 > 농작물 기초 코드 및 2. 농작물 3단계 마스터 공용)
@@ -34210,6 +34415,10 @@ export default function AdminDashboardPage() {
               const cat1 = inferAgroCategory1st(item);
               const cat2 = inferAgroCategory2nd(item, cat1);
               const prodName = String(item.productName || item.product_name || '').toLowerCase();
+              const isConfirmed = inferIsDepositConfirmed(item);
+
+              if (salesDepositFilter === 'CONFIRMED' && !isConfirmed) return false;
+              if (salesDepositFilter === 'UNCONFIRMED' && isConfirmed) return false;
 
               if (salesMemberIdFilter.trim()) {
                 const qMember = salesMemberIdFilter.trim().toLowerCase();
@@ -34241,6 +34450,16 @@ export default function AdminDashboardPage() {
               (sum, it) => sum + (Number(it.totalPrice) || 0),
               0
             );
+            const confirmedSalesItems = filteredSales.filter((it) => inferIsDepositConfirmed(it));
+            const unconfirmedSalesItems = filteredSales.filter((it) => !inferIsDepositConfirmed(it));
+            const confirmedSalesAmount = confirmedSalesItems.reduce(
+              (sum, it) => sum + (Number(it.totalPrice) || 0),
+              0
+            );
+            const unconfirmedSalesAmount = unconfirmedSalesItems.reduce(
+              (sum, it) => sum + (Number(it.totalPrice) || 0),
+              0
+            );
 
             return (
               <div className="space-y-6 w-full">
@@ -34249,21 +34468,29 @@ export default function AdminDashboardPage() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-extrabold border border-emerald-400/30">
-                        13. 농자재 판매 관리 · 회원 구매/판매 내역 통합 관제
+                        13. 농자재 판매 관리 · 계좌이체 입금확인 및 판매 내역 통합 관제
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30">
-                        회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명(이름) 조건 검색
+                        실제 계좌이체(입금) 확인 체크 항목 → 15. 매출 관리 자동 연동
                       </span>
                     </div>
                     <h2 className="text-xl font-extrabold mt-2">
-                      13. 농자재 판매 관리 (회원별 농자재 구매·판매 내역 통합 관리)
+                      13. 농자재 판매 관리 (실제 계좌이체 입금 확인 체크 및 판매 내역 관리)
                     </h2>
                     <p className="text-xs text-slate-300 mt-1">
-                      회원이 장바구니 또는 재배일정 확인 페이지에서 구매한 농자재 판매내역을 회원 아이디(ID), 농자재 1·2차 구분, 생육과정 구분 정보 및 농자재명과 함께 조회·관리합니다.
+                      회원이 구매한 농자재 항목 중 실제 계좌이체(입금)가 완료된 항목을 관리자가 직접 체크하여 구분하며, 입금확인 처리된 항목은 [15. 매출 관리]의 일별·주별·월별·년도별 매출에 즉시 반영됩니다.
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('revenue_management')}
+                      className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Layers className="w-4 h-4" />
+                      15. 매출 관리 바로가기
+                    </button>
                     <button
                       type="button"
                       onClick={() => {
@@ -34278,45 +34505,117 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {/* 상단 KPI 요약 카드 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 상단 KPI 요약 카드 (입금확인 vs 미입금 구분) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-                    <div className="text-xs font-bold text-slate-500">조회된 판매 건수</div>
+                    <div className="text-xs font-bold text-slate-500">조회된 전체 주문 건수 / 수량</div>
                     <div className="text-2xl font-black text-slate-900 mt-1">
-                      {totalSalesCount.toLocaleString()}건
+                      {totalSalesCount.toLocaleString()}건{' '}
+                      <span className="text-sm font-extrabold text-slate-500">({totalSalesQty.toLocaleString()}개)</span>
                     </div>
-                    <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
-                      전체 누적 {adminAgroSalesList.length}건 중 조건 일치
+                    <div className="text-[11px] text-slate-500 font-bold mt-0.5">
+                      주문 총액 {totalSalesAmount.toLocaleString()}원
                     </div>
                   </div>
-                  <div className="bg-white rounded-2xl border border-emerald-200 p-4 shadow-xs">
-                    <div className="text-xs font-bold text-emerald-700">총 판매 수량</div>
-                    <div className="text-2xl font-black text-emerald-800 mt-1">
-                      {totalSalesQty.toLocaleString()}개
+                  <div
+                    onClick={() =>
+                      setSalesDepositFilter((prev) => (prev === 'CONFIRMED' ? 'ALL' : 'CONFIRMED'))
+                    }
+                    className={`rounded-2xl border-2 p-4 shadow-xs cursor-pointer transition ${
+                      salesDepositFilter === 'CONFIRMED'
+                        ? 'bg-emerald-100/90 border-emerald-600'
+                        : 'bg-emerald-50/70 hover:bg-emerald-50 border-emerald-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-emerald-800">
+                        ✓ 계좌이체 입금확인 완료
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black">
+                        매출 반영
+                      </span>
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      비료 · 영양제 · 병해충관리제 · 씨 · 모종 합산
+                    <div className="text-2xl font-black text-emerald-900 mt-1">
+                      {confirmedSalesItems.length.toLocaleString()}건 · {confirmedSalesAmount.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-0.5">
+                      클릭 시 입금확인 완료 항목만 필터링
+                    </div>
+                  </div>
+                  <div
+                    onClick={() =>
+                      setSalesDepositFilter((prev) => (prev === 'UNCONFIRMED' ? 'ALL' : 'UNCONFIRMED'))
+                    }
+                    className={`rounded-2xl border-2 p-4 shadow-xs cursor-pointer transition ${
+                      salesDepositFilter === 'UNCONFIRMED'
+                        ? 'bg-amber-100/90 border-amber-600'
+                        : 'bg-amber-50/70 hover:bg-amber-50 border-amber-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-900">
+                        ⏳ 미입금 (계좌이체 입금대기)
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                        입금 확인 필요
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black text-amber-900 mt-1">
+                      {unconfirmedSalesItems.length.toLocaleString()}건 · {unconfirmedSalesAmount.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-amber-800 font-bold mt-0.5">
+                      클릭 시 미입금(입금대기) 항목만 필터링
                     </div>
                   </div>
                   <div className="bg-emerald-950 text-white rounded-2xl p-4 shadow-xs">
-                    <div className="text-xs font-bold text-emerald-300">조회 조건 총 판매 금액</div>
+                    <div className="text-xs font-bold text-emerald-300">입금확인 확정 매출 합계</div>
                     <div className="text-2xl font-black text-white mt-1">
-                      {totalSalesAmount.toLocaleString()}원
+                      {confirmedSalesAmount.toLocaleString()}원
                     </div>
                     <div className="text-[11px] text-emerald-200 mt-0.5">
-                      회원 5% 즉시할인 적용 실결제액 합계
+                      15. 매출 관리(일·주·월·년) 집계 기준 금액
                     </div>
                   </div>
                 </div>
 
-                {/* 4대 검색 조건 바: 회원ID / 농자재 1차 구분 / 농자재 2차 구분 / 농자재명(이름) */}
+                {/* 5대 검색 조건 바: 입금확인 구분 / 회원ID / 농자재 1차 구분 / 농자재 2차 구분 / 농자재명(이름) */}
                 <div className="bg-white rounded-2xl border-2 border-emerald-600/30 p-5 shadow-xs space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Search className="w-4 h-4 text-emerald-600" />
                       <h3 className="text-sm font-extrabold text-slate-900">
-                        농자재 판매내역 상세 검색 조건 (회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명)
+                        농자재 판매내역 상세 검색 및 계좌이체 입금 여부 구분 필터
                       </h3>
+                      <div className="flex items-center gap-1 ml-2">
+                        {[
+                          { id: 'ALL', label: `전체 (${adminAgroSalesList.length}건)` },
+                          {
+                            id: 'CONFIRMED',
+                            label: `✓ 입금확인 완료 (${adminAgroSalesList.filter((i) => inferIsDepositConfirmed(i)).length}건)`,
+                          },
+                          {
+                            id: 'UNCONFIRMED',
+                            label: `⏳ 미입금 대기 (${adminAgroSalesList.filter((i) => !inferIsDepositConfirmed(i)).length}건)`,
+                          },
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setSalesDepositFilter(tab.id as any)}
+                            className={`px-3 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                              salesDepositFilter === tab.id
+                                ? tab.id === 'CONFIRMED'
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : tab.id === 'UNCONFIRMED'
+                                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                                    : 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -34325,6 +34624,7 @@ export default function AdminDashboardPage() {
                         setSalesCategory1stFilter('ALL');
                         setSalesCategory2ndFilter('ALL');
                         setSalesProductNameFilter('');
+                        setSalesDepositFilter('ALL');
                       }}
                       className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
                     >
@@ -34423,6 +34723,9 @@ export default function AdminDashboardPage() {
                       <thead>
                         <tr className="bg-slate-900 text-white border-b border-slate-800">
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">순번 / 주문번호</th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap bg-emerald-950/90 text-emerald-200">
+                            계좌이체 입금 확인 (체크)
+                          </th>
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">회원 아이디 (회원ID)</th>
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">농자재 1차 구분</th>
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">농자재 2차 구분</th>
@@ -34435,8 +34738,8 @@ export default function AdminDashboardPage() {
                       <tbody className="divide-y divide-slate-200">
                         {filteredSales.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="py-12 text-center text-slate-500 font-bold">
-                              검색 조건(회원ID · 농자재 1차 구분 · 농자재 2차 구분 · 농자재명)에 일치하는 판매 내역이 없습니다.
+                            <td colSpan={9} className="py-12 text-center text-slate-500 font-bold">
+                              검색 조건(입금확인 여부 · 회원ID · 농자재 1/2차 구분 · 농자재명)에 일치하는 판매 내역이 없습니다.
                             </td>
                           </tr>
                         ) : (
@@ -34448,16 +34751,55 @@ export default function AdminDashboardPage() {
                               sale.totalPrice ?? (Number(sale.unitPrice) || 0) * qty
                             );
                             const memberId = sale.member_id || sale.email || 'CloudBae@naver.com';
+                            const isConfirmed = inferIsDepositConfirmed(sale);
 
                             return (
-                              <tr key={sale.id || idx} className="hover:bg-slate-50/90 transition">
+                              <tr
+                                key={sale.id || idx}
+                                className={`transition ${
+                                  isConfirmed
+                                    ? 'hover:bg-emerald-50/40 bg-white'
+                                    : 'bg-amber-50/40 hover:bg-amber-50/70'
+                                }`}
+                              >
                                 {/* 1. 순번 / 주문번호 / 일시 */}
                                 <td className="py-3.5 px-3 whitespace-nowrap align-top">
                                   <div className="font-mono font-extrabold text-slate-900">
                                     #{idx + 1} · {sale.orderNo || sale.id}
                                   </div>
                                   <div className="text-[11px] text-slate-500 mt-0.5">
-                                    {sale.purchasedAt || '-'}
+                                    주문: {sale.purchasedAt || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 2. 계좌이체 입금 확인 체크 */}
+                                <td className="py-3.5 px-3 text-center whitespace-nowrap align-top">
+                                  <label
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-extrabold text-xs cursor-pointer select-none transition ${
+                                      isConfirmed
+                                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-2xs'
+                                        : 'bg-amber-100/80 border-amber-400 text-amber-950'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isConfirmed}
+                                      onChange={(e) =>
+                                        handleToggleAdminSaleDepositConfirm(sale.id, e.target.checked)
+                                      }
+                                      className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                                    />
+                                    <span>{isConfirmed ? '✓ 입금확인 완료' : '미입금 (입금대기)'}</span>
+                                  </label>
+                                  <div className="text-[10.5px] font-bold mt-1">
+                                    {isConfirmed ? (
+                                      <span className="text-emerald-700">
+                                        확인: {sale.depositConfirmedAt || sale.purchasedAt || '-'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-700">계좌이체 입금 확인 필요</span>
+                                    )}
                                   </div>
                                 </td>
 
@@ -34594,6 +34936,10 @@ export default function AdminDashboardPage() {
               const subItemStr = String(item.subItemName || item.processName || '').toLowerCase();
               const prodName = String(item.productName || item.product_name || '').toLowerCase();
               const statusStr = String(item.deliveryStatus || '입금대기 · 산지발송 준비').trim();
+              const isConfirmed = inferIsDepositConfirmed(item);
+
+              if (cropPurDepositFilter === 'CONFIRMED' && !isConfirmed) return false;
+              if (cropPurDepositFilter === 'UNCONFIRMED' && isConfirmed) return false;
 
               if (salesMemberIdFilter.trim()) {
                 const qMember = salesMemberIdFilter.trim().toLowerCase();
@@ -34875,29 +35221,70 @@ export default function AdminDashboardPage() {
                   </div>
                 )}
 
-                {/* 4. 상세 검색 및 필터 바 (회원ID / 재배작물·재배일정 / 생육단계 구분 / 배송·입금 상태 / 구매 제품·생육과정명) */}
+                {/* 4. 상세 검색 및 필터 바 (계좌이체 입금여부 / 회원ID / 재배작물·재배일정 / 생육단계 구분 / 배송·입금 상태 / 구매 제품·생육과정명) */}
                 <div className="bg-white rounded-2xl border-2 border-emerald-600/30 p-5 shadow-xs space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Search className="w-4 h-4 text-emerald-600" />
                       <h3 className="text-sm font-extrabold text-slate-900">
-                        재배일정 및 생육단계별 농작물 구매 상세 검색
+                        재배일정 · 생육단계별 농작물 구매 검색 및 계좌이체 입금확인 구분
                       </h3>
+                      <div className="flex items-center gap-1 ml-2">
+                        {[
+                          { id: 'ALL', label: `전체 (${adminAgroSalesList.length}건)` },
+                          {
+                            id: 'CONFIRMED',
+                            label: `✓ 입금확인 완료 (${adminAgroSalesList.filter((i) => inferIsDepositConfirmed(i)).length}건)`,
+                          },
+                          {
+                            id: 'UNCONFIRMED',
+                            label: `⏳ 미입금 대기 (${adminAgroSalesList.filter((i) => !inferIsDepositConfirmed(i)).length}건)`,
+                          },
+                        ].map((tab) => (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setCropPurDepositFilter(tab.id as any)}
+                            className={`px-3 py-1 rounded-lg text-xs font-extrabold transition cursor-pointer ${
+                              cropPurDepositFilter === tab.id
+                                ? tab.id === 'CONFIRMED'
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : tab.id === 'UNCONFIRMED'
+                                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                                    : 'bg-slate-900 text-white shadow-xs'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSalesMemberIdFilter('');
-                        setCropPurScheduleFilter('ALL');
-                        setCropPurStageFilter('ALL');
-                        setCropPurStatusFilter('ALL');
-                        setSalesProductNameFilter('');
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      필터 초기화
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('revenue_management')}
+                        className="px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <Layers className="w-3.5 h-3.5" />
+                        15. 매출 관리 바로가기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSalesMemberIdFilter('');
+                          setCropPurScheduleFilter('ALL');
+                          setCropPurStageFilter('ALL');
+                          setCropPurStatusFilter('ALL');
+                          setCropPurDepositFilter('ALL');
+                          setSalesProductNameFilter('');
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        필터 초기화
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
@@ -35000,6 +35387,9 @@ export default function AdminDashboardPage() {
                       <thead>
                         <tr className="bg-slate-900 text-white border-b border-slate-800">
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">주문번호 / 주문일시</th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap bg-emerald-950/90 text-emerald-200">
+                            계좌이체 입금 확인 (체크)
+                          </th>
                           <th className="py-3.5 px-3 font-extrabold whitespace-nowrap">회원 정보</th>
                           <th className="py-3.5 px-3 font-extrabold">재배일정 정보 (작물·품종 · 재배지 · 면적)</th>
                           <th className="py-3.5 px-3 font-extrabold">생육단계 · 세부 작업일정 · 권장 투입일</th>
@@ -35011,7 +35401,7 @@ export default function AdminDashboardPage() {
                       <tbody className="divide-y divide-slate-200">
                         {filteredPurchases.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="py-12 text-center text-slate-500 font-bold">
+                            <td colSpan={8} className="py-12 text-center text-slate-500 font-bold">
                               조회 조건에 일치하는 재배일정·생육단계별 구매 내역이 없습니다.
                             </td>
                           </tr>
@@ -35024,9 +35414,17 @@ export default function AdminDashboardPage() {
                               sale.totalPrice ?? (Number(sale.unitPrice) || 0) * qty
                             );
                             const memberId = sale.member_id || sale.email || 'CloudBae@naver.com';
+                            const isConfirmed = inferIsDepositConfirmed(sale);
 
                             return (
-                              <tr key={sale.id || idx} className="hover:bg-slate-50/90 transition">
+                              <tr
+                                key={sale.id || idx}
+                                className={`transition ${
+                                  isConfirmed
+                                    ? 'hover:bg-emerald-50/40 bg-white'
+                                    : 'bg-amber-50/40 hover:bg-amber-50/70'
+                                }`}
+                              >
                                 {/* 1. 주문번호 / 일시 */}
                                 <td className="py-3.5 px-3 whitespace-nowrap align-top">
                                   <div className="font-mono font-extrabold text-slate-900">
@@ -35034,6 +35432,37 @@ export default function AdminDashboardPage() {
                                   </div>
                                   <div className="text-[11px] text-slate-500 mt-0.5">
                                     주문: {sale.purchasedAt || '-'}
+                                  </div>
+                                </td>
+
+                                {/* 2. 계좌이체 입금 확인 체크 */}
+                                <td className="py-3.5 px-3 text-center whitespace-nowrap align-top">
+                                  <label
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 font-extrabold text-xs cursor-pointer select-none transition ${
+                                      isConfirmed
+                                        ? 'bg-emerald-50 border-emerald-600 text-emerald-900 shadow-2xs'
+                                        : 'bg-amber-100/80 border-amber-400 text-amber-950'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isConfirmed}
+                                      onChange={(e) =>
+                                        handleToggleAdminSaleDepositConfirm(sale.id, e.target.checked)
+                                      }
+                                      className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                                    />
+                                    <span>{isConfirmed ? '✓ 입금확인 완료' : '미입금 (입금대기)'}</span>
+                                  </label>
+                                  <div className="text-[10.5px] font-bold mt-1">
+                                    {isConfirmed ? (
+                                      <span className="text-emerald-700">
+                                        확인: {sale.depositConfirmedAt || sale.purchasedAt || '-'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-700">계좌이체 입금 확인 필요</span>
+                                    )}
                                   </div>
                                 </td>
 
@@ -35431,6 +35860,45 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
 
+                        <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50/70 p-3 flex items-center justify-between gap-3">
+                          <label className="flex items-center gap-2.5 font-extrabold text-emerald-950 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={inferIsDepositConfirmed(editingCropPurchaseItem)}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setEditingCropPurchaseItem({
+                                  ...editingCropPurchaseItem,
+                                  isDepositConfirmed: checked,
+                                  depositConfirmedAt: checked
+                                    ? editingCropPurchaseItem.depositConfirmedAt ||
+                                      new Date(Date.now() + 9 * 3600 * 1000)
+                                        .toISOString()
+                                        .slice(0, 16)
+                                        .replace('T', ' ')
+                                    : '',
+                                  deliveryStatus: checked
+                                    ? String(editingCropPurchaseItem.deliveryStatus || '').includes('입금대기')
+                                      ? '입금확인 · 출고중'
+                                      : editingCropPurchaseItem.deliveryStatus || '입금확인 · 출고중'
+                                    : '입금대기 · 산지발송 준비',
+                                });
+                              }}
+                              className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                            />
+                            <span>실제 계좌이체(입금) 확인 완료 항목으로 지정 (체크 시 15. 매출 관리에 즉시 반영)</span>
+                          </label>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[11px] font-black shrink-0 ${
+                              inferIsDepositConfirmed(editingCropPurchaseItem)
+                                ? 'bg-emerald-600 text-white'
+                                : 'bg-amber-500 text-slate-950'
+                            }`}
+                          >
+                            {inferIsDepositConfirmed(editingCropPurchaseItem) ? '✓ 입금확인 완료' : '⏳ 미입금 대기'}
+                          </span>
+                        </div>
+
                         <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
                           <button
                             type="button"
@@ -35454,6 +35922,755 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            );
+          })()}
+
+          {/* ==================== 15. 매출 관리 (계좌이체 입금확인 완료 항목 전용 일별 · 주별 · 월별 · 년도별 매출 관리) ==================== */}
+          {activeTab === 'revenue_management' && (() => {
+            const parseSaleDateStr = (sale: any): string => {
+              const rawDate = String(sale.depositConfirmedAt || sale.purchasedAt || '2026-08-10').trim();
+              const normalized = rawDate.replace(/\./g, '-').slice(0, 10);
+              return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : '2026-08-10';
+            };
+
+            const getWeekPeriodInfo = (dateYmd: string): { key: string; label: string; rangeLabel: string } => {
+              const [yStr, mStr, dStr] = dateYmd.split('-');
+              const year = Number(yStr) || 2026;
+              const month = Number(mStr) || 8;
+              const day = Number(dStr) || 1;
+              const dt = new Date(year, month - 1, day);
+              const dow = dt.getDay(); // 0(일)~6(토)
+              const mondayOffset = dow === 0 ? -6 : 1 - dow;
+              const monday = new Date(year, month - 1, day + mondayOffset);
+              const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
+              const fmt = (d: Date) =>
+                `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const monYmd = fmt(monday);
+              const sunYmd = fmt(sunday);
+              const weekOfMonth = Math.ceil(monday.getDate() / 7);
+              return {
+                key: monYmd,
+                label: `${monday.getFullYear()}년 ${String(monday.getMonth() + 1).padStart(2, '0')}월 ${weekOfMonth}주차`,
+                rangeLabel: `${monYmd} ~ ${sunYmd}`,
+              };
+            };
+
+            const getPeriodInfoByUnit = (
+              dateYmd: string,
+              unit: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+            ): { key: string; label: string; subLabel: string } => {
+              const [yStr, mStr, dStr] = dateYmd.split('-');
+              if (unit === 'DAILY') {
+                return {
+                  key: dateYmd,
+                  label: `${yStr}년 ${mStr}월 ${dStr}일`,
+                  subLabel: `일별 확정 매출 (${dateYmd})`,
+                };
+              }
+              if (unit === 'WEEKLY') {
+                const wk = getWeekPeriodInfo(dateYmd);
+                return {
+                  key: wk.key,
+                  label: wk.label,
+                  subLabel: wk.rangeLabel,
+                };
+              }
+              if (unit === 'MONTHLY') {
+                const ym = `${yStr}-${mStr}`;
+                return {
+                  key: ym,
+                  label: `${yStr}년 ${mStr}월`,
+                  subLabel: `${ym} 월간 입금확인 매출`,
+                };
+              }
+              return {
+                key: yStr,
+                label: `${yStr}년도`,
+                subLabel: `${yStr}-01-01 ~ ${yStr}-12-31 연간 확정 매출`,
+              };
+            };
+
+            const allConfirmedSales = adminAgroSalesList.filter((it) => inferIsDepositConfirmed(it));
+            const allUnconfirmedSales = adminAgroSalesList.filter((it) => !inferIsDepositConfirmed(it));
+            const unconfirmedTotalAmount = allUnconfirmedSales.reduce(
+              (sum, it) => sum + Number(it.totalPrice ?? (Number(it.unitPrice) || 0) * Math.max(1, Number(it.qty) || 1)),
+              0
+            );
+
+            const availableYears = Array.from(
+              new Set(allConfirmedSales.map((it) => parseSaleDateStr(it).slice(0, 4)))
+            ).sort((a, b) => b.localeCompare(a));
+
+            const filteredConfirmedSales = allConfirmedSales.filter((it) => {
+              const dateYmd = parseSaleDateStr(it);
+              const yearStr = dateYmd.slice(0, 4);
+              const cat1 = inferAgroCategory1st(it);
+              const memberStr = `${it.member_id || ''} ${it.member_name || ''} ${it.productName || ''} ${it.cropTitle || ''}`.toLowerCase();
+
+              if (revenueYearFilter !== 'ALL' && yearStr !== revenueYearFilter) return false;
+              if (revenueCategoryFilter !== 'ALL' && cat1 !== revenueCategoryFilter) return false;
+              if (revenueMemberFilter.trim()) {
+                const q = revenueMemberFilter.trim().toLowerCase();
+                if (!memberStr.includes(q)) return false;
+              }
+              return true;
+            });
+
+            // 기간 단위(일별/주별/월별/년도별) 집계
+            const periodBucketMap = new Map<
+              string,
+              {
+                key: string;
+                label: string;
+                subLabel: string;
+                orderCount: number;
+                totalQty: number;
+                grossAmount: number;
+                confirmedRevenue: number;
+                categories: Record<string, number>;
+                items: any[];
+              }
+            >();
+
+            filteredConfirmedSales.forEach((sale) => {
+              const dateYmd = parseSaleDateStr(sale);
+              const pInfo = getPeriodInfoByUnit(dateYmd, revenuePeriodUnit);
+              const qty = Math.max(1, Number(sale.qty) || 1);
+              const unitPrice = Number(sale.unitPrice) || 0;
+              const confirmedAmt = Number(sale.totalPrice ?? unitPrice * qty);
+              const grossAmt = unitPrice > 0 ? unitPrice * qty : Math.round(confirmedAmt / 0.95);
+              const cat1 = inferAgroCategory1st(sale);
+
+              const existing = periodBucketMap.get(pInfo.key);
+              if (existing) {
+                existing.orderCount += 1;
+                existing.totalQty += qty;
+                existing.grossAmount += grossAmt;
+                existing.confirmedRevenue += confirmedAmt;
+                existing.categories[cat1] = (existing.categories[cat1] || 0) + confirmedAmt;
+                existing.items.push(sale);
+              } else {
+                periodBucketMap.set(pInfo.key, {
+                  key: pInfo.key,
+                  label: pInfo.label,
+                  subLabel: pInfo.subLabel,
+                  orderCount: 1,
+                  totalQty: qty,
+                  grossAmount: grossAmt,
+                  confirmedRevenue: confirmedAmt,
+                  categories: { [cat1]: confirmedAmt },
+                  items: [sale],
+                });
+              }
+            });
+
+            const periodBuckets = Array.from(periodBucketMap.values()).sort((a, b) =>
+              b.key.localeCompare(a.key)
+            );
+            const totalConfirmedRevenue = filteredConfirmedSales.reduce(
+              (sum, it) =>
+                sum + Number(it.totalPrice ?? (Number(it.unitPrice) || 0) * Math.max(1, Number(it.qty) || 1)),
+              0
+            );
+            const totalConfirmedQty = filteredConfirmedSales.reduce(
+              (sum, it) => sum + Math.max(1, Number(it.qty) || 1),
+              0
+            );
+            const maxBucketRevenue = periodBuckets.reduce(
+              (max, b) => Math.max(max, b.confirmedRevenue),
+              1
+            );
+            const avgBucketRevenue =
+              periodBuckets.length > 0 ? Math.round(totalConfirmedRevenue / periodBuckets.length) : 0;
+
+            // 품목 1차 구분별 확정 매출 집계
+            const CATEGORY_LIST = ['비료', '영양제', '병해충관리제', '씨', '모종'];
+            const categoryBreakdown = CATEGORY_LIST.map((cat) => {
+              const items = filteredConfirmedSales.filter((it) => inferAgroCategory1st(it) === cat);
+              const amount = items.reduce(
+                (s, it) => s + Number(it.totalPrice ?? (Number(it.unitPrice) || 0) * Math.max(1, Number(it.qty) || 1)),
+                0
+              );
+              const ratio = totalConfirmedRevenue > 0 ? Math.round((amount / totalConfirmedRevenue) * 1000) / 10 : 0;
+              return { cat, count: items.length, amount, ratio };
+            });
+
+            const ledgerItems =
+              selectedRevenuePeriodKey === 'ALL'
+                ? filteredConfirmedSales
+                : periodBucketMap.get(selectedRevenuePeriodKey)?.items || filteredConfirmedSales;
+
+            const unitTitleMap: Record<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY', string> = {
+              DAILY: '일별 (Daily)',
+              WEEKLY: '주별 (Weekly)',
+              MONTHLY: '월별 (Monthly)',
+              YEARLY: '년도별 (Yearly)',
+            };
+
+            return (
+              <div className="space-y-6 w-full">
+                {/* 1. 상단 헤더 배너 */}
+                <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-extrabold border border-emerald-400/30">
+                        15. 매출 관리 · 계좌이체 입금확인 완료 항목 전용 매출 통계
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-400/30">
+                        일별 · 주별 · 월별 · 년도별 확정 매출 분석 및 원장 관리
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-extrabold mt-2">
+                      15. 매출 관리 (입금확인 구매항목 기준 일별 · 주별 · 월별 · 년도별 매출 현황)
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      [13. 농자재 판매 관리] 및 [14. 농작물 구매 관리]에서 관리자가 실제 계좌이체(입금) 확인을 체크한 항목만 집계하여 일별·주별·월별·년도별 확정 매출을 정밀 관리합니다.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('agro_sales_management')}
+                      className="px-3.5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4 text-emerald-300" />
+                      13. 농자재 판매 입금확인 관리
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('crop_purchase_management')}
+                      className="px-3.5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      14. 농작물 구매 입금확인 관리
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. 상단 4대 핵심 매출 KPI 카드 */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-emerald-950 text-white rounded-2xl p-4 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-300">
+                        입금확인 완료 총 확정 매출액
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 text-[10px] font-black">
+                        실입금 기준
+                      </span>
+                    </div>
+                    <div className="text-2xl font-black text-white mt-1">
+                      {totalConfirmedRevenue.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-emerald-200 mt-0.5">
+                      입금확인 완료 {filteredConfirmedSales.length}건 · 총 {totalConfirmedQty.toLocaleString()}개 판매
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border-2 border-emerald-500/40 p-4 shadow-xs">
+                    <div className="text-xs font-extrabold text-emerald-800">
+                      {unitTitleMap[revenuePeriodUnit]} 평균 확정 매출
+                    </div>
+                    <div className="text-2xl font-black text-slate-900 mt-1">
+                      {avgBucketRevenue.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-slate-500 font-bold mt-0.5">
+                      총 {periodBuckets.length}개 {unitTitleMap[revenuePeriodUnit].split(' ')[0]} 구간 평균
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500">
+                      최고 매출 {unitTitleMap[revenuePeriodUnit].split(' ')[0]} 구간
+                    </div>
+                    <div className="text-lg font-black text-emerald-800 mt-1 truncate">
+                      {periodBuckets.length > 0
+                        ? [...periodBuckets].sort((a, b) => b.confirmedRevenue - a.confirmedRevenue)[0].label
+                        : '-'}
+                    </div>
+                    <div className="text-[11px] text-slate-600 font-extrabold mt-0.5">
+                      {periodBuckets.length > 0
+                        ? `${[...periodBuckets]
+                            .sort((a, b) => b.confirmedRevenue - a.confirmedRevenue)[0]
+                            .confirmedRevenue.toLocaleString()}원`
+                        : '0원'}
+                    </div>
+                  </div>
+
+                  <div className="bg-amber-50/80 rounded-2xl border border-amber-300 p-4 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-900">
+                        ⏳ 미입금 대기 (매출 집계 제외)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSalesDepositFilter('UNCONFIRMED');
+                          setActiveTab('agro_sales_management');
+                        }}
+                        className="text-[11px] font-black text-amber-900 underline cursor-pointer"
+                      >
+                        입금확인 하러가기 →
+                      </button>
+                    </div>
+                    <div className="text-2xl font-black text-amber-900 mt-1">
+                      {allUnconfirmedSales.length}건 · {unconfirmedTotalAmount.toLocaleString()}원
+                    </div>
+                    <div className="text-[11px] text-amber-800 font-bold mt-0.5">
+                      구매 관리에서 입금확인 체크 시 매출로 즉시 편입
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. 기간 단위(일별 · 주별 · 월별 · 년도별) 선택 탭 및 필터 바 */}
+                <div className="bg-white rounded-2xl border-2 border-emerald-600/30 p-5 shadow-xs space-y-4">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        매출 집계 기간 단위 선택 (일별 · 주별 · 월별 · 년도별)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        원하는 집계 단위를 클릭하면 입금확인 완료된 구매 항목이 해당 기간 단위로 즉시 재집계됩니다.
+                      </p>
+                    </div>
+
+                    {/* 일별 / 주별 / 월별 / 년도별 4대 탭 */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {(
+                        [
+                          { id: 'DAILY', label: '📅 일별 매출', desc: '일자별(YYYY-MM-DD)' },
+                          { id: 'WEEKLY', label: '📊 주별 매출', desc: '주차별(월~일 기준)' },
+                          { id: 'MONTHLY', label: '🗓️ 월별 매출', desc: '월간(YYYY년 MM월)' },
+                          { id: 'YEARLY', label: '🏆 년도별 매출', desc: '연간(YYYY년도)' },
+                        ] as const
+                      ).map((tab) => {
+                        const active = revenuePeriodUnit === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => {
+                              setRevenuePeriodUnit(tab.id);
+                              setSelectedRevenuePeriodKey('ALL');
+                            }}
+                            className={`px-4 py-2.5 rounded-xl border text-left transition cursor-pointer ${
+                              active
+                                ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
+                                : 'bg-slate-50 hover:bg-emerald-50/60 text-slate-800 border-slate-200'
+                            }`}
+                          >
+                            <div className="text-xs font-black">{tab.label}</div>
+                            <div
+                              className={`text-[10.5px] font-bold mt-0.5 ${
+                                active ? 'text-emerald-100' : 'text-slate-500'
+                              }`}
+                            >
+                              {tab.desc}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 세부 필터 (기준 연도 / 농자재 1차 품목 / 회원·상품 검색) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1">① 기준 년도 필터</label>
+                      <select
+                        value={revenueYearFilter}
+                        onChange={(e) => {
+                          setRevenueYearFilter(e.target.value);
+                          setSelectedRevenuePeriodKey('ALL');
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-extrabold text-slate-900"
+                      >
+                        <option value="ALL">전체 년도 ({availableYears.join(', ')})</option>
+                        {availableYears.map((yr) => (
+                          <option key={yr} value={yr}>
+                            {yr}년도 매출만 보기
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-emerald-800 mb-1">② 농자재·농작물 1차 품목</label>
+                      <select
+                        value={revenueCategoryFilter}
+                        onChange={(e) => {
+                          setRevenueCategoryFilter(e.target.value);
+                          setSelectedRevenuePeriodKey('ALL');
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-extrabold text-slate-900"
+                      >
+                        <option value="ALL">전체 품목 (비료·영양제·방제제·씨·모종)</option>
+                        {CATEGORY_LIST.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-extrabold text-slate-800 mb-1">③ 회원ID / 회원명 / 품목명 검색</label>
+                      <input
+                        type="text"
+                        value={revenueMemberFilter}
+                        onChange={(e) => {
+                          setRevenueMemberFilter(e.target.value);
+                          setSelectedRevenuePeriodKey('ALL');
+                        }}
+                        placeholder="예: 배철민, CloudBae, 유박퇴비..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-300 font-bold text-slate-900"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRevenueYearFilter('ALL');
+                          setRevenueCategoryFilter('ALL');
+                          setRevenueMemberFilter('');
+                          setSelectedRevenuePeriodKey('ALL');
+                        }}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        조회 필터 초기화
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. 농자재·농작물 품목군별 확정 매출 비중 카드 */}
+                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      품목 구분별 입금확인 확정 매출 비중 (비료 · 영양제 · 병해충관리제 · 씨 · 모종)
+                    </h3>
+                    <span className="text-xs font-bold text-slate-500">
+                      품목 카드를 클릭하면 해당 품목의 매출만 필터링됩니다
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {categoryBreakdown.map((cb) => {
+                      const isSelected = revenueCategoryFilter === cb.cat;
+                      return (
+                        <div
+                          key={cb.cat}
+                          onClick={() =>
+                            setRevenueCategoryFilter((prev) => (prev === cb.cat ? 'ALL' : cb.cat))
+                          }
+                          className={`rounded-xl border p-3.5 cursor-pointer transition ${
+                            isSelected
+                              ? 'bg-emerald-50 border-2 border-emerald-600'
+                              : 'bg-slate-50/70 hover:bg-white border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 rounded bg-emerald-700 text-white text-[11px] font-extrabold">
+                              {cb.cat}
+                            </span>
+                            <span className="text-xs font-black text-emerald-800">{cb.ratio}%</span>
+                          </div>
+                          <div className="text-base font-black text-slate-900 mt-2">
+                            {cb.amount.toLocaleString()}원
+                          </div>
+                          <div className="text-[11px] font-bold text-slate-500 mt-0.5">
+                            입금확인 {cb.count}건
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-slate-200 mt-2 overflow-hidden">
+                            <div
+                              className="h-full bg-emerald-600 rounded-full"
+                              style={{ width: `${Math.min(100, cb.ratio)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 5. 일별 / 주별 / 월별 / 년도별 매출 집계 테이블 & 그래프 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        {unitTitleMap[revenuePeriodUnit]} 입금확인 매출 집계 현황 ({periodBuckets.length}개 구간)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        특정 기간 행을 클릭하면 하단 상세 원장에서 해당 기간의 입금확인 구매 내역만 상세 조회할 수 있습니다.
+                      </p>
+                    </div>
+                    {selectedRevenuePeriodKey !== 'ALL' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRevenuePeriodKey('ALL')}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 font-extrabold text-xs cursor-pointer"
+                      >
+                        전체 기간 원장 보기 ({filteredConfirmedSales.length}건)
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-900 text-white border-b border-slate-800">
+                          <th className="py-3.5 px-4 font-extrabold whitespace-nowrap">
+                            {unitTitleMap[revenuePeriodUnit]} 기간 구분
+                          </th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap">
+                            입금확인 주문 건수
+                          </th>
+                          <th className="py-3.5 px-3 font-extrabold text-center whitespace-nowrap">
+                            총 판매 수량
+                          </th>
+                          <th className="py-3.5 px-3 font-extrabold text-right whitespace-nowrap">
+                            정가 합계 (할인 전)
+                          </th>
+                          <th className="py-3.5 px-3 font-extrabold text-right whitespace-nowrap">
+                            회원 할인액 (5%)
+                          </th>
+                          <th className="py-3.5 px-4 font-extrabold text-right whitespace-nowrap bg-emerald-950 text-emerald-200">
+                            실제 계좌이체 입금 매출액
+                          </th>
+                          <th className="py-3.5 px-4 font-extrabold min-w-[220px]">
+                            기간별 매출 비중 · 추이 그래프
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {periodBuckets.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-12 text-center text-slate-500 font-bold">
+                              조건에 해당하는 입금확인 완료 매출 내역이 없습니다.
+                            </td>
+                          </tr>
+                        ) : (
+                          periodBuckets.map((bucket) => {
+                            const discountAmt = Math.max(0, bucket.grossAmount - bucket.confirmedRevenue);
+                            const sharePct =
+                              totalConfirmedRevenue > 0
+                                ? Math.round((bucket.confirmedRevenue / totalConfirmedRevenue) * 1000) / 10
+                                : 0;
+                            const barWidthPct = Math.max(
+                              6,
+                              Math.round((bucket.confirmedRevenue / maxBucketRevenue) * 100)
+                            );
+                            const isSelectedRow = selectedRevenuePeriodKey === bucket.key;
+
+                            return (
+                              <tr
+                                key={bucket.key}
+                                onClick={() =>
+                                  setSelectedRevenuePeriodKey((prev) =>
+                                    prev === bucket.key ? 'ALL' : bucket.key
+                                  )
+                                }
+                                className={`cursor-pointer transition ${
+                                  isSelectedRow
+                                    ? 'bg-emerald-50/90 font-bold'
+                                    : 'hover:bg-slate-50/90'
+                                }`}
+                              >
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-slate-900 text-sm">
+                                      {bucket.label}
+                                    </span>
+                                    {isSelectedRow && (
+                                      <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-black">
+                                        선택됨
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
+                                    {bucket.subLabel}
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-3 text-center font-extrabold text-slate-800 whitespace-nowrap">
+                                  {bucket.orderCount.toLocaleString()}건
+                                </td>
+                                <td className="py-3.5 px-3 text-center font-extrabold text-emerald-800 whitespace-nowrap">
+                                  {bucket.totalQty.toLocaleString()}개
+                                </td>
+                                <td className="py-3.5 px-3 text-right font-bold text-slate-500 whitespace-nowrap">
+                                  {bucket.grossAmount.toLocaleString()}원
+                                </td>
+                                <td className="py-3.5 px-3 text-right font-bold text-rose-600 whitespace-nowrap">
+                                  -{discountAmt.toLocaleString()}원
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-black text-emerald-800 text-sm whitespace-nowrap bg-emerald-50/40">
+                                  {bucket.confirmedRevenue.toLocaleString()}원
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-3 rounded-full bg-slate-100 overflow-hidden">
+                                      <div
+                                        className="h-full bg-emerald-600 rounded-full transition-all"
+                                        style={{ width: `${barWidthPct}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-black text-slate-700 w-12 text-right">
+                                      {sharePct}%
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {Object.entries(bucket.categories).map(([catName, catAmt]) => (
+                                      <span
+                                        key={catName}
+                                        className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold"
+                                      >
+                                        {catName}: {Number(catAmt).toLocaleString()}원
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                      {periodBuckets.length > 0 && (
+                        <tfoot>
+                          <tr className="bg-emerald-950 text-white font-black text-xs">
+                            <td className="py-3.5 px-4">합계 ({periodBuckets.length}개 구간)</td>
+                            <td className="py-3.5 px-3 text-center">
+                              {filteredConfirmedSales.length.toLocaleString()}건
+                            </td>
+                            <td className="py-3.5 px-3 text-center">
+                              {totalConfirmedQty.toLocaleString()}개
+                            </td>
+                            <td className="py-3.5 px-3 text-right">
+                              {periodBuckets
+                                .reduce((s, b) => s + b.grossAmount, 0)
+                                .toLocaleString()}
+                              원
+                            </td>
+                            <td className="py-3.5 px-3 text-right text-amber-300">
+                              -
+                              {periodBuckets
+                                .reduce((s, b) => s + Math.max(0, b.grossAmount - b.confirmedRevenue), 0)
+                                .toLocaleString()}
+                              원
+                            </td>
+                            <td className="py-3.5 px-4 text-right text-emerald-300 text-sm">
+                              {totalConfirmedRevenue.toLocaleString()}원
+                            </td>
+                            <td className="py-3.5 px-4 text-emerald-200">
+                              실제 계좌이체 입금확인 100% 반영
+                            </td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+
+                {/* 6. 입금확인 완료 매출 상세 원장 리스트 */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900">
+                        계좌이체 입금확인 완료 매출 상세 원장 ({ledgerItems.length}건)
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        매출로 집계된 개별 입금확인 구매 항목입니다. 입금 취소 또는 오입력 시 체크를 해제하면 매출 집계에서 즉시 제외됩니다.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-800 text-white">
+                          <th className="py-3 px-3 font-extrabold whitespace-nowrap">입금확인일시 / 주문번호</th>
+                          <th className="py-3 px-3 font-extrabold text-center whitespace-nowrap">계좌이체 입금확인</th>
+                          <th className="py-3 px-3 font-extrabold whitespace-nowrap">회원 정보</th>
+                          <th className="py-3 px-3 font-extrabold">재배작물 · 생육단계</th>
+                          <th className="py-3 px-3 font-extrabold">품목 구분 · 구매 농자재명</th>
+                          <th className="py-3 px-3 font-extrabold text-right whitespace-nowrap">수량 / 확정 매출액</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        {ledgerItems.map((sale, idx) => {
+                          const cat1 = inferAgroCategory1st(sale);
+                          const cat2 = inferAgroCategory2nd(sale, cat1);
+                          const qty = Math.max(1, Number(sale.qty) || 1);
+                          const totalPrice = Number(
+                            sale.totalPrice ?? (Number(sale.unitPrice) || 0) * qty
+                          );
+                          return (
+                            <tr key={sale.id || idx} className="hover:bg-emerald-50/40 transition">
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <div className="font-extrabold text-emerald-800">
+                                  입금확인: {sale.depositConfirmedAt || sale.purchasedAt || '-'}
+                                </div>
+                                <div className="font-mono text-[11px] text-slate-500">
+                                  주문번호: {sale.orderNo || sale.id} (주문: {sale.purchasedAt})
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-center whitespace-nowrap">
+                                <label className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-500 text-emerald-900 font-extrabold text-[11px] cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={true}
+                                    onChange={() => handleToggleAdminSaleDepositConfirm(sale.id, false)}
+                                    className="w-3.5 h-3.5 accent-emerald-600 rounded cursor-pointer"
+                                  />
+                                  <span>✓ 입금확인됨</span>
+                                </label>
+                              </td>
+                              <td className="py-3 px-3 whitespace-nowrap">
+                                <div className="font-mono font-extrabold text-indigo-900">
+                                  {sale.member_id || 'CloudBae@naver.com'}
+                                </div>
+                                <div className="text-[11px] font-bold text-slate-600">
+                                  {sale.member_name || '배철민'}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="font-extrabold text-slate-900">
+                                  {sale.cropTitle || '가을배추'} · {sale.stageGroupName || '생육단계'}
+                                </div>
+                                <div className="text-[11px] text-slate-500">
+                                  {sale.subItemName || '-'}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <span className="px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-extrabold">
+                                    {cat1}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                                    {cat2}
+                                  </span>
+                                </div>
+                                <div className="font-black text-slate-900">
+                                  {sale.productName || sale.product_name}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-right whitespace-nowrap">
+                                <div className="font-bold text-slate-700">
+                                  {qty}
+                                  {sale.unitLabel || '개'}
+                                </div>
+                                <div className="text-sm font-black text-emerald-700">
+                                  {totalPrice.toLocaleString()}원
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             );
           })()}
