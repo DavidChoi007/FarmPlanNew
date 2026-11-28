@@ -457,6 +457,7 @@ export default function UserIntroPage() {
   const [isTaskExecDateChangeOpen, setIsTaskExecDateChangeOpen] = useState<boolean>(false);
   const [taskExecDraftDateYmd, setTaskExecDraftDateYmd] = useState<string>('');
   const [mobileHighlightedTaskId, setMobileHighlightedTaskId] = useState<string>('');
+  const [highlightedMobileCropCardId, setHighlightedMobileCropCardId] = useState<string>('');
 
   // 3가지 일정 보기 탭: 'timeline' (타임라인) | 'calendar' (달력) | 'stages' (생육단계)
   const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'calendar' | 'stages'>('timeline');
@@ -11581,10 +11582,69 @@ export default function UserIntroPage() {
                               const diff = diffDaysBetweenYmd(todayKstYmd, nextEff);
                               return diff >= -3 && diff <= 7;
                             }).length;
+                            const displayedWeekTaskCount =
+                              combinedMobileCrops.length > 0
+                                ? Math.max(1, upcomingWeekTaskCount)
+                                : 0;
+
+                            // 현재 시점(todayKstYmd) 기준으로 일정이 가장 가까운 작물 카드 산출
+                            const nearestScheduleCropItem = (() => {
+                              if (combinedMobileCrops.length === 0) return null;
+                              const scored = combinedMobileCrops.map((c, idx) => {
+                                const uncompletedTasks = (c.allTasks || []).filter(
+                                  (t: any) =>
+                                    !t.isRecognized &&
+                                    t.effDate &&
+                                    /^\d{4}-\d{2}-\d{2}$/.test(t.effDate)
+                                );
+                                const candidateDates: string[] =
+                                  uncompletedTasks.length > 0
+                                    ? uncompletedTasks.map((t: any) => String(t.effDate))
+                                    : c.primaryNextTask?.effDate &&
+                                      /^\d{4}-\d{2}-\d{2}$/.test(c.primaryNextTask.effDate)
+                                    ? [String(c.primaryNextTask.effDate)]
+                                    : (c.allTasks || [])
+                                        .map((t: any) => String(t.effDate || ''))
+                                        .filter((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d));
+                                let minAbsDiff = 999999;
+                                for (const d of candidateDates) {
+                                  const absDiff = Math.abs(diffDaysBetweenYmd(todayKstYmd, d));
+                                  if (absDiff < minAbsDiff) {
+                                    minAbsDiff = absDiff;
+                                  }
+                                }
+                                // 미완료 공정이 남아있는 작물을 우선하되, 현재 날짜와의 일수 차이가 가장 작은 항목 선택
+                                const completionPenalty = c.isAllCompleted ? 100000 : 0;
+                                return {
+                                  crop: c,
+                                  score: completionPenalty + minAbsDiff,
+                                  idx,
+                                };
+                              });
+                              scored.sort((a, b) => a.score - b.score || a.idx - b.idx);
+                              return scored[0]?.crop || combinedMobileCrops[0];
+                            })();
+
+                            const handleScrollToNearestScheduleCard = () => {
+                              if (displayedWeekTaskCount < 1 || !nearestScheduleCropItem) return;
+                              const targetCardId = String(nearestScheduleCropItem.id);
+                              setHighlightedMobileCropCardId(targetCardId);
+                              if (typeof window !== 'undefined') {
+                                const el = document.getElementById(
+                                  `mobile-crop-schedule-card-${targetCardId}`
+                                );
+                                if (el) {
+                                  el.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'center',
+                                  });
+                                }
+                              }
+                            };
 
                             return (
                               <div className="space-y-3.5">
-                                {/* 2) 상단 3칸 농장 요약 KPI 바 (총 재배면적 / 진행중 작물 / 이번 주 작업) */}
+                                {/* 2) 상단 3칸 농장 요약 KPI 바 (총 재배면적 / 진행중 작물 / 이번 주 작업 - 클릭 시 가장 가까운 일정 카드로 스크롤) */}
                                 <div className="rounded-[18px] bg-[#F2FBF5] border border-[#CBEAD3] px-3 py-3 grid grid-cols-3 divide-x divide-[#CBEAD3] text-center shadow-2xs">
                                   <div className="px-1">
                                     <div className="text-[11.5px] font-bold text-[#374151]">
@@ -11602,14 +11662,28 @@ export default function UserIntroPage() {
                                       {combinedMobileCrops.length}종
                                     </div>
                                   </div>
-                                  <div className="px-1">
-                                    <div className="text-[11.5px] font-bold text-[#374151]">
-                                      이번 주 작업
+                                  <button
+                                    type="button"
+                                    disabled={displayedWeekTaskCount < 1}
+                                    onClick={handleScrollToNearestScheduleCard}
+                                    title={
+                                      displayedWeekTaskCount >= 1
+                                        ? '클릭 시 현재 기준으로 일정이 가장 가까운 작물 항목으로 이동합니다'
+                                        : undefined
+                                    }
+                                    className={`px-1 rounded-r-[14px] transition ${
+                                      displayedWeekTaskCount >= 1
+                                        ? 'cursor-pointer hover:bg-[#E3F5E8] active:scale-[0.98]'
+                                        : 'cursor-default'
+                                    }`}
+                                  >
+                                    <div className="text-[11.5px] font-bold text-[#374151] inline-flex items-center justify-center gap-0.5">
+                                      <span>이번 주 작업</span>
                                     </div>
-                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
-                                      {Math.max(1, upcomingWeekTaskCount)}건
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap underline decoration-[#0E712F]/40 underline-offset-2">
+                                      {displayedWeekTaskCount}건
                                     </div>
-                                  </div>
+                                  </button>
                                 </div>
 
                                 {/* 2-B) 리스트 상단 [+ 재배작물 추가] 버튼 */}
@@ -11662,7 +11736,9 @@ export default function UserIntroPage() {
                                     return (
                                       <div
                                         key={item.id}
+                                        id={`mobile-crop-schedule-card-${item.id}`}
                                         onClick={() => {
+                                          setHighlightedMobileCropCardId('');
                                           setIsWorkLogSelectAlertOpen(false);
                                           setSelectedRequestNo(item.request_no);
                                           if (
@@ -11679,7 +11755,11 @@ export default function UserIntroPage() {
                                           }
                                           goToScheduleStep('detail');
                                         }}
-                                        className="relative overflow-hidden w-full rounded-[22px] border-[1.5px] border-[#BFD2C7] bg-white hover:border-[#0E712F] active:scale-[0.99] shadow-[0_6px_16px_rgba(15,23,42,0.07)] cursor-pointer transition"
+                                        className={`relative overflow-hidden w-full rounded-[22px] border-[1.5px] bg-white hover:border-[#0E712F] active:scale-[0.99] shadow-[0_6px_16px_rgba(15,23,42,0.07)] cursor-pointer transition ${
+                                          highlightedMobileCropCardId === String(item.id)
+                                            ? 'border-[#0E712F] ring-3 ring-[#22C55E]/45'
+                                            : 'border-[#BFD2C7]'
+                                        }`}
                                       >
                                         {/* 좌측 세로 그린 액센트 바 (4.5px) */}
                                         <span
