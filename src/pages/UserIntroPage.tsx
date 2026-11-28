@@ -11543,9 +11543,8 @@ export default function UserIntroPage() {
                 const recProducts = buildStageRecommendedAgroProducts(targetTask);
                 if (!preserveChecks) {
                   const initialChecked: Record<string, boolean> = {};
-                  const firstUnpurchased = recProducts.find(
-                    (p) => !isStageAgroProductPurchased(p)
-                  );
+                  const firstUnpurchased =
+                    recProducts.find((p) => !isStageAgroProductPurchased(p)) || recProducts[0];
                   if (firstUnpurchased) {
                     initialChecked[firstUnpurchased.material_id] = true;
                   }
@@ -11554,14 +11553,13 @@ export default function UserIntroPage() {
                   setMobileTaskAgroCheckedMap((prev) => {
                     const cleaned: Record<string, boolean> = {};
                     recProducts.forEach((p) => {
-                      if (!isStageAgroProductPurchased(p) && prev[p.material_id]) {
+                      if (prev[p.material_id]) {
                         cleaned[p.material_id] = true;
                       }
                     });
                     if (Object.keys(cleaned).length === 0) {
-                      const firstUnpurchased = recProducts.find(
-                        (p) => !isStageAgroProductPurchased(p)
-                      );
+                      const firstUnpurchased =
+                        recProducts.find((p) => !isStageAgroProductPurchased(p)) || recProducts[0];
                       if (firstUnpurchased) {
                         cleaned[firstUnpurchased.material_id] = true;
                       }
@@ -13534,15 +13532,13 @@ export default function UserIntroPage() {
                                 </p>
                               </div>
 
-                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 구매완료 제품도 클릭·선택 가능하며, 선택한 제품의 생육단계별 맞춤 사용방법이 하단 사용방법 영역에 실시간 업데이트됨) */}
+                              {/* 2) 추천 농자재 카드 (접기/펼치기 지원: 구매완료 제품도 클릭·선택 가능하며, 기존 구매 제품이 구매항목에 포함되면 재구매 승인 확인 후 구매 진행) */}
                               {(() => {
                                 const visibleRecProducts = isTaskExecAgroExpanded
                                   ? stageRecProducts
                                   : stageRecProducts.slice(0, 1);
-                                const checkedRecProducts = stageRecProducts.filter(
-                                  (prd) =>
-                                    !isStageAgroProductPurchased(prd) &&
-                                    Boolean(mobileTaskAgroCheckedMap[prd.material_id])
+                                const checkedRecProducts = stageRecProducts.filter((prd) =>
+                                  Boolean(mobileTaskAgroCheckedMap[prd.material_id])
                                 );
                                 const checkedRecCount = checkedRecProducts.length;
                                 const checkedRecTotalPrice = checkedRecProducts.reduce(
@@ -13563,8 +13559,7 @@ export default function UserIntroPage() {
                                   setWorkLogUnit(
                                     prd.material_category === 'FERTILIZER' ? 'kg' : 'L'
                                   );
-                                  const isPurchased = isStageAgroProductPurchased(prd);
-                                  if (togglePurchaseCheck && !isPurchased) {
+                                  if (togglePurchaseCheck) {
                                     setMobileTaskAgroCheckedMap((prev) => ({
                                       ...prev,
                                       [prd.material_id]: !prev[prd.material_id],
@@ -13574,6 +13569,15 @@ export default function UserIntroPage() {
 
                                 const handleBuyCheckedRecAgroProducts = () => {
                                   if (checkedRecProducts.length === 0) return;
+                                  const hasPurchasedRecord = checkedRecProducts.some((prd) =>
+                                    isStageAgroProductPurchased(prd)
+                                  );
+                                  if (hasPurchasedRecord) {
+                                    const confirmed = window.confirm(
+                                      '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                                    );
+                                    if (!confirmed) return;
+                                  }
                                   checkedRecProducts.forEach((prd) => {
                                     const recQty = Math.max(1, Number(prd.recommendedQty || 1));
                                     handleAddStageProductToCart({
@@ -13676,9 +13680,9 @@ export default function UserIntroPage() {
                                     <div className="divide-y divide-[#E2F0E5] border-t border-[#E2F0E5] bg-white">
                                       {visibleRecProducts.map((prd) => {
                                         const isPurchased = isStageAgroProductPurchased(prd);
-                                        const isChecked =
-                                          !isPurchased &&
-                                          Boolean(mobileTaskAgroCheckedMap[prd.material_id]);
+                                        const isChecked = Boolean(
+                                          mobileTaskAgroCheckedMap[prd.material_id]
+                                        );
                                         const isUsageSelected =
                                           activeUsageProduct?.material_id === prd.material_id;
 
@@ -13686,7 +13690,7 @@ export default function UserIntroPage() {
                                           <div
                                             key={prd.material_id}
                                             onClick={() =>
-                                              selectProductForUsageAndWorkLog(prd, !isPurchased)
+                                              selectProductForUsageAndWorkLog(prd, true)
                                             }
                                             className={`w-full px-3.5 py-3 flex items-center justify-between gap-2.5 cursor-pointer transition ${
                                               isUsageSelected
@@ -13706,11 +13710,7 @@ export default function UserIntroPage() {
                                                 }}
                                                 aria-label={`${prd.product_name} 선택`}
                                                 className={`w-[22px] h-[22px] rounded-[6px] flex items-center justify-center shrink-0 cursor-pointer transition ${
-                                                  isPurchased
-                                                    ? isUsageSelected
-                                                      ? 'bg-[#0E712F] border border-[#0E712F] text-white'
-                                                      : 'bg-[#F3F4F6] border border-[#9CA3AF] text-[#6B7280]'
-                                                    : isChecked
+                                                  isChecked
                                                     ? 'bg-[#0E712F] border border-[#0E712F] text-white'
                                                     : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent'
                                                 }`}
@@ -14053,6 +14053,16 @@ export default function UserIntroPage() {
                               : displayProducts.slice(0, 1);
                           if (targetList.length === 0) return;
 
+                          const hasPurchasedRecord = targetList.some((prd) =>
+                            isStageAgroProductPurchased(prd)
+                          );
+                          if (hasPurchasedRecord) {
+                            const confirmed = window.confirm(
+                              '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                            );
+                            if (!confirmed) return;
+                          }
+
                           targetList.forEach((prd) => {
                             const recQty = Math.max(1, Number(prd.recommendedQty || 1));
                             handleAddStageProductToCart({
@@ -14146,16 +14156,14 @@ export default function UserIntroPage() {
                               <div className="space-y-2.5">
                                 {displayProducts.map((prd) => {
                                   const isPurchased = isStageAgroProductPurchased(prd);
-                                  const isChecked =
-                                    !isPurchased &&
-                                    Boolean(mobileTaskAgroCheckedMap[prd.material_id]);
+                                  const isChecked = Boolean(
+                                    mobileTaskAgroCheckedMap[prd.material_id]
+                                  );
                                   return (
                                     <div
                                       key={prd.material_id}
                                       className={`rounded-[18px] border px-3.5 py-3.5 flex items-center justify-between gap-3 transition ${
-                                        isPurchased
-                                          ? 'bg-[#F8FAFC] border-[#E5E7EB] opacity-65 select-none'
-                                          : isChecked
+                                        isChecked
                                           ? 'bg-[#F1FAF3] border-[#BDE3C6] shadow-2xs'
                                           : 'bg-white border-[#E5E7EB]'
                                       }`}
@@ -14163,18 +14171,14 @@ export default function UserIntroPage() {
                                       {/* 좌측 체크박스 */}
                                       <button
                                         type="button"
-                                        disabled={isPurchased}
                                         onClick={() => {
-                                          if (isPurchased) return;
                                           toggleCheckProduct(prd.material_id);
                                         }}
                                         aria-label={`${prd.product_name} 선택`}
-                                        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 transition ${
-                                          isPurchased
-                                            ? 'bg-[#E5E7EB] border border-[#D1D5DB] text-[#9CA3AF] cursor-not-allowed'
-                                            : isChecked
-                                            ? 'bg-[#127A34] text-white border border-[#127A34] cursor-pointer'
-                                            : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent cursor-pointer'
+                                        className={`w-[26px] h-[26px] rounded-[7px] flex items-center justify-center shrink-0 transition cursor-pointer ${
+                                          isChecked
+                                            ? 'bg-[#127A34] text-white border border-[#127A34]'
+                                            : 'bg-white border-[1.8px] border-[#D1D5DB] text-transparent'
                                         }`}
                                       >
                                         <Check className="w-4 h-4 stroke-[3]" />
@@ -14183,16 +14187,12 @@ export default function UserIntroPage() {
                                       {/* 중앙 제품 썸네일 + 제품명/규격/가격 (클릭 시 상품 상세 이동) */}
                                       <button
                                         type="button"
-                                        disabled={isPurchased}
                                         onClick={() => {
-                                          if (isPurchased) return;
                                           setMobileTaskAgroSelectedProduct(prd);
                                           setMobileTaskAgroDetailTab('INFO');
                                           goToScheduleStep('task_agro_detail');
                                         }}
-                                        className={`flex-1 min-w-0 flex items-center gap-3.5 text-left ${
-                                          isPurchased ? 'cursor-not-allowed' : 'cursor-pointer'
-                                        }`}
+                                        className="flex-1 min-w-0 flex items-center gap-3.5 text-left cursor-pointer"
                                       >
                                         <div className="w-[58px] h-[68px] rounded-[12px] bg-white border border-[#E5E7EB]/80 flex items-center justify-center p-1 shrink-0 overflow-hidden">
                                           <img
@@ -14203,13 +14203,7 @@ export default function UserIntroPage() {
                                           />
                                         </div>
                                         <div className="min-w-0 flex-1 space-y-0.5">
-                                          <div
-                                            className={`text-[17.5px] font-black tracking-[-0.03em] leading-snug truncate ${
-                                              isPurchased
-                                                ? 'text-[#6B7280] line-through'
-                                                : 'text-[#111827]'
-                                            }`}
-                                          >
+                                          <div className="text-[17.5px] font-black tracking-[-0.03em] leading-snug truncate text-[#111827]">
                                             {prd.product_name}
                                           </div>
                                           <div className="text-[14px] font-bold text-[#0E712F]">
@@ -14233,12 +14227,13 @@ export default function UserIntroPage() {
                                         </div>
                                       </button>
 
-                                      {/* 우측 끝: 이미 구매한 제품은 (구매) 표시, 미구매 제품은 상세 화살표 */}
-                                      {isPurchased ? (
-                                        <span className="px-2.5 py-1 rounded-full bg-[#E5E7EB] border border-[#D1D5DB] text-[#4B5563] text-[12.5px] font-extrabold whitespace-nowrap shrink-0">
-                                          (구매)
-                                        </span>
-                                      ) : (
+                                      {/* 우측 끝: 이미 구매한 제품은 구매완료 배지 + 상세 화살표 */}
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {isPurchased && (
+                                          <span className="px-2.5 py-1 rounded-full bg-[#DCFCE7] border border-[#86EFAC] text-[#0E712F] text-[12px] font-extrabold whitespace-nowrap">
+                                            구매완료
+                                          </span>
+                                        )}
                                         <button
                                           type="button"
                                           onClick={() => {
@@ -14251,7 +14246,7 @@ export default function UserIntroPage() {
                                         >
                                           <ChevronRight className="w-5 h-5 stroke-[2.2]" />
                                         </button>
-                                      )}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -14343,6 +14338,12 @@ export default function UserIntroPage() {
                         if (!detailPrd) return null;
 
                         const handleAddDetailProductToCart = () => {
+                          if (isStageAgroProductPurchased(detailPrd)) {
+                            const confirmed = window.confirm(
+                              '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                            );
+                            if (!confirmed) return;
+                          }
                           setMobileTaskAgroCheckedMap((prev) => ({
                             ...prev,
                             [detailPrd.material_id]: true,
@@ -20545,14 +20546,20 @@ export default function UserIntroPage() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() =>
+                                onClick={() => {
+                                  if (purchasedInfo.isPurchased || isStageAgroProductPurchased(topMat)) {
+                                    const confirmed = window.confirm(
+                                      '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                                    );
+                                    if (!confirmed) return;
+                                  }
                                   handleAddStageProductToCart({
                                     cropObj: provisionData.activeRequest,
                                     stageItem: detailItem,
                                     mat: topMat,
                                     qty: recQty,
-                                  })
-                                }
+                                  });
+                                }}
                                 className="px-3 py-2 rounded-xl border border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-800 text-xs font-extrabold inline-flex items-center gap-1 cursor-pointer transition"
                               >
                                 <ShoppingCart className="w-3.5 h-3.5" />
@@ -20560,14 +20567,20 @@ export default function UserIntroPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() =>
+                                onClick={() => {
+                                  if (purchasedInfo.isPurchased || isStageAgroProductPurchased(topMat)) {
+                                    const confirmed = window.confirm(
+                                      '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                                    );
+                                    if (!confirmed) return;
+                                  }
                                   handlePurchaseStageRecommendedProduct({
                                     cropObj: provisionData.activeRequest,
                                     stageItem: detailItem,
                                     mat: topMat,
                                     qty: recQty,
-                                  })
-                                }
+                                  });
+                                }}
                                 className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition"
                               >
                                 <ShoppingBag className="w-3.5 h-3.5" />
@@ -21309,14 +21322,20 @@ export default function UserIntroPage() {
                                               </div>
                                               <button
                                                 type="button"
-                                                onClick={() =>
+                                                onClick={() => {
+                                                  if (purchasedInfo.isPurchased || isStageAgroProductPurchased(mat)) {
+                                                    const confirmed = window.confirm(
+                                                      '구매기록이 있는 농자재가 포함되어 있습니다. 구매 하시겠습니다.?'
+                                                    );
+                                                    if (!confirmed) return;
+                                                  }
                                                   handlePurchaseStageRecommendedProduct({
                                                     cropObj: provisionData.activeRequest,
                                                     stageItem: viewItem,
                                                     mat,
                                                     qty: recQty,
-                                                  })
-                                                }
+                                                  });
+                                                }}
                                                 className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-extrabold shadow-xs inline-flex items-center gap-1.5 cursor-pointer transition"
                                               >
                                                 <ShoppingBag className="w-4 h-4" />
