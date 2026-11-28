@@ -5351,35 +5351,58 @@ export default function UserIntroPage() {
     const targetSubName = String(stageItem?.sub_item_name || '')
       .replace(/\s*\([^)]*\)/g, '')
       .trim();
-    const targetMatId = String(mat?.material_id || '').trim();
-    const targetProdName = String(mat?.product_name || '').trim();
+    const targetMatId = String(mat?.material_id || mat?.materialId || '').trim();
+    const targetProdName = String(mat?.product_name || mat?.productName || '').trim();
+    const subProcessList: any[] = Array.isArray(mat?.subProcesses) ? mat.subProcesses : [];
 
-    const matchedEntries = stagePurchaseHistory.filter((entry) => {
-      const reqMatch =
-        !entry.request_no ||
-        entry.request_no === targetReqNo ||
-        entry.display_request_no === targetReqNo;
+    const matchedEntries = stagePurchaseHistory.filter((entry: any) => {
+      const entryReqNo = String(
+        entry.request_no || entry.requestNo || entry.display_request_no || ''
+      ).trim();
+      const reqMatch = !entryReqNo || entryReqNo === targetReqNo;
       if (!reqMatch) return false;
 
-      const stageMatch =
-        (targetProcessCode && entry.process_code === targetProcessCode) ||
-        (targetItemId && entry.item_id === targetItemId) ||
-        (targetSubName &&
-          String(entry.sub_item_name || '')
-            .replace(/\s*\([^)]*\)/g, '')
-            .trim() === targetSubName);
+      const entryProcessCode = String(entry.process_code || entry.processCode || '').trim();
+      const entryItemId = String(entry.item_id || entry.stageItemId || '').trim();
+      const entrySubName = String(entry.sub_item_name || entry.subItemName || '')
+        .replace(/\s*\([^)]*\)/g, '')
+        .trim();
+      const entryMatId = String(entry.material_id || entry.materialId || '').trim();
+      const entryProdName = String(entry.product_name || entry.productName || '').trim();
 
       const prodMatch =
-        (targetMatId && entry.material_id === targetMatId) ||
-        (targetProdName && entry.product_name === targetProdName);
+        (targetMatId && entryMatId === targetMatId) ||
+        (targetProdName && entryProdName === targetProdName);
+
+      if (prodMatch) {
+        return true;
+      }
+
+      const stageMatch =
+        (targetProcessCode && entryProcessCode === targetProcessCode) ||
+        (targetItemId && entryItemId === targetItemId) ||
+        (targetSubName &&
+          (entrySubName === targetSubName ||
+            entrySubName.includes(targetSubName) ||
+            targetSubName.includes(entrySubName))) ||
+        subProcessList.some((sp) => {
+          const spId = String(sp?.item_id || '').trim();
+          const spCode = String(sp?.process_code || '').trim();
+          const spName = String(sp?.name || '').trim();
+          return (
+            (spId && entryItemId === spId) ||
+            (spCode && entryProcessCode === spCode) ||
+            (spName && (entrySubName === spName || entrySubName.includes(spName)))
+          );
+        });
 
       if (targetProcessCode || targetItemId) {
         return stageMatch && (prodMatch || !targetProdName);
       }
-      return prodMatch;
+      return false;
     });
 
-    const totalQty = matchedEntries.reduce((sum, e) => sum + Number(e.qty || 0), 0);
+    const totalQty = matchedEntries.reduce((sum, e: any) => sum + Number(e.qty || 0), 0);
     return {
       isPurchased: matchedEntries.length > 0,
       totalQty,
@@ -18755,11 +18778,24 @@ export default function UserIntroPage() {
                                                   <div className="flex items-center gap-3 min-w-0 flex-1">
                                                     <input
                                                       type="checkbox"
-                                                      checked={itemState.checked}
-                                                      onChange={() =>
-                                                        handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
+                                                      disabled={purchasedInfo.isPurchased}
+                                                      checked={
+                                                        purchasedInfo.isPurchased
+                                                          ? false
+                                                          : itemState.checked
                                                       }
-                                                      className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                                      onChange={() => {
+                                                        if (purchasedInfo.isPurchased) return;
+                                                        handleToggleMaterialCheck(
+                                                          mat.selKey,
+                                                          mat.defaultQty
+                                                        );
+                                                      }}
+                                                      className={`w-4 h-4 rounded accent-emerald-600 shrink-0 ${
+                                                        purchasedInfo.isPurchased
+                                                          ? 'opacity-40 cursor-not-allowed'
+                                                          : 'cursor-pointer'
+                                                      }`}
                                                     />
 
                                                     {/* 생육과정 구분 배지 (동일 제품이 여러 하위 공정에 추천된 경우 통합 표시) */}
@@ -18795,20 +18831,36 @@ export default function UserIntroPage() {
                                                       src={resolveAgroProductThumbUrl(mat)}
                                                       alt={mat.product_name}
                                                       onError={handleAgroThumbImgError}
-                                                      onClick={() =>
-                                                        handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
-                                                      }
-                                                      className="w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0 cursor-pointer"
+                                                      onClick={() => {
+                                                        if (purchasedInfo.isPurchased) return;
+                                                        handleToggleMaterialCheck(
+                                                          mat.selKey,
+                                                          mat.defaultQty
+                                                        );
+                                                      }}
+                                                      className={`w-11 h-11 rounded-lg object-cover border border-slate-200 bg-white shrink-0 ${
+                                                        purchasedInfo.isPurchased
+                                                          ? 'cursor-default'
+                                                          : 'cursor-pointer'
+                                                      }`}
                                                     />
 
                                                     {/* 농자재 제품 제목 + 간단한 특성 정보 */}
                                                     <div className="min-w-0 flex-1">
                                                       <div className="flex items-center gap-2 flex-wrap">
                                                         <span
-                                                          onClick={() =>
-                                                            handleToggleMaterialCheck(mat.selKey, mat.defaultQty)
-                                                          }
-                                                          className="font-extrabold text-slate-900 text-xs sm:text-sm leading-snug cursor-pointer hover:text-emerald-700 truncate"
+                                                          onClick={() => {
+                                                            if (purchasedInfo.isPurchased) return;
+                                                            handleToggleMaterialCheck(
+                                                              mat.selKey,
+                                                              mat.defaultQty
+                                                            );
+                                                          }}
+                                                          className={`font-extrabold text-slate-900 text-xs sm:text-sm leading-snug truncate ${
+                                                            purchasedInfo.isPurchased
+                                                              ? 'cursor-default'
+                                                              : 'cursor-pointer hover:text-emerald-700'
+                                                          }`}
                                                         >
                                                           {mat.product_name}
                                                         </span>
@@ -18825,9 +18877,9 @@ export default function UserIntroPage() {
                                                           )
                                                         </span>
                                                         {purchasedInfo.isPurchased && (
-                                                          <span className="px-2 py-0.5 rounded-full bg-emerald-700 text-white text-[10px] font-extrabold shrink-0 inline-flex items-center gap-1">
-                                                            ✓ 구매한 제품 ({purchasedInfo.totalQty}
-                                                            {mat.unit_label || '개'})
+                                                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[10px] font-extrabold shrink-0 inline-flex items-center gap-1">
+                                                            ✓ 구매수량 {purchasedInfo.totalQty || itemState.qty}
+                                                            {mat.unit_label || '개'}
                                                           </span>
                                                         )}
                                                       </div>
@@ -18837,7 +18889,7 @@ export default function UserIntroPage() {
                                                     </div>
                                                   </div>
 
-                                                  {/* 우측: 단가 · 수량 조절 · 합계금액 · 단품 바로구매 */}
+                                                  {/* 우측: 단가 · 수량 조절(또는 구매수량) · 합계금액 · [구매하기] 버튼 또는 [구매함] 표시 */}
                                                   <div className="flex items-center justify-end gap-2.5 shrink-0 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-200/70">
                                                     <div className="text-xs text-slate-500 font-semibold">
                                                       단가{' '}
@@ -18846,64 +18898,93 @@ export default function UserIntroPage() {
                                                       </span>
                                                     </div>
 
-                                                    <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
-                                                      <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                          handleChangeMaterialQty(
-                                                            mat.selKey,
-                                                            mat.defaultQty,
-                                                            -1
-                                                          )
-                                                        }
-                                                        className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                                        title="수량 감소"
-                                                      >
-                                                        <Minus className="w-3.5 h-3.5" />
-                                                      </button>
-                                                      <span className="px-2.5 text-xs font-extrabold text-slate-900 min-w-[2rem] text-center">
-                                                        {itemState.qty}
-                                                      </span>
-                                                      <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                          handleChangeMaterialQty(
-                                                            mat.selKey,
-                                                            mat.defaultQty,
-                                                            1
-                                                          )
-                                                        }
-                                                        className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                                        title="수량 증가"
-                                                      >
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                      </button>
-                                                    </div>
+                                                    {purchasedInfo.isPurchased ? (
+                                                      <>
+                                                        <div className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 h-7">
+                                                          <span className="text-xs font-extrabold text-emerald-900 whitespace-nowrap">
+                                                            {purchasedInfo.totalQty || itemState.qty}
+                                                            {mat.unit_label || '개'}
+                                                          </span>
+                                                        </div>
 
-                                                    <div className="text-right min-w-[5rem]">
-                                                      <div className="text-xs sm:text-sm font-extrabold text-emerald-800">
-                                                        {itemSubtotal.toLocaleString()}원
-                                                      </div>
-                                                    </div>
+                                                        <div className="text-right min-w-[5rem]">
+                                                          <div className="text-xs sm:text-sm font-extrabold text-slate-700">
+                                                            {(
+                                                              mat.unit_price *
+                                                              (purchasedInfo.totalQty || itemState.qty)
+                                                            ).toLocaleString()}
+                                                            원
+                                                          </div>
+                                                        </div>
 
-                                                    <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                        handlePurchaseStageRecommendedProduct({
-                                                          cropObj: provisionData.activeRequest,
-                                                          stageItem: stageItemRef,
-                                                          mat,
-                                                          qty: itemState.qty,
-                                                        })
-                                                      }
-                                                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold cursor-pointer transition shrink-0 ${
-                                                        purchasedInfo.isPurchased
-                                                          ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                                                          : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                                                      }`}
-                                                    >
-                                                      {purchasedInfo.isPurchased ? '추가 구매' : '구매하기'}
-                                                    </button>
+                                                        <span
+                                                          className="px-3 py-1.5 rounded-lg bg-slate-200/90 border border-slate-300 text-slate-700 text-[11px] font-extrabold inline-flex items-center justify-center gap-1 shrink-0 select-none"
+                                                          title={`이미 구매 완료된 농자재 (${
+                                                            purchasedInfo.totalQty || itemState.qty
+                                                          }${mat.unit_label || '개'})`}
+                                                        >
+                                                          <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[2.8]" />
+                                                          <span>구매함</span>
+                                                        </span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <div className="inline-flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden">
+                                                          <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                              handleChangeMaterialQty(
+                                                                mat.selKey,
+                                                                mat.defaultQty,
+                                                                -1
+                                                              )
+                                                            }
+                                                            className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                                            title="수량 감소"
+                                                          >
+                                                            <Minus className="w-3.5 h-3.5" />
+                                                          </button>
+                                                          <span className="px-2.5 text-xs font-extrabold text-slate-900 min-w-[2rem] text-center">
+                                                            {itemState.qty}
+                                                          </span>
+                                                          <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                              handleChangeMaterialQty(
+                                                                mat.selKey,
+                                                                mat.defaultQty,
+                                                                1
+                                                              )
+                                                            }
+                                                            className="w-7 h-7 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                                                            title="수량 증가"
+                                                          >
+                                                            <Plus className="w-3.5 h-3.5" />
+                                                          </button>
+                                                        </div>
+
+                                                        <div className="text-right min-w-[5rem]">
+                                                          <div className="text-xs sm:text-sm font-extrabold text-emerald-800">
+                                                            {itemSubtotal.toLocaleString()}원
+                                                          </div>
+                                                        </div>
+
+                                                        <button
+                                                          type="button"
+                                                          onClick={() =>
+                                                            handlePurchaseStageRecommendedProduct({
+                                                              cropObj: provisionData.activeRequest,
+                                                              stageItem: stageItemRef,
+                                                              mat,
+                                                              qty: itemState.qty,
+                                                            })
+                                                          }
+                                                          className="px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold cursor-pointer transition shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white"
+                                                        >
+                                                          구매하기
+                                                        </button>
+                                                      </>
+                                                    )}
                                                   </div>
                                                 </div>
                                               );
