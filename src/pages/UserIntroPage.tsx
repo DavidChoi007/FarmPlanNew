@@ -2112,7 +2112,7 @@ export default function UserIntroPage() {
       // ignore
     }
 
-    const msg = `[${cropTitle} · ${displayReqNo}] 생성된 재배일정 확인 데이터가 삭제되었습니다. [재배일정 요청] 메뉴에서 언제든 재배일정을 다시 재요청하실 수 있습니다.`;
+    const msg = `[${cropTitle} · ${displayReqNo}] 생성된 재배일정 확인 데이터가 삭제되었습니다. [재배작물 추가] 메뉴에서 언제든 재배일정을 다시 재요청하실 수 있습니다.`;
     setPurchaseToastMessage(msg);
     setMyPageToast(msg);
     setTimeout(() => {
@@ -7820,7 +7820,7 @@ export default function UserIntroPage() {
 
             {/* 태블릿(md) 상단 현재 선택 메뉴 배지 (모바일 소형 화면에서는 로고 잘림 방지를 위해 숨김) */}
             <span className="hidden md:inline-flex lg:hidden px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-extrabold whitespace-nowrap truncate max-w-[140px]">
-              {activeMenu}
+              {activeMenu === '재배일정 요청' ? '재배작물 추가' : activeMenu}
             </span>
 
             {/* PC 버전 상단 가로 캡슐형 메뉴 바 */}
@@ -7877,7 +7877,7 @@ export default function UserIntroPage() {
                           isActive ? 'text-white' : 'text-emerald-600/85'
                         }`}
                       />
-                      <span>{menu}</span>
+                      <span>{menu === '재배일정 요청' ? '재배작물 추가' : menu}</span>
                     </button>
                   </React.Fragment>
                 );
@@ -8172,7 +8172,7 @@ export default function UserIntroPage() {
                         isSelected ? 'text-white' : 'text-slate-900'
                       }`}
                     >
-                      {item.menu}
+                      {item.menu === '재배일정 요청' ? '재배작물 추가' : item.menu}
                     </div>
                     <div
                       className={`text-[11px] truncate mt-0.5 ${
@@ -8931,7 +8931,7 @@ export default function UserIntroPage() {
 
             {/* MODULE 3-B (PC 전용): 주요 서비스 바로가기 카드 (데스크톱 2열 매트릭스 + PC 상세 키워드) */}
             <section className="hidden lg:grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-              {/* 1. 재배일정 요청 */}
+              {/* 1. 재배작물 추가 */}
               <button
                 type="button"
                 onClick={() => setActiveMenu('재배일정 요청')}
@@ -8960,7 +8960,7 @@ export default function UserIntroPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="text-[18.5px] sm:text-[21px] font-black text-slate-900 tracking-tight leading-tight">
-                      재배일정 요청
+                      재배작물 추가
                     </div>
                     <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-extrabold">
                       지역·작물·파종구분 맞춤
