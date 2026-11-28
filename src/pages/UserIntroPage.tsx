@@ -8602,7 +8602,7 @@ export default function UserIntroPage() {
                   </div>
                 </div>
 
-                {/* 4. 메인 액션 풀와이드 캡슐 버튼 (로그인 상태: 재배일정 확인 > / 비로그인 상태: 지금 무료로 시작하기 > + 로그인) */}
+                {/* 4. 메인 액션 풀와이드 캡슐 버튼 (로그인 상태: 재배일정 관리 > / 비로그인 상태: 지금 무료로 시작하기 > + 로그인) */}
                 <div className="px-4 mt-3 space-y-2.5">
                   <button
                     type="button"
@@ -8616,7 +8616,7 @@ export default function UserIntroPage() {
                     }}
                     className="w-full h-[52px] min-[390px]:h-[54px] rounded-full bg-[#0E712F] hover:bg-[#0B5D26] active:scale-[0.99] text-white font-bold text-[17.5px] min-[390px]:text-[18.5px] tracking-[-0.02em] flex items-center justify-center gap-1.5 shadow-[0_4px_14px_rgba(14,113,47,0.24)] transition cursor-pointer"
                   >
-                    <span>{loggedInUser.isLoggedIn ? '재배일정 확인' : '지금 무료로 시작하기'}</span>
+                    <span>{loggedInUser.isLoggedIn ? '재배일정 관리' : '지금 무료로 시작하기'}</span>
                     <ChevronRight className="w-5 h-5 stroke-[2.5] -mr-1" />
                   </button>
 
