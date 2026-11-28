@@ -422,8 +422,11 @@ export default function UserIntroPage() {
   });
   const [expandedStageGroupCode, setExpandedStageGroupCode] = useState<string>('ALL');
 
-  // PC 하단 연간 타임라인 보기 모드 & 특허 A/B/C/D 탭
+  // PC 하단 연간 타임라인 보기 모드, 작업구분 필터 & 특허 A/B/C/D 탭
   const [pcTimelineMode, setPcTimelineMode] = useState<'calendar' | 'diagram'>('calendar');
+  const [pcScheduleWorkTypeFilter, setPcScheduleWorkTypeFilter] = useState<
+    'ALL' | 'WORK' | 'FERTILIZER' | 'PEST'
+  >('ALL');
   const [patentActiveTab, setPatentActiveTab] = useState<'A' | 'B' | 'C' | 'D'>('A');
   const [patentGddMode, setPatentGddMode] = useState<'effective' | 'raw'>('effective');
 
@@ -17084,439 +17087,834 @@ export default function UserIntroPage() {
                             </section>
                           </div>
 
-                          {/* ①-PC [PC 환경 전용 (hidden lg:block)]: 생육과정 정밀 타임라인 (1~12월 · 48주) & 기후 연동 추천 진행일 조정기 */}
-                          <section className="hidden lg:block bg-white rounded-3xl border-2 border-emerald-200 p-4 sm:p-7 shadow-xs space-y-6">
-                            {/* 상단 타이틀 & 보기 전환 */}
-                            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
-                              <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-extrabold">
-                                    상세 관제 · 관리자 재배일정 세부폼 전체 연동
-                                  </span>
-                                  <span className="font-mono text-xs text-slate-500">
-                                    [{provisionData.activeRequest?.request_no}]
-                                  </span>
-                                </div>
-                                <h3 className="text-base sm:text-xl font-extrabold text-slate-900 mt-1">
-                                  생육과정 정밀 타임라인 (1~12월 · 48주) &amp; 기후 연동 추천 진행일 조정기
-                                </h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                  아래 연간 타임라인에서 생육과정을 클릭하여 추천 진행일(요일 포함)을 변경하면, 이후 모든 생육과정이 최저·최고 한계온도를 피하고 적정온도에 맞춰 자동 재산출됩니다.
-                                </p>
-                              </div>
+                          {/* ①-PC [PC 환경 전용 (hidden lg:block)]: 4대 생육단계 + 작업구분(농작업/시비관리/병해충관리) 복합 연간 타임라인 (1~12월 · 48주) */}
+                          <section className="hidden lg:block bg-white rounded-3xl border-2 border-emerald-200 p-4 sm:p-7 shadow-xs space-y-5">
+                            {(() => {
+                              const tableReqNo =
+                                provisionData.activeRequest?.request_no ||
+                                crop.request_no ||
+                                selectedRequestNo;
+                              const todayYmdForTable = getTodayKstYmd();
+                              const isPastExpandedForTable = isPastStagesShownForReq(tableReqNo);
 
-                              <div className="flex flex-wrap items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setPcTimelineMode('calendar')}
-                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                                    pcTimelineMode === 'calendar'
-                                      ? 'bg-emerald-600 text-white border-emerald-600'
-                                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                  }`}
-                                >
-                                  실기후 월·일 정밀 매칭 (1~12월)
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setPcTimelineMode('diagram')}
-                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer ${
-                                    pcTimelineMode === 'diagram'
-                                      ? 'bg-emerald-600 text-white border-emerald-600'
-                                      : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                  }`}
-                                >
-                                  월·주 칸 단위 격자 (48주)
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleResetUserSchedule}
-                                  className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                  <span>초기 일정 복원</span>
-                                </button>
-                              </div>
-                            </div>
+                              const rawCropNameForPc = String(
+                                provisionData.activeRequest?.crop_name ||
+                                  crop.crop_short ||
+                                  crop.crop_name ||
+                                  '배추'
+                              ).trim();
+                              const shortCropNameForPc =
+                                rawCropNameForPc.replace(/^(가을|봄|월동|고랭지|여름)/, '').trim() ||
+                                rawCropNameForPc;
+                              const cultivarNameForPc = String(
+                                provisionData.activeRequest?.cultivar_name ||
+                                  crop.cultivar_name ||
+                                  crop.item_name_3rd ||
+                                  '불암3호'
+                              ).trim();
+                              const pcCropProfile = resolveCropAgronomicProfile(
+                                rawCropNameForPc,
+                                provisionData.activeRequest?.crop_id || crop.crop_id,
+                                provisionData.activeRequest?.cultivation_type ||
+                                  crop.cultivation_type ||
+                                  crop.system_name
+                              );
+                              const isGarlicForPc = pcCropProfile.cropKey === '마늘';
 
-                            {/* 생육관리 공정별 일자 [완료] 시작 인정 기반 진행률 컨트롤 바 */}
-                            <div className="rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-white border border-emerald-200 p-4 flex flex-wrap items-center justify-between gap-4">
-                              <div className="space-y-1 min-w-0 flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-extrabold">
-                                    공정별 일자 [완료] 시작 인정 기반 진행률
-                                  </span>
-                                  <span className="text-xs font-extrabold text-emerald-900">
-                                    완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정 · 현재 진행률{' '}
-                                    <strong className="text-emerald-700 text-sm">{crop.progress_pct}%</strong>
-                                  </span>
-                                  {Number(crop.pending_modified_count || 0) > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-black">
-                                      ⚠️ 일정 수정 후 완료 대기 {crop.pending_modified_count}건 (수정일 옆 [수정일 완료] 클릭 필요)
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-slate-600 font-medium">
-                                  각 생육관리 항목의 <strong>일자 옆 [완료] 버튼</strong>을 클릭해야 해당 날짜(일자 수정 시에도 동일)에 그 생육과정을 시작한 것으로 인정되며, 이를 기반으로 전체 진행률이 자동 계산됩니다.
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleBatchSetStageCompletions(
-                                      provisionData.activeRequest?.request_no || crop.request_no,
-                                      'COMPLETE_ALL'
-                                    )
+                              // 작물별 4단계 생육단계 목록 (예: 배추 -> 활착기 / 외엽 신장기 / 결구기 / 수확적기)
+                              const pcLifecycleStages = (() => {
+                                const defaultColors = ['#10B981', '#16A34A', '#15803D', '#0E712F'];
+                                const serverCodes = Array.isArray(data?.cultivationStageCodes)
+                                  ? data.cultivationStageCodes
+                                  : [];
+                                const matchedServer = serverCodes
+                                  .filter(
+                                    (r: any) =>
+                                      r &&
+                                      (r.crop_name === shortCropNameForPc ||
+                                        r.crop_name === rawCropNameForPc ||
+                                        (shortCropNameForPc === '배추' && r.crop_id === 'CRP-CABBAGE'))
+                                  )
+                                  .sort(
+                                    (a: any, b: any) =>
+                                      Number(a.stage_order || 0) - Number(b.stage_order || 0)
+                                  );
+                                const baseList =
+                                  matchedServer.length === 4
+                                    ? matchedServer
+                                    : pcCropProfile.lifecycleStages;
+                                return baseList.map((ls: any, idx: number) => ({
+                                  stage_code: ls.stage_code || `PC-LC-${idx + 1}`,
+                                  stage_order: Number(ls.stage_order || idx + 1),
+                                  stage_name: String(ls.stage_name || `${idx + 1}단계`),
+                                  stage_color: defaultColors[idx % defaultColors.length],
+                                }));
+                              })();
+
+                              // 전체 일정 평탄화 및 각 항목의 (1) 4대 생육단계 인덱스(0~3), (2) 작업 구분(WORK/FERTILIZER/PEST) 매핑
+                              const flatAllItems: any[] = [];
+                              (provisionData.stageGroups || []).forEach((g: any) => {
+                                (g.items || []).forEach((it: any) => {
+                                  flatAllItems.push({
+                                    ...it,
+                                    original_stage_group_name: g.stage_group_name,
+                                    original_stage_color: g.stage_color,
+                                  });
+                                });
+                              });
+                              flatAllItems.sort(
+                                (a, b) => Number(a.step_order || 0) - Number(b.step_order || 0)
+                              );
+
+                              const resolvePcLifecycleStageIdx = (stepOrd: number): number => {
+                                const stageCnt = Math.max(1, pcLifecycleStages.length);
+                                if (stageCnt === 4) {
+                                  if (isGarlicForPc) {
+                                    if (stepOrd <= 7) return 0;
+                                    if (stepOrd <= 11) return 1;
+                                    if (stepOrd <= 14) return 2;
+                                    return 3;
                                   }
-                                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer transition shadow-2xs"
-                                >
-                                  전 공정 완료 인정 (100%)
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleBatchSetStageCompletions(
-                                      provisionData.activeRequest?.request_no || crop.request_no,
-                                      'CLEAR_ALL'
-                                    )
-                                  }
-                                  className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-extrabold cursor-pointer transition"
-                                >
-                                  전체 미완료 초기화 (0%)
-                                </button>
-                              </div>
-                            </div>
+                                  if (stepOrd <= 8) return 0;
+                                  if (stepOrd <= 10) return 1;
+                                  if (stepOrd <= 14) return 2;
+                                  return 3;
+                                }
+                                if (stepOrd <= 8) return 0;
+                                if (stepOrd >= 15) return stageCnt - 1;
+                                const ratio = (stepOrd - 8) / 8;
+                                return Math.min(
+                                  stageCnt - 1,
+                                  Math.max(0, Math.floor(ratio * stageCnt))
+                                );
+                              };
 
-                            {/* 이전 생육과정 보기 / 접기 토글 바 (PC 48주 타임라인 연동) */}
-                            {renderPastStagesToggleControls(
-                              provisionData.activeRequest?.request_no || crop.request_no || selectedRequestNo,
-                              partitionStageItemsByToday(
-                                provisionData.activeRequest?.request_no || crop.request_no || selectedRequestNo,
-                                provisionData.scheduleItems || []
-                              )
-                            )}
+                              const resolvePcWorkType = (
+                                it: any,
+                                idx: number
+                              ): 'WORK' | 'FERTILIZER' | 'PEST' => {
+                                const itemId = String(
+                                  it.item_id || `SCH-${String(idx + 1).padStart(2, '0')}`
+                                );
+                                const ord = Number(it.step_order || idx + 1);
+                                const profStg =
+                                  pcCropProfile.stages.find((ps) => ps.itemId === itemId) ||
+                                  pcCropProfile.stages[idx];
+                                if (profStg?.iconType) {
+                                  return profStg.iconType;
+                                }
+                                const combinedTitle = `${it.original_stage_group_name || ''} ${
+                                  it.sub_item_name || ''
+                                }`;
+                                const isPest =
+                                  /병해충|방제|예찰|예방|약제|무름병|안전/.test(combinedTitle) ||
+                                  ord === 6 ||
+                                  ord === 12 ||
+                                  ord === 13 ||
+                                  ord === 14;
+                                if (isPest) return 'PEST';
+                                const isFert =
+                                  /시비|밑거름|추비|웃거름|비료|토양\s*개량|생장\s*관리|생육\s*촉진/.test(
+                                    combinedTitle
+                                  ) ||
+                                  ord === 2 ||
+                                  ord === 9;
+                                if (isFert) return 'FERTILIZER';
+                                return 'WORK';
+                              };
 
-                            {/* 연간 1월~12월 (48주) 와이드 간트 테이블 */}
-                            <div className="w-full rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
-                              <table className="w-full border-collapse table-fixed min-w-[1360px]">
-                                <colgroup>
-                                  <col style={{ width: '124px' }} />
-                                  <col style={{ width: '276px' }} />
-                                  <col style={{ width: '248px' }} />
-                                  <col style={{ width: 'auto' }} />
-                                </colgroup>
-                                <thead>
-                                  <tr className="bg-slate-50 text-slate-800 border-b border-slate-200">
-                                    <th className="w-[124px] py-3 px-2 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
-                                      단계 (관리명칭)
-                                    </th>
-                                    <th className="w-[276px] py-3 px-3 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
-                                      생육 과정명
-                                    </th>
-                                    <th className="w-[248px] py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700 whitespace-nowrap">
-                                      추천 진행일 (수정 가능) · 시작 완료
-                                    </th>
-                                    <th className="w-auto p-0 align-top">
-                                      <div className="grid grid-cols-12 w-full bg-slate-100/80 border-b border-slate-200">
-                                        {Array.from({ length: 12 }, (_, mIdx) => {
-                                          const m = mIdx + 1;
+                              const classifiedAllItems = flatAllItems.map((it, idx) => {
+                                const ord = Number(it.step_order || idx + 1);
+                                const lcIdx = resolvePcLifecycleStageIdx(ord);
+                                const lcStage =
+                                  pcLifecycleStages[lcIdx] ||
+                                  pcLifecycleStages[0] || {
+                                    stage_code: 'PC-LC-1',
+                                    stage_order: 1,
+                                    stage_name: '활착기',
+                                    stage_color: '#10B981',
+                                  };
+                                const workType = resolvePcWorkType(it, idx);
+                                const compState = getStageItemCompletionState(tableReqNo, it);
+                                return {
+                                  ...it,
+                                  lcIdx,
+                                  lcStageName: lcStage.stage_name,
+                                  lcStageColor: lcStage.stage_color,
+                                  workType,
+                                  isRecognized: compState.isRecognized,
+                                  effectiveDate: compState.effectiveDate,
+                                };
+                              });
+
+                              // 현재 진행 중인 생육단계(0~3) 판정
+                              const firstUncompletedItem = classifiedAllItems.find(
+                                (it) => !it.isRecognized
+                              );
+                              const isAllPcStagesCompleted =
+                                classifiedAllItems.length > 0 && !firstUncompletedItem;
+                              const activePcLifecycleIdx = isAllPcStagesCompleted
+                                ? Math.max(0, pcLifecycleStages.length - 1)
+                                : firstUncompletedItem
+                                ? firstUncompletedItem.lcIdx
+                                : 0;
+
+                              const workTypeCounts = {
+                                ALL: classifiedAllItems.length,
+                                WORK: classifiedAllItems.filter((it) => it.workType === 'WORK')
+                                  .length,
+                                FERTILIZER: classifiedAllItems.filter(
+                                  (it) => it.workType === 'FERTILIZER'
+                                ).length,
+                                PEST: classifiedAllItems.filter((it) => it.workType === 'PEST')
+                                  .length,
+                              };
+
+                              const workTypeMetaMap: Record<
+                                'WORK' | 'FERTILIZER' | 'PEST',
+                                {
+                                  label: string;
+                                  icon: string;
+                                  badgeBg: string;
+                                  badgeText: string;
+                                  badgeBorder: string;
+                                  barColor: string;
+                                }
+                              > = {
+                                WORK: {
+                                  label: '농작업',
+                                  icon: '🌱',
+                                  badgeBg: 'bg-[#E8F6EC]',
+                                  badgeText: 'text-[#15803D]',
+                                  badgeBorder: 'border-[#BBF7D0]',
+                                  barColor: '#15803D',
+                                },
+                                FERTILIZER: {
+                                  label: '시비관리',
+                                  icon: '🧪',
+                                  badgeBg: 'bg-[#EFF6FF]',
+                                  badgeText: 'text-[#1D4ED8]',
+                                  badgeBorder: 'border-[#BFDBFE]',
+                                  barColor: '#2563EB',
+                                },
+                                PEST: {
+                                  label: '병해충관리',
+                                  icon: '🛡️',
+                                  badgeBg: 'bg-[#FEF3C7]',
+                                  badgeText: 'text-[#B45309]',
+                                  badgeBorder: 'border-[#FDE68A]',
+                                  barColor: '#B45309',
+                                },
+                              };
+
+                              let lastPastItemId = '';
+                              classifiedAllItems.forEach((it: any) => {
+                                if (
+                                  (pcScheduleWorkTypeFilter === 'ALL' ||
+                                    it.workType === pcScheduleWorkTypeFilter) &&
+                                  it.effectiveDate &&
+                                  /^\d{4}-\d{2}-\d{2}$/.test(it.effectiveDate) &&
+                                  it.effectiveDate < todayYmdForTable
+                                ) {
+                                  lastPastItemId = String(it.item_id || '');
+                                }
+                              });
+
+                              // 4대 생육단계별로 그룹핑
+                              const lifecycleGroups = pcLifecycleStages.map((lcStage, lcIdx) => {
+                                const stageItems = classifiedAllItems.filter(
+                                  (it) =>
+                                    it.lcIdx === lcIdx &&
+                                    (pcScheduleWorkTypeFilter === 'ALL' ||
+                                      it.workType === pcScheduleWorkTypeFilter)
+                                );
+                                return {
+                                  lcIdx,
+                                  stage_code: lcStage.stage_code,
+                                  stage_group_name: lcStage.stage_name,
+                                  stage_color: lcStage.stage_color,
+                                  items: stageItems,
+                                };
+                              });
+
+                              return (
+                                <>
+                                  {/* 상단 타이틀 + 우측 작업 구분 필터 탭 ([전체] / [🌱 농작업] / [🧪 시비관리] / [🛡️ 병해충관리]) */}
+                                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                                    <div>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-extrabold">
+                                          생육단계 · 작업구분 복합 일정 관제
+                                        </span>
+                                        <span className="font-mono text-xs text-slate-500">
+                                          [{tableReqNo}]
+                                        </span>
+                                      </div>
+                                      <h3 className="text-lg sm:text-[22px] font-black text-slate-900 mt-1 tracking-tight">
+                                        {shortCropNameForPc} ({cultivarNameForPc}) 맞춤형 재배일정 상세보기
+                                      </h3>
+                                      <p className="text-xs text-slate-500 mt-0.5">
+                                        작물별 핵심 4대 생육단계 내부에 농작업·시비관리·병해충관리 일정을 통합 표시하며, 추천 진행일 변경 시 후속 일정이 기후 데이터에 맞춰 자동 재산출됩니다.
+                                      </p>
+                                    </div>
+
+                                    <div className="flex flex-col items-end gap-2">
+                                      {/* 작업 구분 필터 탭 */}
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        {[
+                                          {
+                                            key: 'ALL' as const,
+                                            label: `전체 ${workTypeCounts.ALL}`,
+                                            icon: '',
+                                          },
+                                          {
+                                            key: 'WORK' as const,
+                                            label: `농작업 (${workTypeCounts.WORK})`,
+                                            icon: '🌱',
+                                          },
+                                          {
+                                            key: 'FERTILIZER' as const,
+                                            label: `시비관리 (${workTypeCounts.FERTILIZER})`,
+                                            icon: '🧪',
+                                          },
+                                          {
+                                            key: 'PEST' as const,
+                                            label: `병해충관리 (${workTypeCounts.PEST})`,
+                                            icon: '🛡️',
+                                          },
+                                        ].map((tab) => {
+                                          const isTabActive = pcScheduleWorkTypeFilter === tab.key;
                                           return (
-                                            <div
-                                              key={m}
-                                              className={`py-2 px-0.5 text-center font-extrabold text-xs text-slate-800 whitespace-nowrap ${
-                                                m === 12 ? '' : 'border-r border-slate-300'
+                                            <button
+                                              key={tab.key}
+                                              type="button"
+                                              onClick={() => setPcScheduleWorkTypeFilter(tab.key)}
+                                              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold border inline-flex items-center gap-1.5 transition cursor-pointer ${
+                                                isTabActive
+                                                  ? 'bg-[#0E712F] text-white border-[#0E712F] shadow-2xs'
+                                                  : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
                                               }`}
                                             >
-                                              {m}월
-                                            </div>
+                                              {tab.icon && <span>{tab.icon}</span>}
+                                              <span>{tab.label}</span>
+                                            </button>
                                           );
                                         })}
                                       </div>
-                                      <div
-                                        style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
-                                        className="grid w-full bg-slate-50 text-slate-500 text-[10px]"
-                                      >
-                                        {Array.from({ length: 48 }, (_, colIdx) => {
-                                          const weekNum = (colIdx % 4) + 1;
-                                          const isMonthEnd = weekNum === 4;
-                                          const isLastCol = colIdx === 47;
-                                          return (
-                                            <div
-                                              key={colIdx}
-                                              className={`py-1 text-center font-semibold ${
-                                                isLastCol
-                                                  ? ''
-                                                  : isMonthEnd
-                                                  ? 'border-r border-slate-300'
-                                                  : 'border-r border-slate-200/70'
-                                              }`}
-                                            >
-                                              {weekNum}
-                                            </div>
-                                          );
-                                        })}
+
+                                      {/* 타임라인 보기 모드 & 초기 일정 복원 */}
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => setPcTimelineMode('calendar')}
+                                          className={`px-3 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                                            pcTimelineMode === 'calendar'
+                                              ? 'bg-emerald-600 text-white border-emerald-600'
+                                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          실기후 월·일 정밀 매칭 (1~12월)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setPcTimelineMode('diagram')}
+                                          className={`px-3 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                                            pcTimelineMode === 'diagram'
+                                              ? 'bg-emerald-600 text-white border-emerald-600'
+                                              : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          월·주 칸 단위 격자 (48주)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={handleResetUserSchedule}
+                                          className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] inline-flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <RotateCcw className="w-3 h-3" />
+                                          <span>초기 일정 복원</span>
+                                        </button>
                                       </div>
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {(() => {
-                                    const tableReqNo =
-                                      provisionData.activeRequest?.request_no ||
-                                      crop.request_no ||
-                                      selectedRequestNo;
-                                    const todayYmdForTable = getTodayKstYmd();
-                                    const isPastExpandedForTable = isPastStagesShownForReq(tableReqNo);
-                                    const flatAllItems: any[] = [];
-                                    (provisionData.stageGroups || []).forEach((g: any) => {
-                                      (g.items || []).forEach((it: any) => flatAllItems.push(it));
-                                    });
-                                    let lastPastItemId = '';
-                                    flatAllItems.forEach((it: any) => {
-                                      const d = getEffectiveStageItemDate(tableReqNo, it);
-                                      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d < todayYmdForTable) {
-                                        lastPastItemId = String(it.item_id || '');
-                                      }
-                                    });
+                                    </div>
+                                  </div>
 
-                                    return (provisionData.stageGroups || []).map((group: any) => {
-                                      const rawGroupItems = group.items || [];
-                                      const groupItems = isPastExpandedForTable
-                                        ? rawGroupItems
-                                        : rawGroupItems.filter((it: any) => {
-                                            const effD = getEffectiveStageItemDate(tableReqNo, it);
-                                            return !(
-                                              effD &&
-                                              /^\d{4}-\d{2}-\d{2}$/.test(effD) &&
-                                              effD < todayYmdForTable
-                                            );
-                                          });
-                                      if (groupItems.length === 0) return null;
-                                      const stageColor = group.stage_color || '#16a34a';
+                                  {/* 상단 4단계 생육단계 진행 현황 바 (모바일과 동일한 4단계 구조: 활착기 → 외엽 신장기 → 결구기 → 수확적기) */}
+                                  <div
+                                    className="grid gap-3"
+                                    style={{
+                                      gridTemplateColumns: `repeat(${Math.min(
+                                        4,
+                                        Math.max(1, pcLifecycleStages.length)
+                                      )}, minmax(0, 1fr))`,
+                                    }}
+                                  >
+                                    {pcLifecycleStages.map((stg, sIdx) => {
+                                      const isDone = sIdx < activePcLifecycleIdx;
+                                      const isCurrent = sIdx === activePcLifecycleIdx;
+                                      return (
+                                        <div
+                                          key={stg.stage_code || `${stg.stage_name}-${sIdx}`}
+                                          className={`rounded-2xl px-4 py-3.5 flex flex-col items-center justify-center gap-1.5 text-center border transition select-none ${
+                                            isCurrent
+                                              ? 'bg-[#0E712F] border-[#0E712F] text-white shadow-[0_6px_18px_rgba(14,113,47,0.26)] ring-2 ring-[#22C55E]/35'
+                                              : isDone
+                                              ? 'bg-[#EAF6ED] border-[#86EFAC] text-[#0E712F]'
+                                              : 'bg-[#F8FAFC] border-[#E2E8F0] text-[#64748B]'
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-center">
+                                            {isDone ? (
+                                              <span className="w-5 h-5 rounded-full bg-[#0E712F] text-white inline-flex items-center justify-center shrink-0">
+                                                <Check className="w-3.5 h-3.5 stroke-[2.8]" />
+                                              </span>
+                                            ) : isCurrent ? (
+                                              <span className="px-2.5 py-0.5 rounded-full bg-white text-[#0E712F] text-xs font-black leading-none tracking-tight">
+                                                현재
+                                              </span>
+                                            ) : (
+                                              <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-600 text-[11px] font-extrabold leading-none">
+                                                {stg.stage_order || sIdx + 1}단계
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span
+                                            className={`text-base sm:text-[17px] leading-tight tracking-tight ${
+                                              isCurrent
+                                                ? 'font-black text-white'
+                                                : isDone
+                                                ? 'font-extrabold text-[#0E712F]'
+                                                : 'font-bold text-[#475569]'
+                                            }`}
+                                          >
+                                            {stg.stage_name}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
 
-                                      // 만약 현재 날짜 기준선(lastPastItemId)이 동일 단계 그룹의 중간에 위치한다면,
-                                      // rowSpan과 colSpan={4} 기준선이 충돌하여 5번째 가상 컬럼이 생기는 문제를 방지하기 위해
-                                      // 기준선 이전 구간과 이후 구간으로 세그먼트를 분리하여 각각 정확한 rowSpan을 부여합니다.
-                                      const splitIdx = isPastExpandedForTable && lastPastItemId
-                                        ? groupItems.findIndex(
-                                            (it: any) => String(it.item_id || '') === lastPastItemId
+                                  {/* 생육관리 공정별 일자 [완료] 시작 인정 기반 진행률 컨트롤 바 */}
+                                  <div className="rounded-2xl bg-gradient-to-r from-emerald-50/90 via-teal-50/70 to-white border border-emerald-200 p-4 flex flex-wrap items-center justify-between gap-4">
+                                    <div className="space-y-1 min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-700 text-white text-xs font-extrabold">
+                                          공정별 일자 [완료] 시작 인정 기반 진행률
+                                        </span>
+                                        <span className="text-xs font-extrabold text-emerald-900">
+                                          완료 인정 {crop.completed_stage_count ?? 0}/{crop.total_stage_count ?? 16}개 공정 · 현재 진행률{' '}
+                                          <strong className="text-emerald-700 text-sm">{crop.progress_pct}%</strong>
+                                        </span>
+                                        {Number(crop.pending_modified_count || 0) > 0 && (
+                                          <span className="px-2 py-0.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 text-[11px] font-black">
+                                            ⚠️ 일정 수정 후 완료 대기 {crop.pending_modified_count}건 (수정일 옆 [수정일 완료] 클릭 필요)
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-slate-600 font-medium">
+                                        각 생육관리 항목의 <strong>일자 옆 [완료] 버튼</strong>을 클릭해야 해당 날짜(일자 수정 시에도 동일)에 그 생육과정을 시작한 것으로 인정되며, 이를 기반으로 전체 진행률이 자동 계산됩니다.
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleBatchSetStageCompletions(
+                                            tableReqNo,
+                                            'COMPLETE_ALL'
                                           )
-                                        : -1;
-                                      const itemSegments: any[][] =
-                                        splitIdx >= 0 && splitIdx < groupItems.length - 1
-                                          ? [
-                                              groupItems.slice(0, splitIdx + 1),
-                                              groupItems.slice(splitIdx + 1),
-                                            ]
-                                          : [groupItems];
+                                        }
+                                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold cursor-pointer transition shadow-2xs"
+                                      >
+                                        전 공정 완료 인정 (100%)
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleBatchSetStageCompletions(
+                                            tableReqNo,
+                                            'CLEAR_ALL'
+                                          )
+                                        }
+                                        className="px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-extrabold cursor-pointer transition"
+                                      >
+                                        전체 미완료 초기화 (0%)
+                                      </button>
+                                    </div>
+                                  </div>
 
-                                      return itemSegments.map((segmentItems: any[], segIdx: number) =>
-                                        segmentItems.map((item: any, idxInSeg: number) => {
-                                          const enrichedItem = {
-                                            ...item,
-                                            stage_group_name: group.stage_group_name,
-                                            stage_color: stageColor,
-                                          };
-                                          const isSelectedStage = selectedStageItem?.item_id === item.item_id;
-                                          const isHovered = hoveredProvisionItem?.item_id === item.item_id;
-                                          const isClickedOpen = clickedProvisionItem?.item_id === item.item_id;
-                                          const isLastInGroup =
-                                            segIdx === itemSegments.length - 1 &&
-                                            idxInSeg === segmentItems.length - 1;
-                                          const showBaselineRowAfter =
-                                            isPastExpandedForTable &&
-                                            lastPastItemId &&
-                                            String(item.item_id || '') === lastPastItemId;
-                                          const leftPct =
-                                            pcTimelineMode === 'calendar'
-                                              ? Number(item.calendar_left_pct ?? 50)
-                                              : Number(item.diagram_left_pct ?? 50);
-                                          const widthPct = Math.max(
-                                            3.5,
-                                            pcTimelineMode === 'calendar'
-                                              ? Number(item.calendar_width_pct ?? 4)
-                                              : Number(item.diagram_width_pct ?? 4)
-                                          );
-                                          return (
-                                            <React.Fragment key={item.item_id}>
-                                              <tr
-                                                data-growth-trigger="true"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  const barEl = e.currentTarget.querySelector(
-                                                    '[data-gantt-bar="true"]'
-                                                  ) as HTMLElement | null;
-                                                  const targetEl = barEl || e.currentTarget;
-                                                  const rect = targetEl.getBoundingClientRect();
-                                                  setHoverAnchorPos({
-                                                    top: rect.top,
-                                                    left: rect.left,
-                                                    width: rect.width,
-                                                    height: rect.height,
-                                                    showAbove: rect.top > 240,
-                                                  });
-                                                  setHoveredProvisionItem(enrichedItem);
-                                                  handleSelectStageItem(enrichedItem);
-                                                }}
-                                                className={`cursor-pointer transition ${
-                                                  isLastInGroup ? 'border-b-2 border-slate-200' : 'border-b border-slate-100'
-                                                } ${
-                                                  isClickedOpen || isHovered || isSelectedStage
-                                                    ? 'bg-emerald-50/85'
-                                                    : 'bg-white hover:bg-slate-50/90'
-                                                }`}
-                                              >
-                                                {idxInSeg === 0 && (
-                                                  <td
-                                                    rowSpan={segmentItems.length}
-                                                    className="w-[124px] p-2 border-r border-slate-200 align-middle bg-slate-50/40"
-                                                  >
-                                                    <div
-                                                      style={{ backgroundColor: stageColor }}
-                                                      className="w-full min-h-[44px] rounded-xl px-2.5 py-2 flex items-center justify-center text-center text-white font-extrabold text-xs shadow-2xs"
-                                                    >
-                                                      {group.stage_group_name}
-                                                    </div>
-                                                  </td>
-                                                )}
-                                                <td className="w-[276px] py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
-                                                  <div className="flex items-center justify-between gap-1.5">
-                                                    <span
-                                                      className={`leading-snug break-keep ${
-                                                        isClickedOpen || isHovered || isSelectedStage
-                                                          ? 'text-emerald-700 font-extrabold'
-                                                          : ''
-                                                      }`}
-                                                    >
-                                                      {String(item.sub_item_name || '').replace(/\s*\([^)]*\)/g, '').trim()}
-                                                      {renderStageInlineStatusText(
-                                                        tableReqNo,
-                                                        enrichedItem,
-                                                        {
-                                                          unconfirmedClassName:
-                                                            'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                          confirmedClassName:
-                                                            'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
-                                                        }
-                                                      )}
-                                                    </span>
-                                                    <div className="inline-flex items-center gap-1 shrink-0">
-                                                      <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          handleSelectStageItem(enrichedItem);
-                                                          setDetailModalPos({ x: 0, y: 0 });
-                                                          setClickedProvisionItem(enrichedItem);
-                                                        }}
-                                                        className="px-2 py-0.5 rounded border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[10.5px] font-extrabold transition cursor-pointer shadow-2xs"
-                                                      >
-                                                        세부보기
-                                                      </button>
-                                                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
-                                                        요약보기 ›
-                                                      </span>
-                                                    </div>
-                                                  </div>
-                                                </td>
-                                                <td
-                                                  onClick={(e) => e.stopPropagation()}
-                                                  className="w-[248px] py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
-                                                >
-                                                  {(() => {
-                                                    const effRowDate = getEffectiveStageItemDate(
-                                                      tableReqNo,
-                                                      enrichedItem
-                                                    );
-                                                    return (
-                                                      <div className="flex items-center justify-between gap-1.5 flex-nowrap">
-                                                        <div className="flex items-center gap-1 min-w-0 flex-nowrap">
-                                                          <input
-                                                            type="date"
-                                                            value={effRowDate}
-                                                            onChange={(e) =>
-                                                              handleInlineStageDateChange(
-                                                                tableReqNo,
-                                                                enrichedItem,
-                                                                e.target.value
-                                                              )
-                                                            }
-                                                            className="w-[114px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
-                                                          />
-                                                          <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
-                                                            ({getWeekdayNameFromYmd(effRowDate)})
-                                                          </span>
-                                                        </div>
-                                                        {renderStageCompletionButton(
-                                                          tableReqNo,
-                                                          enrichedItem,
-                                                          {
-                                                            size: 'sm',
-                                                            explicitDate: effRowDate,
-                                                          }
-                                                        )}
-                                                      </div>
-                                                    );
-                                                  })()}
-                                                </td>
-                                                <td className="w-auto p-0 relative h-[36px] align-middle">
+                                  {/* 이전 생육과정 보기 / 접기 토글 바 (PC 48주 타임라인 연동) */}
+                                  {renderPastStagesToggleControls(
+                                    tableReqNo,
+                                    partitionStageItemsByToday(
+                                      tableReqNo,
+                                      provisionData.scheduleItems || []
+                                    )
+                                  )}
+
+                                  {/* 연간 1월~12월 (48주) 와이드 간트 테이블 (5컬럼: 생육단계 | 작업 구분 | 생육 과정명 | 추천 진행일 · 상태 | 1~12월 연간 일정 타임라인) */}
+                                  <div className="w-full rounded-2xl border border-slate-200 bg-white overflow-x-auto shadow-2xs">
+                                    <table className="w-full border-collapse table-fixed min-w-[1440px]">
+                                      <colgroup>
+                                        <col style={{ width: '116px' }} />
+                                        <col style={{ width: '122px' }} />
+                                        <col style={{ width: '264px' }} />
+                                        <col style={{ width: '248px' }} />
+                                        <col style={{ width: 'auto' }} />
+                                      </colgroup>
+                                      <thead>
+                                        <tr className="bg-slate-50 text-slate-800 border-b border-slate-200">
+                                          <th className="w-[116px] py-3 px-2 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
+                                            생육단계
+                                          </th>
+                                          <th className="w-[122px] py-3 px-2 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
+                                            작업 구분
+                                          </th>
+                                          <th className="w-[264px] py-3 px-3 text-center border-r border-slate-200 font-extrabold text-xs whitespace-nowrap">
+                                            생육 과정명
+                                          </th>
+                                          <th className="w-[248px] py-3 px-2.5 text-center border-r border-slate-200 font-extrabold text-xs text-emerald-700 whitespace-nowrap">
+                                            추천 진행일 (수정 가능) · 상태
+                                          </th>
+                                          <th className="w-auto p-0 align-top">
+                                            <div className="py-1.5 text-center font-extrabold text-xs text-slate-800 bg-slate-100 border-b border-slate-200">
+                                              1월 ~ 12월 (48주) 연간 일정 타임라인
+                                            </div>
+                                            <div className="grid grid-cols-12 w-full bg-slate-100/80 border-b border-slate-200">
+                                              {Array.from({ length: 12 }, (_, mIdx) => {
+                                                const m = mIdx + 1;
+                                                return (
                                                   <div
-                                                    style={{ gridTemplateColumns: 'repeat(48, minmax(0, 1fr))' }}
-                                                    className="absolute inset-0 grid w-full pointer-events-none"
-                                                  >
-                                                    {Array.from({ length: 48 }, (_, cIdx) => {
-                                                      const isMonthBorder = (cIdx + 1) % 4 === 0;
-                                                      const isLastCol = cIdx === 47;
-                                                      return (
-                                                        <div
-                                                          key={cIdx}
-                                                          className={`h-full ${
-                                                            isLastCol
-                                                              ? ''
-                                                              : isMonthBorder
-                                                              ? 'border-r border-slate-300'
-                                                              : 'border-r border-slate-100'
-                                                          }`}
-                                                        />
-                                                      );
-                                                    })}
-                                                  </div>
-                                                  <div
-                                                    data-gantt-bar="true"
-                                                    style={{
-                                                      left: `${leftPct}%`,
-                                                      width: `${widthPct}%`,
-                                                      backgroundColor: stageColor,
-                                                      clipPath:
-                                                        'polygon(5px 0%, calc(100% - 8px) 0%, 100% 50%, calc(100% - 8px) 100%, 5px 100%, 0% 50%)',
-                                                    }}
-                                                    className={`relative z-10 h-[23px] my-[6px] flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
-                                                      isHovered || isClickedOpen ? 'scale-[1.03] ring-2 ring-emerald-700/40' : ''
+                                                    key={m}
+                                                    className={`py-1.5 px-0.5 text-center font-extrabold text-xs text-slate-800 whitespace-nowrap ${
+                                                      m === 12 ? '' : 'border-r border-slate-300'
                                                     }`}
                                                   >
-                                                    <span className="truncate">{item.bar_label || item.sub_item_name}</span>
+                                                    {m}월
                                                   </div>
-                                                </td>
-                                              </tr>
-                                              {showBaselineRowAfter && (
-                                                <tr className="bg-emerald-50/75 border-b-2 border-emerald-500">
-                                                  <td colSpan={4} className="px-4 py-1.5">
-                                                    {renderTodayBaselineDivider(
-                                                      formatKoreanMonthDayLabel(todayYmdForTable)
+                                                );
+                                              })}
+                                            </div>
+                                            <div
+                                              style={{
+                                                gridTemplateColumns: 'repeat(48, minmax(0, 1fr))',
+                                              }}
+                                              className="grid w-full bg-slate-50 text-slate-500 text-[10px]"
+                                            >
+                                              {Array.from({ length: 48 }, (_, colIdx) => {
+                                                const weekNum = (colIdx % 4) + 1;
+                                                const isMonthEnd = weekNum === 4;
+                                                const isLastCol = colIdx === 47;
+                                                return (
+                                                  <div
+                                                    key={colIdx}
+                                                    className={`py-0.5 text-center font-semibold ${
+                                                      isLastCol
+                                                        ? ''
+                                                        : isMonthEnd
+                                                        ? 'border-r border-slate-300'
+                                                        : 'border-r border-slate-200/70'
+                                                    }`}
+                                                  >
+                                                    {weekNum}
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {lifecycleGroups.map((group) => {
+                                          const rawGroupItems = group.items || [];
+                                          const groupItems = isPastExpandedForTable
+                                            ? rawGroupItems
+                                            : rawGroupItems.filter((it: any) => {
+                                                const effD = getEffectiveStageItemDate(
+                                                  tableReqNo,
+                                                  it
+                                                );
+                                                return !(
+                                                  effD &&
+                                                  /^\d{4}-\d{2}-\d{2}$/.test(effD) &&
+                                                  effD < todayYmdForTable
+                                                );
+                                              });
+                                          if (groupItems.length === 0) return null;
+                                          const stageColor = group.stage_color || '#15803D';
+
+                                          // 만약 현재 날짜 기준선(lastPastItemId)이 동일 생육단계 그룹 중간에 위치한다면,
+                                          // rowSpan과 colSpan={5} 기준선이 충돌하지 않도록 기준선 전·후 세그먼트를 분리하여 각각 정확한 rowSpan을 부여합니다.
+                                          const splitIdx =
+                                            isPastExpandedForTable && lastPastItemId
+                                              ? groupItems.findIndex(
+                                                  (it: any) =>
+                                                    String(it.item_id || '') === lastPastItemId
+                                                )
+                                              : -1;
+                                          const itemSegments: any[][] =
+                                            splitIdx >= 0 && splitIdx < groupItems.length - 1
+                                              ? [
+                                                  groupItems.slice(0, splitIdx + 1),
+                                                  groupItems.slice(splitIdx + 1),
+                                                ]
+                                              : [groupItems];
+
+                                          return itemSegments.map(
+                                            (segmentItems: any[], segIdx: number) =>
+                                              segmentItems.map((item: any, idxInSeg: number) => {
+                                                const wtMeta =
+                                                  workTypeMetaMap[
+                                                    (item.workType as
+                                                      | 'WORK'
+                                                      | 'FERTILIZER'
+                                                      | 'PEST') || 'WORK'
+                                                  ];
+                                                const enrichedItem = {
+                                                  ...item,
+                                                  stage_group_name: group.stage_group_name,
+                                                  stage_color: wtMeta.barColor,
+                                                };
+                                                const isSelectedStage =
+                                                  selectedStageItem?.item_id === item.item_id;
+                                                const isHovered =
+                                                  hoveredProvisionItem?.item_id === item.item_id;
+                                                const isClickedOpen =
+                                                  clickedProvisionItem?.item_id === item.item_id;
+                                                const isLastInGroup =
+                                                  segIdx === itemSegments.length - 1 &&
+                                                  idxInSeg === segmentItems.length - 1;
+                                                const showBaselineRowAfter =
+                                                  isPastExpandedForTable &&
+                                                  lastPastItemId &&
+                                                  String(item.item_id || '') === lastPastItemId;
+                                                const leftPct =
+                                                  pcTimelineMode === 'calendar'
+                                                    ? Number(item.calendar_left_pct ?? 50)
+                                                    : Number(item.diagram_left_pct ?? 50);
+                                                const widthPct = Math.max(
+                                                  3.5,
+                                                  pcTimelineMode === 'calendar'
+                                                    ? Number(item.calendar_width_pct ?? 4)
+                                                    : Number(item.diagram_width_pct ?? 4)
+                                                );
+                                                return (
+                                                  <React.Fragment key={item.item_id}>
+                                                    <tr
+                                                      data-growth-trigger="true"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const barEl = e.currentTarget.querySelector(
+                                                          '[data-gantt-bar="true"]'
+                                                        ) as HTMLElement | null;
+                                                        const targetEl = barEl || e.currentTarget;
+                                                        const rect =
+                                                          targetEl.getBoundingClientRect();
+                                                        setHoverAnchorPos({
+                                                          top: rect.top,
+                                                          left: rect.left,
+                                                          width: rect.width,
+                                                          height: rect.height,
+                                                          showAbove: rect.top > 240,
+                                                        });
+                                                        setHoveredProvisionItem(enrichedItem);
+                                                        handleSelectStageItem(enrichedItem);
+                                                      }}
+                                                      className={`cursor-pointer transition ${
+                                                        isLastInGroup
+                                                          ? 'border-b-2 border-slate-300'
+                                                          : 'border-b border-slate-100'
+                                                      } ${
+                                                        isClickedOpen ||
+                                                        isHovered ||
+                                                        isSelectedStage
+                                                          ? 'bg-emerald-50/85'
+                                                          : 'bg-white hover:bg-slate-50/90'
+                                                      }`}
+                                                    >
+                                                      {/* 1차: 생육단계 (활착기 / 외엽 신장기 / 결구기 / 수확적기) */}
+                                                      {idxInSeg === 0 && (
+                                                        <td
+                                                          rowSpan={segmentItems.length}
+                                                          style={{ backgroundColor: stageColor }}
+                                                          className="w-[116px] p-2.5 border-r border-slate-200 align-middle text-center text-white font-black text-[13.5px] tracking-tight select-none"
+                                                        >
+                                                          <div className="flex flex-col items-center justify-center gap-1">
+                                                            <span>{group.stage_group_name}</span>
+                                                          </div>
+                                                        </td>
+                                                      )}
+
+                                                      {/* 2차: 작업 구분 (🌱 농작업 / 🧪 시비관리 / 🛡️ 병해충관리) */}
+                                                      <td className="w-[122px] py-2 px-2 border-r border-slate-200 align-middle text-center bg-slate-50/35">
+                                                        <span
+                                                          className={`inline-flex items-center justify-center gap-1 px-2.5 py-1 rounded-full border text-[11.5px] font-extrabold whitespace-nowrap shadow-2xs ${wtMeta.badgeBg} ${wtMeta.badgeText} ${wtMeta.badgeBorder}`}
+                                                        >
+                                                          <span>{wtMeta.icon}</span>
+                                                          <span>{wtMeta.label}</span>
+                                                        </span>
+                                                      </td>
+
+                                                      {/* 3차: 생육 과정명 */}
+                                                      <td className="w-[264px] py-2.5 px-3 border-r border-slate-200 font-bold text-xs text-slate-900">
+                                                        <div className="flex items-center justify-between gap-1.5">
+                                                          <span
+                                                            className={`leading-snug break-keep ${
+                                                              isClickedOpen ||
+                                                              isHovered ||
+                                                              isSelectedStage
+                                                                ? 'text-emerald-700 font-extrabold'
+                                                                : ''
+                                                            }`}
+                                                          >
+                                                            {String(item.sub_item_name || '')
+                                                              .replace(/\s*\([^)]*\)/g, '')
+                                                              .trim()}
+                                                            {renderStageInlineStatusText(
+                                                              tableReqNo,
+                                                              enrichedItem,
+                                                              {
+                                                                unconfirmedClassName:
+                                                                  'text-red-600 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                                confirmedClassName:
+                                                                  'text-emerald-700 font-extrabold text-[11px] ml-1 whitespace-nowrap',
+                                                              }
+                                                            )}
+                                                          </span>
+                                                          <div className="inline-flex items-center gap-1 shrink-0">
+                                                            <button
+                                                              type="button"
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleSelectStageItem(enrichedItem);
+                                                                setDetailModalPos({ x: 0, y: 0 });
+                                                                setClickedProvisionItem(
+                                                                  enrichedItem
+                                                                );
+                                                              }}
+                                                              className="px-2 py-0.5 rounded border border-slate-400 bg-white hover:bg-emerald-600 text-slate-900 hover:text-white hover:border-emerald-600 text-[10.5px] font-extrabold transition cursor-pointer shadow-2xs"
+                                                            >
+                                                              세부보기
+                                                            </button>
+                                                            <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold shrink-0">
+                                                              요약보기 ›
+                                                            </span>
+                                                          </div>
+                                                        </div>
+                                                      </td>
+
+                                                      {/* 4차: 추천 진행일 (수정 가능) · 상태 */}
+                                                      <td
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-[248px] py-1.5 px-2 border-r border-slate-200 text-center font-mono font-extrabold text-xs text-emerald-700"
+                                                      >
+                                                        {(() => {
+                                                          const effRowDate =
+                                                            getEffectiveStageItemDate(
+                                                              tableReqNo,
+                                                              enrichedItem
+                                                            );
+                                                          return (
+                                                            <div className="flex items-center justify-between gap-1.5 flex-nowrap">
+                                                              <div className="flex items-center gap-1 min-w-0 flex-nowrap">
+                                                                <input
+                                                                  type="date"
+                                                                  value={effRowDate}
+                                                                  onChange={(e) =>
+                                                                    handleInlineStageDateChange(
+                                                                      tableReqNo,
+                                                                      enrichedItem,
+                                                                      e.target.value
+                                                                    )
+                                                                  }
+                                                                  className="w-[114px] px-1.5 py-1 rounded-lg border border-slate-200 hover:border-emerald-400 bg-white font-mono font-extrabold text-[11px] text-slate-900 focus:outline-none focus:border-emerald-500 shrink-0"
+                                                                />
+                                                                <span className="text-[11px] text-emerald-800 font-extrabold shrink-0 whitespace-nowrap">
+                                                                  ({getWeekdayNameFromYmd(
+                                                                    effRowDate
+                                                                  )})
+                                                                </span>
+                                                              </div>
+                                                              {renderStageCompletionButton(
+                                                                tableReqNo,
+                                                                enrichedItem,
+                                                                {
+                                                                  size: 'sm',
+                                                                  explicitDate: effRowDate,
+                                                                }
+                                                              )}
+                                                            </div>
+                                                          );
+                                                        })()}
+                                                      </td>
+
+                                                      {/* 5차: 1월 ~ 12월 (48주) 연간 일정 타임라인 바 (작업구분 색상 연동) */}
+                                                      <td className="w-auto p-0 relative h-[36px] align-middle">
+                                                        <div
+                                                          style={{
+                                                            gridTemplateColumns:
+                                                              'repeat(48, minmax(0, 1fr))',
+                                                          }}
+                                                          className="absolute inset-0 grid w-full pointer-events-none"
+                                                        >
+                                                          {Array.from({ length: 48 }, (_, cIdx) => {
+                                                            const isMonthBorder =
+                                                              (cIdx + 1) % 4 === 0;
+                                                            const isLastCol = cIdx === 47;
+                                                            return (
+                                                              <div
+                                                                key={cIdx}
+                                                                className={`h-full ${
+                                                                  isLastCol
+                                                                    ? ''
+                                                                    : isMonthBorder
+                                                                    ? 'border-r border-slate-300'
+                                                                    : 'border-r border-slate-100'
+                                                                }`}
+                                                              />
+                                                            );
+                                                          })}
+                                                        </div>
+                                                        <div
+                                                          data-gantt-bar="true"
+                                                          style={{
+                                                            left: `${leftPct}%`,
+                                                            width: `${widthPct}%`,
+                                                            backgroundColor: wtMeta.barColor,
+                                                          }}
+                                                          className={`relative z-10 h-[22px] my-[7px] rounded-md flex items-center justify-center px-2.5 text-white font-extrabold text-[11px] whitespace-nowrap overflow-hidden shadow-2xs transition-transform ${
+                                                            isHovered || isClickedOpen
+                                                              ? 'scale-[1.03] ring-2 ring-emerald-700/40'
+                                                              : ''
+                                                          }`}
+                                                        >
+                                                          <span className="truncate">
+                                                            {item.bar_label || item.sub_item_name}
+                                                          </span>
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                    {showBaselineRowAfter && (
+                                                      <tr className="bg-emerald-50/75 border-b-2 border-emerald-500">
+                                                        <td colSpan={5} className="px-4 py-1.5">
+                                                          {renderTodayBaselineDivider(
+                                                            formatKoreanMonthDayLabel(
+                                                              todayYmdForTable
+                                                            )
+                                                          )}
+                                                        </td>
+                                                      </tr>
                                                     )}
-                                                  </td>
-                                                </tr>
-                                              )}
-                                            </React.Fragment>
+                                                  </React.Fragment>
+                                                );
+                                              })
                                           );
-                                        })
-                                      );
-                                    });
-                                  })()}
-                                </tbody>
-                              </table>
-                            </div>
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </section>
 
                           {/* ② 전 생육과정 추천 농자재 단계별 리스트 & 단번에 구매하기 */}
