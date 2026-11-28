@@ -11982,7 +11982,7 @@ export default function UserIntroPage() {
                           </button>
                         </div>
 
-                        {/* 5) 하단 메뉴 버튼 (재배일정 전체보기 / 생육단계 확인 / 작업기록) */}
+                        {/* 5) 하단 메뉴 버튼 (재배일정 전체보기) */}
                         <div className="space-y-2.5 pt-1">
                           <button
                             type="button"
@@ -12023,70 +12023,6 @@ export default function UserIntroPage() {
                               </span>
                             </div>
                             <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
-                          </button>
-
-                          <button
-                            type="button"
-                            disabled
-                            aria-disabled="true"
-                            className="w-full h-[60px] rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 flex items-center justify-between gap-3 opacity-50 cursor-not-allowed select-none"
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <Sprout className="w-6 h-6 text-[#9CA3AF] stroke-[2.1]" />
-                              <span className="text-[18px] font-extrabold text-[#9CA3AF] tracking-[-0.03em]">
-                                생육단계 확인
-                              </span>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-[#9CA3AF] stroke-[2.2]" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMobileJournalStatusFilter('ALL');
-                              setMobileJournalStageFilter('ALL');
-                              goToScheduleStep('work_log_list');
-                            }}
-                            className="w-full h-[64px] rounded-[16px] border border-[#0E712F]/40 bg-[#F2FBF5] hover:bg-[#E4F7EA] active:scale-[0.99] px-4 flex items-center justify-between gap-3 cursor-pointer transition shadow-2xs"
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="w-6 h-6 text-[#0E712F]"
-                                fill="none"
-                              >
-                                <rect
-                                  x="4.5"
-                                  y="3.5"
-                                  width="15"
-                                  height="17"
-                                  rx="2.5"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                />
-                                <path
-                                  d="M8.5 9H15.5M8.5 13H15.5M8.5 17H12.5"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                              <div className="text-left">
-                                <span className="text-[18px] font-black text-[#111827] tracking-[-0.03em] block leading-tight">
-                                  작업일지 관리
-                                </span>
-                                <span className="text-[12.5px] font-bold text-[#0E712F] block">
-                                  생육단계·일정 항목별 작업일지 작성 및 조회 (
-                                  {
-                                    (cropWorkLogs[activeCropItem.request_no] || []).filter(
-                                      (lg) => lg && lg.itemId
-                                    ).length
-                                  }
-                                  /{activeCropItem.allTasks.length}건 기록됨)
-                                </span>
-                              </div>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-[#0E712F] stroke-[2.4]" />
                           </button>
                         </div>
                       </div>
