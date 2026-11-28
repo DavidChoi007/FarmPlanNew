@@ -12258,7 +12258,7 @@ export default function UserIntroPage() {
                           </button>
                         </div>
 
-                        {/* 5) 하단 메뉴 버튼 (재배일정 전체보기) */}
+                        {/* 5) 하단 메뉴 버튼 (재배일정 보기) */}
                         <div className="space-y-2.5 pt-1">
                           <button
                             type="button"
@@ -12295,7 +12295,7 @@ export default function UserIntroPage() {
                             <div className="flex items-center gap-3.5">
                               <Calendar className="w-7 h-7 text-white stroke-[2.2]" />
                               <span className="text-[20px] font-black text-white tracking-[-0.03em]">
-                                재배일정 전체보기
+                                재배일정 보기
                               </span>
                             </div>
                             <ChevronRight className="w-6 h-6 text-white stroke-[2.5]" />
