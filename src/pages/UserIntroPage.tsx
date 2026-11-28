@@ -12374,11 +12374,115 @@ export default function UserIntroPage() {
                                 </div>
                               </div>
 
-                              {/* 2) 4개 카테고리 캡슐 탭 (농작업 / 시비관리 / 병해충 / 전체일정) */}
-                              <div className="rounded-full bg-[#F3F4F6] border border-[#E5E7EB] p-1 grid grid-cols-4 gap-0.5">
+                              {/* 2) 4개 카테고리 캡슐 탭 (전체일정 / 농작업 / 시비관리 / 병해충 · 높이 확대 및 아이콘 적용) */}
+                              <div className="rounded-full bg-[#EFF3F0] border border-[#DCE5DF] p-1.5 grid grid-cols-4 gap-1 shadow-inner">
                                 {filterTabs.map((tab) => {
                                   const isSelected =
                                     mobileFullScheduleFilterTab === tab.key;
+                                  const renderFilterTabIcon = () => {
+                                    if (tab.key === 'ALL') {
+                                      return (
+                                        <svg
+                                          viewBox="0 0 20 20"
+                                          className={`w-[15px] h-[15px] shrink-0 ${
+                                            isSelected ? 'text-white' : 'text-[#0E712F]'
+                                          }`}
+                                          fill="none"
+                                        >
+                                          <rect
+                                            x="2.8"
+                                            y="3.8"
+                                            width="14.4"
+                                            height="13.4"
+                                            rx="2.6"
+                                            stroke="currentColor"
+                                            strokeWidth="1.9"
+                                          />
+                                          <path
+                                            d="M6.5 2.3V5M13.5 2.3V5M3.2 7.5H16.8"
+                                            stroke="currentColor"
+                                            strokeWidth="1.8"
+                                            strokeLinecap="round"
+                                          />
+                                          <path
+                                            d="M7.2 12.2L9.1 14.1L12.8 10.4"
+                                            stroke="currentColor"
+                                            strokeWidth="1.9"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      );
+                                    }
+                                    if (tab.key === 'WORK') {
+                                      return (
+                                        <svg
+                                          viewBox="0 0 20 20"
+                                          className={`w-[15px] h-[15px] shrink-0 ${
+                                            isSelected ? 'text-white' : 'text-[#15803D]'
+                                          }`}
+                                          fill="none"
+                                        >
+                                          <path
+                                            d="M10 16.8V8.5M10 12C10 8.6 7.4 6.2 4 6.2C4 9.6 6.6 12 10 12ZM10 10.5C10 7.1 12.6 4.7 16 4.7C16 8.1 13.4 10.5 10 10.5Z"
+                                            stroke="currentColor"
+                                            strokeWidth="1.9"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                        </svg>
+                                      );
+                                    }
+                                    if (tab.key === 'FERTILIZER') {
+                                      return (
+                                        <svg
+                                          viewBox="0 0 20 20"
+                                          className={`w-[15px] h-[15px] shrink-0 ${
+                                            isSelected ? 'text-white' : 'text-[#2563EB]'
+                                          }`}
+                                          fill="none"
+                                        >
+                                          <path
+                                            d="M7.2 3.2H12.8M8.4 3.2V6.8L4.8 13.2C4.1 14.5 5 16.2 6.5 16.2H13.5C15 16.2 15.9 14.5 15.2 13.2L11.6 6.8V3.2"
+                                            stroke="currentColor"
+                                            strokeWidth="1.8"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                          />
+                                          <path
+                                            d="M6.2 11.8H13.8"
+                                            stroke="currentColor"
+                                            strokeWidth="1.7"
+                                            strokeLinecap="round"
+                                          />
+                                        </svg>
+                                      );
+                                    }
+                                    return (
+                                      <svg
+                                        viewBox="0 0 20 20"
+                                        className={`w-[15px] h-[15px] shrink-0 ${
+                                          isSelected ? 'text-white' : 'text-[#D97706]'
+                                        }`}
+                                        fill="none"
+                                      >
+                                        <path
+                                          d="M10 2.6L15.8 4.8V9.6C15.8 13.3 13.3 16.3 10 17.4C6.7 16.3 4.2 13.3 4.2 9.6V4.8L10 2.6Z"
+                                          stroke="currentColor"
+                                          strokeWidth="1.8"
+                                          strokeLinejoin="round"
+                                        />
+                                        <path
+                                          d="M7.5 10L9.2 11.7L12.6 8.3"
+                                          stroke="currentColor"
+                                          strokeWidth="1.8"
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                        />
+                                      </svg>
+                                    );
+                                  };
+
                                   return (
                                     <button
                                       key={tab.key}
@@ -12417,13 +12521,14 @@ export default function UserIntroPage() {
                                           }, 100);
                                         }
                                       }}
-                                      className={`h-[38px] rounded-full text-[13.5px] tracking-[-0.03em] flex items-center justify-center cursor-pointer transition whitespace-nowrap ${
+                                      className={`h-[48px] rounded-full px-1.5 text-[13px] min-[390px]:text-[13.5px] tracking-[-0.03em] flex items-center justify-center gap-1 cursor-pointer transition whitespace-nowrap ${
                                         isSelected
-                                          ? 'bg-[#0E712F] text-white font-extrabold shadow-2xs'
-                                          : 'bg-transparent text-[#374151] font-bold hover:text-[#111827]'
+                                          ? 'bg-[#0E712F] text-white font-extrabold shadow-[0_3px_10px_rgba(14,113,47,0.25)]'
+                                          : 'bg-transparent text-[#1F2937] font-bold hover:text-[#111827] hover:bg-white/60'
                                       }`}
                                     >
-                                      {tab.label}
+                                      {renderFilterTabIcon()}
+                                      <span>{tab.label}</span>
                                     </button>
                                   );
                                 })}
