@@ -6184,6 +6184,10 @@ export default function UserIntroPage() {
     dosageRangeLabel: string;
     soilFactor: number;
     soilReasonShort: string;
+    climateFactor?: number;
+    climateReasonShort?: string;
+    singlePackSpecLabel?: string;
+    totalPackCapacityLabel?: string;
   } => {
     const safeArea = Math.max(10, Number(areaPyeong || 300));
     const areaRatio100 = Math.max(0.1, Number((safeArea / 100).toFixed(2)));
@@ -6217,7 +6221,7 @@ export default function UserIntroPage() {
     );
 
     const cat = String(mat?.material_category || 'FERTILIZER').toUpperCase();
-    const subAndName = `${mat?.sub_type || ''} ${mat?.product_name || ''} ${mat?.material_id || ''}`;
+    const subAndName = `${mat?.sub_type || ''} ${mat?.product_name || ''} ${mat?.material_id || ''} ${mat?.rationale_climate || ''} ${mat?.sub_item_name || ''}`;
     const rawUnitSpec = String(
       mat?.unit_spec || (cat === 'FERTILIZER' ? '20kg / 포' : '500ml / 병')
     );
@@ -6230,7 +6234,7 @@ export default function UserIntroPage() {
       ? '봉'
       : '병';
 
-    // 1. 토양검정 화학성 기반 보정계수(soilFactor) 산출
+    // 1. 토양검정 화학성·토성 기반 보정계수(soilFactor) 산출
     let soilFactor = 1.0;
     let soilReasonShort = `pH ${soilPh}·EC ${soilEc} 적정`;
     if (/석회|토양개량|FERT-PRD-04|FERT-PRD-16|FERT-PRD-22/.test(subAndName)) {
@@ -6277,8 +6281,37 @@ export default function UserIntroPage() {
       soilReasonShort = `pH ${soilPh} 토양병해 방제 +15%`;
     }
 
+    // 1-2. 지역 기후(기온·강수량·습도·적산온도 PGDD) 기반 보정계수(climateFactor) 산출
+    let climateFactor = 1.0;
+    let climateReasonShort = '적온·적습 기후 표준';
+    if (cat === 'PESTICIDE') {
+      if (/강우|장마|고습|무름병|노균병|역병|탄저병/.test(subAndName)) {
+        climateFactor = 1.15;
+        climateReasonShort = '강우·고습기 병해충 압력 +15%';
+      } else {
+        climateFactor = 1.05;
+        climateReasonShort = '예찰·방제 적기 기후 반영 +5%';
+      }
+    } else if (cat === 'NUTRIENT') {
+      if (/활착|정식|월동|저온|고온|결구|비대|칼슘|붕소|아미노/.test(subAndName)) {
+        climateFactor = 1.1;
+        climateReasonShort = '기온변동·생육비대기 흡수 보강 +10%';
+      }
+    } else if (cat === 'FERTILIZER') {
+      if (/추비|웃거름|완효성/.test(subAndName) && soilTexture.includes('사양토')) {
+        climateFactor = 1.08;
+        climateReasonShort = '강우 시 양분용탈 대비 +8%';
+      } else {
+        climateReasonShort = '작년+올해예측 적산온도(PGDD) 연동';
+      }
+    }
+
+    const combinedFactor = soilFactor * climateFactor;
+
     // 2. 1포·1병·1봉 포장단위 용량(g, ml, 립) 파싱
     let packCapInBase = cat === 'FERTILIZER' ? 20000 : cat === 'SEED' ? 2000 : 500;
+    let baseUnitType: 'g' | 'ml' | 'seed' =
+      cat === 'FERTILIZER' ? 'g' : cat === 'SEED' ? 'seed' : 'ml';
     const kgSpec = rawUnitSpec.match(/(\d+(?:\.\d+)?)\s*(?:kg|Kg|KG)/);
     const lSpec = rawUnitSpec.match(/(\d+(?:\.\d+)?)\s*(?:L|리터)/);
     const mlSpec = rawUnitSpec.match(/(\d+(?:,\d+)?)\s*(?:ml|mL)/);
@@ -6286,17 +6319,45 @@ export default function UserIntroPage() {
     const seedSpec = rawUnitSpec.match(/(\d+(?:,\d+)?)\s*립/);
     if (kgSpec) {
       packCapInBase = Number(kgSpec[1]) * 1000; // g 기준
+      baseUnitType = 'g';
     } else if (lSpec) {
       packCapInBase = Number(lSpec[1]) * 1000; // ml 기준
+      baseUnitType = 'ml';
     } else if (mlSpec) {
       packCapInBase = Number(mlSpec[1].replace(/,/g, ''));
+      baseUnitType = 'ml';
     } else if (gSpec) {
       packCapInBase = Number(gSpec[1].replace(/,/g, ''));
+      baseUnitType = 'g';
     } else if (seedSpec) {
       packCapInBase = Number(seedSpec[1].replace(/,/g, ''));
+      baseUnitType = 'seed';
     }
 
-    // 3. 100평당 기준 권장 중량·용량 파싱 후 면적비율(areaRatio100) × 토양보정계수(soilFactor) 곱셈
+    const formatTotalCapacity = (qty: number): string => {
+      const totalBase = qty * packCapInBase;
+      if (baseUnitType === 'g') {
+        if (totalBase >= 1000) {
+          const kgVal = Number((totalBase / 1000).toFixed(1));
+          return `${kgVal.toLocaleString()}kg`;
+        }
+        return `${Math.round(totalBase).toLocaleString()}g`;
+      }
+      if (baseUnitType === 'ml') {
+        if (totalBase >= 1000) {
+          const lVal = Number((totalBase / 1000).toFixed(1));
+          return `${lVal.toLocaleString()}L (${Math.round(totalBase).toLocaleString()}mL)`;
+        }
+        return `${Math.round(totalBase).toLocaleString()}mL`;
+      }
+      return `${Math.round(totalBase).toLocaleString()}립`;
+    };
+
+    const singlePackSpecClean = rawUnitSpec
+      .replace(/\s*\/\s*(포|병|봉|통|팩|판|박스|개|롤).*$/, '')
+      .trim();
+
+    // 3. 100평당 기준 권장 중량·용량 파싱 후 면적비율(areaRatio100) × 토양보정(soilFactor) × 기후보정(climateFactor) 곱셈
     const dosageRaw = String(mat?.dosage_per_100pyeong || '');
     const rangeMatch = dosageRaw.match(/(\d+(?:\.\d+)?)\s*~\s*(\d+(?:\.\d+)?)\s*(kg|Kg|ml|mL|g|립|봉)/);
     const singleMatch = dosageRaw.match(
@@ -6308,20 +6369,24 @@ export default function UserIntroPage() {
       const high100 = Number(rangeMatch[2]);
       const u = rangeMatch[3];
       if (u === '봉') {
-        const minPacks = Math.max(1, Math.round(low100 * areaRatio100 * soilFactor));
-        const maxPacks = Math.max(minPacks, Math.ceil(high100 * areaRatio100 * soilFactor));
-        const avgPacks = Math.max(1, Math.ceil(((low100 + high100) / 2) * areaRatio100 * soilFactor));
+        const minPacks = Math.max(1, Math.round(low100 * areaRatio100 * combinedFactor));
+        const maxPacks = Math.max(minPacks, Math.ceil(high100 * areaRatio100 * combinedFactor));
+        const avgPacks = Math.max(1, Math.ceil(((low100 + high100) / 2) * areaRatio100 * combinedFactor));
         return {
           recommendedPackQty: avgPacks,
           packUnitLabel,
           dosageRangeLabel: `${minPacks}~${maxPacks} ${packUnitLabel} / ${safeArea.toLocaleString()}평`,
           soilFactor,
           soilReasonShort,
+          climateFactor,
+          climateReasonShort,
+          singlePackSpecLabel: singlePackSpecClean,
+          totalPackCapacityLabel: formatTotalCapacity(avgPacks),
         };
       }
-      const minScaled = Math.max(1, Math.round(low100 * areaRatio100 * soilFactor));
-      const maxScaled = Math.max(minScaled, Math.round(high100 * areaRatio100 * soilFactor));
-      const avgScaled = ((low100 + high100) / 2) * areaRatio100 * soilFactor;
+      const minScaled = Math.max(1, Math.round(low100 * areaRatio100 * combinedFactor));
+      const maxScaled = Math.max(minScaled, Math.round(high100 * areaRatio100 * combinedFactor));
+      const avgScaled = ((low100 + high100) / 2) * areaRatio100 * combinedFactor;
       const avgInBase = u.toLowerCase() === 'kg' ? avgScaled * 1000 : avgScaled;
       const recommendedPackQty = Math.max(1, Math.ceil(avgInBase / Math.max(1, packCapInBase)));
       return {
@@ -6330,13 +6395,17 @@ export default function UserIntroPage() {
         dosageRangeLabel: `${minScaled.toLocaleString()}~${maxScaled.toLocaleString()} ${u} / ${safeArea.toLocaleString()}평`,
         soilFactor,
         soilReasonShort,
+        climateFactor,
+        climateReasonShort,
+        singlePackSpecLabel: singlePackSpecClean,
+        totalPackCapacityLabel: formatTotalCapacity(recommendedPackQty),
       };
     }
 
     if (singleMatch) {
       const val100 = Number(singleMatch[1]);
       const u = singleMatch[2];
-      const valScaled = Math.max(1, Math.round(val100 * areaRatio100 * soilFactor));
+      const valScaled = Math.max(1, Math.round(val100 * areaRatio100 * combinedFactor));
       const valInBase = u.toLowerCase() === 'kg' ? valScaled * 1000 : valScaled;
       const recommendedPackQty = Math.max(1, Math.ceil(valInBase / Math.max(1, packCapInBase)));
       return {
@@ -6345,17 +6414,32 @@ export default function UserIntroPage() {
         dosageRangeLabel: `약 ${valScaled.toLocaleString()} ${u} / ${safeArea.toLocaleString()}평`,
         soilFactor,
         soilReasonShort,
+        climateFactor,
+        climateReasonShort,
+        singlePackSpecLabel: singlePackSpecClean,
+        totalPackCapacityLabel: formatTotalCapacity(recommendedPackQty),
       };
     }
 
-    const fallbackRate = cat === 'FERTILIZER' ? 1.5 : 0.5;
-    const fallbackQty = Math.max(1, Math.ceil(areaRatio100 * fallbackRate * soilFactor));
+    // dosage_per_100pyeong 필드가 없는 카탈로그/폴백 제품도 100평당 표준 투입량(비료 13.5kg/100평, 영양제·약제 180~250mL/100평)과 판매 용량(packCapInBase)으로 정밀 산출
+    const stdBasePer100 =
+      cat === 'FERTILIZER'
+        ? 13500 // 100평당 13.5kg (300평 기준 약 40kg)
+        : cat === 'SEED'
+        ? 700 // 100평당 700립
+        : 200; // 100평당 200mL (300평 기준 600mL)
+    const totalNeededBase = stdBasePer100 * areaRatio100 * combinedFactor;
+    const fallbackQty = Math.max(1, Math.ceil(totalNeededBase / Math.max(1, packCapInBase)));
     return {
       recommendedPackQty: fallbackQty,
       packUnitLabel,
-      dosageRangeLabel: `${fallbackQty}${packUnitLabel} / ${safeArea.toLocaleString()}평`,
+      dosageRangeLabel: `${formatTotalCapacity(fallbackQty)} (${fallbackQty}${packUnitLabel}) / ${safeArea.toLocaleString()}평`,
       soilFactor,
       soilReasonShort,
+      climateFactor,
+      climateReasonShort,
+      singlePackSpecLabel: singlePackSpecClean,
+      totalPackCapacityLabel: formatTotalCapacity(fallbackQty),
     };
   };
 
@@ -11114,15 +11198,36 @@ export default function UserIntroPage() {
                       ? '수용성 칼슘·붕소·아미노산 및 미량요소 복합'
                       : '질소·인산·가리 및 유기물·고토·붕소 복합');
 
-                  const recommendedUsageBoxText = task.usageAmountPer100Pyeong
-                    ? `${areaPyeongVal.toLocaleString()}평 기준 · ${task.usageAmountPer100Pyeong}${
-                        task.dilutionText ? `\n(${task.dilutionText})` : ''
-                      }`
-                    : cat === 'PESTICIDE'
-                    ? `${areaPyeongVal.toLocaleString()}평(10a) 기준 500 mL\n(물 500 L에 희석, 1,000배)`
-                    : cat === 'NUTRIENT'
-                    ? `${areaPyeongVal.toLocaleString()}평(10a) 기준 1 L\n(물 500 L에 희석, 500~1,000배 엽면살포)`
-                    : `${areaPyeongVal.toLocaleString()}평(10a) 기준 20~40 kg\n(${task.stageGroupName || '생육 단계'} 골고루 전면·고랑 시비)`;
+                  const dosageCalc = computeSoilAndAreaAdjustedDosage(
+                    {
+                      ...raw,
+                      material_id: matId,
+                      material_category: cat,
+                      product_name: productName,
+                      sub_type: subType,
+                      unit_spec: rawSpec || '500 mL',
+                      sub_item_name: task.subItemName,
+                    },
+                    areaPyeongVal
+                  );
+                  const recommendedQty = Math.max(1, Number(dosageCalc.recommendedPackQty || 1));
+                  const resolvedUnitLabel =
+                    dosageCalc.packUnitLabel ||
+                    raw.unit_label ||
+                    (cat === 'FERTILIZER' ? '포' : '병');
+                  const totalCapacityLabel =
+                    dosageCalc.totalPackCapacityLabel || `${rawSpec} × ${recommendedQty}${resolvedUnitLabel}`;
+                  const calcBasisSummary = `${areaPyeongVal.toLocaleString()}평 · 토양(${
+                    dosageCalc.soilReasonShort
+                  }) · 기후(${dosageCalc.climateReasonShort || '적산온도 연동'})`;
+
+                  const recommendedUsageBoxText = `${areaPyeongVal.toLocaleString()}평 · 토양(${
+                    dosageCalc.soilReasonShort
+                  }) · 기후(${
+                    dosageCalc.climateReasonShort || '적온·적습 표준'
+                  }) 종합 산출\n• 포장용량 및 권장갯수: ${rawSpec} × 권장 ${recommendedQty}${resolvedUnitLabel} (총 ${totalCapacityLabel})${
+                    task.dilutionText ? `\n• 적용기준: ${task.dilutionText}` : ''
+                  }`;
 
                   return {
                     material_id: matId,
@@ -11131,10 +11236,12 @@ export default function UserIntroPage() {
                     sub_type: subType,
                     manufacturer: raw.manufacturer || '한팜인증',
                     unit_spec: rawSpec || '500 mL',
-                    unit_label:
-                      raw.unit_label ||
-                      (cat === 'FERTILIZER' ? '포' : '병'),
+                    unit_label: resolvedUnitLabel,
+                    recommendedQty,
+                    totalCapacityLabel,
+                    calcBasisSummary,
                     unit_price: unitPrice,
+                    total_recommended_price: unitPrice * recommendedQty,
                     thumbnail_url: thumbUrl,
                     match_score: Number(raw.match_score || (isPrimary ? 99 : 95 - idx)),
                     roleBadge,
@@ -11142,7 +11249,7 @@ export default function UserIntroPage() {
                     mainEffect,
                     targetCropsText,
                     activeIngredient,
-                    packagingUnit: rawSpec || '500 mL',
+                    packagingUnit: `${rawSpec || '500 mL'} (권장 ${recommendedQty}${resolvedUnitLabel} · 총 ${totalCapacityLabel})`,
                     usageMethodText:
                       task.usageMethod ||
                       raw.usage_note ||
@@ -11157,7 +11264,7 @@ export default function UserIntroPage() {
                         ? '물 500 L에 500 mL (1,000배 희석)'
                         : cat === 'NUTRIENT'
                         ? '물 500 L에 500~1,000 mL (500~1,000배 희석)'
-                        : `${areaPyeongVal.toLocaleString()}평 기준 적량 균일 시비`),
+                        : `${areaPyeongVal.toLocaleString()}평 기준 총 ${totalCapacityLabel} (${recommendedQty}${resolvedUnitLabel}) 균일 시비`),
                     cautionText:
                       task.usageCaution ||
                       '강우 직전이나 한낮 고온기를 피하여 이른 오전 또는 해질 무렵에 사용하고, PLS 안전사용기준 및 희석배수를 준수하세요.',
@@ -13381,13 +13488,17 @@ export default function UserIntroPage() {
                                 );
                                 const checkedRecCount = checkedRecProducts.length;
                                 const checkedRecTotalPrice = checkedRecProducts.reduce(
-                                  (acc, prd) => acc + Number(prd.unit_price || 0),
+                                  (acc, prd) =>
+                                    acc +
+                                    Number(prd.unit_price || 0) *
+                                      Math.max(1, Number(prd.recommendedQty || 1)),
                                   0
                                 );
 
                                 const handleBuyCheckedRecAgroProducts = () => {
                                   if (checkedRecProducts.length === 0) return;
                                   checkedRecProducts.forEach((prd) => {
+                                    const recQty = Math.max(1, Number(prd.recommendedQty || 1));
                                     handleAddStageProductToCart({
                                       cropObj: {
                                         request_no: activeCropItem.request_no,
@@ -13409,7 +13520,7 @@ export default function UserIntroPage() {
                                         work_content: selectedTaskItem.taskDescription,
                                       },
                                       mat: prd,
-                                      qty: 1,
+                                      qty: recQty,
                                     });
                                   });
                                   setMyPageToast(
@@ -13561,7 +13672,7 @@ export default function UserIntroPage() {
                                                 />
                                               </div>
 
-                                              <div className="min-w-0 flex-1">
+                                              <div className="min-w-0 flex-1 space-y-0.5">
                                                 <div className="flex items-baseline gap-1.5 min-w-0">
                                                   <span
                                                     className={`text-[15.5px] font-black tracking-[-0.03em] truncate ${
@@ -13573,10 +13684,20 @@ export default function UserIntroPage() {
                                                     {prd.product_name}
                                                   </span>
                                                 </div>
-                                                <div className="text-[12.5px] font-semibold text-[#6B7280] truncate">
-                                                  {prd.sub_type || selectedTaskItem.materialSubLabel || '맞춤 추천 자재'}{' '}
-                                                  · {prd.unit_spec} ·{' '}
-                                                  {Number(prd.unit_price || 0).toLocaleString()}원
+                                                <div className="text-[12.5px] font-bold text-[#0E712F] truncate">
+                                                  {prd.unit_spec} × 권장 {prd.recommendedQty || 1}
+                                                  {prd.unit_label || '개'} (총{' '}
+                                                  {prd.totalCapacityLabel || prd.unit_spec}) ·{' '}
+                                                  {(
+                                                    Number(prd.unit_price || 0) *
+                                                    Math.max(1, Number(prd.recommendedQty || 1))
+                                                  ).toLocaleString()}
+                                                  원
+                                                </div>
+                                                <div className="text-[11px] font-semibold text-[#6B7280] truncate">
+                                                  {prd.calcBasisSummary ||
+                                                    `${activeCropItem.areaPyeong.toLocaleString()}평 · 토양·기후 맞춤 산출`}{' '}
+                                                  (단가 {Number(prd.unit_price || 0).toLocaleString()}원)
                                                 </div>
                                               </div>
                                             </div>
@@ -13787,7 +13908,10 @@ export default function UserIntroPage() {
                         );
                         const selectedCount = selectedProducts.length;
                         const totalSelectedPrice = selectedProducts.reduce(
-                          (acc, prd) => acc + Number(prd.unit_price || 0),
+                          (acc, prd) =>
+                            acc +
+                            Number(prd.unit_price || 0) *
+                              Math.max(1, Number(prd.recommendedQty || 1)),
                           0
                         );
 
@@ -13806,6 +13930,7 @@ export default function UserIntroPage() {
                           if (targetList.length === 0) return;
 
                           targetList.forEach((prd) => {
+                            const recQty = Math.max(1, Number(prd.recommendedQty || 1));
                             handleAddStageProductToCart({
                               cropObj: {
                                 request_no: activeCropItem.request_no,
@@ -13827,13 +13952,19 @@ export default function UserIntroPage() {
                                 work_content: selectedTaskItem.taskDescription,
                               },
                               mat: prd,
-                              qty: 1,
+                              qty: recQty,
                             });
                           });
 
-                          const msg = `선택한 농자재 ${targetList.length}개(총 ${targetList
-                            .reduce((s, p) => s + Number(p.unit_price || 0), 0)
-                            .toLocaleString()}원)가 장바구니에 담겼습니다.`;
+                          const msg = `선택한 농자재 ${targetList.length}종(총 ${targetList
+                            .reduce(
+                              (s, p) =>
+                                s +
+                                Number(p.unit_price || 0) *
+                                  Math.max(1, Number(p.recommendedQty || 1)),
+                              0
+                            )
+                            .toLocaleString()}원)이 장바구니에 담겼습니다.`;
                           setMobileTaskAgroToast(msg);
                         };
 
@@ -13957,11 +14088,23 @@ export default function UserIntroPage() {
                                           >
                                             {prd.product_name}
                                           </div>
-                                          <div className="text-[14.5px] font-semibold text-[#4B5563]">
-                                            {prd.unit_spec}
+                                          <div className="text-[14px] font-bold text-[#0E712F]">
+                                            {prd.unit_spec} × 권장 {prd.recommendedQty || 1}
+                                            {prd.unit_label || '개'} (총{' '}
+                                            {prd.totalCapacityLabel || prd.unit_spec})
                                           </div>
-                                          <div className="text-[18.5px] font-black text-[#111827] tracking-[-0.02em] pt-0.5">
-                                            {Number(prd.unit_price || 0).toLocaleString()}원
+                                          <div className="text-[11.5px] font-semibold text-[#6B7280] truncate">
+                                            {prd.calcBasisSummary}
+                                          </div>
+                                          <div className="text-[17.5px] font-black text-[#111827] tracking-[-0.02em] pt-0.5">
+                                            {(
+                                              Number(prd.unit_price || 0) *
+                                              Math.max(1, Number(prd.recommendedQty || 1))
+                                            ).toLocaleString()}
+                                            원{' '}
+                                            <span className="text-[12px] font-semibold text-[#6B7280]">
+                                              (단가 {Number(prd.unit_price || 0).toLocaleString()}원)
+                                            </span>
                                           </div>
                                         </div>
                                       </button>
@@ -14101,10 +14244,12 @@ export default function UserIntroPage() {
                               work_content: selectedTaskItem.taskDescription,
                             },
                             mat: detailPrd,
-                            qty: 1,
+                            qty: Math.max(1, Number(detailPrd.recommendedQty || 1)),
                           });
                           setMobileTaskAgroToast(
-                            `[${detailPrd.product_name}] 상품이 장바구니에 담겼습니다.`
+                            `[${detailPrd.product_name}] 권장 ${detailPrd.recommendedQty || 1}${
+                              detailPrd.unit_label || '개'
+                            }(총 ${detailPrd.totalCapacityLabel || detailPrd.unit_spec}) 상품이 장바구니에 담겼습니다.`
                           );
                           goToScheduleStep('task_agro_buy');
                         };
