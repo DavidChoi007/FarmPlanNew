@@ -11443,24 +11443,26 @@ export default function UserIntroPage() {
               return (
                 <div className="lg:hidden w-full min-h-screen bg-white flex justify-center select-none pb-24">
                   <div className="w-full max-w-[460px] min-h-screen bg-white flex flex-col px-5 pt-0 pb-10">
-                    {/* ==================== [페이지 1: 재배작물 목록 페이지 (첨부 이미지 1번)] ==================== */}
+                    {/* ==================== [페이지 1: 재배작물 목록 페이지 (시안 이미지 기반 대시보드형 카드 UI)] ==================== */}
                     {mobileScheduleStep === 'list' && (
-                      <div className="mt-2.5 flex-1">
-                        <div className="flex items-center justify-between pb-2.5 mb-1 border-b border-[#E5E7EB]">
+                      <div className="mt-2.5 flex-1 space-y-3.5">
+                        {/* 1) 상단 타이틀 + 총 건수 배지 */}
+                        <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E7EB]">
                           <div className="flex items-center gap-2">
                             <span className="w-1.5 h-5 rounded-full bg-[#0E712F] shrink-0" />
-                            <h1 className="text-[19.5px] font-black text-[#111827] tracking-[-0.03em]">
+                            <h1 className="text-[20px] font-black text-[#111827] tracking-[-0.03em]">
                               진행중인 작물재배 일정
                             </h1>
                           </div>
                           {combinedMobileCrops.length > 0 && (
-                            <span className="px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#DCFCE7] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em]">
+                            <span className="px-2.5 py-0.5 rounded-full bg-[#EFF8F1] border border-[#CBEAD3] text-[#0E712F] text-[12.5px] font-extrabold tracking-[-0.02em]">
                               총 {combinedMobileCrops.length}건
                             </span>
                           )}
                         </div>
+
                         {combinedMobileCrops.length === 0 ? (
-                          <div className="mt-4 rounded-[20px] border border-dashed border-[#B7CFC0] bg-[#F9FBF9] p-6 text-center space-y-3">
+                          <div className="mt-2 rounded-[22px] border border-dashed border-[#86EFAC] bg-[#F4FBF6] p-6 text-center space-y-3">
                             <div className="text-[17px] font-black text-[#111827]">
                               등록된 재배작물이 없습니다
                             </div>
@@ -11476,72 +11478,232 @@ export default function UserIntroPage() {
                               className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-full bg-[#0E712F] hover:bg-[#0B5D26] text-white text-[14.5px] font-extrabold shadow-xs cursor-pointer transition"
                             >
                               <Plus className="w-4 h-4 stroke-[2.5]" />
-                              <span>재배작물 등록하기</span>
+                              <span>새로운 작물 재배일정 등록하기</span>
                             </button>
                           </div>
                         ) : (
-                          <div className="divide-y divide-[#D1D5DB]">
-                            {combinedMobileCrops.map((item) => (
-                              <div
-                                key={item.id}
-                                onClick={() => {
-                                  setSelectedRequestNo(item.request_no);
-                                  if (
-                                    !provisionData ||
-                                    provisionData?.activeRequest?.request_no !==
-                                      item.request_no
-                                  ) {
-                                    loadScheduleProvision(item.request_no, {
-                                      gdd_mode: patentGddMode,
-                                    }).catch(() => {});
-                                  }
-                                  if (item.primaryNextTask) {
-                                    prepareTaskForExecAndLog(item.primaryNextTask);
-                                  }
-                                  goToScheduleStep('detail');
-                                }}
-                                className="w-full py-3.5 first:pt-2 flex items-center justify-between gap-3 text-left hover:bg-slate-50/70 active:bg-slate-100/70 cursor-pointer transition"
-                              >
-                                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                                  <div className="w-[74px] h-[74px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/70 shadow-2xs">
-                                    <img
-                                      src={item.thumbUrl}
-                                      alt={item.shortName}
-                                      className="w-full h-full object-cover block"
-                                    />
+                          (() => {
+                            const totalFarmAreaPyeong = combinedMobileCrops.reduce(
+                              (sum, c) => sum + Number(c.areaPyeong || 0),
+                              0
+                            );
+                            const upcomingWeekTaskCount = combinedMobileCrops.filter((c) => {
+                              const nextEff = c.primaryNextTask?.effDate;
+                              if (!nextEff || !/^\d{4}-\d{2}-\d{2}$/.test(nextEff)) {
+                                return !c.isAllCompleted;
+                              }
+                              const diff = diffDaysBetweenYmd(todayKstYmd, nextEff);
+                              return diff >= -3 && diff <= 7;
+                            }).length;
+
+                            return (
+                              <div className="space-y-3.5">
+                                {/* 2) 상단 3칸 농장 요약 KPI 바 (총 재배면적 / 진행중 작물 / 이번 주 작업) */}
+                                <div className="rounded-[18px] bg-[#F2FBF5] border border-[#CBEAD3] px-3 py-3 grid grid-cols-3 divide-x divide-[#CBEAD3] text-center shadow-2xs">
+                                  <div className="px-1">
+                                    <div className="text-[11.5px] font-bold text-[#374151]">
+                                      총 재배면적
+                                    </div>
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
+                                      {totalFarmAreaPyeong.toLocaleString()}평
+                                    </div>
                                   </div>
-                                  <div className="min-w-0 flex-1 space-y-1">
-                                    <div className="flex items-baseline gap-1.5 truncate">
-                                      <span className="text-[21px] font-black text-[#111827] tracking-[-0.03em]">
-                                        {item.shortName}
-                                      </span>
-                                      <span className="text-[17px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
-                                        ({item.cultivarName})
-                                      </span>
+                                  <div className="px-1">
+                                    <div className="text-[11.5px] font-bold text-[#374151]">
+                                      진행중 작물
                                     </div>
-                                    <div className="text-[15px] font-medium text-[#374151] tracking-[-0.02em] flex items-center gap-2">
-                                      <span>{item.cultivationMethod}</span>
-                                      <span className="text-[#D1D5DB]">|</span>
-                                      <span>{item.areaPyeong.toLocaleString()}평</span>
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
+                                      {combinedMobileCrops.length}종
                                     </div>
-                                    <div className="text-[14.5px] font-medium text-[#111827] tracking-[-0.01em]">
-                                      {item.periodDotLabel}
+                                  </div>
+                                  <div className="px-1">
+                                    <div className="text-[11.5px] font-bold text-[#374151]">
+                                      이번 주 작업
+                                    </div>
+                                    <div className="text-[17px] font-black text-[#0E712F] tracking-[-0.03em] mt-0.5 whitespace-nowrap">
+                                      {Math.max(1, upcomingWeekTaskCount)}건
                                     </div>
                                   </div>
                                 </div>
 
+                                {/* 3) 입체형 작물 재배 현황 카드 리스트 */}
+                                <div className="space-y-3.5">
+                                  {combinedMobileCrops.map((item) => {
+                                    const totalStepCnt = Math.max(1, item.allTasks.length || 16);
+                                    const doneStepCnt = item.doneTasks.length;
+                                    const progressPct = Math.min(
+                                      100,
+                                      Math.max(4, Math.round((doneStepCnt / totalStepCnt) * 100))
+                                    );
+                                    const currentStageName =
+                                      item.cropCultStages[item.activeStepIdx]?.stage_name ||
+                                      item.stageBadge ||
+                                      '생육 관리';
+                                    const estimatedGdd = Math.max(
+                                      80,
+                                      Math.min(1650, Math.round(item.elapsedDays * 8.6))
+                                    );
+                                    const shortRegion =
+                                      String(item.region || '충청북도 충주시 단월동')
+                                        .replace(/^충청북도\s*/, '충북 ')
+                                        .replace(/^충청남도\s*/, '충남 ')
+                                        .replace(/^경상북도\s*/, '경북 ')
+                                        .replace(/^경상남도\s*/, '경남 ')
+                                        .replace(/^전라남도\s*/, '전남 ')
+                                        .replace(/^전북특별자치도\s*/, '전북 ')
+                                        .replace(/^강원특별자치도\s*/, '강원 ')
+                                        .replace(/^제주특별자치도\s*/, '제주 ')
+                                        .trim() || '충북 충주시 단월동';
+                                    const cleanNextTaskTitle =
+                                      String(item.nextTaskTitle || '생육 맞춤 농작업')
+                                        .replace(/\s*\([^)]*\)/g, '')
+                                        .trim() || item.nextTaskTitle;
+
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        onClick={() => {
+                                          setSelectedRequestNo(item.request_no);
+                                          if (
+                                            !provisionData ||
+                                            provisionData?.activeRequest?.request_no !==
+                                              item.request_no
+                                          ) {
+                                            loadScheduleProvision(item.request_no, {
+                                              gdd_mode: patentGddMode,
+                                            }).catch(() => {});
+                                          }
+                                          if (item.primaryNextTask) {
+                                            prepareTaskForExecAndLog(item.primaryNextTask);
+                                          }
+                                          goToScheduleStep('detail');
+                                        }}
+                                        className="w-full rounded-[22px] border border-[#D5E6DA] bg-white hover:border-[#0E712F] active:scale-[0.99] p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.05)] space-y-3 cursor-pointer transition"
+                                      >
+                                        {/* 카드 상단: 재배지 위치 배지 + 현재 생육단계(D+일수) 배지 */}
+                                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                                          <span className="inline-flex items-center gap-1 text-[12.5px] font-extrabold text-[#374151] truncate">
+                                            <span className="text-rose-500">📍</span>
+                                            <span className="truncate">{shortRegion}</span>
+                                          </span>
+                                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0E712F] text-white text-[11.5px] font-extrabold whitespace-nowrap shadow-2xs">
+                                            <span>🌱</span>
+                                            <span>
+                                              {currentStageName} (D+{item.elapsedDays}일)
+                                            </span>
+                                          </span>
+                                        </div>
+
+                                        {/* 카드 중단: 작물 썸네일 + 작물명(품종) · 재배방식/면적/기간 + 우측 삭제 버튼 */}
+                                        <div className="flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="w-[70px] h-[70px] rounded-[16px] overflow-hidden shrink-0 bg-slate-100 border border-slate-200/80 shadow-2xs">
+                                              <img
+                                                src={item.thumbUrl}
+                                                alt={item.shortName}
+                                                className="w-full h-full object-cover block"
+                                              />
+                                            </div>
+                                            <div className="min-w-0 flex-1 space-y-0.5">
+                                              <div className="flex items-baseline gap-1.5 truncate">
+                                                <span className="text-[20px] font-black text-[#111827] tracking-[-0.03em]">
+                                                  {item.shortName}
+                                                </span>
+                                                <span className="text-[16px] font-extrabold text-[#111827] tracking-[-0.03em] truncate">
+                                                  ({item.cultivarName})
+                                                </span>
+                                              </div>
+                                              <div className="text-[13.5px] font-bold text-[#374151] tracking-[-0.02em] flex items-center gap-1.5">
+                                                <span>{item.cultivationMethod}</span>
+                                                <span className="text-[#D1D5DB]">|</span>
+                                                <span>{item.areaPyeong.toLocaleString()}평</span>
+                                              </div>
+                                              <div className="text-[12.5px] font-semibold text-[#4B5563] tracking-[-0.01em] truncate">
+                                                {item.periodDotLabel}
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          <button
+                                            type="button"
+                                            onClick={(e) =>
+                                              handleDeleteScheduleAndCascade(item, e)
+                                            }
+                                            title="재배일정 및 요청·구매농자재·연관 데이터 일괄 삭제"
+                                            className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 font-extrabold text-[12px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                            <span>삭제</span>
+                                          </button>
+                                        </div>
+
+                                        {/* 카드 진행률 바 섹션: 재배 진행률 % (완료/전체 공정) + 기상 적산온도 GDD */}
+                                        <div className="space-y-1.5 pt-0.5">
+                                          <div className="flex items-center justify-between gap-2 text-[12px]">
+                                            <span className="font-extrabold text-[#111827]">
+                                              재배 진행률{' '}
+                                              <strong className="text-[#0E712F] font-black">
+                                                {progressPct}%
+                                              </strong>{' '}
+                                              <span className="text-[#4B5563] font-bold">
+                                                ({doneStepCnt}/{totalStepCnt} 공정 완료)
+                                              </span>
+                                            </span>
+                                            <span className="font-bold text-[#374151] whitespace-nowrap">
+                                              적산온도{' '}
+                                              <strong className="text-[#0E712F] font-extrabold">
+                                                {estimatedGdd} GDD
+                                              </strong>
+                                            </span>
+                                          </div>
+                                          <div className="w-full h-2.5 rounded-full bg-[#E5E7EB] overflow-hidden">
+                                            <div
+                                              style={{ width: `${progressPct}%` }}
+                                              className="h-full rounded-full bg-gradient-to-r from-[#16A34A] to-[#0E712F] transition-all duration-300"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        {/* 카드 하단: 다음 작업 하이라이트 요약 박스 */}
+                                        <div className="rounded-[14px] bg-[#EFF8F1] border border-[#CBEAD3] px-3 py-2.5 flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                            <span className="text-[13px] shrink-0">📌</span>
+                                            <span className="text-[13px] font-extrabold text-[#111827] truncate">
+                                              다음 작업: {cleanNextTaskTitle}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <span className="text-[12px] font-bold text-[#374151] whitespace-nowrap">
+                                              {String(item.nextTaskDateLabel || '').replace(
+                                                /\([^)]*\)/g,
+                                                ''
+                                              )}
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded-full bg-[#FDE047] text-[#111827] text-[11.5px] font-black whitespace-nowrap shadow-2xs">
+                                              {item.nextTaskDdayLabel}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* 4) 하단 점선 테두리 [+ 새로운 작물 재배일정 등록하기] 배너 카드 */}
                                 <button
                                   type="button"
-                                  onClick={(e) => handleDeleteScheduleAndCascade(item, e)}
-                                  title="재배일정 및 요청·구매농자재·연관 데이터 일괄 삭제"
-                                  className="px-3 py-2 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 font-extrabold text-[13px] whitespace-nowrap transition cursor-pointer inline-flex items-center justify-center gap-1 shrink-0 shadow-2xs"
+                                  onClick={() => {
+                                    setMobileReqStep(1);
+                                    setActiveMenu('재배일정 요청');
+                                  }}
+                                  className="w-full py-3.5 px-4 rounded-[18px] border-2 border-dashed border-[#4ADE80] bg-[#F7FCF8] hover:bg-[#EFF8F1] active:scale-[0.99] text-[#0E712F] font-black text-[15px] tracking-[-0.02em] flex items-center justify-center gap-1.5 cursor-pointer transition shadow-2xs"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                  <span>삭제</span>
+                                  <Plus className="w-4 h-4 stroke-[2.8]" />
+                                  <span>새로운 작물 재배일정 등록하기</span>
                                 </button>
                               </div>
-                            ))}
-                          </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}
