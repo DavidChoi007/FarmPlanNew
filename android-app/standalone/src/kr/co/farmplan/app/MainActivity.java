@@ -97,7 +97,7 @@ public class MainActivity extends Activity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         String defaultUa = settings.getUserAgentString();
         if (defaultUa != null && !defaultUa.contains("FarmPlanSafeInset/1")) {
-            settings.setUserAgentString(defaultUa + " FarmPlanApp/1.0.2 FarmPlanSafeInset/1");
+            settings.setUserAgentString(defaultUa + " FarmPlanApp/1.0.3 FarmPlanSafeInset/1");
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
